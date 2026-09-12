@@ -1419,6 +1419,47 @@ pnpm --filter api test ai-plans ai-results
 
 ---
 
+### T-049 — Investigator violations, due process and permanent bans
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-013, T-035
+- **Risk:** HIGH
+- **Human approval required:** Yes — account termination and post-deletion retention
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/enforcement/**, auth, verification, migrations
+
+**Description**
+Enforcement for investigator policy violations, with the due process a career-affecting
+decision requires. Per `.claude/skills/enforcement-actions/SKILL.md`.
+
+**Acceptance criteria**
+- [ ] `InvestigatorViolation` and `EnforcementDecision`; evidence stored as **references, never content**
+- [ ] Decision records are **append-only** — a reversal appends; a test proves it cannot be edited
+- [ ] A ban cannot be issued without a recorded notice **and** an elapsed response window
+- [ ] The deciding staff member is blocked from deciding a matter they were party to — tested
+- [ ] Appeal routes to a different reviewer; the original decision is retained
+- [ ] Precautionary suspension is a distinct action from a ban and still triggers full process
+- [ ] `BanIdentityHash`: salted hash of the verified identity, checked at registration
+- [ ] **A test proves a banned investigator cannot re-register with the same identity after
+      deleting their account** — otherwise the ban is decorative
+- [ ] **No identity document, name or case content retained** in the ban record beyond the hash
+- [ ] Ban and money are **separate decisions with separate records**; earned payouts are not
+      withheld as a penalty — tested
+- [ ] Live assignments each resolved (reassign / complete / refund) and recorded per assignment
+- [ ] Ban reason is never exposed to other users
+- [ ] Every action audited with actor, grounds and reasoning
+
+**Blocking questions for counsel** (`counsel-brief.md` §19a–19d): lawful basis and retention
+period for the ban hash after deletion, notice and appeal periods, the evidentiary standard,
+and whether set-off against amounts owed is enforceable.
+
+**Validation**
+```bash
+pnpm --filter api test enforcement
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

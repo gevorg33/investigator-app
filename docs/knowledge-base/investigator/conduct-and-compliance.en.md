@@ -76,6 +76,50 @@ or accepting work you should have refused.
 Suspension decisions are recorded with their reason and you are told what it is. Where the
 matter is serious, the relevant regulator or authority may also be informed.
 
+## What can get me permanently banned?
+
+Substantiated violation of professional or ethical obligations. Specifically: performing an
+investigation improperly or negligently, deceiving or misleading a client, accepting an
+assignment and abandoning it without valid reason, delivering work that fails the agreed scope,
+or disclosing confidential information about a client, investigation or assignment to a
+competitor or any unauthorised third party.
+
+A ban is reserved for conduct that makes continued participation untenable. It is not the
+ordinary outcome of a single dispute decided against you.
+
+## How is a ban decided? Do I get to respond?
+
+Yes. Before a permanent ban you are told what is alleged and on what basis, you get a
+reasonable opportunity to respond, and the decision is made by someone who was not involved in
+the underlying complaint. The decision and its reasoning are recorded and given to you, and you
+can appeal to a different reviewer.
+
+Your account may be suspended immediately as a precaution where leaving it active would risk
+customers or their data. That is a suspension, not a ban, and the full process still follows.
+
+## What is the difference between inadequate work and an honest limitation?
+
+Inadequate work is measured against the scope in the quote you were accepted on. An
+investigation that honestly reports it could not establish something has performed the work —
+that is a finding, not a failure, and the limitations section exists for it.
+
+This is why recording limitations as you encounter them matters. A limitation stated in the
+report is a finding. The same limitation raised for the first time during a complaint is worth
+much less.
+
+## If I am banned, do I still get paid for work I completed?
+
+A ban is not a financial penalty. Amounts earned for work already delivered remain payable.
+
+Where a customer is owed a refund, that is decided separately on its own merits and may be set
+against what you are owed. The two decisions are recorded separately.
+
+## What happens to my live assignments if I am banned or suspended?
+
+They are resolved as part of the action — reassigned, completed, or refunded — so customers are
+not left without recourse. Evidence you already uploaded stays with the assignment; it belongs
+to the case.
+
 ## Can I be removed for one mistake?
 
 Most issues are handled proportionately — a warning, a correction, a conversation. The

@@ -142,6 +142,19 @@ owner, never inferred by code.
 17. Chargeback allocation between platform and investigator.
 18. Tax treatment and any reporting obligations regarding investigator earnings.
 
+### Enforcement and bans
+19a. **Lawful basis for retaining a ban record after account deletion.** A permanent ban that a
+    user defeats by deleting and re-registering is not a ban. The proposed mechanism stores a
+    **salted hash of the verified identity** — enough to block re-registration, not enough to
+    identify the person. Confirm the basis (fraud and safety prevention under legitimate
+    interests is the expected route), the retention period, and whether the hash is personal
+    data in the launch jurisdictions.
+19b. **Notice, response and appeal periods** for a permanent ban.
+19c. **Evidentiary standard** for a career-affecting ban.
+19d. **Set-off** — whether withholding amounts owed against a customer refund claim is
+    enforceable in each launch jurisdiction. A ban is not a fine, and money earned for work
+    delivered is owed.
+
 ### Liability
 19. How far can liability be limited for each user class, given consumer protections in
     scope?

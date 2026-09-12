@@ -511,13 +511,42 @@ Initial entities:
 - KnowledgeDocument
 - KnowledgeChunk
 - EmbeddingJob
+- InvestigatorViolation
+- EnforcementDecision
+- BanIdentityHash
 - AiSession
 - AiMessage
+- InvestigatorViolation
+- EnforcementDecision
+- BanIdentityHash
 - AiSessionSummary
+- InvestigatorViolation
+- EnforcementDecision
+- BanIdentityHash
 - AiSessionState
 - AiMemory
 - AiPlan
 - AiToolResult
+
+### Enforcement
+
+Investigator policy violations, due process and permanent bans. Procedure:
+`.claude/skills/enforcement-actions/SKILL.md`.
+
+- **InvestigatorViolation** — subject, reporter, grounds, evidence references (**IDs, never
+  content**), status, timestamps
+- **EnforcementDecision** — the violation, outcome (`warning` / `suspension` / `ban` /
+  `dismissed`), reasoning, deciding staff member, notice sent, response received, appeal
+  outcome. **Append-only** — a reversal appends, it never edits
+- **BanIdentityHash** — a salted hash of the verified identity, checked at registration
+
+The hash exists because a permanent ban that is defeated by deleting the account and
+re-registering is not a ban. Storing the hash rather than the identity keeps the ban effective
+while retaining nothing legible about a deleted person. Its lawful basis is a counsel question
+— see `counsel-brief.md` §19a.
+
+Money is decided **separately** from the ban. Amounts earned for delivered work remain payable;
+a refund owed to a customer is its own determination.
 
 ### AI session and context (ADR-0006)
 

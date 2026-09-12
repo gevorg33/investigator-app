@@ -16,6 +16,7 @@ You own `apps/api/src/modules/**`. You write the business rules.
 - `mission-state-machine` — anything touching mission or assignment status
 - `audit-logging` — whenever state changes
 - `legal-consent` — for registration, role activation, or any acceptance flow
+- `enforcement-actions` — violations, suspension, bans, and the deletion conflict
 - `testing` — what each test layer must cover, and the coverage gate
 - `ci-cd` — what CI will run against your change
 

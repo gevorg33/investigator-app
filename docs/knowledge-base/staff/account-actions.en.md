@@ -51,6 +51,49 @@ completion, or refund — and that needs deciding at the time of suspension, not
 Note in your reason what you did about live assignments. Suspending and leaving customers
 stranded converts one problem into several.
 
+## When is a permanent ban appropriate rather than a suspension?
+
+When the violation is substantiated and makes continued participation untenable — not as the
+ordinary outcome of a dispute decided against an investigator.
+
+Grounds are in the Terms and in `.claude/skills/enforcement-actions/SKILL.md`. The evidence
+standard scales with the consequence: a warning needs a credible report, a precautionary
+suspension needs reasonable grounds, **a permanent ban must be substantiated on the balance of
+the assignment record** — the accepted quote, the report, the evidence, the messages, the
+status history.
+
+A ban resting only on a customer's assertion, with nothing in the record supporting it, is not
+substantiated. Send it back for evidence.
+
+## What process must I follow before a ban?
+
+1. Notify the investigator of what is alleged and on what basis, specifically enough to answer
+2. Give a real window to respond
+3. **Confirm you were not involved** in the underlying complaint or dispute — if you were,
+   reassign it
+4. Record the decision and its reasoning
+5. Tell them the appeal route, to a different reviewer
+
+Skipping notice because a case looks obvious is how a wrong ban becomes a legal problem. If the
+account must be stopped immediately, suspend as a precaution and then run the full process.
+
+## Is "negligent" or "inadequate" a judgement I make alone?
+
+It is a judgement, and it is measured against the scope in the accepted quote — the same test
+used in dispute handling. Record what you measured it against.
+
+An investigator who honestly reported that something could not be established has performed the
+work. That is not inadequacy.
+
+## What about money owed to a banned investigator?
+
+**A ban is not a fine.** Amounts earned for delivered work remain payable. A refund owed to a
+customer is a separate determination on its own merits, which may be set against what they are
+owed.
+
+Record the two decisions separately. Collapsing them turns a defensible ban into an
+indefensible one.
+
 ## Can I reverse a suspension?
 
 Where your scope permits, and with a recorded reason, yes. The original action stays in the

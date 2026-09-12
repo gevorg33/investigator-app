@@ -14,6 +14,7 @@ assumptions into the public site.
 
 - `authorization` — staff scope is narrower than "is staff"
 - `audit-logging` — every staff action is logged and explainable
+- `enforcement-actions` — violations, due process, bans
 - `localization`
 - `domain-and-seo` — for anything on the marketing domain
 

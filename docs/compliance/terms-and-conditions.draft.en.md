@@ -181,11 +181,47 @@ Access may be suspended or terminated where a user:
 - behaves abusively toward another user or staff
 - breaches these terms or the Lawful Use Policy
 
-Decisions are recorded with a reason and communicated. Live assignments are resolved —
-reassigned, completed or refunded — as part of the action.
+Additionally, for investigators, substantiated violation of professional or ethical
+obligations, including:
 
-[**Counsel: notice and appeal rights; immediate suspension grounds; obligations on
-termination regarding data and funds.**]
+- performing an investigation improperly or negligently
+- deceiving or misleading a client
+- accepting an assignment and abandoning it without valid reason
+- delivering work that fails to meet the agreed scope
+- disclosing confidential client, investigation or assignment information to a competitor or
+  any unauthorised third party
+
+A **permanent ban** may follow a violation that has been substantiated through the review
+process below. It is reserved for conduct that makes continued participation untenable, and is
+not the ordinary response to a single dispute resolved against an investigator.
+
+### Review process
+
+Before a permanent ban:
+
+1. The investigator is notified of what is alleged and on what basis
+2. They are given a reasonable opportunity to respond
+3. The decision is made by a person not involved in the underlying complaint
+4. The decision and its reasoning are recorded and communicated
+5. An appeal to a different reviewer is available
+
+An account may be suspended immediately as a precaution where leaving it active would risk
+customers or their data. A precautionary suspension is not a ban, and the full process still
+follows.
+
+### Effect on money and live assignments
+
+A ban is not a financial penalty. Amounts earned for work already delivered remain payable,
+subject to any refund or determination owed to a customer, which is decided separately on its
+own merits.
+
+Live assignments are resolved — reassigned, completed or refunded — as part of the action, so
+that customers are not left without recourse.
+
+[**Counsel: notice and appeal periods; the evidentiary standard for a permanent ban; whether
+set-off against amounts owed is enforceable in the launch jurisdictions; obligations on
+termination regarding data and funds; and the lawful basis for retaining a ban record after
+account deletion — see the Privacy Policy and counsel-brief.md.**]
 
 ## 13. Limitation of liability
 
