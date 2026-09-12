@@ -56,7 +56,13 @@ authorization. It calls registered tools; the backend does the rest.
     bar: a test that touches a line without asserting on its effect fails review regardless of
     the number. Every bug fix carries a regression test seen to fail first. Never weaken, skip
     or disable a test to get green. See `testing` and `ci-cd`.
-12. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
+12. **Mobile ships store-ready.** App Store and Play compliance is part of implementing a
+    mobile feature, never a pre-submission stage. Permissions are least-privilege and
+    requested in context; sign out is one level deep; account deletion is in-app and complete.
+    **Never request background location** — Play bans monitoring apps outside parental and
+    enterprise use, and this product is read sceptically by default. Official policy is the
+    source of truth. See `mobile-store-compliance`.
+13. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
    Knowledge-base articles, in-app copy and assistant answers explain them and say so.
    Engineering changes the plumbing of legal pages, never their substance. Acceptance is
    recorded per document, per version, with the exact text shown — see the `legal-consent`

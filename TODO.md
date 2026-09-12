@@ -1239,6 +1239,69 @@ pnpm test:coverage
 
 ---
 
+### T-043 — Mobile compliance CI checks
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-028
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .github/workflows/**, scripts/
+
+**Description**
+Automate the release blockers that are cheap to check and expensive to discover at review.
+Per `.claude/skills/mobile-store-compliance/SKILL.md`.
+
+**Acceptance criteria**
+- [ ] Privacy Policy and Terms URLs configured and **resolve** — not placeholders, not 404
+- [ ] Sign-out and delete-account screens exist and are routable
+- [ ] **No background location** permission declared anywhere — fails the build if found
+- [ ] Every declared permission appears in `docs/mobile/permissions.md`; unlisted ones fail
+- [ ] Every iOS purpose string present, non-placeholder, localised for en/ru/hy
+- [ ] `PrivacyInfo.xcprivacy` / `expo.ios.privacyManifests` present
+- [ ] **Production build contains no development or staging URL**
+- [ ] Bundle ID / package name correct per environment
+- [ ] Play target API level meets the current requirement
+- [ ] Listing copy contains none of: track, monitor, spy, surveil, catch
+
+**Validation**
+```bash
+pnpm --filter mobile compliance:check
+```
+
+---
+
+### T-044 — Mobile store submission readiness
+- **Status:** BLOCKED — depends on counsel-approved legal documents (T-020)
+- **Priority:** P1
+- **Depends on:** T-020, T-022, T-043
+- **Risk:** HIGH
+- **Human approval required:** Yes — store submission is outward-facing
+- **Owner agent:** mobile
+- **Affected:** apps/mobile/**, docs/mobile/**
+
+**Description**
+Complete the account, permission and metadata work required for a first submission, then run
+the full audit in `docs/mobile/release-checklist.md`.
+
+**Acceptance criteria**
+- [ ] In-app account deletion, complete and not deactivation (Apple 5.1.1(v))
+- [ ] Web deletion route live and declared in the Play Console
+- [ ] Sign out one level deep, clearing server session and local cache
+- [ ] Legal documents reachable during registration and from Settings, resolving to
+      **counsel-approved** versions
+- [ ] Permissions requested in context with localised purpose strings; graceful denial paths
+- [ ] Apple App Privacy labels and Play Data Safety form match actual behaviour
+- [ ] Age and content ratings reflect user-generated content and messaging
+- [ ] **Reviewer notes written stating the app performs no monitoring**, linking the lawful use
+      policy — the single highest-value rejection defence for this product
+- [ ] Full release checklist run and recorded
+
+**Validation**
+Completed checklist in `docs/mobile/release-checklist.md`, signed off before submission.
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

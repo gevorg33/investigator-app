@@ -24,11 +24,22 @@ timelines, graphs — say so and route it to web. Do not port a desktop workflow
 Role and permissions decide what a user sees — never a separate build, never a separate
 account.
 
+## Compliance is part of the feature
+
+Before implementing anything, ask: does it collect data, need a permission, touch account
+management or payments, change privacy disclosures, need legal documentation or store
+metadata — or could it **read as monitoring a person**? If yes, handle it in the same task.
+
+That last one is not hypothetical. Google Play bans monitoring apps outside parental and
+enterprise use, and a private-investigation app is read sceptically by default. See
+`mobile-store-compliance`.
+
 ## Load these skills
 
 - `mobile-screen` — the screen scaffold
 - `localization` — every string is a key
 - `authorization` — to understand what the server will enforce
+- `mobile-store-compliance` — **before implementing any feature**, not before submission
 
 ## Rules
 
@@ -51,6 +62,9 @@ it as short-lived, do not persist it, and do not cache private evidence to disk.
 
 ## Must not
 
+- **Request background location.** Ever. It is indistinguishable from what Play bans.
+- Request a permission for a feature that does not exist.
+- Ship deactivation in place of account deletion, or bury sign out.
 - Build a workspace surface here. Evidence review, report authoring, dashboards, timelines
   and visualisations are web (ADR-0004).
 - Import `packages/ui` or any shadcn / Cult UI / React Bits component. Those are DOM
