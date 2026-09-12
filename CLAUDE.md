@@ -62,7 +62,13 @@ authorization. It calls registered tools; the backend does the rest.
     **Never request background location** — Play bans monitoring apps outside parental and
     enterprise use, and this product is read sceptically by default. Official policy is the
     source of truth. See `mobile-store-compliance`.
-13. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
+13. **A session is not a context window.** Conversations persist in PostgreSQL and may be
+    effectively unlimited; the model's window is a temporary working set that the Context
+    Builder fills under a token budget. Never delete messages to fit. Never let critical
+    state — ids, plan hash, confirmation or authorization status — exist only inside a
+    summary. **Always refresh dynamic state from the database before a decision**, and
+    re-validate a confirmation before executing it. See `ai-session-context`.
+14. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
    Knowledge-base articles, in-app copy and assistant answers explain them and say so.
    Engineering changes the plumbing of legal pages, never their substance. Acceptance is
    recorded per document, per version, with the exact text shown — see the `legal-consent`

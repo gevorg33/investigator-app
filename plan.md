@@ -511,6 +511,42 @@ Initial entities:
 - KnowledgeDocument
 - KnowledgeChunk
 - EmbeddingJob
+- AiSession
+- AiMessage
+- AiSessionSummary
+- AiSessionState
+- AiMemory
+- AiPlan
+- AiToolResult
+
+### AI session and context (ADR-0006)
+
+The assistant's conversation layer. **A session is a persistent workspace; the model's context
+window is a temporary working set.** They are separate systems — see
+`.claude/skills/ai-session-context/SKILL.md`.
+
+- **AiSession** — id, user, title, status (`ACTIVE`/`IDLE`/`ARCHIVED`/`DELETED`), locale,
+  timezone, message count, summary version, last activity, structured pointers to the current
+  goal, active assignment, pending action and last plan
+- **AiMessage** — session, sequence, role (`user`/`assistant`/`system`/`tool`), content,
+  metadata (entities, tool calls, plan id), embedding for semantic history search
+- **AiSessionSummary** — versioned, with model, source sequence range and timestamp, so a
+  summary is reproducible and traceable
+- **AiSessionState** — structured state that must never live only in prose: ids, statuses,
+  confirmation and authorization status, job and workflow state
+- **AiMemory** — session-scoped and user-scoped, each with provenance (source session and
+  message), confidence and expiry; user-reviewable and user-deletable
+- **AiPlan** — id, hash, commands, parameters, status, confirmation status, job ids, results;
+  persisted server-side so a confirmation survives a browser close or a worker restart
+- **AiToolResult** — large results stored and referenced by id with a summary and a cursor,
+  never inlined into a prompt
+
+Uses pgvector for message and memory embeddings, and Postgres full-text search for exact terms —
+hybrid, per ADR-0001.
+
+**Not in v1 (ADR-0006):** DAG orchestration, multi-step command planning, a risk engine beyond
+the mission policy screening in §10, and multi-tenancy. This product has no tenants; isolation
+is by resource relationship, enforced by the six-check authorization procedure.
 
 ### Investigation workspace (v1)
 

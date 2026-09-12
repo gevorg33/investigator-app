@@ -1302,6 +1302,123 @@ Completed checklist in `docs/mobile/release-checklist.md`, signed off before sub
 
 ---
 
+### T-045 — AI session and message persistence
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-004
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai-sessions/**, migrations
+
+**Description**
+The persistent conversation layer per ADR-0006. Must exist before the assistant, because the
+alternative is a chatbot whose memory is a prompt.
+
+**Acceptance criteria**
+- [ ] `AiSession` with lifecycle `ACTIVE`/`IDLE`/`ARCHIVED`/`DELETED`, separate from workflow state
+- [ ] Create, open, resume, rename, archive, delete, search — all actor-scoped
+- [ ] `AiMessage` with sequence, role, metadata; tool calls stored as **structured events**, not prose
+- [ ] Hybrid session search: pgvector + Postgres full-text (ADR-0001)
+- [ ] `*.authz.spec.ts` proves another user cannot reach a session or its messages by any path
+- [ ] Titles renameable; generated titles never expose evidence content
+- [ ] Deleting a session removes its messages, summaries, memory and embeddings in one unit of work
+
+**Validation**
+```bash
+pnpm --filter api test ai-sessions
+```
+
+---
+
+### T-046 — Context Builder, summaries and compaction
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-045, T-016
+- **Risk:** HIGH
+- **Human approval required:** Yes — it decides what reaches the model
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai/context-builder/**
+
+**Description**
+The service that decides what enters the model context. Per
+`.claude/skills/ai-session-context/SKILL.md`.
+
+**Acceptance criteria**
+- [ ] **Permissions applied before assembly**, not after; a test proves no cross-session or
+      cross-user message can be retrieved by semantic relevance
+- [ ] Token budget reserves output space; input never fills the window
+- [ ] Compaction triggers proactively at ~70–80%; **no message is ever deleted to fit**
+- [ ] Progressive degradation: recent → +summary → compress older → retrieve history → structured state
+- [ ] An **active plan or pending confirmation is never compacted away** — tested explicitly
+- [ ] Summaries incremental and hierarchical; versioned with model and source sequence range
+- [ ] Summaries preserve goal, entities, decisions, constraints, completed and pending actions
+- [ ] Retrieved content delimited and treated as data; injection test passes
+- [ ] A test proves a summary claiming a permission grants nothing
+
+**Validation**
+```bash
+pnpm --filter api test context-builder
+```
+
+---
+
+### T-047 — AI memory with provenance
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-046
+- **Risk:** HIGH
+- **Human approval required:** Yes — persistent memory is a privacy surface
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai/memory/**
+
+**Acceptance criteria**
+- [ ] Session memory and user memory stored separately; session memory dies with its session
+- [ ] Every memory carries provenance (source session and message), confidence, timestamp
+- [ ] **Selective** — a test proves ordinary conversation does not create memories
+- [ ] User can review and delete their own memory; deletion is complete and audited
+- [ ] Conflict resolution: new explicit instruction > session state > session memory > long-term
+- [ ] **Memory never overrides application state and never substitutes for authorization** — tested
+- [ ] No evidence content, message bodies or third-party personal data written into memory
+- [ ] Memory included in data export and account deletion (T-022, T-044)
+
+**Validation**
+```bash
+pnpm --filter api test ai-memory
+```
+
+---
+
+### T-048 — Plan persistence, confirmation survival and tool result store
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-045, T-018
+- **Risk:** HIGH
+- **Human approval required:** Yes — confirmation is the mutation gate
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai/plans/**, apps/api/src/modules/ai/results/**
+
+**Description**
+What makes a confirmation survive a browser close, and keeps 10,000 records out of a prompt.
+
+**Acceptance criteria**
+- [ ] `AiPlan` persisted with `plan_id`, `plan_hash`, commands, status, confirmation status
+- [ ] A pending confirmation **survives browser close, app restart and worker restart** — tested
+- [ ] Before execution: re-authorize, re-check the hash, re-read resource state
+- [ ] **Material change invalidates the confirmation** and forces a fresh one — tested
+- [ ] A confirmation is single-use and bound to exact arguments (`ai-tool-registry`)
+- [ ] Large tool results stored and referenced by `result_id` with summary, top-N and cursor
+- [ ] A test proves a large result set never enters a prompt in full
+- [ ] A killed worker is replaced by another that resumes from persisted state
+- [ ] **No DAG orchestration, no risk engine, no `tenant_id`** — deferred/rejected by ADR-0006
+
+**Validation**
+```bash
+pnpm --filter api test ai-plans ai-results
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

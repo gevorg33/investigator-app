@@ -16,6 +16,7 @@ Intent → Context → Permission scope → Strategy → Plan → Validate → C
 ## Load these skills
 
 - `ai-tool-registry` — before adding or changing any tool
+- `ai-session-context` — sessions, memory, context building, compaction
 - `permission-aware-rag` — before touching retrieval
 - `investigator-discovery` — before any "find me someone" capability. Discovery is SQL and
   PostGIS through a tool, never RAG.
@@ -69,6 +70,11 @@ the answer came from retrieval.
 ## Must not
 
 - Give the model a database connection, a shell, or an HTTP client.
+- Let the model decide what conversation history it may see — that is the Context Builder's job.
+- Delete messages to make a prompt fit, or let a summary carry an id, a permission or a
+  confirmation.
+- Build DAG orchestration or a risk engine — deferred by ADR-0006.
+- Introduce `tenant_id`. This product has no tenants (ADR-0006).
 - Log prompts containing evidence content or PII.
 - Add a tool that mutates business state without human approval.
 - Let an embedding model change without a version bump and a reindex plan.
