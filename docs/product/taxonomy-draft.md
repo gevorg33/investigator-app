@@ -4,6 +4,10 @@ Feeds **T-053**. Per ADR-0007 this single tree is used by both sides: a mission 
 node it falls under, an investigator declares the nodes they practise in, and matching is an
 exact join that walks descendants.
 
+**Revised for the narrowed scope** — public and authorised information only, no surveillance.
+All 35 nodes are retained; what changed is what each one *means*. One rename:
+`claim-surveillance` → `claim-verification`.
+
 **This is a draft for review by someone with private-investigation domain and licensing
 knowledge.** The structure and the risk banding are the parts I am confident about. Which
 services are lawful and licensable in each launch jurisdiction is not something to take from
@@ -17,11 +21,27 @@ jobs: it makes matching work, and it shapes what people ask for.
 Each level-2 node carries a **risk band** that drives moderation queue ordering (T-051) and the
 structured questions asked at mission creation (`plan.md` §10).
 
+Because method is now fixed — public or authorised information only — the bands grade by
+**who the subject is and how sensitive the data is**, not by how intrusive the technique is.
+
 | Band | Meaning |
 |---|---|
-| `standard` | Ordinary commercial work. Normal review |
-| `elevated` | Involves an identifiable private individual, or sensitive records. Additional questions; prioritised in the queue |
-| `high` | Locating or observing a private individual. **Lawful basis must be stated and is reviewed every time** |
+| `standard` | Subject is a company, or a public figure acting in a public capacity |
+| `elevated` | Subject is an identifiable private individual, or the data is sensitive |
+| `high` | Subject is a private individual **and the customer must demonstrate standing** — a legal interest, proceedings, or an authorising relationship |
+
+## Two sources, one scope
+
+Every node draws on one or both:
+
+- **Public information** — registers, filings, court records, published material, openly
+  available online content
+- **Authorised information** — material the requesting party is legally entitled to provide and
+  use, including access to **their own** premises, systems, records and property
+
+The second limb is why security and counter-surveillance work remains in scope: a client
+commissioning inspection of their own site authorises it by definition. The subject is the
+client.
 
 ---
 
@@ -31,7 +51,7 @@ structured questions asked at mission creation (`plan.md` §10).
 |---|---|
 | `due-diligence` — pre-acquisition, counterparty, vendor, investor | `standard` |
 | `fraud` — internal, procurement, financial statement | `standard` |
-| `internal-investigation` — misconduct, grievance, whistleblower | `elevated` |
+| `internal-investigation` — misconduct, grievance, whistleblower, from employer records and authorised interviews | `elevated` |
 | `ip-protection` — counterfeiting, trade-secret misuse, brand abuse | `standard` |
 | `business-intelligence` — company profiles, ownership structures, market entry | `standard` |
 
@@ -42,28 +62,33 @@ employment and data-protection law constrains it heavily.
 
 | Node | Band |
 |---|---|
-| `litigation-support` — evidence gathering for proceedings | `elevated` |
-| `witness` — locating and interviewing witnesses | `high` |
-| `service-of-process` — serving legal documents | `high` |
+| `litigation-support` — records and documentary evidence for proceedings | `elevated` |
+| `witness` — locating witnesses from public records; consensual interviews | `high` |
+| `service-of-process` — locating a recipient from public records to support service | `high` |
 | `records-research` — court, land registry, corporate filings | `standard` |
 | `expert-sourcing` — identifying and vetting expert witnesses | `standard` |
 
-`witness` and `service-of-process` are `high` because both involve locating a private
-individual — legitimate with a legal basis, and exactly the shape of a prohibited request
-without one.
+`witness` and `service-of-process` are `high` because both locate a private individual.
+Locating from public records is in scope; the standing that justifies looking is what the band
+requires the customer to demonstrate.
 
 ## 3. `insurance` — Insurance and claims
 
 | Node | Band |
 |---|---|
-| `claim-investigation` — validity, documentation, circumstances | `elevated` |
-| `claim-fraud` — suspected fraudulent claims | `elevated` |
-| `claim-surveillance` — observation in support of a claim | `high` |
+| `claim-investigation` — validity and circumstances from records and declarations | `elevated` |
+| `claim-fraud` — records, filings and pattern analysis across claims | `elevated` |
+| `claim-verification` — corroborating a claim against public and authorised records | `elevated` |
 | `incident-reconstruction` — accident and incident analysis | `standard` |
 
-`claim-surveillance` is `high`. Insurance surveillance is a mainstream, lawful service in many
-jurisdictions and it is also surveillance of a private individual. It needs the instructing
-party's standing established every time.
+**`claim-surveillance` was renamed `claim-verification`, and it is a different service.**
+Observation of claimants is out of scope. What remains is corroborating a claim against public
+records and against material the insurer is authorised to hold — a real and substantial
+service, but not the field surveillance the old name promised.
+
+The rename is deliberate. A node called `claim-surveillance` that delivers records work
+misleads customers, attracts investigators who are not a fit, and reads badly to an app store
+reviewer regardless of its description.
 
 ## 4. `screening` — Background and screening
 
@@ -81,14 +106,18 @@ the subject has consented, and the absence of consent should block rather than m
 
 | Node | Band |
 |---|---|
-| `asset-search` — lawful asset identification | `elevated` |
-| `judgment-enforcement` — supporting enforcement of a judgment | `elevated` |
-| `financial-profiling` — for litigation or transaction purposes | `elevated` |
+| `asset-search` — asset identification from public registers and filings | `high` |
+| `judgment-enforcement` — records research supporting enforcement | `high` |
+| `financial-profiling` — from public filings and authorised disclosure | `elevated` |
 | `crypto-tracing` — blockchain analysis | `standard` |
 
-All `elevated` at minimum. Protected financial records are prohibited outright — see the Lawful
-Use Policy — so the boundary between lawful asset search and unlawful records access must be in
-the structured questions, not left to the investigator to discover mid-mission.
+`asset-search` and `judgment-enforcement` move to `high`: both target a private individual's
+finances, and both require the customer to show standing — a judgment, proceedings, or a
+recognised legal interest.
+
+Protected financial records remain prohibited outright. The boundary between a public register
+and a restricted record must be in the structured questions, not left to the investigator to
+discover mid-mission.
 
 ## 6. `digital` — Digital and open-source
 
@@ -99,10 +128,13 @@ the structured questions, not left to the investigator to discover mid-mission.
 | `reputation` — defamation, coordinated attacks, brand damage | `elevated` |
 | `digital-footprint` — publicly available online presence of an individual | `high` |
 
-`digital-footprint` is `high` and is the most likely node on this tree to be misused. Compiling
-a person's online presence is trivially the groundwork for stalking, and it looks identical to
-legitimate pre-litigation research. Strong questions, and it may be worth deferring this node
-entirely until the moderation flow has been running for a while.
+`digital-footprint` stays `high` and remains the most likely node here to be misused. Public
+sources do not make it safe: compiling a person's scattered online presence into a profile is
+itself a regulated processing activity, and it is trivially the groundwork for stalking while
+reading identically to legitimate pre-litigation research.
+
+Narrowing the scope to public data does **not** resolve this node. If anything it raises its
+prominence, since it is now squarely within the methodology rather than at the edge of it.
 
 ## 7. `personal` — Personal and family
 
@@ -112,24 +144,32 @@ a mission description.
 
 | Node | Band |
 |---|---|
-| `missing-person` — locating a missing individual | `high` |
-| `family-law` — supporting custody or family proceedings | `high` |
-| `reunification` — adoption, estranged family, with consent pathways | `high` |
+| `missing-person` — records-based tracing | `high` |
+| `family-law` — records and authorised documents for active proceedings | `high` |
+| `reunification` — records tracing with consent pathways | `high` |
 
-All `high`, all requiring a stated legal basis and relationship to the subject, all routed to a
+All `high`, all requiring stated standing and a relationship to the subject, all routed to a
 moderator every time regardless of queue configuration.
+
+Under the narrowed scope this branch is **records-based tracing only**. That is a genuine
+service and a much weaker one than customers expect: most real missing-person work involves
+going and looking. The customer-facing copy must set that expectation before a mission is
+submitted, not after a report disappoints.
 
 ## 8. `security` — Security and protective
 
 | Node | Band |
 |---|---|
-| `threat-assessment` — assessing a threat against a client | `elevated` |
-| `counter-surveillance` — detecting surveillance against a client (TSCM) | `standard` |
-| `security-audit` — physical and procedural review | `standard` |
+| `threat-assessment` — assessing a threat against the client, from public sources | `elevated` |
+| `counter-surveillance` — inspecting the client's own premises and devices (TSCM) | `standard` |
+| `security-audit` — review of the client's own site and procedures | `standard` |
 
-This branch is *defensive* — the client is the subject. `counter-surveillance` is the mirror
-image of the stalkerware concern and is a useful category to have visible, including for app
-store reviewers.
+This branch is *defensive* — **the client is the subject**, and the client authorises
+inspection of their own premises, devices and procedures. That is the "authorised information"
+limb of the scope, not an exception to it.
+
+`counter-surveillance` is the mirror image of the stalkerware concern and is a useful category
+to have visible, including for app store reviewers.
 
 ---
 
@@ -157,6 +197,29 @@ would invite the request:
 - **Covert monitoring or tracking of a person** — prohibited outright, and would also breach
   Google Play policy (`mobile-store-compliance`)
 
+## What the revision changed
+
+The categories survive because the coverage areas are still real; the **subtext** changed. Each
+node now describes work done from public records or from information the requesting party is
+authorised to provide — including access to their own premises and systems.
+
+| Kind of change | Nodes |
+|---|---|
+| Renamed, because the name promised a method we do not offer | `claim-surveillance` → `claim-verification` |
+| Redefined as records-based | `witness`, `service-of-process`, `claim-investigation`, `claim-fraud`, `litigation-support`, `internal-investigation`, `missing-person`, `family-law`, `reunification`, `financial-profiling`, `threat-assessment` |
+| Reband, on the new axis | `asset-search` and `judgment-enforcement` → `high`; `claim-verification` → `elevated` |
+| Clarified as client-authorised, not an exception | `counter-surveillance`, `security-audit` |
+
+Two consequences worth carrying into the product, not just the tree:
+
+**`personal` is now the weakest branch**, and it is where consumer demand actually concentrates.
+Records-based tracing is a genuine service and a much smaller one than customers imagine.
+Expectation-setting belongs in the mission form, before submission.
+
+**`digital` is now the methodology, not a side branch.** `osint` and `digital-footprint`
+describe how most work on this platform is done. That may justify restructuring the tree around
+sources — records, corporate, online — rather than leaving OSINT as one domain among eight.
+
 ## Open questions for review
 
 1. **Licensing.** Which nodes require a specific licence in each launch jurisdiction? This
@@ -167,6 +230,10 @@ would invite the request:
 4. **Depth.** Is two levels enough for matching, or do the level-2 nodes need children before
    launch? Investigators declare precisely; customers choose coarsely. Two may be sufficient
    initially.
+4a. **Should `digital` be promoted or the tree restructured by source?** Under the narrowed
+   scope, OSINT is the method for most nodes rather than a category beside them.
+4b. **Does `personal` launch at all**, given how much weaker records-only tracing is than what
+   customers expect from that branch?
 5. **Structured questions per node** — `plan.md` §10 requires them and the `high` band is
    meaningless without them.
 6. **Slug stability.** These slugs become permanent ids (ADR-0007: never deleted, only
