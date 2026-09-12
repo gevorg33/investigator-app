@@ -66,6 +66,8 @@ that reaches a query:
        | { countryCode: string; region?: string; city?: string },
   taxonomyNodeIds?: string[],   // shared taxonomy; matches descendants too (ADR-0007)
   tagIds?: string[],            // refinement only — ranks, never gates
+  sourceNodeIds?: string[],     // investigator capability (ADR-0008) — ranks and routes,
+                                // never gates. Jurisdiction-scoped
   languages?: Array<'en' | 'ru' | 'hy'>,
   availableFrom?: string,
   relevanceHint?: string,   // free text: ranking only, never filtering
@@ -83,6 +85,7 @@ passed every hard filter.
 hard filters      country / city / taxonomy node (incl. descendants) / language / availability
   → eligibility   verified, not suspended, accepting work, has capacity
   → geography     ST_DWithin against service area; ST_Distance sorts
+  → feasibility   source capability in the mission's jurisdiction — reorders, never excludes
   → relevance     optional semantic rank over the surviving set
   → quality       rating, response time, completion rate
   → projection    public fields only
@@ -129,6 +132,9 @@ surveillance" is a more useful and more honest answer than silence about the gap
 - Infer a capability from prose ("their bio mentions fraud, so they do fraud work") —
   capabilities are the investigator's declared taxonomy nodes.
 - Let a tag make someone eligible, or a missing tag exclude someone qualified (ADR-0007).
+- Let a source declaration gate eligibility. Sources rank and route; an investigator the
+  taxonomy qualified is never excluded for declaring fewer sources (ADR-0008).
+- Present a self-declared source capability as verified.
 - Expose a private profile field, contact details, or a home location.
 - State a price the investigator has not published. Pricing is a quote, not an estimate
   the Assistant produces.

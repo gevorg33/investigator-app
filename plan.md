@@ -479,6 +479,10 @@ Initial entities:
 - ServiceArea
 - TaxonomyNode
 - TaxonomyNodeLabel
+- SourceNode
+- SourceNodeLabel
+- InvestigatorSourceCapability
+- TaxonomySourceHint
 - Tag
 - Language
 - InvestigatorLanguage
@@ -552,6 +556,23 @@ they rank and refine search only, exactly like the free-text relevance hint. Sta
 both; adding a node is audited.
 
 `Service` is not a separate dimension. A service is a deeper node.
+
+### Source capability — the second axis (ADR-0008)
+
+A separate vocabulary that **only investigators declare**: which sources they can reach, in
+which jurisdictions.
+
+- **SourceNode** — hierarchical; `public-registers`, `court-legal`, `open-source`,
+  `financial-trails`, `authorised`, `human-consensual`, with children
+- **SourceNodeLabel** — per-locale labels, as with the taxonomy
+- **InvestigatorSourceCapability** — (investigator, source node, **jurisdiction**), self-declared
+  and labelled as such
+- **TaxonomySourceHint** — staff-maintained mapping of likely sources per taxonomy node and
+  jurisdiction; a **routing hint**, never a determination
+
+Customers never pick sources. **Sources rank and route; they never gate eligibility** — the
+taxonomy does that. Jurisdiction scoping is what makes feasibility routable: a mission needing
+Armenian land records reaches investigators who declared it, rather than failing after a quote.
 
 ### Enforcement
 

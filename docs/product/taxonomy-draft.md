@@ -220,6 +220,49 @@ Expectation-setting belongs in the mission form, before submission.
 describe how most work on this platform is done. That may justify restructuring the tree around
 sources — records, corporate, online — rather than leaving OSINT as one domain among eight.
 
+## The second axis: source capability (ADR-0008)
+
+The domain tree above is the **shared taxonomy** — customers and investigators both use it, and
+it gates eligibility.
+
+Alongside it sits a second vocabulary that **only investigators declare**: which sources they
+can actually reach, in which jurisdictions.
+
+```
+public-registers     corporate-filings · beneficial-ownership · land-property ·
+                     vehicle · intellectual-property · licensing-regulatory
+court-legal          court-records · judgments-enforcement · insolvency · sanctions-watchlists
+open-source          media-publications · online-presence · domain-technical · archives
+financial-trails     blockchain · published-financials · credit-filings
+authorised           client-records · client-premises · consented-third-party
+human-consensual     interviews
+```
+
+Every node here is public information, or information the requesting party is authorised to
+provide. The source tree **is** the scope, made legible.
+
+### Why it is separate
+
+A customer asking for due diligence on an Armenian company should not have to know that the
+work means corporate filings plus court records plus open-source research. They are hiring
+someone precisely because they do not. **Sources describe supply; domains describe demand.**
+
+### Jurisdiction is the point
+
+Access to corporate filings in Armenia is not access to them in Germany. Investigators declare
+**(source, jurisdiction)** pairs, which is what makes feasibility routable — a mission needing
+Armenian land records reaches people who can actually reach them, rather than failing after
+someone has quoted.
+
+### Rules
+
+- **Sources never gate eligibility.** They rank and route, like tags. Declaring fewer sources
+  does not disqualify an investigator the taxonomy already qualified
+- **Self-declared and labelled as such.** Verification may come later; a claim must not read as
+  verified
+- A staff-maintained mapping suggests likely sources per taxonomy node and jurisdiction — a
+  **routing hint**, not a determination. If it is wrong, routing is suboptimal, not incorrect
+
 ## Open questions for review
 
 1. **Licensing.** Which nodes require a specific licence in each launch jurisdiction? This
@@ -230,8 +273,8 @@ sources — records, corporate, online — rather than leaving OSINT as one doma
 4. **Depth.** Is two levels enough for matching, or do the level-2 nodes need children before
    launch? Investigators declare precisely; customers choose coarsely. Two may be sufficient
    initially.
-4a. **Should `digital` be promoted or the tree restructured by source?** Under the narrowed
-   scope, OSINT is the method for most nodes rather than a category beside them.
+4a. ~~Should the tree be restructured by source?~~ **Resolved** — ADR-0008 adds sources as a
+   separate investigator-only axis rather than restructuring the shared taxonomy.
 4b. **Does `personal` launch at all**, given how much weaker records-only tracing is than what
    customers expect from that branch?
 5. **Structured questions per node** — `plan.md` §10 requires them and the `high` band is

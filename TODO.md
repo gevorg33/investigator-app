@@ -1629,6 +1629,18 @@ lands before anything that depends on it.
 - [ ] `high`-band nodes route to a moderator every time, regardless of queue configuration
 - [ ] No `Service` entity; a service is a deeper node
 
+**Second axis — source capability (ADR-0008)**
+- [ ] `SourceNode` tree with per-locale labels, staff-maintained
+- [ ] `InvestigatorSourceCapability` is **(investigator, source, jurisdiction)** — an
+      unqualified source declaration is meaningless
+- [ ] Declared by investigators only; **customers never see or pick sources**
+- [ ] **A test proves a source declaration cannot gate eligibility** — neither excluding an
+      investigator the taxonomy qualified, nor qualifying one it did not
+- [ ] Source capability reorders results by feasibility in the mission's jurisdiction
+- [ ] Self-declared capability is stored and displayed as self-declared, never as verified
+- [ ] `TaxonomySourceHint` maps taxonomy node + jurisdiction to likely sources, as a routing
+      hint; a wrong hint degrades ordering, never correctness
+
 **Validation**
 ```bash
 pnpm --filter api test taxonomy
