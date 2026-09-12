@@ -46,6 +46,19 @@ and complying with the law on surveillance, recording, data protection and prope
 You must decline and report work that would require unlawful activity. Neither a customer's
 instruction nor the fact that a mission was published is authorisation to act unlawfully.
 
+## What kind of work can I ask for?
+
+Investigation based on publicly available information, or on information you are legally
+authorised to provide and use for your matter. That is the platform's whole scope.
+
+**Surveillance is not offered here** — no observation, following or tracking of a person, and
+no access to private accounts, devices or communications. That applies regardless of whether it
+might be lawful where you are.
+
+Investigators are bound by the same limit. An investigator working on a mission from this
+platform may use only public information, or information they are legally authorised to access
+and use.
+
 ## What can I include in a mission?
 
 Only material you are lawfully entitled to collect, share and process. In practice that means

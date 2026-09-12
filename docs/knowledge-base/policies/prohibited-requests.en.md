@@ -14,10 +14,50 @@ related_code:
 tags: [policy, lawful-use, prohibited, safety]
 ---
 
-# Prohibited requests
+# Lawful use and prohibited requests
 
 > Plain-language summary of the lawful use policy. The authoritative terms are the legal
 > policy pages, which take precedence if the two ever differ.
+
+## What kind of investigation does this platform support?
+
+Investigation based on **publicly available information**, and on **information you are legally
+authorised to provide and use** for your matter.
+
+That is the whole scope, and it applies to both sides. Customers may request work only on that
+basis. Investigators may use only public information, or information they are legally
+authorised to access and use.
+
+**Surveillance is not a service on this platform.** Not observation of a person, not tracking
+their movements, not monitoring their communications, devices or accounts — regardless of
+whether it might be lawful somewhere. This platform does not offer it.
+
+## Why is the scope defined this way?
+
+Because the alternative is unanswerable. Whether a particular act of surveillance is lawful
+depends on the country, the subject, the method, the purpose and what standing the person
+asking has. None of that can be reliably established from a mission description.
+
+"Is this public or authorised information?" can be answered — by you before you submit, by an
+investigator before they quote, and by a moderator reviewing it.
+
+## What counts as publicly available?
+
+Information anyone can lawfully access without special authorisation: public registers,
+corporate filings, court records where public, land and property records, published news and
+publications, professional listings, and openly published online content.
+
+It does **not** include anything behind a login you do not own, anything obtained by
+impersonation or pretext, or anything a person has kept private.
+
+## Public information is still someone's information
+
+Being able to find something does not make every use of it lawful.
+
+Compiling scattered public details into a profile of an identifiable person is itself a
+regulated activity in most places, and carries obligations — for you, for the investigator and
+for us. Missions must include only what the work actually requires, and the same applies to
+what an investigator gathers.
 
 ## What kinds of work are not allowed?
 
@@ -30,6 +70,10 @@ Anything unlawful. In particular, the platform does not support:
 - Entering property unlawfully
 - Harassment, intimidation, or stalking
 - Obtaining private records — financial, medical, telecommunications — without lawful authority
+- Surveillance or observation of any person
+- Accessing private accounts, devices, communications, or restricted records without a lawful
+  basis
+- Obtaining information through impersonation, pretext or deception
 - Work whose purpose is to enable any of the above
 
 This is not the complete list. A request can be refused because it is unlawful even if it
@@ -48,22 +92,24 @@ with that context or contact support.
 
 ## Can I find out where someone lives?
 
-Not as a general request. Locating a private individual is only supportable where there is
-a lawful basis — for example, serving legal documents, enforcing a judgment, or a matter
-where you hold a recognised legal interest.
+Only from public records, and only where you have a legitimate reason to look — for example
+serving legal documents, enforcing a judgment, or a matter where you hold a recognised legal
+interest.
 
-You will be asked what that basis is. "I want to know where they are" is not one, and
-missions of that shape are rejected.
+What is not available is finding someone by watching, following or tracking them. The
+distinction is the method: a public register is in scope, observation is not.
+
+You will be asked what your reason is. "I want to know where they are" is not one, and missions
+of that shape are rejected.
 
 ## Can I have someone followed?
 
-Surveillance is lawful in some contexts and unlawful in others, and it depends on where it
-happens, who the subject is, and why. Investigators licensed in your jurisdiction know
-those limits and will decline work that crosses them.
+No. Surveillance is outside this platform's scope entirely — following, watching, observing a
+person's movements, or placing them under any form of observation.
 
-A mission that asks for surveillance without a stated lawful purpose is refused. One with a
-clear basis may be accepted, and the investigator remains responsible for working within
-the law.
+This is not a question of whether it would be lawful where you are. It is not a service offered
+here, and an investigator who carried it out on a mission from this platform would be in breach
+of their obligations to us.
 
 ## Can I have my partner or spouse investigated?
 
@@ -83,13 +129,17 @@ that judgement mission by mission.
 
 ## What if I am going through a separation or a court case?
 
-That is different, and it is supported. Where there are legal proceedings — divorce, custody,
-financial disclosure, enforcement of an order — you have standing, and an investigator can work
-within it.
+Where there are legal proceedings — divorce, custody, financial disclosure, enforcement of an
+order — you have standing, and an investigator can support you within the platform's scope.
 
-What matters is the basis, not the relationship. Submit it under family law support, state the
-proceedings and your role in them, and it will be reviewed on that footing. The distinction is
-between *"I suspect something"* and *"there is a legal process and I need evidence for it."*
+That means public records and information you are authorised to provide: corporate filings,
+property and land records, court records where public, and documents you are lawfully entitled
+to share. It does not extend to surveillance, which is out of scope regardless of the
+proceedings.
+
+Submit it under family law support, state the proceedings and your role in them, and it will be
+reviewed on that footing. The distinction is between *"I suspect something"* and *"there is a
+legal process and I need records for it."*
 
 ## Can I ask for someone's phone records, bank records or medical records?
 

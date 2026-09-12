@@ -16,6 +16,17 @@ The platform connects customers seeking investigation services with independent
 investigators offering them. It provides the tools through which they agree scope, transact,
 communicate and exchange deliverables.
 
+### Scope of services
+
+The platform supports investigation based on **publicly available information**, and on
+**information the requesting party is legally authorised to provide and use** for their matter.
+
+**Surveillance is not a service offered through this platform.** This includes observation of a
+person, following or tracking their movements, and monitoring their communications, devices or
+accounts — irrespective of whether such activity might be lawful in a given jurisdiction.
+
+This scope binds customers in what they may request and investigators in what they may do.
+
 Investigators are independent professionals. They are not employees, agents, partners or
 representatives of the platform. The platform does not perform investigations, does not
 direct how work is carried out, and does not control an investigator's methods.
@@ -42,6 +53,10 @@ attaches.**]
 
 A customer must:
 
+- Request only work within the platform's scope: based on publicly available information, or
+  on information the customer is legally authorised to provide and use for their matter
+- Not request surveillance, observation, tracking, or access to private accounts, devices,
+  communications or restricted records
 - Request only work that is lawful where it will be carried out
 - Confirm, before submitting a mission, that their purpose is lawful
 - Describe the work accurately and completely, including anything affecting lawfulness
@@ -118,8 +133,14 @@ An investigator must:
 
 - Hold and maintain every licence, registration and permission required where they work
 - Work only within their licensed and declared scope
-- Comply with all applicable law, including surveillance, recording, data protection and
-  trespass law
+- **Use only publicly available information, or information they are legally authorised to
+  access and use** for the assignment
+- **Not conduct surveillance, observation or tracking of any person**, and not access private
+  accounts, devices, communications or restricted records without a lawful basis — irrespective
+  of whether such activity would be lawful in the jurisdiction concerned
+- Not obtain information through impersonation, pretext or deception
+- Record the source and method by which each item of evidence was obtained
+- Comply with all applicable law, including recording, data protection and trespass law
 - Decline and report missions that would require unlawful activity
 - Not accept instructions to act unlawfully, regardless of payment or customer insistence
 - Deliver the scope stated in their accepted quote
@@ -133,7 +154,11 @@ An investigator must:
 
 An investigator is solely responsible for the lawfulness of their methods. Neither a
 customer's instruction nor the platform's acceptance of a mission constitutes authorisation
-to act unlawfully.
+to act unlawfully, or to act outside the platform's scope.
+
+Work carried out for a platform assignment must stay within scope even where the investigator
+is separately licensed to perform it. An investigator who conducts surveillance for a mission
+sourced here breaches these terms whether or not the activity was lawful.
 
 ## 5. Prohibited activities
 
@@ -141,7 +166,9 @@ Neither party may use the platform to request, offer, facilitate or carry out:
 
 - Unauthorised access to accounts, devices, systems, networks or communications
 - Installation or use of spyware, stalkerware or covert monitoring software
-- Location tracking of a person without a lawful basis
+- Surveillance or observation of any person
+- Location tracking of a person, with or without a lawful basis
+- Obtaining information through impersonation, pretext or deception
 - Surveillance, monitoring or testing of a spouse, partner or former partner on suspicion
   alone, however described — including fidelity checks and loyalty tests. Work arising from
   actual legal proceedings, where the customer has standing, is not covered by this exclusion
