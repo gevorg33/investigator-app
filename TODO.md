@@ -1622,7 +1622,11 @@ lands before anything that depends on it.
 - [ ] **A test proves a tag cannot make an investigator eligible, and a missing tag cannot
       exclude a qualified one** (ADR-0007)
 - [ ] Staff-managed through the admin console; adding, deprecating and relabelling are audited
-- [ ] Initial tree seeded and reviewed — it is a product decision, not a developer guess
+- [ ] Initial tree seeded from `docs/product/taxonomy-draft.md` **after domain and licensing
+      review** — the six open questions in that document are answered first
+- [ ] Each node carries a risk band (`standard`/`elevated`/`high`) driving moderation queue
+      ordering (T-051) and the structured questions at mission creation (plan.md §10)
+- [ ] `high`-band nodes route to a moderator every time, regardless of queue configuration
 - [ ] No `Service` entity; a service is a deeper node
 
 **Validation**
