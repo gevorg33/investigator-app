@@ -24,6 +24,26 @@ from the customer, or must be rejected.
 
 The automatic checks decide the clear cases. What reaches you is what needs a person.
 
+## Do I review every mission, or only flagged ones?
+
+Every one. No mission reaches investigators without a moderator publishing it.
+
+Automatic screening runs first, but it sorts and prioritises the queue — it never publishes.
+A high-risk flag tells you where to look first; a clean screen does not mean the mission is
+fine, only that nothing obvious tripped.
+
+## What are my three outcomes?
+
+**Publish** — the mission goes to eligible investigators.
+
+**Reject** — with a reason the customer can act on. Rejection closes the mission; they can
+revise and submit again.
+
+**Request changes** — returns it to draft with what needs fixing. Prefer this to rejection
+whenever the problem is fixable, which it usually is.
+
+Every outcome is recorded with your identity and your reasoning.
+
 ## What is the test?
 
 Whether the work requested can be carried out lawfully. Not whether it is unusual, morally
@@ -62,6 +82,18 @@ visibility of it.
 
 The escalation path, including when the platform contacts authorities, is in the internal
 operations handbook, not here.
+
+## What do I check in the attachments?
+
+Open them. A mission's text can read cleanly while an attached document is the problem — a
+bank statement the customer has no right to share, a file that is plainly not theirs, or far
+more personal detail than the work requires.
+
+Your access to mission attachments is recorded, like any other access to customer material.
+
+Where the material is unlawful or shared without authorisation, the mission does not publish.
+Where it is lawful but excessive, request changes and ask for it to be reduced — that is the
+more common case and rejection is the wrong tool for it.
 
 ## An investigator has raised a policy concern or halt. What do I decide?
 

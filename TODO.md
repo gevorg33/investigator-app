@@ -1496,6 +1496,44 @@ pnpm --filter api test assignments-policy-refusal
 
 ---
 
+### T-051 — Mission moderation queue (admin console)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-010, T-013
+- **Risk:** HIGH
+- **Human approval required:** Yes — it is the publication gate for lawful-use policy
+- **Owner agent:** admin-web (UI) + backend-domain (decision service)
+- **Affected:** apps/admin-web/**, apps/api/src/modules/mission-policy/**
+
+**Description**
+No mission reaches investigators without a moderator publishing it. Automatic screening sorts
+and prioritises the queue; it never publishes. Per plan.md §10 and
+`docs/product/mission-lifecycle.md`.
+
+**Acceptance criteria**
+- [ ] Queue of `UNDER_REVIEW` missions, ordered by risk band then age
+- [ ] Three outcomes: **publish** (`→ QUOTED`), **reject** (`→ REJECTED`), **request changes**
+      (`→ DRAFT`) — each requiring a typed reason before the control enables
+- [ ] **A mission cannot reach `QUOTED` by any path except a moderator publishing it** — tested
+- [ ] Moderator can open mission attachments; **every attachment access is audited**
+- [ ] AI classification shown as an input, clearly labelled, never pre-selecting the outcome
+- [ ] Rejection and change-request reasons are shown to the customer and are actionable
+- [ ] Requires the `mission_moderation` staff scope — not `isStaff` (`authorization`)
+- [ ] A moderator cannot decide a mission they are party to
+- [ ] Gate configurable per category and risk band, defaulting to **closed** (everything reviewed)
+- [ ] Decision, reasoning, moderator identity and timestamp recorded and append-only
+- [ ] Queue age surfaced — an unreviewed mission is a customer waiting, and missions expire
+
+**Note on throughput:** at launch volume one moderator can gate everything. If review latency
+becomes the constraint, the per-category configuration is the lever — not removing the gate.
+
+**Validation**
+```bash
+pnpm --filter api test mission-moderation && pnpm --filter admin-web test
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

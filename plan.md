@@ -770,10 +770,21 @@ Before publication or quote requests:
 3. Classify risk.
 4. Detect prohibited or suspicious requests.
 5. Request clarification when necessary.
-6. Route high-risk missions to staff review.
+6. Route the mission to the moderation queue.
 7. Store policy decision and reason.
 
-AI may assist with classification and drafting, but final policy enforcement must be deterministic and auditable.
+**No mission reaches investigators without a moderator publishing it.** Automatic screening
+sorts and prioritises the queue — it never publishes. A moderator reviews the mission and its
+attachments in the admin console and either publishes it, rejects it with a reason, or requests
+changes from the customer.
+
+The gate is configurable per category and risk band, so that low-risk categories can be
+auto-published later if review volume makes that necessary. It starts closed: everything is
+reviewed.
+
+AI may assist with classification and drafting, but final policy enforcement must be
+deterministic and auditable. A classification is an input to the moderator's decision, never
+the decision.
 
 ---
 

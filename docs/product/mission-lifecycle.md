@@ -23,8 +23,8 @@ Lateral and terminal, reachable from several states: `CANCELLED`, `REJECTED`, `E
 |---|---|---|
 | `DRAFT` | Private to the customer. Invisible to search and to investigators | customer |
 | `SUBMITTED` | Handed in, awaiting policy screening | system |
-| `UNDER_REVIEW` | Held for staff policy review | staff |
-| `QUOTED` | Visible to eligible investigators; quotes exist | system |
+| `UNDER_REVIEW` | In the moderation queue, awaiting a human decision | staff |
+| `QUOTED` | **Published by a moderator**; visible to eligible investigators | staff, then system |
 | `CUSTOMER_CONFIRMED` | A quote accepted; payment authorising | customer |
 | `PAID` | Payment confirmed **by verified webhook**, never by client callback | system |
 | `ASSIGNED` | Assignment created, awaiting investigator acceptance | system |
@@ -54,6 +54,24 @@ event and publishes through the outbox — all in one transaction.
 **Concurrency is real.** A customer cancelling while a payment webhook confirms is an ordinary
 event. Guard with an optimistic version column or a row lock; a transition that read a stale
 status must fail rather than overwrite.
+
+## Publication is a human decision
+
+Every mission passes through `UNDER_REVIEW` before investigators can see it. Automatic
+screening sorts and prioritises the queue; it does not publish.
+
+```
+SUBMITTED ──screening──► UNDER_REVIEW ──moderator──► QUOTED      (published)
+                                      ├────────────► REJECTED   (with a reason)
+                                      └────────────► DRAFT      (changes requested)
+```
+
+A moderator's outcome is always one of three: publish, reject with a reason the customer can
+act on, or return it for changes. Every outcome is recorded with the moderator's identity and
+reasoning.
+
+The gate is configurable per category and risk band so that low-risk categories can be
+auto-published if volume later demands it. It starts closed.
 
 ## Policy refusal
 
