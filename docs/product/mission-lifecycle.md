@@ -55,6 +55,23 @@ event and publishes through the outbox — all in one transaction.
 event. Guard with an optimistic version column or a row lock; a transition that read a stale
 status must fail rather than overwrite.
 
+## Policy refusal
+
+Payment precedes acceptance, so an investigator refusing on lawful grounds has two distinct
+paths:
+
+| Window | Transition | Effect |
+|---|---|---|
+| `ASSIGNED` (not yet accepted) | `decline(POLICY_CONCERN)` → `CANCELLED` | No work done; automatic refund; mission flagged for staff review |
+| `ACCEPTED` / `IN_PROGRESS` | `policy_halt(reason)` → `SUSPENDED` | Work stops, funds held, staff review, then resume or cancel |
+
+A halt is available at any point, including after evidence exists. Accepting must not trap an
+investigator who later discovers the customer's material was unlawfully obtained.
+
+The ground is **reviewed, not asserted** — substantiated refusals do not count against the
+investigator's response record; unsubstantiated ones do. Without that asymmetry, a
+penalty-free refusal becomes a free exit from any unwanted assignment.
+
 ## Where evidence and reports attach
 
 Evidence, sources, notes, tasks and documents belong to the **assignment**, not the mission —

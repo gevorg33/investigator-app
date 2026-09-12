@@ -66,6 +66,61 @@ Two actors can act on one mission simultaneously — a customer cancelling while
 webhook confirms. Guard with an optimistic version column or `SELECT ... FOR UPDATE` on
 the mission row. A transition that read a stale status must fail, not overwrite.
 
+## Policy refusal — two windows
+
+An investigator may refuse work on lawful grounds (T&C §3, §4). Because payment precedes
+acceptance, there are two distinct windows and they behave differently.
+
+### Window 1 — `ASSIGNED`, before accepting
+
+```
+ASSIGNED ──decline(reason)──► CANCELLED
+```
+
+No work has been done and the customer has already paid, so the refund is clean and automatic.
+A `POLICY_CONCERN` reason additionally opens a staff review of the mission itself — the
+material that worried this investigator will worry the next one.
+
+### Window 2 — `ACCEPTED` or `IN_PROGRESS`, after committing
+
+```
+ACCEPTED | IN_PROGRESS ──policy_halt(reason)──► SUSPENDED ──► resolved | CANCELLED
+```
+
+The investigator raises a halt. Work stops, funds stay held, and staff review. Outcomes:
+material removed and the assignment resumes; or the assignment is cancelled with the refund
+decided on its merits.
+
+**The halt is available at any point**, including after evidence has been produced. An
+investigator who discovers at hour twenty that the customer's attachment was unlawfully
+obtained must be able to stop, not be trapped by having accepted.
+
+### The abuse vector — do not make refusal free
+
+A penalty-free exit is an exit people use for other reasons. An investigator who wants out of
+an unprofitable assignment will reach for `POLICY_CONCERN`.
+
+So the ground is **reviewed, not asserted**:
+
+| Outcome of staff review | Response record |
+|---|---|
+| Substantiated | Not counted. The investigator acted correctly |
+| Unsubstantiated | Counted, like any other decline or abandonment |
+| Bad faith, repeated | Enforcement (`enforcement-actions`) |
+
+That asymmetry is the whole design. Protect good-faith refusal; do not create a free door.
+
+### Money
+
+Window 1 is simple: no work, full refund.
+
+Window 2 is not. Work may have been lawfully performed before the problem surfaced, and the
+problem was the customer's material. Whether that work is payable is a determination, not an
+automatic consequence — decide it on the assignment record like any other dispute, and record
+it separately from the halt itself.
+
+[Counsel question: whether work performed before a customer-caused halt is payable.]
+
 ## Cross-machine
 
 Mission status and assignment status are separate machines, as are payment states. Do not

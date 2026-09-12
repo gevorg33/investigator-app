@@ -63,6 +63,30 @@ visibility of it.
 The escalation path, including when the platform contacts authorities, is in the internal
 operations handbook, not here.
 
+## An investigator has raised a policy concern or halt. What do I decide?
+
+Two things, separately.
+
+**Is the concern substantiated?** Look at the material the investigator identified, not at how
+inconvenient the halt is. If the material is unlawful, shared without authorisation, or grossly
+excessive for the work, the concern holds.
+
+**What happens to the assignment?** Either the customer removes or replaces the material and
+the work resumes, or the assignment is cancelled. Material already in the case record is
+withdrawn from use and marked, never erased — deleting it can destroy the evidence of the
+violation itself.
+
+Record both decisions. They are not the same decision and they can go different ways.
+
+## Does a policy refusal count against the investigator?
+
+Only if it does not hold up. A substantiated refusal is excluded from their response record;
+an unsubstantiated one counts like any other decline.
+
+Say which you found, and why. Without that, an investigator who did the right thing is
+penalised by the same metric as one who simply abandoned work — and the next one learns not to
+raise concerns.
+
 ## What if I am unsure?
 
 Escalate. An uncertain approval carries far more risk than a delay, and the decision you make

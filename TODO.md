@@ -1460,6 +1460,42 @@ pnpm --filter api test enforcement
 
 ---
 
+### T-050 — Investigator policy refusal and halt
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-010, T-012
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{assignments,mission-policy}/**
+
+**Description**
+The mechanism behind the refusal right the Terms already grant (§3, §4). Payment precedes
+acceptance, so there are two windows. Per `.claude/skills/mission-state-machine/SKILL.md`.
+
+**Acceptance criteria**
+- [ ] `ASSIGNED → decline(POLICY_CONCERN) → CANCELLED`: automatic full refund, mission flagged
+      for staff review
+- [ ] `ACCEPTED | IN_PROGRESS → policy_halt → SUSPENDED`: work stops, funds held, staff review
+- [ ] **The halt is available at any point**, including after evidence exists — tested
+- [ ] Staff outcome resumes the assignment or cancels it; both recorded with reasoning
+- [ ] **Substantiated refusals excluded from the response record; unsubstantiated ones counted**
+      — tested both ways, because this asymmetry is the whole design
+- [ ] Repeated bad-faith policy claims route to `enforcement-actions`
+- [ ] The money decision is recorded **separately** from the halt decision
+- [ ] Material withdrawn from use is marked, never erased (`evidence-integrity`)
+- [ ] Both transitions go through the transition service — status, history, audit, outbox in
+      one transaction
+
+**Open for counsel:** whether work lawfully performed before a customer-caused halt is payable.
+
+**Validation**
+```bash
+pnpm --filter api test assignments-policy-refusal
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

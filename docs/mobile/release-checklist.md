@@ -68,20 +68,32 @@ The largest rejection risk for this product. See `app-store-compliance.md`.
 - [ ] No crash on a fresh install with no data
 - [ ] Demo account provided in review notes if any flow needs sign-in
 
-## 7. Payments
+## 7. User-generated content
+
+Play's UGC policy applies: the app carries messaging, evidence and profile content. This is a
+documented rejection cause and is easy to miss, because the requirements are about controls in
+the app, not about the content itself.
+
+- [ ] **In-app reporting** on messages, profiles, missions and assignments
+- [ ] **Ability to block another user** — separate from reporting, and the one most often missing
+- [ ] A moderation route exists and reports actually reach staff
+- [ ] In-app content policy, or a link to it, reachable from the app
+- [ ] Reports are acknowledged so the reporter knows the route works
+
+## 8. Payments
 
 - [ ] Investigator engagements are real-world services — **not** routed through IAP
 - [ ] No digital-only purchase has been added that would require IAP
 - [ ] Payment flows do not mislead about what is being bought
 
-## 8. Accessibility and localisation
+## 9. Accessibility and localisation
 
 - [ ] Screen reader can operate every screen
 - [ ] Dynamic type respected; no clipped text at large sizes
 - [ ] Contrast meets AA
 - [ ] All user-facing strings localised for en/ru/hy, purpose strings included
 
-## 9. Build and configuration
+## 10. Build and configuration
 
 - [ ] Play target API level meets the current requirement
 - [ ] Bundle ID / package name correct for the environment
@@ -90,7 +102,7 @@ The largest rejection risk for this product. See `app-store-compliance.md`.
 - [ ] No debug flags, verbose logging, or test credentials
 - [ ] Version and build number incremented
 
-## 10. Store listing
+## 11. Store listing
 
 - [ ] Title, subtitle and description accurate and free of surveillance framing
 - [ ] Screenshots current, correct sizes, no placeholder content
@@ -99,7 +111,7 @@ The largest rejection risk for this product. See `app-store-compliance.md`.
 - [ ] Support URL and contact route work
 - [ ] Keywords contain no surveillance terms
 
-## 11. Security
+## 12. Security
 
 - [ ] Tokens in platform secure storage
 - [ ] No PII or evidence in device logs, analytics or crash reports

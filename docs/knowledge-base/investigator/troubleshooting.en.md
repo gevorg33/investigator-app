@@ -45,6 +45,9 @@ work, and remove specialties or services you do not actually want.
 Declining is expected occasionally, but a high decline rate affects how missions are routed
 to you. Fixing the profile is better than declining repeatedly.
 
+Refusals on substantiated policy grounds — unlawful or unauthorised customer material — are
+excluded from that count.
+
 ## I cannot submit a quote
 
 Confirm your verification is current, the mission has not expired or been withdrawn, and you

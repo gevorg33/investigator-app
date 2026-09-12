@@ -35,8 +35,9 @@ A service area is either a location with a working radius, or a region you draw.
 requested location must fall inside one of your areas for you to appear.
 
 Define them where you actually work, not where you would consider working. An area you
-cannot reach reliably produces missions you decline, and declining hurts your response
-record.
+cannot reach reliably produces missions you decline, and a high decline rate affects how
+missions are routed to you. Refusals on substantiated policy grounds are excluded from that —
+see "Does refusing on policy grounds hurt my record?" in the assignments article.
 
 ## Can I have more than one service area?
 

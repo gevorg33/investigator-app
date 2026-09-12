@@ -58,6 +58,43 @@ findings, not failures.
 Deliver what you have with a clear limitations section. Work honestly attempted and
 honestly reported is defensible. Silence followed by nothing is not.
 
+## The customer's material turns out to be unlawful or unauthorised. What do I do?
+
+Stop and raise a policy concern. You are entitled to refuse work on these grounds, and doing so
+correctly is not held against you.
+
+There are two moments:
+
+**Before you accept** — decline the assignment and give "policy concern" as the reason. The
+customer is refunded automatically, and staff review the mission, because material that worried
+you will worry the next investigator too.
+
+**After you have accepted, at any point** — raise a policy halt on the assignment. Work stops,
+the funds stay held, and staff review it. Either the material is removed and you resume, or the
+assignment is cancelled. Accepting does not trap you: if you discover the problem at hour
+twenty, you can still stop.
+
+Say specifically what the problem is — which document, and why you believe it was not lawfully
+obtained or shared. A specific concern gets resolved; a vague one stalls.
+
+## Does refusing on policy grounds hurt my record?
+
+Not when it is substantiated. Staff review the ground you gave, and a refusal that holds up
+does not count against your response record.
+
+An unsubstantiated one does count, the same as any other decline. That is deliberate: if policy
+refusal were free, it would become the exit route from any assignment someone regretted taking.
+Raising a genuine concern is protected. Using it as a convenient door is not.
+
+## Will I be paid for work I did before the halt?
+
+If nothing had started, the customer is simply refunded.
+
+If you had already done lawful work before the problem surfaced, whether that work is payable
+is decided on the assignment record, the same way a dispute is — it is not automatic either
+way. Record what you did and when you raised the concern, because that record is what the
+decision rests on.
+
 ## What if the work would require something unlawful?
 
 Stop. Tell the customer what you cannot do and why, and report the mission if the request
