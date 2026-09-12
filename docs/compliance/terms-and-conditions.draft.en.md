@@ -142,6 +142,9 @@ Neither party may use the platform to request, offer, facilitate or carry out:
 - Unauthorised access to accounts, devices, systems, networks or communications
 - Installation or use of spyware, stalkerware or covert monitoring software
 - Location tracking of a person without a lawful basis
+- Surveillance, monitoring or testing of a spouse, partner or former partner on suspicion
+  alone, however described — including fidelity checks and loyalty tests. Work arising from
+  actual legal proceedings, where the customer has standing, is not covered by this exclusion
 - Recording of persons or communications where unlawful
 - Unlawful entry onto property
 - Harassment, intimidation or stalking

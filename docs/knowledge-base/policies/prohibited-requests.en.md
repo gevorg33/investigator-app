@@ -65,6 +65,32 @@ A mission that asks for surveillance without a stated lawful purpose is refused.
 clear basis may be accepted, and the investigator remains responsible for working within
 the law.
 
+## Can I have my partner or spouse investigated?
+
+Not on suspicion alone. "I want to know whether my partner is faithful" is not a lawful basis,
+and missions of that shape are rejected — including when they are described as a loyalty test,
+a fidelity check, or asking someone to approach your partner to see how they respond.
+
+This is not a judgement about you or your relationship. Two things drive it:
+
+Your partner is a private individual who has not consented and who has rights over information
+about them. Those rights do not depend on their relationship with you.
+
+And a mission description cannot distinguish a person with a genuine concern from a person
+monitoring someone they are already controlling. Both read the same. Partner surveillance is a
+well-documented precursor to domestic abuse, so we do not offer it as a service and cannot make
+that judgement mission by mission.
+
+## What if I am going through a separation or a court case?
+
+That is different, and it is supported. Where there are legal proceedings — divorce, custody,
+financial disclosure, enforcement of an order — you have standing, and an investigator can work
+within it.
+
+What matters is the basis, not the relationship. Submit it under family law support, state the
+proceedings and your role in them, and it will be reviewed on that footing. The distinction is
+between *"I suspect something"* and *"there is a legal process and I need evidence for it."*
+
 ## Can I ask for someone's phone records, bank records or medical records?
 
 No. These are protected in essentially every jurisdiction the platform operates in, and

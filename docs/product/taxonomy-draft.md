@@ -138,10 +138,18 @@ store reviewers.
 Not oversights. Each maps to something the Lawful Use Policy prohibits, and creating the node
 would invite the request:
 
-- **Infidelity / partner investigation.** Lawful in many jurisdictions; also the single most
-  common route by which stalking is purchased as a service. Excluded from the initial tree. If
-  it is ever added it needs its own decision, its own questions, and probably its own review
-  standard — not a quiet node under `personal`
+- **Infidelity, partner investigation, loyalty tests.** Excluded, and now stated as a position
+  in the Lawful Use Policy rather than left as an absence. Three reasons, and the first is
+  decisive: Google Play's stalkerware policy prohibits tracking a partner **even with their
+  consent**, so the category and the mobile app cannot both exist. It would also contradict our
+  own prohibition on surveillance without lawful basis — a platform cannot ban stalking on one
+  page and sell partner monitoring on another. And a mission description cannot distinguish a
+  genuine concern from coercive control; both read identically.
+
+  Legitimate adjacent work is **not** excluded: where there are actual proceedings — divorce,
+  custody, financial disclosure, enforcement — the customer has standing and the work belongs
+  under `personal/family-law` with that basis stated. The test is standing, not the
+  relationship
 - **Locating a person** as a general service — only via `missing-person`, `witness`,
   `service-of-process` or `judgment-enforcement`, each of which establishes standing
 - **Phone, financial, medical or telecommunications records** — prohibited outright
