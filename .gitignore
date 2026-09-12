@@ -1,0 +1,27 @@
+node_modules/
+
+# This project uses pnpm (ADR/T-001). An npm lockfile at the root would break
+# `pnpm install --frozen-lockfile` in CI. These are strays from `npx shadcn mcp init`
+# and should be deleted from the working tree — see T-001.
+package-lock.json
+yarn.lock
+dist/
+build/
+.next/
+.expo/
+coverage/
+
+.env
+.env.*
+!.env.example
+.env.local
+*.pem
+*.key
+secrets/
+
+.claude/settings.local.json
+.claude/logs/*
+!.claude/logs/.gitignore
+
+.DS_Store
+.idea/

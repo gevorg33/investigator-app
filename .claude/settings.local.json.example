@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Copy to settings.local.json. Gitignored. Per-developer overrides only — never put secrets here; Claude Code reads this file.",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm --filter api dev:*)",
+      "Bash(docker compose -f infrastructure/compose/local.yml up:*)"
+    ]
+  },
+  "env": {
+    "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/investigator_dev"
+  }
+}

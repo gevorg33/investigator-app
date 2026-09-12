@@ -1,0 +1,53 @@
+# dev -> staging. Automatic.
+# Contract: .claude/skills/ci-cd/SKILL.md
+# UNVALIDATED — T-040 owns the first green run.
+name: Staging
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: staging
+  cancel-in-progress: false     # never cancel a deploy mid-flight
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging             # staging secrets only — never production
+      url: https://app.staging.example
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      # Build once, promote the same artifact. Environment differences are configuration.
+      - name: Publish image
+        run: echo "TODO(T-040) build and push image tagged ${{ github.sha }}"
+
+      # Automatic here. NEVER automatic on production.
+      - name: Migrate
+        run: echo "TODO(T-040) run migrations against staging"
+
+      - name: Deploy
+        run: echo "TODO(T-040) deploy ${{ github.sha }}"
+
+      - name: Health check
+        run: echo "TODO(T-040) poll /health until ready, else fail"
+
+      - name: Smoke tests
+        run: echo "TODO(T-040) pnpm test:smoke against staging"
+
+      - name: Record deployment
+        if: always()
+        run: echo "TODO(T-040) record sha, actor and outcome to the deployment log"

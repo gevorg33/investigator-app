@@ -1,0 +1,107 @@
+# Pull request CI. Runs on open and on every push to an open PR.
+# Contract: .claude/skills/ci-cd/SKILL.md
+# UNVALIDATED — written before the monorepo exists. T-028 owns the first green run.
+name: PR
+
+on:
+  pull_request:
+    branches: [dev, prod]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read          # least privilege; a job needing more asks for exactly that
+
+env:
+  DATABASE_URL: postgres://postgres:postgres@localhost:5432/investigator_test
+  REDIS_URL: redis://localhost:6379
+  # No production secret is reachable here. Fork PRs receive no secrets at all.
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Fresh services every run: no cached database, no reused volume.
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: investigator_test
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ['5432:5432']
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ['6379:6379']
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history — the secret scan needs it
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Enable extensions
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d investigator_test \
+            -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS vector;"
+
+      # Proves migrations apply to an EMPTY database, in sequence, with no manual state.
+      - name: Migrate from empty
+        run: pnpm --filter api migration:run
+
+      - name: Load fixtures
+        run: pnpm --filter api fixtures:load
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: API tests
+        run: pnpm test:api
+
+      - name: E2E — critical workflows
+        run: pnpm test:e2e
+
+      # Blocking. Per package, not global. Exclusions: docs/operations/coverage-exclusions.md
+      - name: Coverage gate
+        run: pnpm test:coverage
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: '**/coverage/'
+          retention-days: 14
+
+      - name: Build
+        run: pnpm build
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+
+      - name: Secret scan (full history)
+        uses: gitleaks/gitleaks-action@v2

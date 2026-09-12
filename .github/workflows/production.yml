@@ -1,0 +1,121 @@
+# prod -> PRODUCTION. MANUAL ONLY.
+# A push never deploys. Migration is a separate approval-gated job.
+# Contract: .claude/skills/ci-cd/SKILL.md
+# UNVALIDATED — T-041 owns the first green run.
+name: Production
+
+# workflow_dispatch only. There is deliberately no push trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: What to run
+        required: true
+        type: choice
+        options: [deploy, migrate, rollback]
+      version:
+        description: Git SHA or tag to act on
+        required: true
+        type: string
+      confirm:
+        description: Type the environment name to confirm
+        required: true
+        type: string
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse unless confirmed
+        if: inputs.confirm != 'production'
+        run: |
+          echo "::error::confirm must be exactly 'production'"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+          fetch-depth: 0
+
+      # Production may only ever run code that is already on prod.
+      - name: Verify ref is an ancestor of prod
+        run: |
+          git fetch origin prod
+          git merge-base --is-ancestor "${{ inputs.version }}" origin/prod \
+            || { echo "::error::${{ inputs.version }} is not on prod"; exit 1; }
+
+  migrate:
+    needs: guard
+    if: inputs.operation == 'migrate'
+    runs-on: ubuntu-latest
+    environment: production        # required reviewers gate this job
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.version }}" }
+
+      # A migration does not start without a restorable backup.
+      - name: Verify a fresh backup is restorable
+        run: echo "TODO(T-041) assert backup age and last restore-test result, else fail"
+
+      - name: Print pending migrations
+        run: echo "TODO(T-041) show the plan for the approver"
+
+      - name: Run migrations
+        run: echo "TODO(T-041) execute and capture logs"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: migration-logs
+          path: migration-*.log
+          retention-days: 90
+
+  deploy:
+    needs: guard
+    if: inputs.operation == 'deploy'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://app.example
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.version }}" }
+
+      - name: Pre-deployment checks
+        run: echo "TODO(T-041) image exists, migrations current, health baseline captured"
+
+      - name: Deploy
+        run: echo "TODO(T-041) deploy ${{ inputs.version }}"
+
+      - name: Health checks
+        run: echo "TODO(T-041) poll /health; fail the job if unhealthy"
+
+      - name: Smoke tests
+        run: echo "TODO(T-041) critical-path smoke tests"
+
+      - name: Record deployment
+        if: always()
+        run: echo "TODO(T-041) tag, actor, approver and outcome to the deployment log"
+
+  rollback:
+    needs: guard
+    if: inputs.operation == 'rollback'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Roll back the application
+        run: echo "TODO(T-041) redeploy the previous known-good version"
+
+      # Honest about the limit: expand/contract means a contract step is not reversible.
+      - name: Schema recovery note
+        run: |
+          echo "Application rollback does not undo a migration."
+          echo "A contract-phase migration is recovered by restore, not by revert."
+          echo "See .claude/skills/db-migration/SKILL.md"
