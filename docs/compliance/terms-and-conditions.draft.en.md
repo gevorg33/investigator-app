@@ -56,6 +56,62 @@ A customer must:
 A customer is responsible for their use of what is delivered. Obtaining information lawfully
 does not make every subsequent use of it lawful.
 
+### Materials submitted with a mission
+
+Customers must ensure that all information, documents, images, recordings and other materials
+they include in a mission are lawful to collect, share and process.
+
+A mission may contain only:
+
+- Information that is publicly accessible and lawfully obtained
+- Information the customer has the legal right, or explicit authorisation, to share
+- Information necessary and relevant to the requested investigation
+- Data that does not unlawfully expose another person's private, confidential or sensitive
+  information
+
+A customer must not include, or request work relying on:
+
+- Private or confidential information obtained without authorisation
+- Personal data whose sharing would breach applicable privacy or data-protection law
+- Sensitive information unrelated to the investigation
+- Stolen, hacked, unlawfully accessed or otherwise illegally obtained material
+- Information intended to harass, threaten, intimidate, discriminate against or harm any person
+- Requests to access private accounts, devices, communications, locations or records without
+  lawful authorisation
+
+Customers are responsible for ensuring that their missions comply with applicable privacy,
+data-protection and other relevant law. The platform, investigators and staff must respect the
+privacy, dignity, rights and lawful interests of every individual involved, including people
+who are not users of the platform.
+
+[**Counsel: a customer warranty allocates risk between the parties but does not by itself
+discharge the platform's own obligations as a controller of the data it stores, nor the
+investigator's as a processor of it. Advise on how far this clause can be relied upon, and what
+the platform must do independently of it. Relates to counsel-brief.md §§3, 8–11.**]
+
+### Where a mission contains problematic material
+
+Where a mission contains unlawful, unauthorised or excessively sensitive material, the platform
+or the assigned investigator may refuse, suspend, modify or cancel it, and may require the
+customer to remove or replace the material before the work proceeds.
+
+A distinction applies to the remedy:
+
+- Material that is **lawful but excessive or irrelevant** — the customer is asked to reduce or
+  remove it, and the mission may continue once they do
+- Material that is **unlawful or unauthorised** — the mission does not proceed until it is
+  resolved, and the material is withdrawn from circulation
+
+Material already incorporated into the case record is withdrawn from further use and marked,
+rather than erased, so that the integrity of the record and any obligation to retain it are
+preserved.
+
+An investigator who refuses work on these grounds is acting properly, and doing so is not
+treated as a failure to deliver.
+
+[**Counsel: retention where material is unlawful but may also be evidence of a violation, or
+subject to a legal hold. Deleting on request may conflict with an obligation to preserve.**]
+
 ## 4. Investigator responsibilities and obligations
 
 An investigator must:
@@ -180,6 +236,14 @@ Access may be suspended or terminated where a user:
 - abandons assignments or repeatedly fails to deliver agreed scope
 - behaves abusively toward another user or staff
 - breaches these terms or the Lawful Use Policy
+
+Additionally, for customers, submitting materials that breach the requirements in section 3,
+including unlawfully obtained material or personal data shared without authorisation. Depending
+on severity this may result in removal of the material, cancellation of the mission,
+restrictions on the account, suspension, or permanent termination.
+
+Where the law requires or permits it, serious violations may be reported to the appropriate
+authorities.
 
 Additionally, for investigators, substantiated violation of professional or ethical
 obligations, including:

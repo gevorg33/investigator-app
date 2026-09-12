@@ -46,6 +46,59 @@ and complying with the law on surveillance, recording, data protection and prope
 You must decline and report work that would require unlawful activity. Neither a customer's
 instruction nor the fact that a mission was published is authorisation to act unlawfully.
 
+## What can I include in a mission?
+
+Only material you are lawfully entitled to collect, share and process. In practice that means
+information that is publicly accessible and lawfully obtained, information you have a legal
+right or explicit authorisation to share, and information that is actually relevant to the work
+you are asking for.
+
+It must also not unlawfully expose another person's private, confidential or sensitive
+information — including people who have no involvement with the platform.
+
+## What must I not include?
+
+- Private or confidential information obtained without authorisation
+- Personal data you are not permitted to share under privacy or data-protection law
+- Sensitive information that has nothing to do with the investigation
+- Stolen, hacked or otherwise illegally obtained material
+- Anything intended to harass, threaten, intimidate, discriminate against or harm someone
+- Requests to reach private accounts, devices, communications, locations or records without
+  lawful authorisation
+
+You are responsible for ensuring what you submit complies with the law. Being able to obtain
+something does not mean you are permitted to share it.
+
+## What happens if my mission contains something it should not?
+
+It depends on what the problem is.
+
+If the material is lawful but excessive or irrelevant — more personal detail than the work
+needs — you will be asked to remove or reduce it, and the mission continues once you do.
+
+If the material is unlawful or shared without authorisation, the mission does not proceed until
+that is resolved, and the material is withdrawn from use. Depending on severity this can also
+lead to the mission being cancelled, restrictions on your account, suspension, or permanent
+termination. Where the law requires or permits it, serious cases may be reported to the
+appropriate authorities.
+
+## Can an investigator refuse my mission because of what I included?
+
+Yes. An investigator can decline or stop work where material is unlawful, shared without
+authorisation, or excessive for the task — and they are acting correctly when they do.
+
+If that happens you will be told what the problem is, and in most cases you can correct it and
+continue.
+
+## Why am I being asked to remove information I already have?
+
+Usually because it is not needed for the work. A mission should contain what the investigation
+actually requires, not everything you hold.
+
+This is not a judgement about you. Personal information about identifiable people carries
+obligations for whoever holds it — you, us, and the investigator — and the simplest way to
+reduce that burden for everyone is to include only what the work needs.
+
 ## Does the platform check that my request is legal?
 
 Missions are screened before publication, and some are held for review by staff or rejected.
