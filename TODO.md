@@ -1534,6 +1534,67 @@ pnpm --filter api test mission-moderation && pnpm --filter admin-web test
 
 ---
 
+### T-052 — Block another user
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-011, T-036
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{users,search,messaging}/**, apps/mobile/**, apps/app-web/**
+
+**Description**
+Google Play's User Generated Content policy requires both in-app **reporting** and the ability
+to **block another user**. Reporting exists in the policy layer; blocking does not exist at
+all. This is a store release blocker (`docs/mobile/release-checklist.md` §7).
+
+**Blocking here is not blocking on a social app.** Two users may be mid-assignment with money
+held, evidence exchanged and work owed. Severing that would make "block" a way to abandon an
+assignment or avoid paying for one. So it governs **future engagement**, never an existing
+obligation.
+
+**Acceptance criteria**
+
+Core behaviour
+- [ ] Either party may block the other from a profile, a conversation, or a report flow
+- [ ] Blocked investigator no longer sees that customer's missions in discovery, and cannot
+      quote on them — enforced in the query, not by hiding in the UI (`investigator-discovery`)
+- [ ] Blocked customer is not matched with that investigator
+- [ ] No new conversation can be opened between the two
+- [ ] Blocks are **private** — the blocked party is not notified and cannot detect it from a
+      different response shape or timing
+
+Live assignments — the part that must not be got wrong
+- [ ] Blocking during a live assignment **does not sever the assignment**
+- [ ] It flags the assignment to staff, who resolve it: continue, reassign, or cancel with the
+      refund decided on its merits
+- [ ] **A test proves blocking cannot be used to escape delivery or payment obligations**
+- [ ] Communication required for an active assignment continues until staff resolve it, so the
+      dispute record stays intact
+
+Reporting is separate
+- [ ] Block and report are distinct actions with distinct outcomes — block is "not this
+      person", report is "staff should look at this"
+- [ ] Blocking optionally offers to report; it never silently reports
+- [ ] Reports reach staff; the reporter is acknowledged so the route is visibly working
+
+Staff and signal
+- [ ] Staff can see blocks; many blocks against one account is a pattern worth surfacing
+- [ ] Block and unblock are audited with actor and timestamp
+- [ ] Blocks survive until removed; the user can see and manage their block list
+
+Documentation (per `documentation-first`, in this task)
+- [ ] Customer and investigator knowledge-base articles explaining what blocking does and does
+      not do — especially that it does not end an assignment or an obligation
+- [ ] Release checklist §7 items satisfied
+
+**Validation**
+```bash
+pnpm --filter api test blocks && pnpm --filter api test search-blocks
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.
