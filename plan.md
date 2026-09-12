@@ -477,12 +477,14 @@ Initial entities:
 - InvestigatorVerification
 - VerificationDocument
 - ServiceArea
-- Specialty
+- TaxonomyNode
+- TaxonomyNodeLabel
+- Tag
 - Language
 - InvestigatorLanguage
 - InvestigatorAvailability
 - Mission
-- MissionCategory
+- MissionTag
 - MissionAttachment
 - MissionParticipant
 - MissionPolicyReview
@@ -527,6 +529,29 @@ Initial entities:
 - AiMemory
 - AiPlan
 - AiToolResult
+
+### Taxonomy and tags (ADR-0007)
+
+**One shared taxonomy.** A mission declares the node it falls under; an investigator declares
+the nodes they practise in. Matching is an exact join over node IDs — there is no second
+vocabulary and no mapping table.
+
+- **TaxonomyNode** — id, parent, slug, status (`active`/`deprecated`), ordering. **Never
+  deleted**, only deprecated, so historical missions and profiles stay valid
+- **TaxonomyNodeLabel** — per-locale label and description; the node id is the canonical,
+  language-neutral value (`localization`)
+- **Tag** — curated, flat, staff-managed
+- **MissionTag** — tags applied to a mission
+
+Hierarchical: a mission at a parent node matches investigators declared at any descendant, and
+an investigator at a parent covers its descendants. Matching walks the tree, so the two sides
+need not choose at the same depth.
+
+The taxonomy **gates eligibility** and is applied as a hard SQL filter. **Tags never do** —
+they rank and refine search only, exactly like the free-text relevance hint. Staff maintain
+both; adding a node is audited.
+
+`Service` is not a separate dimension. A service is a deeper node.
 
 ### Enforcement
 
@@ -671,7 +696,8 @@ in ADR-0005 keep them cheap to add later without abstracting for them now.
 
 - ID
 - Customer ID
-- Category
+- Taxonomy node (shared with investigator practice areas — ADR-0007)
+- Tags (refinement only; never gate eligibility)
 - Title
 - Description
 - Country/region/city

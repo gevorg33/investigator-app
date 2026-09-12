@@ -1595,6 +1595,107 @@ pnpm --filter api test blocks && pnpm --filter api test search-blocks
 
 ---
 
+### T-053 — Shared taxonomy
+- **Status:** TODO
+- **Priority:** P0 — blocks matching, discovery and mission creation
+- **Depends on:** T-004
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** database (schema) + backend-domain (service)
+- **Affected:** apps/api/src/modules/taxonomy/**, migrations, packages/validation
+
+**Description**
+One taxonomy shared by missions and investigator practice areas, per ADR-0007. This is the core
+matching mechanism — eligibility, discovery, routing and notifications all join on it, so it
+lands before anything that depends on it.
+
+**Acceptance criteria**
+- [ ] `TaxonomyNode` hierarchical with stable ids, slug, parent, ordering, status
+- [ ] **Nodes are never deleted, only deprecated** — a test proves a deprecated node still
+      resolves for missions and profiles that reference it
+- [ ] `TaxonomyNodeLabel` per locale (en/ru/hy); the node id is the canonical language-neutral
+      value (`localization`)
+- [ ] A mission at a parent matches investigators declared at any descendant, and vice versa —
+      tree-walking matching tested in both directions
+- [ ] Applied as a **hard SQL filter**; no path lets prose or a tag substitute for a declared node
+- [ ] `Tag` curated and flat; `MissionTag` applied to missions
+- [ ] **A test proves a tag cannot make an investigator eligible, and a missing tag cannot
+      exclude a qualified one** (ADR-0007)
+- [ ] Staff-managed through the admin console; adding, deprecating and relabelling are audited
+- [ ] Initial tree seeded and reviewed — it is a product decision, not a developer guess
+- [ ] No `Service` entity; a service is a deeper node
+
+**Validation**
+```bash
+pnpm --filter api test taxonomy
+```
+
+---
+
+### T-054 — Investigator mission browse and filter
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-053, T-011
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain (API) + frontend (UI)
+- **Affected:** apps/api/src/modules/search/**, apps/app-web/**
+
+**Description**
+Investigators currently see eligible missions but cannot sort or filter them. An investigator
+eligible for two hundred missions has no way to find the ones worth quoting on.
+
+Distinct from T-011, which is the customer→investigator direction.
+
+**Acceptance criteria**
+- [ ] **Eligibility is applied first and is not user-adjustable** — filters narrow the eligible
+      set, never widen it. A test proves no filter combination surfaces an ineligible mission
+- [ ] Filters: taxonomy node, budget range, timeline, distance from a service area, language,
+      posted date, tags
+- [ ] Sorts: newest, closest, highest budget, soonest deadline
+- [ ] Free-text search ranks within the eligible set; it never gates (`investigator-discovery`)
+- [ ] Saved filters, so a returning investigator does not rebuild the same query
+- [ ] Cursor pagination, bounded limit (`docs/api/pagination.md`)
+- [ ] Results are projections — **no customer contact details before assignment**
+- [ ] Distance uses `ST_DWithin` to filter and `ST_Distance` to sort (`postgis-search`)
+
+**Validation**
+```bash
+pnpm --filter api test mission-browse
+```
+
+---
+
+### T-055 — Mission tagging
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-053, T-051
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{missions,taxonomy}/**, apps/admin-web/**
+
+**Description**
+Tags as refinement on top of the taxonomy. Deliberately curated rather than customer free text:
+free-text tags in three locales are unusable for matching, and a customer-authored tag is a
+moderation surface.
+
+**Acceptance criteria**
+- [ ] Tags applied from the curated vocabulary — **no free-text tag creation by customers**
+- [ ] Customers may suggest tags at mission creation; moderators confirm at publication (T-051)
+- [ ] Tags improve search ranking and browse filtering only
+- [ ] **A tag never affects eligibility** — tested
+- [ ] Tag labels localised for en/ru/hy
+- [ ] Staff can add, merge, deprecate and relabel tags; all audited
+- [ ] Merging a tag preserves the missions that carried the old one
+
+**Validation**
+```bash
+pnpm --filter api test mission-tags
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

@@ -54,7 +54,7 @@ projections.
 |---|---|
 | `searchInvestigators` | Filters + optional location, returns ranked eligible matches |
 | `getInvestigatorProfile` | Public projection of one profile |
-| `listSpecialties` / `listServices` | The controlled vocabularies, for building a query |
+| `listTaxonomy` | The shared taxonomy tree, for building a query (ADR-0007) |
 | `checkAvailability` | Current availability for a specific investigator and window |
 
 `searchInvestigators` input is a closed set of typed filters — never a free-text string
@@ -64,8 +64,8 @@ that reaches a query:
 {
   location?: { lat: number; lon: number; radiusMeters: number }
        | { countryCode: string; region?: string; city?: string },
-  specialtyIds?: string[],
-  serviceIds?: string[],
+  taxonomyNodeIds?: string[],   // shared taxonomy; matches descendants too (ADR-0007)
+  tagIds?: string[],            // refinement only — ranks, never gates
   languages?: Array<'en' | 'ru' | 'hy'>,
   availableFrom?: string,
   relevanceHint?: string,   // free text: ranking only, never filtering
@@ -80,7 +80,7 @@ passed every hard filter.
 ## Pipeline
 
 ```
-hard filters      country / city / specialty / service / language / availability
+hard filters      country / city / taxonomy node (incl. descendants) / language / availability
   → eligibility   verified, not suspended, accepting work, has capacity
   → geography     ST_DWithin against service area; ST_Distance sorts
   → relevance     optional semantic rank over the surviving set
@@ -104,7 +104,7 @@ The tool returns the reasons as data:
   "investigatorId": "inv_412",
   "distanceMeters": 8400,
   "matchedOn": {
-    "specialties": ["corporate-due-diligence"],
+    "taxonomy": ["corporate/due-diligence"],
     "languages": ["hy", "en"],
     "serviceArea": "Yerevan +50km",
     "availableFrom": "2026-09-15"
@@ -127,7 +127,8 @@ surveillance" is a more useful and more honest answer than silence about the gap
 - Invent an investigator, location, service, availability window, price or policy.
 - Return an unverified, suspended or non-accepting investigator.
 - Infer a capability from prose ("their bio mentions fraud, so they do fraud work") —
-  capabilities are the structured `services` and `specialties` rows.
+  capabilities are the investigator's declared taxonomy nodes.
+- Let a tag make someone eligible, or a missing tag exclude someone qualified (ADR-0007).
 - Expose a private profile field, contact details, or a home location.
 - State a price the investigator has not published. Pricing is a quote, not an estimate
   the Assistant produces.
