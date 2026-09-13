@@ -7,6 +7,21 @@ in-app copy, support answers, assistant responses — explains them and defers t
 
 Where a summary and the legal text differ, the legal text governs. Summaries say so.
 
+## This repository is public
+
+A deliberate choice, but it constrains what belongs here.
+
+**Once counsel is engaged, privileged material must not be committed to this repository.**
+Publishing attorney-client communications can waive privilege over them. Counsel's advice,
+their markups, and any candid assessment written in response to their questions belong in a
+private channel — not in `docs/compliance/`.
+
+What is appropriate here: the platform facts, the questions being asked, and the published
+policy text once approved. What is not: the answers, if they come from counsel.
+
+The drafts and `counsel-brief.md` already in this directory were written before this was
+settled and are public. Treat that as the baseline, not as licence to add more.
+
 ## Status of the drafts in this directory
 
 Files named `*.draft.*` are **structured drafts prepared for legal review. They are not

@@ -103,7 +103,7 @@ are already in the data model, so the UI should not invent a parallel vocabulary
 | **MUST** | **shadcn** | Already installed and smoke-tested. Registry search is the component-reuse rule's enforcement mechanism |
 | **MUST** | **Playwright** | **Installed and smoke-tested** — 24 tools including `browser_resize` and `browser_snapshot`. `visual-qa` depends on it |
 | **SHOULD** | **Context7** (or equivalent docs MCP) | Version-correct API docs for Motion, React Flow, Next.js. Reduces invented APIs |
-| **SHOULD** | **Refero** | 142k real product screens, research input for `interaction-design`. **Remote HTTP server requiring auth** — install with `claude mcp add --transport http refero https://api.refero.design/mcp` and complete the OAuth sign-in. Needs a human; cannot be configured unattended |
+| **DECLINED** | **Refero** | 142k real product screens. **Not adopted — cost.** Decided 2026-09-13. `interaction-design` stands on its own rules; UX research falls back to reasoning from the skill rather than a pattern corpus. Do not re-propose without a cost conversation |
 | **OPTIONAL** | **Figma** | Only if design actually originates in Figma. Otherwise it is a tool with nothing to read |
 | **OPTIONAL** | **GitHub** | `gh` CLI already covers most of it |
 | **AVOID** | Anything per-library | Cult UI and React Bits are reachable through the shadcn registry mechanism. A separate MCP per component source is exactly the sprawl being avoided |
