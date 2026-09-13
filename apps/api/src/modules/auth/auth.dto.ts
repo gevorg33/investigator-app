@@ -16,3 +16,28 @@ export class CredentialsDto {
   @MaxLength(200, { message: 'error.validation.password.too_long' })
   password!: string;
 }
+
+export class EmailOnlyDto {
+  @IsEmail({}, { message: 'error.validation.email.invalid' })
+  @MaxLength(254)
+  email!: string;
+}
+
+export class TokenDto {
+  @IsString()
+  // Bounded so an oversized body cannot be pushed through hashing.
+  @MaxLength(256)
+  token!: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MaxLength(256)
+  token!: string;
+
+  @IsString()
+  // Same policy as registration; a reset must not be a way to set a weaker password.
+  @MinLength(12, { message: 'error.validation.password.too_short' })
+  @MaxLength(200, { message: 'error.validation.password.too_long' })
+  password!: string;
+}

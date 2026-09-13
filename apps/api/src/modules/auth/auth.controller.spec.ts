@@ -17,6 +17,12 @@ const stub = () => ({
   login: vi.fn().mockResolvedValue({ userId: 'u1', refreshToken: 'tok-login' }),
   refresh: vi.fn().mockResolvedValue({ userId: 'u1', refreshToken: 'tok-refreshed' }),
   revoke: vi.fn().mockResolvedValue(undefined),
+  verifyEmail: vi.fn().mockResolvedValue(undefined),
+  requestEmailVerification: vi.fn().mockResolvedValue(undefined),
+  requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+  resetPassword: vi.fn().mockResolvedValue(undefined),
+  listSessions: vi.fn().mockResolvedValue([]),
+  revokeSession: vi.fn().mockResolvedValue(undefined),
 });
 
 describe('auth controller', () => {
@@ -149,6 +155,109 @@ describe('auth controller', () => {
       requestId = { nested: true };
       await post('register').send(CREDENTIALS);
       expect(auth.register.mock.calls[0][2].correlationId).toBeUndefined();
+    });
+  });
+
+  describe('email verification endpoints', () => {
+    it('redeems a token', async () => {
+      const res = await post('verify-email').send({ token: 'tok' });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ status: 'verified' });
+      expect(auth.verifyEmail).toHaveBeenCalledWith('tok', expect.any(Object));
+    });
+
+    it('answers 202 to a resend request whatever the address', async () => {
+      const res = await post('verify-email/resend').send({ email: CREDENTIALS.email });
+      expect(res.status).toBe(202);
+      expect(res.body).toEqual({ status: 'accepted' });
+    });
+
+    it('rejects a resend body carrying an unexpected field', async () => {
+      const res = await post('verify-email/resend').send({
+        email: CREDENTIALS.email,
+        userId: 'someone-else',
+      });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('password reset endpoints', () => {
+    it('answers 202 to a reset request', async () => {
+      const res = await post('password-reset').send({ email: CREDENTIALS.email });
+      expect(res.status).toBe(202);
+      expect(auth.requestPasswordReset).toHaveBeenCalledWith(
+        CREDENTIALS.email,
+        expect.any(Object),
+      );
+    });
+
+    it('confirms a reset and clears the now-dead cookie', async () => {
+      const res = await post('password-reset/confirm')
+        .set('Cookie', [`${COOKIE}=tok-old`])
+        .send({ token: 'tok', password: 'an-entirely-different-password' });
+      expect(res.status).toBe(200);
+      expect(auth.resetPassword).toHaveBeenCalledWith(
+        'tok',
+        'an-entirely-different-password',
+        expect.any(Object),
+      );
+      // Reset revokes every session including this one; the cookie must not linger.
+      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=;`);
+    });
+
+    it('holds a reset to the same password policy as registration', async () => {
+      const res = await post('password-reset/confirm').send({ token: 'tok', password: 'short' });
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('session endpoints', () => {
+    it('lists sessions for the cookie holder', async () => {
+      auth.listSessions.mockResolvedValueOnce([
+        {
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          ipAddress: null,
+          userAgent: null,
+          createdAt: new Date(),
+          lastUsedAt: new Date(),
+          expiresAt: new Date(),
+          current: true,
+        },
+      ]);
+      const res = await request(app.getHttpServer())
+        .get('/auth/sessions')
+        .set('Cookie', [`${COOKIE}=tok-old`]);
+      expect(res.status).toBe(200);
+      expect(res.body.sessions).toHaveLength(1);
+      expect(auth.listSessions).toHaveBeenCalledWith('tok-old', expect.any(Object));
+    });
+
+    it('passes an empty token when no cookie is present', async () => {
+      await request(app.getHttpServer()).get('/auth/sessions');
+      expect(auth.listSessions).toHaveBeenCalledWith('', expect.any(Object));
+    });
+
+    it('revokes a named session', async () => {
+      const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+      const res = await request(app.getHttpServer())
+        .delete(`/auth/sessions/${id}`)
+        .set('Cookie', [`${COOKIE}=tok-old`]);
+      expect(res.status).toBe(204);
+      expect(auth.revokeSession).toHaveBeenCalledWith('tok-old', id, expect.any(Object));
+    });
+
+    it('rejects a session id that is not a uuid before reaching the service', async () => {
+      const res = await request(app.getHttpServer())
+        .delete('/auth/sessions/not-a-uuid')
+        .set('Cookie', [`${COOKIE}=tok-old`]);
+      expect(res.status).toBe(400);
+      expect(auth.revokeSession).not.toHaveBeenCalled();
+    });
+
+    it('passes an empty token to revoke when no cookie is present', async () => {
+      const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+      await request(app.getHttpServer()).delete(`/auth/sessions/${id}`);
+      expect(auth.revokeSession).toHaveBeenCalledWith('', id, expect.any(Object));
     });
   });
 });

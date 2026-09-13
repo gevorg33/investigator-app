@@ -265,7 +265,9 @@ when the decorator is a class decorator. Confirmed under both coverage providers
 istanbul both instrument code after the TypeScript transform, so neither can reach it.
 
 A 100% **branch** threshold is therefore unreachable by construction for any decorated class,
-which is most of the NestJS API.
+which is most of the NestJS API. It already accounts for the whole remaining gap in the auth
+module — 100% of statements, functions and lines, 98.09% of branches, and the missing 1.91%
+is two `@Injectable()` lines.
 
 `docs/operations/coverage-exclusions.md` rule 3 says an agent may never add an exclusion
 unilaterally, and rule 5 says lowering a threshold needs a documented maintainer exception.

@@ -151,7 +151,7 @@ pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && p
 ---
 
 ### T-005 — Authentication: register, login, refresh rotation, sessions
-- **Status:** IN_PROGRESS
+- **Status:** DONE — 2026-09-13
 - **Priority:** P0
 - **Depends on:** T-004
 - **Risk:** HIGH
@@ -164,16 +164,46 @@ Email/password auth with verification, password reset, refresh-token rotation wi
 detection, session listing and revocation, rate limiting and brute-force protection.
 
 **Acceptance criteria**
-- [ ] Passwords hashed with argon2id; never logged, never returned
-- [ ] Refresh rotation detects reuse and revokes the whole session family
-- [ ] Rate limits on login, register, reset — per IP and per account
-- [ ] Email enumeration not possible via response body, status, or timing
-- [ ] Every auth event is audited
-- [ ] A revoked session is rejected immediately, not at next expiry
-- [ ] Built so a second auth method can attach to the same account — Google OAuth is T-062,
+- [x] Passwords hashed with argon2id; never logged, never returned
+- [x] Refresh rotation detects reuse and revokes the whole session family
+- [x] Rate limits on login, register, reset — per IP and per account
+- [x] Email enumeration not possible via response body, status, or timing
+- [x] Every auth event is audited
+- [x] A revoked session is rejected immediately, not at next expiry
+- [x] Built so a second auth method can attach to the same account — Google OAuth is T-062,
       and retrofitting identity linking afterwards is materially harder
 
-**Validation**
+**How each was verified** — against a running API, not only in tests
+
+| Criterion | Evidence |
+|---|---|
+| argon2id, never returned | Stored hashes start `$argon2id$`; no response body or audit row contains a password or a refresh token |
+| Reuse revokes the family | Rotation issued a new token; replaying the old one returned 401; the descendant died with it, with `auth.refresh.reuse_detected` audited |
+| Rate limits | `loginPerIp`, `loginPerAccount`, `registerPerIp`, `resetPerIp`, `resetPerAccount` |
+| No enumeration | Wrong password and unknown account return byte-identical 401s; a decoy argon2 verify spends the same CPU when no account exists; reset and resend answer 202 either way |
+| Everything audited | 16 distinct `auth.*` actions, none carrying a token or password |
+| Revocation is immediate | A revoked session's next refresh returned 401 rather than surviving to expiry — the criterion that ruled out stateless JWTs |
+| Second auth method | `user_identities` ships now (migration 0002): unique per `(provider, account)` and per `(user, provider)`, holding no credential. Linking is never automatic on a matching email |
+
+**Design note — why the tokens are opaque**
+
+"A revoked session is rejected immediately, not at next expiry" excludes a stateless JWT by
+definition: a JWT stays valid until it expires. Refresh tokens are 256-bit random values
+checked against `user_sessions` on every use, so revocation takes effect at once.
+
+**Also delivered here**
+
+Email verification, password reset, and session listing/revocation, all of which the task
+description covers. Password reset revokes every session the user holds — someone resetting
+a password is often doing it because an attacker has the old one, and an active session does
+not need the password again. The mailer is a port with a development transport that refuses
+to run under `NODE_ENV=production`; a real provider is ACTIONS-FOR-ME #5.
+
+**Coverage:** `src/modules/auth` is at 100% statements, functions and lines, and 98.09%
+branches. The gap is two `@Injectable()` lines where the transpiler's `__decorateClass`
+helper produces a branch no test can reach — see T-063 and ACTIONS-FOR-ME #12.
+
+**Validation** — all green 2026-09-13
 ```bash
 pnpm --filter api test auth
 ```
@@ -2061,7 +2091,10 @@ pnpm --filter api test:coverage
 
 **Description**
 `apps/api/tsconfig.json` excludes `**/*.spec.ts`, so `pnpm typecheck` never sees the test
-suite. Test code is the thing asserting the production code is correct and is currently the
+suite. This already cost real time during T-005: adding two constructor parameters to
+`AuthService` left an existing spec calling it with the old signature, which the compiler
+would have caught instantly but which instead surfaced as a runtime `TypeError` deep in a
+test run. Test code is the thing asserting the production code is correct and is currently the
 only unchecked code in the package — a spec can assert against a property that does not
 exist and still pass.
 

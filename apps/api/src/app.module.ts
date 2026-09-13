@@ -4,6 +4,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { validateEnv } from './config/env.schema';
 import { loggerOptions } from './common/logging/logger.options';
 import { AuditModule } from './common/audit/audit.module';
+import { MailModule } from './common/mail/mail.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
@@ -25,6 +26,7 @@ import { HealthModule } from './modules/health/health.module';
     }),
     DatabaseModule,
     AuditModule,
+    MailModule,
     AuthModule,
     HealthModule,
   ],

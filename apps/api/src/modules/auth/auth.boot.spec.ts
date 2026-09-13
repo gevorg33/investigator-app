@@ -4,6 +4,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { MAILER } from '../../common/mail/mailer';
 import { DB } from '../../database/database.module';
 import { AuthController } from './auth.controller';
 import { AuthModule } from './auth.module';
@@ -29,8 +30,9 @@ Module({
   providers: [
     { provide: DB, useValue: {} },
     { provide: AuditService, useValue: { record: async () => undefined } },
+    { provide: MAILER, useValue: { send: async () => undefined } },
   ],
-  exports: [DB, AuditService],
+  exports: [DB, AuditService, MAILER],
 })(StubInfrastructureModule);
 Global()(StubInfrastructureModule);
 

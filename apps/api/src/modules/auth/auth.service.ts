@@ -2,13 +2,15 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
+import { MAILER, type Mailer } from '../../common/mail/mailer';
 import { DB, type Db } from '../../database/database.module';
-import { userSessions, users } from '../../database/schema';
+import { userSessions, userTokens, users } from '../../database/schema';
 import { invalidCredentials } from './auth.errors';
 import { PasswordService } from './password.service';
 import { RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { UserTokenService, type TokenPurpose } from './user-token.service';
 
 export interface RequestContext {
   ip?: string | undefined;
@@ -19,6 +21,17 @@ export interface RequestContext {
 export interface AuthResult {
   userId: string;
   refreshToken: string;
+}
+
+export interface SessionSummary {
+  id: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+  lastUsedAt: Date;
+  expiresAt: Date;
+  /** True for the session making the request, so a UI can label it rather than guess. */
+  current: boolean;
 }
 
 /** Hashed so the rate-limit key never carries an address into logs or metrics. */
@@ -34,6 +47,8 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly limits: RateLimitService,
     private readonly audit: AuditService,
+    private readonly userTokens: UserTokenService,
+    @Inject(MAILER) private readonly mailer: Mailer,
   ) {}
 
   async register(email: string, password: string, ctx: RequestContext): Promise<void> {
@@ -55,13 +70,36 @@ export class AuthService {
     }
 
     const [created] = await this.db.insert(users).values({ email, passwordHash }).returning();
+    // RETURNING on a single-row insert always yields the row, so this is an invariant
+    // rather than a case. It throws instead of skipping: carrying on would leave an
+    // account that exists, was never audited, and has no way to verify itself.
+    if (!created) throw new Error('user insert returned no row');
+
     await this.audit.record({
       ...ctx,
-      actorId: created?.id,
+      actorId: created.id,
       action: 'auth.register',
       resourceType: 'user',
-      resourceId: created?.id,
+      resourceId: created.id,
     });
+
+    await this.issueToken(created.id, 'EMAIL_VERIFICATION', created.email, ctx);
+  }
+
+  /**
+   * Re-sends a verification link. Silent for an unknown or already-verified address, for
+   * the same reason register is: the response must not distinguish them.
+   */
+  async requestEmailVerification(email: string, ctx: RequestContext): Promise<void> {
+    await this.limits.consume('resetPerIp', ctx.ip ?? 'unknown');
+    await this.limits.consume('resetPerAccount', accountKey(email));
+
+    const user = await this.db.query.users.findFirst({
+      where: and(eq(users.email, email), isNull(users.deletedAt)),
+    });
+    if (!user || user.emailVerifiedAt !== null) return;
+
+    await this.issueToken(user.id, 'EMAIL_VERIFICATION', user.email, ctx);
   }
 
   async login(email: string, password: string, ctx: RequestContext): Promise<AuthResult> {
@@ -196,5 +234,243 @@ export class AuthService {
         resourceId: revoked.id,
       });
     }
+  }
+
+  // ── Email verification and password reset ─────────────────────────────────────
+
+  /**
+   * Issues a single-use token and mails it. Outstanding tokens for the same purpose are
+   * consumed first, so only the newest link works — otherwise every link ever sent stays
+   * live until it expires, and the oldest leaked inbox still wins.
+   */
+  private async issueToken(
+    userId: string,
+    purpose: TokenPurpose,
+    email: string,
+    ctx: RequestContext,
+  ): Promise<void> {
+    await this.db
+      .update(userTokens)
+      .set({ consumedAt: new Date() })
+      .where(
+        and(
+          eq(userTokens.userId, userId),
+          eq(userTokens.purpose, purpose),
+          isNull(userTokens.consumedAt),
+        ),
+      );
+
+    const issued = this.userTokens.issue(purpose);
+    await this.db.insert(userTokens).values({
+      userId,
+      purpose,
+      tokenHash: issued.tokenHash,
+      expiresAt: issued.expiresAt,
+    });
+
+    const path = purpose === 'EMAIL_VERIFICATION' ? 'verify-email' : 'reset-password';
+    await this.mailer.send({
+      to: email,
+      template: purpose === 'EMAIL_VERIFICATION' ? 'email_verification' : 'password_reset',
+      // The token travels here and nowhere else. It is not audited and not logged.
+      variables: {
+        url: `${process.env['APP_BASE_URL'] ?? 'http://localhost:3000'}/${path}?token=${issued.token}`,
+      },
+    });
+
+    await this.audit.record({
+      ...ctx,
+      actorId: userId,
+      action: purpose === 'EMAIL_VERIFICATION' ? 'auth.verification.sent' : 'auth.reset.requested',
+      resourceType: 'user',
+      resourceId: userId,
+    });
+  }
+
+  /** Always resolves. Whether the address exists is not something a caller may learn. */
+  async requestPasswordReset(email: string, ctx: RequestContext): Promise<void> {
+    await this.limits.consume('resetPerIp', ctx.ip ?? 'unknown');
+    await this.limits.consume('resetPerAccount', accountKey(email));
+
+    const user = await this.db.query.users.findFirst({
+      where: and(eq(users.email, email), isNull(users.deletedAt)),
+    });
+    if (!user) {
+      await this.audit.record({
+        ...ctx,
+        action: 'auth.reset.requested',
+        resourceType: 'user',
+        reason: 'no_account',
+      });
+      return;
+    }
+
+    await this.issueToken(user.id, 'PASSWORD_RESET', user.email, ctx);
+  }
+
+  /**
+   * Resets the password and revokes every session the user has.
+   *
+   * The revocation is the point. Someone resetting a password is frequently doing it
+   * because an attacker holds the old one; leaving existing sessions alive would hand
+   * the attacker continued access through a token the new password cannot touch.
+   */
+  async resetPassword(token: string, newPassword: string, ctx: RequestContext): Promise<void> {
+    const row = await this.db.query.userTokens.findFirst({
+      where: and(
+        eq(userTokens.tokenHash, this.userTokens.fingerprint(token)),
+        eq(userTokens.purpose, 'PASSWORD_RESET'),
+      ),
+    });
+
+    if (!row || !this.userTokens.isRedeemable(row)) {
+      await this.audit.record({
+        ...ctx,
+        action: 'auth.reset.failed',
+        resourceType: 'user',
+        reason: row ? 'token_spent_or_expired' : 'token_unknown',
+      });
+      throw invalidCredentials();
+    }
+
+    const passwordHash = await this.passwords.hash(newPassword);
+
+    await this.db.transaction(async (tx) => {
+      await tx.update(userTokens).set({ consumedAt: new Date() }).where(eq(userTokens.id, row.id));
+      await tx.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, row.userId));
+      await tx
+        .update(userSessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(userSessions.userId, row.userId), isNull(userSessions.revokedAt)));
+    });
+
+    await this.audit.record({
+      ...ctx,
+      actorId: row.userId,
+      action: 'auth.reset.completed',
+      resourceType: 'user',
+      resourceId: row.userId,
+      reason: 'all_sessions_revoked',
+    });
+  }
+
+  /** Consumes a verification token and activates the account. */
+  async verifyEmail(token: string, ctx: RequestContext): Promise<void> {
+    const row = await this.db.query.userTokens.findFirst({
+      where: and(
+        eq(userTokens.tokenHash, this.userTokens.fingerprint(token)),
+        eq(userTokens.purpose, 'EMAIL_VERIFICATION'),
+      ),
+    });
+
+    if (!row || !this.userTokens.isRedeemable(row)) {
+      await this.audit.record({
+        ...ctx,
+        action: 'auth.verification.failed',
+        resourceType: 'user',
+        reason: row ? 'token_spent_or_expired' : 'token_unknown',
+      });
+      throw invalidCredentials();
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx.update(userTokens).set({ consumedAt: new Date() }).where(eq(userTokens.id, row.id));
+      await tx
+        .update(users)
+        .set({ emailVerifiedAt: new Date(), status: 'ACTIVE', updatedAt: new Date() })
+        // Only promotes an account still waiting. A SUSPENDED user clicking an old
+        // verification link must not reactivate themselves.
+        .where(and(eq(users.id, row.userId), eq(users.status, 'PENDING_VERIFICATION')));
+    });
+
+    await this.audit.record({
+      ...ctx,
+      actorId: row.userId,
+      action: 'auth.verification.completed',
+      resourceType: 'user',
+      resourceId: row.userId,
+    });
+  }
+
+  // ── Session management ────────────────────────────────────────────────────────
+
+  /** Resolves the caller from their refresh cookie. Until T-006 there is no other identity. */
+  private async currentUserId(refreshToken: string): Promise<string> {
+    const found = await this.db.query.userSessions.findFirst({
+      where: eq(userSessions.refreshTokenHash, this.tokens.fingerprint(refreshToken)),
+    });
+    if (!found || !this.sessions.isUsable(found)) throw invalidCredentials();
+    return found.userId;
+  }
+
+  async listSessions(refreshToken: string, ctx: RequestContext): Promise<SessionSummary[]> {
+    const userId = await this.currentUserId(refreshToken);
+    const current = this.tokens.fingerprint(refreshToken);
+
+    const rows = await this.db
+      .select()
+      .from(userSessions)
+      .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)));
+
+    await this.audit.record({
+      ...ctx,
+      actorId: userId,
+      action: 'auth.sessions.listed',
+      resourceType: 'user',
+      resourceId: userId,
+    });
+
+    // No hashes leave this method: knowing another session's hash would be knowing a
+    // credential.
+    return rows
+      .filter((r) => this.sessions.isUsable(r))
+      .map((r) => ({
+        id: r.id,
+        ipAddress: r.ipAddress,
+        userAgent: r.userAgent,
+        createdAt: r.createdAt,
+        lastUsedAt: r.lastUsedAt,
+        expiresAt: r.expiresAt,
+        current: r.refreshTokenHash === current,
+      }));
+  }
+
+  /** Revokes one of the caller's own sessions. Ownership is checked, not assumed. */
+  async revokeSession(refreshToken: string, sessionId: string, ctx: RequestContext): Promise<void> {
+    const userId = await this.currentUserId(refreshToken);
+
+    const [revoked] = await this.db
+      .update(userSessions)
+      .set({ revokedAt: new Date() })
+      // userId in the predicate is the authorization check: a session id belonging to
+      // someone else matches nothing rather than revoking their session.
+      .where(
+        and(
+          eq(userSessions.id, sessionId),
+          eq(userSessions.userId, userId),
+          isNull(userSessions.revokedAt),
+        ),
+      )
+      .returning();
+
+    if (!revoked) {
+      await this.audit.record({
+        ...ctx,
+        actorId: userId,
+        action: 'auth.sessions.revoke_failed',
+        resourceType: 'session',
+        resourceId: sessionId,
+        reason: 'not_found_or_not_owned',
+      });
+      throw invalidCredentials();
+    }
+
+    await this.audit.record({
+      ...ctx,
+      actorId: userId,
+      action: 'auth.sessions.revoked',
+      resourceType: 'session',
+      resourceId: revoked.id,
+    });
   }
 }

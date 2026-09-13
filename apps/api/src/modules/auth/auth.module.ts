@@ -9,6 +9,7 @@ import {
 } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { UserTokenService } from './user-token.service';
 
 @Module({
   controllers: [AuthController],
@@ -17,6 +18,7 @@ import { TokenService } from './token.service';
     PasswordService,
     TokenService,
     SessionService,
+    UserTokenService,
     RateLimitService,
     // In-memory for now. A per-instance counter is not a limit across replicas —
     // swapped for a Redis-backed store when Redis is wired (plan.md §19).

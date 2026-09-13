@@ -11,6 +11,7 @@ import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { UserTokenService } from './user-token.service';
 
 const URL =
   process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
@@ -29,7 +30,9 @@ describe('auth end to end', () => {
   const newCtx = () => ({
     ip: `198.51.100.${++ipCounter}`,
     userAgent: 'vitest',
-    correlationId: 'test-correlation',
+    // Unique per context: spec files run in parallel against one database, so any
+    // assertion over the audit log has to be scoped to the rows this case produced.
+    correlationId: randomUUID(),
   });
 
   beforeAll(() => {
@@ -44,6 +47,10 @@ describe('auth end to end', () => {
       // Fresh store per suite so limits from one test do not exhaust another.
       new RateLimitService(new MemoryRateLimitStore()),
       new AuditService(db),
+      new UserTokenService(tokens),
+      // Registration now mails a verification link; these cases assert on auth, not on
+      // delivery. recovery.integration.spec.ts captures the mail and follows the link.
+      { send: async () => undefined },
     );
   });
 
@@ -225,10 +232,13 @@ describe('auth end to end', () => {
 
   it('ignores a logout for a token that matches no session', async () => {
     const ctx = newCtx();
-    const before = (await db.select().from(auditLogs)).length;
     // Must not throw: a stale cookie on logout is routine, not an error.
     await expect(auth.revoke('a-token-that-was-never-issued', ctx)).resolves.toBeUndefined();
-    expect((await db.select().from(auditLogs)).length).toBe(before);
+    const mine = await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.correlationId, ctx.correlationId));
+    expect(mine).toHaveLength(0);
   });
 
   it('is usable when the request carries no ip or user agent', async () => {
