@@ -18,14 +18,19 @@ communicate and exchange deliverables.
 
 ### Scope of services
 
-The platform supports investigation based on **publicly available information**, and on
-**information the requesting party is legally authorised to provide and use** for their matter.
+The platform supports **lawful investigation**. That includes records research, open-source
+work, background and financial investigation, and — where lawful in the jurisdiction concerned
+and where the investigator holds the required licence — surveillance and observation.
 
-**Surveillance is not a service offered through this platform.** This includes observation of a
-person, following or tracking their movements, and monitoring their communications, devices or
-accounts — irrespective of whether such activity might be lawful in a given jurisdiction.
+What determines whether a request is accepted is the **lawful basis for making it**, not the
+technique. Every mission states its purpose and the requester's relationship to the subject, and
+is reviewed against that before publication.
 
-This scope binds customers in what they may request and investigators in what they may do.
+Certain activities remain prohibited regardless of any basis asserted — see section 5.
+
+[**Counsel: surveillance availability is jurisdiction-dependent. The platform must not offer it
+where it is unlawful, and the gating mechanism is a product control that needs legal input on
+which jurisdictions qualify.**]
 
 Investigators are independent professionals. They are not employees, agents, partners or
 representatives of the platform. The platform does not perform investigations, does not
@@ -53,11 +58,13 @@ attaches.**]
 
 A customer must:
 
-- Request only work within the platform's scope: based on publicly available information, or
-  on information the customer is legally authorised to provide and use for their matter
-- Not request surveillance, observation, tracking, or access to private accounts, devices,
-  communications or restricted records
 - Request only work that is lawful where it will be carried out
+- State a genuine lawful basis for the request, and their relationship to any individual it
+  concerns
+- Not request access to private accounts, devices, communications or restricted records, the
+  placing of tracking devices, the interception of communications, or open-ended monitoring
+- Not use the platform where the purpose is control, harassment or intimidation rather than
+  information
 - Confirm, before submitting a mission, that their purpose is lawful
 - Describe the work accurately and completely, including anything affecting lawfulness
 - Hold any legal basis they assert, and provide it on request
@@ -133,12 +140,14 @@ An investigator must:
 
 - Hold and maintain every licence, registration and permission required where they work
 - Work only within their licensed and declared scope
-- **Use only publicly available information, or information they are legally authorised to
-  access and use** for the assignment
-- **Not conduct surveillance, observation or tracking of any person**, and not access private
-  accounts, devices, communications or restricted records without a lawful basis — irrespective
-  of whether such activity would be lawful in the jurisdiction concerned
+- Hold the licence required for the work in the jurisdiction where it is carried out,
+  **including any licence specific to surveillance** where one applies
+- Work only within the scope and duration stated in the accepted quote; not extend observation
+  beyond it
+- Not place tracking devices, intercept communications, or access private accounts, devices or
+  restricted records
 - Not obtain information through impersonation, pretext or deception
+- Decline and report a mission where the apparent purpose is control, harassment or intimidation
 - Record the source and method by which each item of evidence was obtained
 - Comply with all applicable law, including recording, data protection and trespass law
 - Decline and report missions that would require unlawful activity
@@ -154,11 +163,7 @@ An investigator must:
 
 An investigator is solely responsible for the lawfulness of their methods. Neither a
 customer's instruction nor the platform's acceptance of a mission constitutes authorisation
-to act unlawfully, or to act outside the platform's scope.
-
-Work carried out for a platform assignment must stay within scope even where the investigator
-is separately licensed to perform it. An investigator who conducts surveillance for a mission
-sourced here breaches these terms whether or not the activity was lawful.
+to act unlawfully, or to exceed the scope of the accepted quote.
 
 ## 5. Prohibited activities
 
@@ -166,12 +171,12 @@ Neither party may use the platform to request, offer, facilitate or carry out:
 
 - Unauthorised access to accounts, devices, systems, networks or communications
 - Installation or use of spyware, stalkerware or covert monitoring software
-- Surveillance or observation of any person
-- Location tracking of a person, with or without a lawful basis
+- Placing tracking devices on a person, their vehicle or their belongings
+- Intercepting communications
+- Open-ended or ongoing monitoring of a person
 - Obtaining information through impersonation, pretext or deception
-- Surveillance, monitoring or testing of a spouse, partner or former partner on suspicion
-  alone, however described — including fidelity checks and loyalty tests. Work arising from
-  actual legal proceedings, where the customer has standing, is not covered by this exclusion
+- Any work whose purpose is control, harassment or intimidation rather than information
+
 - Recording of persons or communications where unlawful
 - Unlawful entry onto property
 - Harassment, intimidation or stalking

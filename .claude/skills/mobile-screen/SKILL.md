@@ -5,6 +5,10 @@ description: The screen scaffold for the Expo companion app — Expo Router rout
 
 # Mobile screen
 
+> **DEFERRED (ADR-0009).** The mobile companion is not being built. Surveillance is in scope,
+> which conflicts with Google Play's Stalkerware and Monitoring policy. This file is retained
+> for if scope narrows again — do not start mobile work without checking ADR-0009 first.
+
 **Scope check first.** Mobile is a companion (ADR-0004) — capture, notifications, messaging,
 quick updates, location-aware actions. If the screen you are about to build is a workspace
 surface (evidence review, report authoring, a dashboard, a timeline, a graph), stop: it

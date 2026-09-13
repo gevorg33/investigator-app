@@ -5,6 +5,10 @@ description: Apple App Store and Google Play review requirements for the compani
 
 # Mobile store compliance
 
+> **DEFERRED (ADR-0009).** The mobile companion is not being built. Surveillance is in scope,
+> which conflicts with Google Play's Stalkerware and Monitoring policy. This file is retained
+> for if scope narrows again — do not start mobile work without checking ADR-0009 first.
+
 Compliance is part of implementing a feature, not a stage before submission. A permission
 added without a justification, or a sign-out buried two levels deep, becomes a rejection weeks
 later and another review cycle.

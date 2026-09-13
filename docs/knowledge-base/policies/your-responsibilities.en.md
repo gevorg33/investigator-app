@@ -48,16 +48,16 @@ instruction nor the fact that a mission was published is authorisation to act un
 
 ## What kind of work can I ask for?
 
-Investigation based on publicly available information, or on information you are legally
-authorised to provide and use for your matter. That is the platform's whole scope.
+Lawful investigation — records research, background and financial work, open-source
+investigation, and, where it is lawful and the investigator is licensed for it, surveillance.
 
-**Surveillance is not offered here** — no observation, following or tracking of a person, and
-no access to private accounts, devices or communications. That applies regardless of whether it
-might be lawful where you are.
+What decides whether we accept a mission is **your lawful basis for asking**, not the technique.
+You will be asked your purpose and your relationship to anyone the mission concerns, and a
+moderator reviews that before any investigator sees it.
 
-Investigators are bound by the same limit. An investigator working on a mission from this
-platform may use only public information, or information they are legally authorised to access
-and use.
+Some things are never permitted whatever your reason: tracking devices, getting into accounts
+or phones, intercepting messages, open-ended monitoring, and anything whose purpose is control
+or intimidation rather than information.
 
 ## What can I include in a mission?
 

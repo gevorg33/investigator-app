@@ -4,9 +4,10 @@ Feeds **T-053**. Per ADR-0007 this single tree is used by both sides: a mission 
 node it falls under, an investigator declares the nodes they practise in, and matching is an
 exact join that walks descendants.
 
-**Revised for the narrowed scope** — public and authorised information only, no surveillance.
-All 35 nodes are retained; what changed is what each one *means*. One rename:
-`claim-surveillance` → `claim-verification`.
+**Scope restored (ADR-0009).** Surveillance is in scope where lawful and where the investigator
+is licensed for it. Bands grade by **method intrusiveness and subject sensitivity** again.
+`claim-verification` is retained as a records-only node, and `claim-surveillance` returns
+alongside it — they are genuinely different services and both are real.
 
 **This is a draft for review by someone with private-investigation domain and licensing
 knowledge.** The structure and the risk banding are the parts I am confident about. Which
@@ -21,14 +22,12 @@ jobs: it makes matching work, and it shapes what people ask for.
 Each level-2 node carries a **risk band** that drives moderation queue ordering (T-051) and the
 structured questions asked at mission creation (`plan.md` §10).
 
-Because method is now fixed — public or authorised information only — the bands grade by
-**who the subject is and how sensitive the data is**, not by how intrusive the technique is.
-
 | Band | Meaning |
 |---|---|
-| `standard` | Subject is a company, or a public figure acting in a public capacity |
-| `elevated` | Subject is an identifiable private individual, or the data is sensitive |
-| `high` | Subject is a private individual **and the customer must demonstrate standing** — a legal interest, proceedings, or an authorising relationship |
+| `standard` | Records work; subject is a company or a public figure in a public capacity |
+| `elevated` | Records work on an identifiable private individual, or sensitive data |
+| `high` | Locating a private individual, or any observation. **Lawful basis stated and reviewed every time** |
+| `restricted` | **Surveillance of a private individual in a personal matter.** Jurisdiction-gated, surveillance licence required, moderated every time without exception |
 
 ## Two sources, one scope
 
@@ -79,16 +78,13 @@ requires the customer to demonstrate.
 | `claim-investigation` — validity and circumstances from records and declarations | `elevated` |
 | `claim-fraud` — records, filings and pattern analysis across claims | `elevated` |
 | `claim-verification` — corroborating a claim against public and authorised records | `elevated` |
+| `claim-surveillance` — observation in support of a claim | `high` |
 | `incident-reconstruction` — accident and incident analysis | `standard` |
 
-**`claim-surveillance` was renamed `claim-verification`, and it is a different service.**
-Observation of claimants is out of scope. What remains is corroborating a claim against public
-records and against material the insurer is authorised to hold — a real and substantial
-service, but not the field surveillance the old name promised.
-
-The rename is deliberate. A node called `claim-surveillance` that delivers records work
-misleads customers, attracts investigators who are not a fit, and reads badly to an app store
-reviewer regardless of its description.
+`claim-verification` and `claim-surveillance` are both retained, deliberately. They are
+different services with different costs, different licensing and different investigators —
+collapsing them under one name is what created confusion the first time. A customer who needs
+records corroboration should not be quoted for field observation.
 
 ## 4. `screening` — Background and screening
 
@@ -147,14 +143,23 @@ a mission description.
 | `missing-person` — records-based tracing | `high` |
 | `family-law` — records and authorised documents for active proceedings | `high` |
 | `reunification` — records tracing with consent pathways | `high` |
+| `relationship` — partner and relationship investigation, including loyalty checks | `restricted` |
 
-All `high`, all requiring stated standing and a relationship to the subject, all routed to a
-moderator every time regardless of queue configuration.
+All require stated standing and a relationship to the subject, and all route to a moderator
+every time regardless of queue configuration.
 
-Under the narrowed scope this branch is **records-based tracing only**. That is a genuine
-service and a much weaker one than customers expect: most real missing-person work involves
-going and looking. The customer-facing copy must set that expectation before a mission is
-submitted, not after a report disappoints.
+**`relationship` is `restricted`** — the only node in that band, and deliberately so. Per
+ADR-0009 it carries controls the other nodes do not:
+
+- **Jurisdiction-gated.** Offered only where lawful; not available to every user
+- **Standing and purpose declared**, and read by a moderator before publication
+- **Surveillance licence required** in the jurisdiction of the work
+- **Defined scope and duration.** Open-ended monitoring is not a purchasable product
+- Refused where the apparent purpose is control, harassment or intimidation, or where a
+  protective order concerns the subject
+
+The abuse concern does not disappear because the category is offered. Those controls are what
+make offering it defensible, and weakening any of them reopens ADR-0009.
 
 ## 8. `security` — Security and protective
 

@@ -21,29 +21,27 @@ tags: [policy, lawful-use, prohibited, safety]
 
 ## What kind of investigation does this platform support?
 
-Investigation based on **publicly available information**, and on **information you are legally
-authorised to provide and use** for your matter.
+Lawful investigation. That includes records research, open-source work, background and
+financial investigation, and — where it is lawful and the investigator is licensed for it —
+surveillance and observation.
 
-That is the whole scope, and it applies to both sides. Customers may request work only on that
-basis. Investigators may use only public information, or information they are legally
-authorised to access and use.
-
-**Surveillance is not a service on this platform.** Not observation of a person, not tracking
-their movements, not monitoring their communications, devices or accounts — regardless of
-whether it might be lawful somewhere. This platform does not offer it.
+What decides whether a request is accepted is **your lawful basis for making it**, not the
+technique involved. A mission is reviewed against that basis before any investigator sees it.
 
 ## Why is the scope defined this way?
 
-Because the alternative is unanswerable. Whether a particular act of surveillance is lawful
-depends on the country, the subject, the method, the purpose and what standing the person
-asking has. None of that can be reliably established from a mission description.
+Because the same technique can be entirely legitimate or entirely unlawful depending on who is
+asking, about whom, where, and why. Surveillance in support of an insurance claim and
+surveillance of an ex-partner are the same activity with different bases — and only one of them
+is supportable.
 
-"Is this public or authorised information?" can be answered — by you before you submit, by an
-investigator before they quote, and by a moderator reviewing it.
+So we ask about the basis. Every mission states its purpose and the requester's relationship to
+the subject, and a moderator reviews that before publication.
 
-## What counts as publicly available?
+## What counts as publicly available information?
 
-Information anyone can lawfully access without special authorisation: public registers,
+Much of the work here is records-based. Publicly available means information anyone can
+lawfully access without special authorisation: public registers,
 corporate filings, court records where public, land and property records, published news and
 publications, professional listings, and openly published online content.
 
@@ -70,10 +68,13 @@ Anything unlawful. In particular, the platform does not support:
 - Entering property unlawfully
 - Harassment, intimidation, or stalking
 - Obtaining private records — financial, medical, telecommunications — without lawful authority
-- Surveillance or observation of any person
 - Accessing private accounts, devices, communications, or restricted records without a lawful
   basis
+- Placing tracking devices on a person, their vehicle or their belongings
+- Intercepting communications
 - Obtaining information through impersonation, pretext or deception
+- Open-ended or ongoing monitoring of a person
+- Work whose purpose is control, harassment or intimidation rather than information
 - Work whose purpose is to enable any of the above
 
 This is not the complete list. A request can be refused because it is unlawful even if it
@@ -92,54 +93,48 @@ with that context or contact support.
 
 ## Can I find out where someone lives?
 
-Only from public records, and only where you have a legitimate reason to look — for example
-serving legal documents, enforcing a judgment, or a matter where you hold a recognised legal
-interest.
+Where you have a legitimate reason — serving legal documents, enforcing a judgment, a matter in
+which you hold a recognised legal interest, or locating a missing relative.
 
-What is not available is finding someone by watching, following or tracking them. The
-distinction is the method: a public register is in scope, observation is not.
-
-You will be asked what your reason is. "I want to know where they are" is not one, and missions
-of that shape are rejected.
+You will be asked what that reason is. "I want to know where they are" is not one on its own,
+and missions of that shape are rejected.
 
 ## Can I have someone followed?
 
-No. Surveillance is outside this platform's scope entirely — following, watching, observing a
-person's movements, or placing them under any form of observation.
+Sometimes. Surveillance is offered where it is lawful in the place it would happen, where you
+have a legitimate basis for it, and where the investigator is licensed for that work.
 
-This is not a question of whether it would be lawful where you are. It is not a service offered
-here, and an investigator who carried it out on a mission from this platform would be in breach
-of their obligations to us.
+It is not offered everywhere, and not for every reason. You will be asked what your basis is
+and what your relationship to the subject is, and a moderator reviews both. Missions without a
+stated basis are rejected.
+
+Whatever the basis, the prohibitions below do not move: no tracking devices, no access to
+accounts, devices or communications, no interception, and nothing unlawful where it happens.
 
 ## Can I have my partner or spouse investigated?
 
-Not on suspicion alone. "I want to know whether my partner is faithful" is not a lawful basis,
-and missions of that shape are rejected — including when they are described as a loyalty test,
-a fidelity check, or asking someone to approach your partner to see how they respond.
+In some circumstances, yes. Partner and relationship investigation is available where it is
+lawful in your jurisdiction, and it is reviewed individually every time.
 
-This is not a judgement about you or your relationship. Two things drive it:
+You will be asked your relationship to the subject, your reason, and what outcome you are
+seeking. A moderator reads that before the mission is published, and it can be refused.
 
-Your partner is a private individual who has not consented and who has rights over information
-about them. Those rights do not depend on their relationship with you.
+Three limits apply and are not negotiable. A mission has a **defined scope and duration** —
+open-ended monitoring is not something you can buy here. **Nothing unlawful** is permitted
+regardless of your basis: no tracking devices, no getting into accounts or phones, no
+intercepting messages. And the platform will refuse a request where the purpose appears to be
+control, harassment or intimidation rather than information.
 
-And a mission description cannot distinguish a person with a genuine concern from a person
-monitoring someone they are already controlling. Both read the same. Partner surveillance is a
-well-documented precursor to domestic abuse, so we do not offer it as a service and cannot make
-that judgement mission by mission.
+If you are subject to a protective order or similar restriction concerning the person, this is
+not available to you.
 
 ## What if I am going through a separation or a court case?
 
-Where there are legal proceedings — divorce, custody, financial disclosure, enforcement of an
-order — you have standing, and an investigator can support you within the platform's scope.
+That is a strong basis, and the work available to you is correspondingly wider. Divorce,
+custody, financial disclosure and enforcement all give you standing.
 
-That means public records and information you are authorised to provide: corporate filings,
-property and land records, court records where public, and documents you are lawfully entitled
-to share. It does not extend to surveillance, which is out of scope regardless of the
-proceedings.
-
-Submit it under family law support, state the proceedings and your role in them, and it will be
-reviewed on that footing. The distinction is between *"I suspect something"* and *"there is a
-legal process and I need records for it."*
+Submit it under family law support and state the proceedings and your role in them. It will be
+reviewed on that footing.
 
 ## Can I ask for someone's phone records, bank records or medical records?
 

@@ -7,6 +7,10 @@ model: opus
 
 # Mobile companion
 
+> **DEFERRED (ADR-0009).** The mobile companion is not being built. Surveillance is in scope,
+> which conflicts with Google Play's Stalkerware and Monitoring policy. This file is retained
+> for if scope narrows again — do not start mobile work without checking ADR-0009 first.
+
 **Mobile is a companion, not the product** (ADR-0004). The full customer, investigator and
 admin workspaces are on the web. This app carries only what a phone is genuinely better at:
 

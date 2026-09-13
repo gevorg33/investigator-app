@@ -22,7 +22,8 @@ Procedure: `.claude/skills/task-workflow/SKILL.md`. Spec: `plan.md`.
 **Description**
 Create the monorepo skeleton from plan.md §4: `apps/{api,app-web,admin-web,marketing-web,mobile}`
 (`app-web` = customer + investigator workspace; `admin-web` is a **separate app on a separate
-origin** per ADR-0004; `mobile` is a companion, scaffolded but not built out)
+origin** per ADR-0004; `mobile` is **deferred** per ADR-0009 — scaffold the workspace entry so
+the monorepo layout is stable, but build nothing)
 and `packages/{ui,types,validation,api-client,auth,i18n,config}`. Shared TypeScript config,
 ESLint, Prettier, and root scripts.
 
@@ -1240,13 +1241,17 @@ pnpm test:coverage
 ---
 
 ### T-043 — Mobile compliance CI checks
-- **Status:** TODO
+- **Status:** BLOCKED — mobile deferred (ADR-0009). Do not pick up.
 - **Priority:** P1
 - **Depends on:** T-028
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** infra-devops
 - **Affected:** .github/workflows/**, scripts/
+
+> **Deferred (ADR-0009).** Surveillance is in scope, which conflicts with Google Play's
+> Stalkerware and Monitoring policy. The mobile companion is not being built for now. This task
+> and its artifacts are retained for if scope narrows again.
 
 **Description**
 Automate the release blockers that are cheap to check and expensive to discover at review.
@@ -1272,13 +1277,15 @@ pnpm --filter mobile compliance:check
 ---
 
 ### T-044 — Mobile store submission readiness
-- **Status:** BLOCKED — depends on counsel-approved legal documents (T-020)
+- **Status:** BLOCKED — mobile deferred (ADR-0009). Do not pick up.
 - **Priority:** P1
 - **Depends on:** T-020, T-022, T-043
 - **Risk:** HIGH
 - **Human approval required:** Yes — store submission is outward-facing
 - **Owner agent:** mobile
 - **Affected:** apps/mobile/**, docs/mobile/**
+
+> **Deferred (ADR-0009).** See T-043.
 
 **Description**
 Complete the account, permission and metadata work required for a first submission, then run
@@ -1544,9 +1551,9 @@ pnpm --filter api test mission-moderation && pnpm --filter admin-web test
 - **Affected:** apps/api/src/modules/{users,search,messaging}/**, apps/mobile/**, apps/app-web/**
 
 **Description**
-Google Play's User Generated Content policy requires both in-app **reporting** and the ability
-to **block another user**. Reporting exists in the policy layer; blocking does not exist at
-all. This is a store release blocker (`docs/mobile/release-checklist.md` §7).
+Originally driven by Google Play's User Generated Content policy. **Mobile is deferred
+(ADR-0009), but this stays** — a marketplace where two parties can refuse further contact needs
+it on product merit, and the surveillance scope makes unwanted contact more likely, not less.
 
 **Blocking here is not blocking on a social app.** Two users may be mid-assignment with money
 held, evidence exchanged and work owed. Severing that would make "block" a way to abandon an

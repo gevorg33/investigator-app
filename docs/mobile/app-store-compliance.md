@@ -1,5 +1,9 @@
 # App Store and Play compliance — position and decisions
 
+> **DEFERRED (ADR-0009).** Surveillance is now in scope, which conflicts with Play's
+> Stalkerware and Monitoring policy. The position recorded below was written for a
+> records-only platform and **is no longer accurate**. Retained for if scope narrows again.
+
 Working rules: `.claude/skills/mobile-store-compliance/SKILL.md`.
 Official policy is the source of truth; this file records **our decisions**, which is what
 official policy cannot tell us.
