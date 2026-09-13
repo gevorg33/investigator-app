@@ -74,8 +74,12 @@ jobs:
       - name: Migrate from empty
         run: pnpm --filter api migration:run
 
+      # `--if-present` because fixtures are T-042's to build and no package defines the
+      # script yet; this step referenced it before it existed and failed the first run CI
+      # ever did. T-042 must assert the step stops being a no-op -- a green step that runs
+      # nothing is how the coverage gate went unnoticed for four tasks (T-063).
       - name: Load fixtures
-        run: pnpm --filter api fixtures:load
+        run: pnpm -r --if-present fixtures:load
 
       - name: Lint
         run: pnpm lint
