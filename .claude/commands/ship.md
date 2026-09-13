@@ -26,17 +26,24 @@ what exactly is being approved. Do not proceed past this on your own judgement.
 
 **6. Audit** — confirm state mutations emit an audit event in the same transaction.
 
-**7. Documentation** — load `documentation-first`. This gate blocks the ship:
+**7. Browser verification** — blocking. Run the app and look at it.
+- User-facing surface: real flows plus the edge cases — empty, loading, error,
+  permission-denied. Three viewports and a reduced-motion pass (`visual-qa`)
+- No browser surface: **say so, and say how it was verified instead** — booting the service,
+  probing endpoints, applying the migration to a clean database
+- Anything found here is fixed and re-verified, never noted and shipped
+
+**8. Documentation** — load `documentation-first`. This gate blocks the ship:
 - Functionality documented, in this task
 - FAQ / knowledge-base content updated where customer-visible behaviour changed
 - Content is RAG-ingestible: frontmatter present, `visibility` correct, chunks self-contained
 - Investigator / location / service / availability facts are **structured data**, not prose
 - Outdated or conflicting entries superseded, not silently overwritten
 
-**8. Update** — only if 1–7 pass: set `Status: DONE`, add the one-line note, tick the
+**9. Update** — only if 1–8 pass: set `Status: DONE`, add the one-line note, tick the
 verified criteria.
 
-**9. Report** — files changed, validation status, documentation updated, what you did not do, out-of-scope
+**10. Report** — files changed, validation status, how it was verified, documentation updated, what you did not do, out-of-scope
 findings as proposed tasks, and any assumption a human should confirm.
 
 Do not commit or push unless the user asks.

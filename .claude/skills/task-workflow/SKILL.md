@@ -55,7 +55,26 @@ Report **actual output**. If something fails:
 Never weaken a test, loosen a type, or add a skip to make validation pass. That converts
 a visible failure into an invisible one.
 
-## 5. Document
+## 5. Verify in the browser
+
+Tests passing is not the same as working. Run the app and look at it.
+
+**Every task answers this question — none skips it.** Either:
+
+- **It has a user-facing surface** → open it in the browser and verify the real flows,
+  including the edge cases: empty, loading, error, permission-denied, and the paths a user
+  would actually take. Use the Playwright MCP (`visual-qa`) — three viewports, reduced motion,
+  accessibility snapshot.
+- **It has no browser surface** — a migration, a queue, an API primitive → **say so explicitly
+  in the handoff, and say how it was verified instead.** T-002 had no UI, so it was verified by
+  booting the service and probing the endpoints. That is the equivalent, not an exemption.
+
+An unanswered question here is a task that is not finished.
+
+**If verification finds a problem:** fix it, rerun the tests, and verify again. Do not mark a
+task done with a known issue and a follow-up note — that is how the follow-up never happens.
+
+## 6. Document
 
 Before the task can be marked done, load `documentation-first` and answer its checklist:
 
@@ -69,24 +88,26 @@ Before the task can be marked done, load `documentation-first` and answer its ch
 Documentation lands in **this** task, not a follow-up. "Docs to come" means the task is
 not finished.
 
-## 6. Update
+## 7. Update
 
-Only after validation and documentation pass:
+Only after validation, browser verification and documentation all pass:
 
 - `Status: DONE`
 - Add a one-line note: what changed and where.
 - Tick the acceptance criteria you actually verified. Leave unticked anything you did not.
 
-## 7. Hand off
+## 8. Hand off
 
 Report, in this order:
 
 1. Task ID and files changed
 2. Validation commands run and their real status
-3. Documentation updated, and whether it is RAG-ingestible
-4. What you did not do, and why
-5. Out-of-scope findings, as proposed tasks
-6. Assumptions a human should confirm
+3. **How it was verified** — browser flows and viewports checked, or why there is no browser
+   surface and what was done instead
+4. Documentation updated, and whether it is RAG-ingestible
+5. What you did not do, and why
+6. Out-of-scope findings, as proposed tasks
+7. Assumptions a human should confirm
 
 ## Anti-patterns
 
@@ -97,5 +118,7 @@ Report, in this order:
 | Start a second task "while I'm here" | Finish, hand off, then select again |
 | Report success with a failing test | Report the failure with its output |
 | Leave docs for a follow-up task | Update them in this task |
+| Mark done because tests pass | Run it and look at it first |
+| Note a known issue and ship anyway | Fix it, rerun, re-verify |
 | Write investigator data into a markdown file | Put it in PostgreSQL |
 | Delete a failing test | Fix the code, or escalate |

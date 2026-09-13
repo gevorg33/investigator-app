@@ -157,6 +157,8 @@ detection, session listing and revocation, rate limiting and brute-force protect
 - [ ] Email enumeration not possible via response body, status, or timing
 - [ ] Every auth event is audited
 - [ ] A revoked session is rejected immediately, not at next expiry
+- [ ] Built so a second auth method can attach to the same account — Google OAuth is T-062,
+      and retrofitting identity linking afterwards is materially harder
 
 **Validation**
 ```bash
@@ -1923,6 +1925,58 @@ integration, not the same component mounted twice.
 **Validation**
 ```bash
 pnpm --filter admin-web test assistant
+```
+
+---
+
+### T-062 — Google OAuth sign-in
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-005, T-021
+- **Risk:** HIGH
+- **Human approval required:** Yes — authentication
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/auth/**, apps/app-web/**, packages/auth/**
+
+**Description**
+Sign in with Google, alongside email/password. Authorization Code flow with PKCE, server-side
+token exchange. The web app is the only surface — mobile is deferred (ADR-0009).
+
+**Acceptance criteria**
+
+Flow
+- [ ] Authorization Code + PKCE; **the code exchange happens server-side** and the client
+      never sees the client secret
+- [ ] `state` is validated to prevent CSRF on the callback; single-use and short-lived
+- [ ] `nonce` validated in the ID token
+- [ ] ID token signature, issuer, audience and expiry all verified against Google's JWKS —
+      never trusted on presentation
+- [ ] Redirect URIs allowlisted exactly; no wildcard, no open redirect on the callback
+
+Account linking — where the real vulnerability is
+- [ ] **Google's `email_verified` claim is required before linking to an existing account.**
+      Linking on an unverified email lets anyone who controls a Google account with that
+      address take over the local one
+- [ ] A test proves an unverified-email OAuth identity **cannot** link to an existing account
+- [ ] One account may hold several identities; `auth_identities` is (provider, subject) unique
+- [ ] Unlinking is blocked if it would leave the account with no way to sign in
+- [ ] Linking and unlinking are audited
+
+Session and data
+- [ ] Issues the platform's own session — host-only cookie, `SameSite=Strict` (ADR-0002).
+      The Google token is not the session
+- [ ] Google tokens are never logged and never returned to the client (`audit-logging`)
+- [ ] Only profile and email scopes; nothing beyond what registration needs
+- [ ] Terms acceptance still required at first sign-in — OAuth does not bypass `legal-consent`
+- [ ] Account deletion revokes the linked identity
+
+Verification
+- [ ] Browser-verified end to end: new account, existing-account link, denial at the consent
+      screen, and callback with a tampered `state`
+
+**Validation**
+```bash
+pnpm --filter api test auth-oauth
 ```
 
 ---

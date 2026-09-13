@@ -431,7 +431,7 @@ Use RBAC plus resource-level authorization. Role checks alone are insufficient.
 ### Authentication
 
 - Email/password or passwordless authentication
-- Optional social login later
+- Google OAuth (Sign in with Google) alongside email/password — see T-062
 - Email verification
 - Password reset
 - Refresh-token rotation

@@ -59,7 +59,11 @@ authorization. It calls registered tools; the backend does the rest.
     `clarity > performance > usability > visual effect`; marketing may be expressive but never
     at the cost of Core Web Vitals, accessibility or mobile performance. Nothing ships because
     it looks impressive. See `interaction-design` and `design-system`.
-12. **Nothing ships untested, and nothing ships unverified.** Every feature, fix, endpoint,
+12. **Nothing ships untested, and nothing ships unverified.** Tests passing is not the same
+    as working — run it and look at it before marking anything done. Every task answers the
+    verification question: either the browser flows and edge cases were checked, or there is
+    no browser surface and the handoff says how it was verified instead. A problem found in
+    verification is fixed and re-verified, never noted and shipped. Every feature, fix, endpoint,
     service, database operation, AI workflow and business rule carries automated tests.
     **100% coverage is a blocking CI gate**, per package — but coverage is the floor, not the
     bar: a test that touches a line without asserting on its effect fails review regardless of
