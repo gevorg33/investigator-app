@@ -1727,6 +1727,188 @@ pnpm --filter api test mission-tags
 
 ---
 
+### T-056 — Assistant shell and conversation UI
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-017, T-045, T-039
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**, packages/ui/**
+
+**Description**
+The conversation interface. Six backend tasks build a full assistant engine with no way to
+reach it; this is the surface.
+
+**Acceptance criteria**
+- [ ] Docked panel on desktop; **full-screen sheet on mobile** (`responsive-design`)
+- [ ] **Responses render progressively as they stream — never a spinner.** Progressive rendering
+      is information; a spinner is an apology (`animation`)
+- [ ] Message roles visually distinct: user, assistant, tool/command events as structured
+      blocks rather than prose (`ai-session-context`)
+- [ ] Stop generation; retry a failed turn without losing the conversation
+- [ ] Composer: multiline, keyboard submit, attachment entry point
+- [ ] **Minimal chrome.** A conversation is already the simplest interface — wrapping it in
+      controls makes it worse (`interaction-design`)
+- [ ] Empty state teaches what the assistant can do for that role, not "No messages"
+- [ ] Keyboard operable end to end; new content announced to screen readers
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant
+```
+
+---
+
+### T-057 — Session management UI
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-045, T-056
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Acceptance criteria**
+- [ ] Session list with create, open, rename, archive, delete — and search across sessions
+- [ ] Resume loads summary, structured state and recent messages; **not the whole history**
+      (`ai-session-context`)
+- [ ] Older messages load on demand or through search, never all at once
+- [ ] Generated titles are editable and **never expose evidence content** (`plan.md` §50)
+- [ ] Delete warns that session memory goes with it
+- [ ] Mobile: sessions are a sheet, not a squeezed sidebar
+- [ ] A test proves another user's session is unreachable from the UI by any route
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-sessions
+```
+
+---
+
+### T-058 — Confirmation and plan UI
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-048, T-056
+- **Risk:** HIGH
+- **Human approval required:** Yes — this is the mutation gate the user actually sees
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+T-048 makes a pending confirmation survive a browser close. **Nothing currently shows it to the
+user when they return**, which makes that persistence invisible and therefore pointless.
+
+Every state-changing assistant action passes through this UI. It is the last thing between a
+model proposal and a real mutation.
+
+**Acceptance criteria**
+- [ ] A write tool renders the **exact proposed action and arguments** — never a paraphrase
+- [ ] Confirm and cancel are equally reachable; confirm is not the default focus
+- [ ] **Opening a session with a pending confirmation surfaces it immediately** — tested by
+      closing the browser mid-flow and returning
+- [ ] Re-validation before execution is visible: if the plan changed or state moved, the user is
+      told **why** they are being asked again, not silently re-prompted
+- [ ] A stale confirmation cannot be submitted — the UI reflects invalidation
+- [ ] Irreversible or money-adjacent actions state the consequence plainly before confirming
+- [ ] The confirmation token never reaches the model; the UI never auto-confirms
+- [ ] Mobile: full-screen, never a sheet a user can dismiss by accident
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-confirmation
+```
+
+---
+
+### T-059 — Structured result and citation rendering
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-018, T-056
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Tool results are structured data, not prose. Rendering them as chat text loses the structure
+and invites the model to editorialise.
+
+**Acceptance criteria**
+- [ ] Investigator results render as cards showing **`matchedOn` and `notMatched` fields only**
+      — never a model-composed rationale (`investigator-discovery`)
+- [ ] Distance, languages, specialties and availability shown from the data, not the prose
+- [ ] RAG answers **cite their sources**, linked and openable
+- [ ] "I don't have that" renders as a clear state, not an apology buried in text
+- [ ] Large results paginate by reference — **10,000 rows never enter the view or the prompt**
+      (`ai-session-context`)
+- [ ] Mission, quote, assignment and payment references link into the app
+- [ ] AI-drafted report or message text is **visibly marked unreviewed** and cannot be sent or
+      exported from the assistant without review (`report-generation`)
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-results
+```
+
+---
+
+### T-060 — Memory management UI
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-047, T-057
+- **Risk:** HIGH
+- **Human approval required:** Yes — persistent memory is a privacy surface
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Acceptance criteria**
+- [ ] User can see everything remembered about them, session and cross-session, separately
+- [ ] Each entry shows **where it came from** — the source message, openable (`ai-session-context`)
+- [ ] Delete individual memories and clear all; deletion is immediate and audited
+- [ ] The user is told what memory is used for, in plain language, without a dark pattern
+- [ ] Memory appears in data export and account deletion (T-022)
+- [ ] A test proves a deleted memory does not reappear in a later context build
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-memory
+```
+
+---
+
+### T-061 — Staff assistant in the admin console
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-056, T-013, T-051
+- **Risk:** HIGH
+- **Human approval required:** Yes — staff scope over customer data
+- **Owner agent:** admin-web
+- **Affected:** apps/admin-web/**
+
+**Description**
+Staff capabilities from `plan.md` §16 — searching missions in scope, summarising applications
+and disputes, finding overdue reports and expiring verifications, drafting support responses,
+explaining policy decisions.
+
+`admin.` is a separate origin with a separate session (ADR-0002), so this is a separate
+integration, not the same component mounted twice.
+
+**Acceptance criteria**
+- [ ] Runs with the **staff member's specific scope** — never blanket `isStaff` (`authorization`)
+- [ ] A test proves staff cannot reach evidence through the assistant without an existing grant
+- [ ] Summaries of disputes and applications **cite the records they drew on**
+- [ ] The assistant never renders a policy decision as made — it explains, staff decide (T-051)
+- [ ] Assistant use in the console is audited like any other staff action (`audit-logging`)
+- [ ] Drafted support responses are marked as drafts and require a human to send
+
+**Validation**
+```bash
+pnpm --filter admin-web test assistant
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.

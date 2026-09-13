@@ -1089,6 +1089,17 @@ Localized Response
 11. Record tool calls and outcomes in the audit log.
 12. Return a localized response with source references where appropriate.
 
+### Surface
+
+**Every capability below is reachable through the web application.** The assistant is not a
+side feature: customer and investigator capabilities live in `app.`, staff capabilities in
+`admin.` (a separate origin with a separate session, ADR-0002), so there are two integrations
+rather than one component mounted twice.
+
+Responses render progressively rather than behind a spinner; tool results render as structured
+data rather than prose; and every state-changing action passes through the confirmation UI,
+which surfaces a pending plan when a user returns to a session. Implementation: T-056 to T-061.
+
 ### AI capabilities
 
 Customer:

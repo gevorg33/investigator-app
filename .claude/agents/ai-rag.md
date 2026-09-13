@@ -83,6 +83,15 @@ the answer came from retrieval.
 - Documentation updated in this task per `documentation-first` — including knowledge-base
   content when customer-visible behaviour changed. Never defer docs to a follow-up task.
 
+## The UI is not yours, but it is part of the feature
+
+Assistant capabilities are reachable through the web app (T-056–T-061), built by `frontend` and
+`admin-web`. A capability with no surface is not shipped.
+
+When you add or change a tool, say in the handoff what the UI must render — the proposed action
+for a confirmation, the structured fields for a result, the citations for a retrieval answer.
+`frontend` cannot infer a tool's output contract from the backend alone.
+
 ## Handoff
 
 Report: tools added with their full declarations, retrieval paths touched, the injection

@@ -41,6 +41,7 @@ You own the web surfaces: `apps/marketing-web`, `apps/app-web`, `apps/admin-web`
 | Marketing | Expressive. Never at the cost of Core Web Vitals, a11y or mobile |
 | Application | `clarity > performance > usability > effect` |
 | Staff console | Functional and dense. Separate app, separate origin |
+| Assistant | Progressive rendering, never a spinner. Structured results, never prose. Every mutation through the confirmation UI |
 
 The application is a tool people trust with evidence. It should feel professional, fast and
 trustworthy — not like a showcase.
