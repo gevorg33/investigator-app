@@ -67,7 +67,10 @@ function extractValidationDetails(body: unknown): unknown {
     const msg = (body as { message: unknown }).message;
     if (Array.isArray(msg)) {
       return msg.map((m) => ({
-        field: String(m).split(' ')[0] ?? '',
+        // The text before the first space is the property name. `replace` rather than
+        // `split(' ')[0] ?? ''`: split always yields at least one element, so that fallback
+        // could never run, and an unreachable branch is untestable by definition.
+        field: String(m).replace(/ [\s\S]*$/, ''),
         code: 'INVALID',
         messageKey: 'error.common.validation_failed',
       }));

@@ -8,6 +8,7 @@ Implemented as shared primitives in `apps/api/src/common/`.
 | Error shape and codes | `errors.md` |
 | Pagination and filtering | `pagination.md` |
 | Idempotency | `idempotency.md` |
+| Health endpoint | `health.md` |
 
 ## Versioning
 

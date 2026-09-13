@@ -30,6 +30,12 @@ export const REDACT_PATHS = [
   '*.signedUrl',
   'cardNumber',
   '*.cardNumber',
+  // Personal data, not a credential — and it was not listed. A logged object carrying an
+  // address wrote it in the clear; found by logging a real payload through the configured
+  // logger rather than checking this list for strings (T-063). The audit log records who
+  // acted by id, so an address never needs to be in a log line.
+  'email',
+  '*.email',
 ];
 
 export function loggerOptions(level: string, pretty: boolean): Params {

@@ -19,7 +19,7 @@ shows. `qa-reviewer` flags those specifically.
 
 | Path | Reason | Added | Approved by |
 |---|---|---|---|
-| _(none yet)_ | | | |
+| `apps/api/vitest.config.mts` → compiler-emitted `typeof X === "undefined" ? Object : X` decorator-metadata guards in `apps/api/src/**` | With `emitDecoratorMetadata`, oxc guards every typed constructor/method parameter against a circular import. The `Object` side runs only if the imported class is undefined at decoration time, so no test can reach it without breaking the module graph it protects — every decorated class with a typed parameter carries one permanently uncovered branch, making 100% branches unreachable by construction. Marked by a test-only transform that matches the exact compiler shape (same identifier both sides) and nothing a person writes; Vitest applies the broader equivalent for SWC. Verified: removes exactly those guards (branch paths 184→180, uncovered 41→39, lines and functions unchanged). Fails safe — if the emitted shape changes, nothing matches and the gate goes red | 2026-09-14 | gevorg33 — ACTIONS-FOR-ME #12, option 1 |
 
 ## Typically appropriate
 

@@ -2065,7 +2065,7 @@ pnpm --filter api test auth-oauth
 ---
 
 ### T-063 — Close the coverage gap the repaired gate exposed
-- **Status:** TODO
+- **Status:** DONE — 2026-09-14
 - **Priority:** P0
 - **Depends on:** —
 - **Risk:** MEDIUM
@@ -2095,25 +2095,55 @@ pre-existing debt from T-002/T-003/T-004 and is this task:
 | `database/schema/*` | 65% | Partial-index and soft-delete helpers |
 | `modules/health` | branch 50% | |
 
-**Blocked on a maintainer decision.** One branch is unreachable by any test: the transpiler's
-`__decorateClass` helper maps onto each `@Injectable()` line, and its `kind ? … : …` ternary
-can only take one path for a class decorator. Confirmed under both the v8 and istanbul
-providers — both instrument post-TS-transform code, so neither can reach it
-(`session.service.ts:33`, `BRDA:33,5,0,0`). A 100% branch threshold is therefore unreachable
-by construction for decorated classes. Resolving it needs either an exclusions-register entry
-or a documented threshold exception — rules 3 and 5 of `docs/operations/coverage-exclusions.md`
-forbid an agent doing either unilaterally. See `ACTIONS-FOR-ME.md`.
+**Decided 2026-09-14 (ACTIONS-FOR-ME #12, option 1).** One class of branch is unreachable by any test: the `typeof X === "undefined" ? Object : X` parameter-type guard that `emitDecoratorMetadata` emits for every typed constructor and method parameter. Its `Object` side runs only on a circular import. (Earlier wording blamed a `__decorateClass` helper ternary — inspecting oxc's output showed that was wrong.) It is excluded by the one registered exclusion, implemented in `apps/api/vitest.config.mts`; every threshold stays at 100%.
 
 **Acceptance criteria**
-- [ ] `pnpm test:coverage` passes at the declared thresholds, or every shortfall has a
+- [x] `pnpm test:coverage` passes at the declared thresholds, or every shortfall has a
       register entry approved by a maintainer
-- [ ] Redaction paths in `logger.options.ts` are tested against a payload containing an
+- [x] Redaction paths in `logger.options.ts` are tested against a payload containing an
       email, a password and a refresh token
-- [ ] `database.module.ts` missing-`DATABASE_URL` branch is tested
-- [ ] The decorator-helper branch is resolved by decision, never by lowering a number silently
-- [ ] `pr.yml` coverage step is proven to fail on a deliberately uncovered line
+- [x] `database.module.ts` missing-`DATABASE_URL` branch is tested
+- [x] The decorator-metadata guard is resolved by decision, never by lowering a number silently
+- [ ] `pr.yml` coverage step is proven to fail on a deliberately uncovered line — the gate was
+      shown failing locally on real gaps throughout this task and on CI for PR #1; a dedicated
+      deliberately-uncovered-line run on CI is still outstanding
 
-**Validation**
+**Result — `apps/api` on the T-005 branch:** 100% statements (368/368), 100% branches
+(176/176), 100% functions (106/106), 100% lines (351/351). 234 tests. Every threshold at 100%;
+one registered exclusion, applied narrowly (below). Up from 83% / 77% / 80% / 83%.
+
+**Three real bugs the gap was hiding** — each with a regression test seen to fail first:
+
+| Bug | Consequence | Found by |
+|---|---|---|
+| **The database pool leaked on shutdown.** `PoolHolder` built a second pool (`max: 1`) and closed *that*; the ten-connection pool drizzle used was never closed | Connections outlive the process on every deploy | Closing the app, then querying through the drizzle client — it still succeeded |
+| **Email addresses were written to logs in the clear.** `REDACT_PATHS` covered credentials but not `email` | Personal data in log storage, outside redaction | Logging a real payload through the configured logger instead of checking the path list for strings |
+| **Malformed geography points parsed as `NaN`.** The pattern admits `1.2.3`, `-`, `.` | A location that silently matches nothing | Four malformed inputs, all returned instead of rejected |
+
+**Two stale behaviours corrected:**
+- The health endpoint hard-coded `database: not_configured` — left from before T-003 — while
+  the app used the database. It now does a real round trip with a 2-second bound; Redis stays
+  `not_configured` because nothing uses it yet. Contract: `docs/api/health.md`.
+- A `split(' ')[0] ?? ''` fallback in the error filter could never run. Replaced with an
+  equivalent expression that has no unreachable branch.
+
+**Structural changes made to test honestly rather than exclude:** process startup moved from
+`main.ts` into `bootstrap.ts` (`configureApp` + `bootstrap`), so the security properties it
+applies — no `X-Powered-By`, strict validation, OpenAPI absent in production — are asserted
+against a real Nest application instead of being bootstrap code nobody checks.
+
+**The exclusion, as applied.** A test-only transform in `apps/api/vitest.config.mts` marks the
+`typeof X === "undefined" ? Object : X` guard `emitDecoratorMetadata` emits — same identifier
+both sides, nothing else. Verified: branch paths 184 → 180, uncovered 41 → 39, lines and
+functions unchanged, only the two affected files changed. Negative controls confirmed it does
+**not** hide an uncovered user ternary, a look-alike guard with different identifiers, or a
+ternary inside a decorator argument — the last of which Vitest's own broader SWC rule would
+hide. SWC was considered and rejected: `unplugin-swc` and `@swc/core` were days old against the
+pinning policy, and switching would have swapped the transformer under 169 passing tests.
+
+**Also documented:** `docs/architecture/logging.md` — what is never written to logs and why.
+
+**Validation** — all green 2026-09-14
 ```bash
 pnpm --filter api test:coverage
 ```
