@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { describe, expect, it } from 'vitest';
-import { EmailField } from './email';
+import { EmailField, IsVisibleEmail } from './email';
 
 class Probe {
   email!: string;
@@ -71,5 +71,19 @@ describe('addresses a person can actually read', () => {
   it('leaves a non-string alone for the type check to reject', () => {
     expect(check(12345).ok).toBe(false);
     expect(check(null).ok).toBe(false);
+  });
+});
+
+describe('IsVisibleEmail on its own', () => {
+  class Bare {
+    email!: string;
+  }
+  IsVisibleEmail()(Bare.prototype, 'email');
+  const errorsFor = (email: unknown) => validateSync(plainToInstance(Bare, { email }));
+
+  it('works without options, falling back to the default message', () => {
+    expect(errorsFor('plain@example.test')).toHaveLength(0);
+    const [error] = errorsFor('in‍visible@example.test');
+    expect(error?.constraints).toHaveProperty('isVisibleEmail');
   });
 });

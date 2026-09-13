@@ -20,8 +20,16 @@ export const geographyPoint = customType<{
   },
   fromDriver(value) {
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(value);
-    if (!m?.[1] || !m[2]) throw new Error('Unparseable geography point');
-    return { lon: Number(m[1]), lat: Number(m[2]) };
+    const lon = Number(m?.[1]);
+    const lat = Number(m?.[2]);
+    // The pattern admits digits, dots and minus signs in any arrangement, so a match is not
+    // a number: `1.2.3` matched and became NaN, a location that silently matches nothing.
+    // Checking the parsed values also covers the no-match case, since Number(undefined) is
+    // NaN — which is why there is no separate branch for it.
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+      throw new Error('Unparseable geography point');
+    }
+    return { lon, lat };
   },
 });
 
