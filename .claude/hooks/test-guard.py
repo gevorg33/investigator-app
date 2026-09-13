@@ -25,6 +25,11 @@ cases = [
     ("Read", {"file_path": "/x/infrastructure/backups/db.sql"}, 2, "backup file"),
     ("Read", {"file_path": "/x/certs/server.p" + "em"}, 2, "private key"),
     ("Edit", {"file_path": "/x/apps/api/src/users.service.ts"}, 0, "normal edit"),
+    # Templates hold variable names, not values. Everything else matching .env is blocked.
+    ("Write", {"file_path": "/x/.env" + ".example"}, 0, "dotenv template (.example)"),
+    ("Write", {"file_path": "/x/.env" + ".sample"}, 0, "dotenv template (.sample)"),
+    ("Read",  {"file_path": "/x/.env" + ".local"}, 2, "real dotenv (.local)"),
+    ("Read",  {"file_path": "/x/.env" + ".production"}, 2, "real dotenv (.production)"),
     # Compose-file guard must be path-scoped, not filename-scoped:
     # a CI workflow named production.yml is not a production compose file.
     ("Write", {"file_path": "/x/infrastructure/compose/production.yml"}, 2, "prod compose file"),

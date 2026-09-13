@@ -8,6 +8,21 @@ description: The TODO.md work loop for this repo — how to select the next elig
 One task at a time. A task is done when its validation passes — not when the code looks
 right.
 
+## 0. Check ACTIONS-FOR-ME.md
+
+Read it at the start and update it at the end of every task.
+
+**Before writing a manual action into it, ask whether you can do it yourself** — through code,
+a config file, a CLI, an API, or a setup script. Creating a config file, generating a secret,
+installing a dependency, writing a migration, adding a variable to the env template: all yours.
+
+Only these belong there: creating an external account, creating an OAuth client, approving a
+consent screen, obtaining credentials, paying for something, or anything needing access to the
+user's personal accounts.
+
+If a task automates something previously listed, mark it **No longer required** rather than
+deleting it — so it is clear it was considered rather than forgotten.
+
 ## 1. Select
 
 Read `TODO.md`. Pick the first task where:
@@ -105,9 +120,10 @@ Report, in this order:
 3. **How it was verified** — browser flows and viewports checked, or why there is no browser
    surface and what was done instead
 4. Documentation updated, and whether it is RAG-ingestible
-5. What you did not do, and why
-6. Out-of-scope findings, as proposed tasks
-7. Assumptions a human should confirm
+5. `ACTIONS-FOR-ME.md` reviewed — new manual actions added, automated ones retired
+6. What you did not do, and why
+7. Out-of-scope findings, as proposed tasks
+8. Assumptions a human should confirm
 
 ## Anti-patterns
 
@@ -119,6 +135,7 @@ Report, in this order:
 | Report success with a failing test | Report the failure with its output |
 | Leave docs for a follow-up task | Update them in this task |
 | Mark done because tests pass | Run it and look at it first |
+| Write a manual step because it is easier | Automate it; the file is for what you genuinely cannot do |
 | Note a known issue and ship anyway | Fix it, rerun, re-verify |
 | Write investigator data into a markdown file | Put it in PostgreSQL |
 | Delete a failing test | Fix the code, or escalate |

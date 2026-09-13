@@ -185,6 +185,7 @@ approval-gated jobs. See `ci-cd`.
 
 ## Pointers
 
+- Manual actions needing the owner: `ACTIONS-FOR-ME.md` — **automate before adding to it**
 - Agent roster and delegation rules: `AGENTS.md`
 - Skills (repeatable procedures): `.claude/skills/`
 - Slash commands: `.claude/commands/`

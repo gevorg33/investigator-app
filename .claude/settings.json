@@ -37,9 +37,7 @@
     ],
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)",
       "Read(./**/.env)",
-      "Read(./**/.env.*)",
       "Read(./**/*.pem)",
       "Read(./**/*.key)",
       "Read(./**/id_rsa*)",
@@ -48,7 +46,15 @@
       "Bash(rm -rf:*)",
       "Bash(docker compose -f infrastructure/compose/production.yml:*)",
       "Bash(pnpm migration:revert:*)",
-      "Bash(pnpm deploy:*)"
+      "Bash(pnpm deploy:*)",
+      "Read(./.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.staging)",
+      "Read(./.env.production)",
+      "Read(./.env.test)",
+      "Read(./**/.env.local)",
+      "Read(./**/.env.production)",
+      "Read(./**/.env.staging)"
     ]
   },
   "env": {

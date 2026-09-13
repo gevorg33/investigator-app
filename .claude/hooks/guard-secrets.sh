@@ -52,7 +52,11 @@ target   = skeleton + " " + path
 
 # --- Secrets, private material, production surfaces -------------------------
 SECRETS = [
-    (r"(?<![\w.])\.env\b",                     "environment files may contain credentials"),
+    # .env.example / .sample / .template are committed templates that hold variable
+    # NAMES and no values — .gitignore excepts them deliberately. Everything else
+    # matching .env is blocked.
+    (r"(?<![\w.])\.env(?!\.(example|sample|template)\b)",
+                                               "environment files may contain credentials"),
     (r"\.(pem|key|p12|pfx|keystore|jks)(?![\w])", "private key material"),
     (r"\bid_rsa\b|\bid_ed25519\b",             "private SSH key"),
     (r"/secrets/",                             "secrets directory"),
