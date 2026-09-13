@@ -17,6 +17,15 @@ within them.
 | Staff console | `admin.` | Functional, denser. Separate app, separate origin |
 | Mobile companion | Expo | **No DOM libraries.** Shares tokens only |
 
+## Mobile-first, everywhere
+
+Every web surface is built mobile-first (`responsive-design`). With the companion app deferred
+(ADR-0009), **the responsive web app is the only phone experience this product has** — it is
+not a degraded fallback.
+
+Adapt the interaction, do not shrink the layout. Feature parity is required; visual parity is
+not.
+
 ## Hierarchy — try in order
 
 ```

@@ -135,7 +135,9 @@ The former `shadcn-ui` skill was folded into `component-discovery` rather than d
 Deliberately **not** separate skills: `motion-design` (part of `animation`), `ux-review`
 (that is `visual-qa` plus Refero research), `visual-design` (part of `design-system`),
 `ui-documentation` (the existing `documentation-first` rule already covers it),
-`responsive-design` (part of `visual-qa`).
+~~`responsive-design`~~ — **reversed.** Now its own skill: with the companion app deferred
+(ADR-0009) the responsive web app is the only phone experience, which makes mobile-first a
+substantial procedure rather than a check inside `visual-qa`.
 
 ---
 

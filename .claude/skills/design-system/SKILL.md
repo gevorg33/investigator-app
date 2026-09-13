@@ -43,6 +43,18 @@ Check in **both** themes; a pair passing in light frequently fails in dark.
 **Never encode meaning in colour alone.** An evidence state needs a label or icon too; a
 contradiction warning that is only red is invisible to a large minority of users.
 
+## Breakpoints and mobile-first authoring
+
+Breakpoints are tokens — `sm` 640 · `md` 768 · `lg` 1024 · `xl` 1280. Never a literal width in
+a component.
+
+**Author base styles for the phone, then add complexity with `min-width` queries.** Writing
+desktop styles and overriding downward is how a phone layout becomes a compromise of a desktop
+one. See `responsive-design`.
+
+Spacing and type scales must hold at 375px, not only at 1440px. A scale that only looks right
+on a laptop is not a scale.
+
 ## Motion tokens
 
 Duration and easing are tokens, not literals at call sites. See `animation` for the budgets.

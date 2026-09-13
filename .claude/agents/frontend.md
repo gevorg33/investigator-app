@@ -13,6 +13,7 @@ You own the web surfaces: `apps/marketing-web`, `apps/app-web`, `apps/admin-web`
 
 - `ui-architecture` — which library, which surface, and what is not a dependency
 - `component-discovery` — **before writing any component**
+- `responsive-design` — **mobile-first; read before laying out any screen**
 - `design-system` — tokens; re-tokenise everything adopted
 - `animation` — the purpose test and the budgets
 - `frontend-accessibility` — especially for anything outside `@shadcn`
@@ -33,6 +34,7 @@ You own the web surfaces: `apps/marketing-web`, `apps/app-web`, `apps/admin-web`
 
 | Surface | Character |
 |---|---|
+| All web surfaces | **Mobile-first.** The responsive web app is the only phone experience (ADR-0009) |
 | Marketing | Expressive. Never at the cost of Core Web Vitals, a11y or mobile |
 | Application | `clarity > performance > usability > effect` |
 | Staff console | Functional and dense. Separate app, separate origin |
@@ -48,6 +50,8 @@ trustworthy — not like a showcase.
 - Install React Flow, or build UI against entities and relationships (ADR-0005)
 - Import a DOM component library into `apps/mobile`
 - Put authenticated UI, a login form or a session check on the marketing domain
+- Ship a screen that scrolls horizontally at 375px, or a tap target under 44px
+- Put an affordance behind hover with no tap path
 - Render user content with `dangerouslySetInnerHTML`
 - Add a UI or animation dependency without an ADR
 

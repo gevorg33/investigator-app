@@ -20,8 +20,12 @@ Verify it yourself. Do not ask the user to check whether it looks right.
 | Tablet | 768×1024 | Where multi-pane layouts break first |
 | Mobile | 375×812 | Web app in a phone browser — **not** the companion app |
 
-Mobile web matters even though a companion app exists (ADR-0004): a customer checking a quote
-on their phone uses the browser.
+**Mobile web is the only phone experience this product has** — the companion app is deferred
+(ADR-0009). Treat 375px as a primary target, not a check at the end.
+
+Additional touch checks are in `responsive-design`: no horizontal page scroll, tap targets
+≥ 44px, every hover affordance has a tap path, and the keyboard does not obscure the active
+input.
 
 ## Three states, always
 

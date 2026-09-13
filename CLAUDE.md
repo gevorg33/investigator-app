@@ -46,29 +46,33 @@ authorization. It calls registered tools; the backend does the rest.
    `@cult-ui` → `@react-bits`), then check whether an existing project component adapts.
    Build custom only when nothing fits, and record it in the component inventory. See
    `component-discovery`.
-10. **One visual language.** Every adopted component is re-tokenised before merge — no raw
+10. **Mobile-first, always.** Every web surface is authored for the phone first and expands
+    with `min-width` queries — never desktop shrunk down. **The responsive web app is the only
+    phone experience this product has** (ADR-0009). Adapt the interaction, not just the layout:
+    tables become card lists, modals become sheets. Feature parity is required; visual parity
+    is not. No horizontal page scroll, tap targets ≥ 44px, every hover affordance has a tap
+    path. See `responsive-design`.
+11. **One visual language.** Every adopted component is re-tokenised before merge — no raw
     colours, spacing, radii or durations in feature code. The application prioritises
     `clarity > performance > usability > visual effect`; marketing may be expressive but never
     at the cost of Core Web Vitals, accessibility or mobile performance. See `design-system`.
-11. **Nothing ships untested, and nothing ships unverified.** Every feature, fix, endpoint,
+12. **Nothing ships untested, and nothing ships unverified.** Every feature, fix, endpoint,
     service, database operation, AI workflow and business rule carries automated tests.
     **100% coverage is a blocking CI gate**, per package — but coverage is the floor, not the
     bar: a test that touches a line without asserting on its effect fails review regardless of
     the number. Every bug fix carries a regression test seen to fail first. Never weaken, skip
     or disable a test to get green. See `testing` and `ci-cd`.
-12. **Mobile ships store-ready.** App Store and Play compliance is part of implementing a
-    mobile feature, never a pre-submission stage. Permissions are least-privilege and
-    requested in context; sign out is one level deep; account deletion is in-app and complete.
-    **Never request background location** — Play bans monitoring apps outside parental and
-    enterprise use, and this product is read sceptically by default. Official policy is the
-    source of truth. See `mobile-store-compliance`.
-13. **A session is not a context window.** Conversations persist in PostgreSQL and may be
+13. **The mobile companion is deferred** (ADR-0009) — surveillance is in scope, which
+    conflicts with Play's monitoring policy. Do not start mobile work; the phone experience is
+    the responsive web app. If scope ever narrows and mobile resumes, `mobile-store-compliance`
+    holds the requirements and ADR-0009 holds the reasoning.
+14. **A session is not a context window.** Conversations persist in PostgreSQL and may be
     effectively unlimited; the model's window is a temporary working set that the Context
     Builder fills under a token budget. Never delete messages to fit. Never let critical
     state — ids, plan hash, confirmation or authorization status — exist only inside a
     summary. **Always refresh dynamic state from the database before a decision**, and
     re-validate a confirmation before executing it. See `ai-session-context`.
-14. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
+15. **Legal text is authoritative; summaries defer to it.** Published legal documents govern.
    Knowledge-base articles, in-app copy and assistant answers explain them and say so.
    Engineering changes the plumbing of legal pages, never their substance. Acceptance is
    recorded per document, per version, with the exact text shown — see the `legal-consent`

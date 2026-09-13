@@ -18,6 +18,9 @@ and a duplicate that will drift.
 3. **`@cult-ui`** — polished, animated, shadcn-compatible, AI-product oriented.
 4. **`@react-bits`** — expressive, marketing-weighted.
 5. **Can an existing component be adapted?** A variant or a prop usually beats a new component.
+   This applies especially to responsive patterns — a sheet, a drawer, a bottom navigation, a
+   card list. Check `@react-bits` and `@cult-ui` before writing one; these are exactly the
+   components those registries carry.
 6. **Only then, custom** — and document why in the inventory.
 
 Use the shadcn MCP: `search_items_in_registries` → `view_items_in_registries` →
@@ -43,7 +46,9 @@ component. Audit each against `frontend-accessibility` before adoption: keyboard
 focus management, roles, and whether it respects reduced motion.
 
 A visually impressive component that cannot be operated by keyboard does not ship in the
-application.
+application. The same applies to touch: **verify an adopted component at 375px and with touch
+input before adopting it.** Many animated components assume hover and a wide viewport, and
+neither exists on a phone (`responsive-design`).
 
 ## The inventory
 

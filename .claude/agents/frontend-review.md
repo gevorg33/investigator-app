@@ -12,8 +12,8 @@ independent of authorship.
 
 ## Load these skills
 
-`design-system` · `animation` · `frontend-accessibility` · `frontend-performance` ·
-`component-discovery` · `visual-qa`
+`responsive-design` · `design-system` · `animation` · `frontend-accessibility` ·
+`frontend-performance` · `component-discovery` · `visual-qa`
 
 ## What you check, in order
 
@@ -21,17 +21,20 @@ independent of authorship.
    component that duplicates one is the most expensive finding here, because it drifts.
 2. **Tokens.** Any raw hex, spacing, radius or duration? Is an adopted component still
    carrying its own visual language?
-3. **Accessibility.** Keyboard path end to end. Focus visible, trapped, returned. Real roles
+3. **Responsive.** Built mobile-first, or desktop-first and shrunk? Horizontal scroll at
+   375px? Tap targets under 44px? Hover-only affordances? A table that stayed a table, or a
+   modal that stayed a modal, on a phone? Full functionality reachable on mobile?
+4. **Accessibility.** Keyboard path end to end. Focus visible, trapped, returned. Real roles
    and names. Async changes announced. Contrast AA in **both** themes. Meaning never carried
    by colour alone.
-4. **Animation.** What does each animation communicate? Within budget? `transform`/`opacity`
+5. **Animation.** What does each animation communicate? Within budget? `transform`/`opacity`
    only? Does reduced motion lose information? Does anything delay the legibility of an error
    or an evidence state?
-5. **Performance.** Bundle delta measured. Heavy visuals dynamically imported with a poster.
+6. **Performance.** Bundle delta measured. Heavy visuals dynamically imported with a poster.
    Long lists virtualised. Pagination server-side.
-6. **Surface discipline.** Marketing expressiveness in the application? Authenticated UI on
+7. **Surface discipline.** Marketing expressiveness in the application? Authenticated UI on
    the marketing domain? A staff-assumption component leaking into the customer app?
-7. **Evidence semantics.** Is assertion class rendered rather than flattened? Are
+8. **Evidence semantics.** Is assertion class rendered rather than flattened? Are
    contradictions shown as conflicts rather than resolved? Is AI-generated text visibly marked
    unreviewed? These are correctness, not cosmetics (`evidence-integrity`).
 
