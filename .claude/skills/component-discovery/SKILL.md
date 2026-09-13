@@ -26,6 +26,21 @@ and a duplicate that will drift.
 Use the shadcn MCP: `search_items_in_registries` → `view_items_in_registries` →
 `get_item_examples_from_registries` → `get_add_command_for_items`.
 
+### Registries, verified working
+
+`@shadcn` and `@react-bits` (684 items) resolve through the shadcn MCP. `@cult-ui` to be added.
+There is no separate MCP per library — registries are configured in `components.json` and one
+MCP reads them all.
+
+**React Bits ships every component in four variants:** `-JS-CSS`, `-JS-TW`, `-TS-CSS`,
+`-TS-TW`. A search returns all four, so 684 items is really ~171 components.
+
+**Always take `-TS-TW`** — TypeScript and Tailwind, matching this project. Adopting a `-JS-`
+variant means hand-writing types for a component you now own.
+
+Note: `get_add_command_for_items` currently renders as `[object Promise]` — a CLI formatting
+bug. Run the add manually: `npx shadcn@latest add @react-bits/ComponentName-TS-TW`.
+
 ## Reviewing what you add
 
 **Read the source before adding anything outside `@shadcn`.** Non-negotiable. Look for network

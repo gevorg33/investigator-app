@@ -370,7 +370,12 @@ Procedure and conventions: `.claude/skills/component-discovery/SKILL.md`.
 **Acceptance criteria**
 - [ ] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn`
 - [ ] Tailwind and CSS variables wired; light and dark themes both render
+- [ ] Registries configured per app: `@shadcn`, `@react-bits`
+      (`https://reactbits.dev/r/{name}.json`), `@cult-ui`
+- [ ] The **root `components.json` is removed** once per-app configs exist — it exists only so
+      registry search works before any app does
 - [ ] Only allowlisted registry namespaces present; no token committed
+- [ ] Agents take `-TS-TW` variants from React Bits, never `-JS-`
 - [ ] One component added end-to-end (`button`) to prove the pipeline
 - [ ] `components/ui/**` is web-only and not imported by `apps/mobile`
 
