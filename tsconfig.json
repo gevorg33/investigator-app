@@ -1,0 +1,41 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/config"
+    },
+    {
+      "path": "packages/types"
+    },
+    {
+      "path": "packages/validation"
+    },
+    {
+      "path": "packages/api-client"
+    },
+    {
+      "path": "packages/auth"
+    },
+    {
+      "path": "packages/i18n"
+    },
+    {
+      "path": "packages/ui"
+    },
+    {
+      "path": "apps/api"
+    },
+    {
+      "path": "apps/app-web"
+    },
+    {
+      "path": "apps/admin-web"
+    },
+    {
+      "path": "apps/marketing-web"
+    },
+    {
+      "path": "apps/mobile"
+    }
+  ]
+}

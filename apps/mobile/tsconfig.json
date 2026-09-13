@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    {
+      "path": "../../packages/types"
+    },
+    {
+      "path": "../../packages/validation"
+    },
+    {
+      "path": "../../packages/api-client"
+    },
+    {
+      "path": "../../packages/auth"
+    },
+    {
+      "path": "../../packages/i18n"
+    }
+  ]
+}

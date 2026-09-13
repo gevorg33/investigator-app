@@ -9,7 +9,7 @@ on:
 
 concurrency:
   group: staging
-  cancel-in-progress: false     # never cancel a deploy mid-flight
+  cancel-in-progress: false # never cancel a deploy mid-flight
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
-      name: staging             # staging secrets only — never production
+      name: staging # staging secrets only — never production
       url: https://app.staging.example
 
     steps:

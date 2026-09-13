@@ -11,7 +11,7 @@ Procedure: `.claude/skills/task-workflow/SKILL.md`. Spec: `plan.md`.
 ## Phase 1 — Technical foundation (plan.md §26)
 
 ### T-001 — Initialize pnpm monorepo
-- **Status:** TODO
+- **Status:** DONE — 5 apps + 7 packages; install/typecheck/lint/build/format all green
 - **Priority:** P0
 - **Depends on:** —
 - **Risk:** LOW
@@ -28,17 +28,21 @@ and `packages/{ui,types,validation,api-client,auth,i18n,config}`. Shared TypeScr
 ESLint, Prettier, and root scripts.
 
 **Acceptance criteria**
-- [ ] `pnpm install` succeeds from a clean checkout
-- [ ] Root scripts exist: `lint`, `typecheck`, `test`, `build`, `format`
-- [ ] `pnpm typecheck` passes on the empty workspace
-- [ ] Shared tsconfig is extended by every package, with strict mode on
-- [ ] No package references another by relative path outside its own directory
-- [ ] `packages/ui` is **web-only** and is not importable from `apps/mobile` (ADR-0004)
+- [x] `pnpm install` succeeds from a clean checkout (`--frozen-lockfile` verified)
+- [x] Root scripts exist: `lint`, `typecheck`, `test`, `build`, `format` — plus the CI-tier test scripts `pr.yml` calls
+- [x] `pnpm typecheck` passes — TS project references across all 12 workspaces
+- [x] Every package extends `tsconfig.base.json`; strict plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`
+- [x] No cross-package relative imports — enforced by an ESLint rule, not convention
+- [x] `packages/ui` web-only — ESLint blocks it (and `react-dom`/`next`) in `apps/mobile`; **rule verified by writing a violating import and confirming it errors**
 
-**Validation**
+**Validation** — all green 2026-09-13
 ```bash
-pnpm install && pnpm typecheck && pnpm lint
+pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && pnpm format:check
 ```
+
+**Note:** Prettier is scoped to code and config; markdown is excluded deliberately
+(`.prettierignore` explains why). Markdown is not unchecked — the knowledge-base and
+frontmatter validators cover the parts that carry meaning.
 
 ---
 

@@ -1,0 +1,27 @@
+{
+  "name": "@investigator/app-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Customer and investigator workspace (app.)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "@investigator/types": "workspace:*",
+    "@investigator/validation": "workspace:*",
+    "@investigator/api-client": "workspace:*",
+    "@investigator/auth": "workspace:*",
+    "@investigator/i18n": "workspace:*",
+    "@investigator/ui": "workspace:*"
+  }
+}

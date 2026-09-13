@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read          # least privilege; a job needing more asks for exactly that
+  contents: read # least privilege; a job needing more asks for exactly that
 
 env:
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/investigator_test
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0        # full history — the secret scan needs it
+          fetch-depth: 0 # full history — the secret scan needs it
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

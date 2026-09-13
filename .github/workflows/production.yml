@@ -55,10 +55,10 @@ jobs:
     needs: guard
     if: inputs.operation == 'migrate'
     runs-on: ubuntu-latest
-    environment: production        # required reviewers gate this job
+    environment: production # required reviewers gate this job
     steps:
       - uses: actions/checkout@v4
-        with: { ref: "${{ inputs.version }}" }
+        with: { ref: '${{ inputs.version }}' }
 
       # A migration does not start without a restorable backup.
       - name: Verify a fresh backup is restorable
@@ -86,7 +86,7 @@ jobs:
       url: https://app.example
     steps:
       - uses: actions/checkout@v4
-        with: { ref: "${{ inputs.version }}" }
+        with: { ref: '${{ inputs.version }}' }
 
       - name: Pre-deployment checks
         run: echo "TODO(T-041) image exists, migrations current, health baseline captured"

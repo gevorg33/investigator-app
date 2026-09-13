@@ -1,0 +1,27 @@
+{
+  "name": "@investigator/admin-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Staff console (admin.) \u2014 separate origin per ADR-0002",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "@investigator/types": "workspace:*",
+    "@investigator/validation": "workspace:*",
+    "@investigator/api-client": "workspace:*",
+    "@investigator/auth": "workspace:*",
+    "@investigator/i18n": "workspace:*",
+    "@investigator/ui": "workspace:*"
+  }
+}

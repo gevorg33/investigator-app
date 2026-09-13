@@ -1,0 +1,18 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+package-lock.json
+*.tsbuildinfo
+
+# Markdown is excluded deliberately, not by oversight.
+#
+# The ADRs, skills and knowledge base are hand-wrapped prose with deliberate line
+# breaks in tables and callouts. Reflowing them adds no consistency that matters and
+# destroys structure that does.
+#
+# Markdown is not unchecked: scripts/validate-knowledge-base.py enforces the parts
+# that carry meaning — frontmatter, visibility scoping, locale parity, orphans — and
+# the harness validates agent, skill and command frontmatter.
+*.md
