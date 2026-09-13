@@ -47,7 +47,7 @@ frontmatter validators cover the parts that carry meaning.
 ---
 
 ### T-002 — NestJS API skeleton with health check
-- **Status:** TODO
+- **Status:** DONE — 28 tests, boot verified end to end
 - **Priority:** P0
 - **Depends on:** T-001
 - **Risk:** LOW
@@ -61,19 +61,23 @@ structured JSON logging with correlation IDs, global validation pipe, OpenAPI, a
 HealthModule.
 
 **Acceptance criteria**
-- [ ] Pinned to the versions in CLAUDE.md — Node 24 LTS, TypeScript 6.0.3, Next 15.5.25,
+- [x] Pinned to the versions in CLAUDE.md — Node 24 LTS, TypeScript 6.0.3, Next 15.5.25,
       React 19.2.8. **Do not resolve "latest" at install time.** TS 7 breaks typescript-eslint,
       and Next 16 / React 19.3 were days old when pinned
-- [ ] `GET /health` returns 200 with service and dependency status
-- [ ] Config is validated at boot; missing required env vars fail fast with a clear message
-- [ ] Every request has a correlation ID, propagated into logs
-- [ ] Global validation pipe rejects unknown properties
-- [ ] OpenAPI served in non-production only
-- [ ] No secret is ever logged
+- [x] `GET /api/v1/health` returns 200 with service and dependency status — dependencies report `not_configured` until T-003 rather than falsely claiming `up`
+- [x] Config validated at boot by a Zod schema; verified by running with no env — names every missing variable, and a test asserts the offending **value** never appears in the message
+- [x] Correlation ID accepted or generated, echoed in `x-correlation-id`, carried into logs and into every error body. Injected or over-long ids are rejected, not logged
+- [x] Global `ValidationPipe` with `whitelist` + `forbidNonWhitelisted` — mass-assignment protection per `platform-security-review`
+- [x] OpenAPI at `/api/docs`, non-production only — verified 200 under `NODE_ENV=test`
+- [x] Pino redaction over 20 paths; verified by booting with a real `SESSION_SECRET` and grepping the log — 0 occurrences. `X-Powered-By` also removed (`launch-hardening`)
 
-**Validation**
+**Also delivered** — the shared primitives T-034 deferred here: the error taxonomy with all
+eight required codes (translation keys, never English), the `AppExceptionFilter` giving one
+error shape for every module, and correlation propagation.
+
+**Validation** — all green 2026-09-13
 ```bash
-pnpm --filter api test && pnpm --filter api build
+pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && pnpm --filter api test
 ```
 
 ---
