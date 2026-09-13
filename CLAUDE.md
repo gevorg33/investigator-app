@@ -112,7 +112,7 @@ newest published.
 
 | | Version | Age at pinning | Why this one |
 |---|---|---|---|
-| Node | **24 LTS (Krypton)** | LTS line | Not 26 — 26 is *Current*. This platform holds evidence and moves money |
+| Node | **24.21.0 LTS (Krypton)** | LTS line | Not 26 — 26 is *Current*. `.nvmrc` is the single source of truth; CI reads it via `node-version-file` |
 | pnpm | **12.4.1** | — | Current stable line; `packageManager` pins it exactly |
 | TypeScript | **6.0.3** | ~5 months | Mature. **Not 7** — typescript-eslint peers on `<6.1.0`, so TS 7 breaks linting |
 | ESLint | **9.39.5** | ~2 months | The `maintenance` dist-tag — ESLint's LTS equivalent. **Not 10.10.0**, which was 9 days old |
