@@ -11,6 +11,9 @@ import { RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService, type TokenPurpose } from './user-token.service';
+import { SessionRepository } from './session.repository';
+import { AuthzService } from '../../common/authz/authz.service';
+import type { Actor } from '../../common/authz/contract';
 
 export interface RequestContext {
   ip?: string | undefined;
@@ -22,6 +25,20 @@ export interface AuthResult {
   userId: string;
   refreshToken: string;
 }
+
+/**
+ * Statuses that end a session immediately rather than at its next expiry.
+ *
+ * PENDING_VERIFICATION is deliberately absent. Login already admits an unverified account,
+ * so refusing it here would sign people out the moment their first token rotated; whether
+ * an unverified account may perform a given action is a per-feature gate
+ * (AuthzService.requireActive), not a reason to sever the session.
+ *
+ * SUSPENDED and DELETED are different in kind. Suspension is an enforcement action, and an
+ * enforcement action that leaves the offender working for up to REFRESH_TTL_DAYS is not an
+ * enforcement action.
+ */
+const SESSION_ENDING_STATUSES = ['SUSPENDED', 'DELETED'] as const;
 
 export interface SessionSummary {
   id: string;
@@ -49,6 +66,8 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly userTokens: UserTokenService,
     @Inject(MAILER) private readonly mailer: Mailer,
+    private readonly sessionRepo: SessionRepository,
+    private readonly authz: AuthzService,
   ) {}
 
   async register(email: string, password: string, ctx: RequestContext): Promise<void> {
@@ -188,6 +207,7 @@ export class AuthService {
     }
 
     if (!this.sessions.isUsable(found)) throw invalidCredentials();
+    await this.requireSessionMayContinue(found.userId, ctx);
 
     const next = this.sessions.rotate(found);
     await this.db.transaction(async (tx) => {
@@ -394,34 +414,61 @@ export class AuthService {
 
   // ── Session management ────────────────────────────────────────────────────────
 
-  /** Resolves the caller from their refresh cookie. Until T-006 there is no other identity. */
-  private async currentUserId(refreshToken: string): Promise<string> {
-    const found = await this.db.query.userSessions.findFirst({
-      where: eq(userSessions.refreshTokenHash, this.tokens.fingerprint(refreshToken)),
-    });
-    if (!found || !this.sessions.isUsable(found)) throw invalidCredentials();
-    return found.userId;
-  }
+  /**
+   * Check 2 of the six, applied to an existing session rather than a new sign-in.
+   *
+   * Without it, suspension only blocks the next login: every session opened beforehand
+   * keeps rotating until it expires. Confirmed before the fix -- a suspended account
+   * refreshed successfully.
+   *
+   * The sessions are revoked here, not merely refused. Leaving the rows live means the
+   * refusal has to be repeated correctly at every future call site; revoking ends it once.
+   */
+  private async requireSessionMayContinue(userId: string, ctx: RequestContext): Promise<void> {
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
 
-  async listSessions(refreshToken: string, ctx: RequestContext): Promise<SessionSummary[]> {
-    const userId = await this.currentUserId(refreshToken);
-    const current = this.tokens.fingerprint(refreshToken);
+    // A soft-deleted account keeps its status, so `deletedAt` has to be checked as well —
+    // otherwise erasing an account would leave its sessions rotating. A missing row means
+    // the same thing: the foreign key cascades, so its absence is an account that is gone.
+    let reason: string;
+    if (user && user.deletedAt === null) {
+      if (!SESSION_ENDING_STATUSES.some((s) => s === user.status)) return;
+      reason = `account_${user.status.toLowerCase()}`;
+    } else {
+      reason = 'account_deleted';
+    }
 
-    const rows = await this.db
-      .select()
-      .from(userSessions)
+    await this.db
+      .update(userSessions)
+      .set({ revokedAt: new Date() })
       .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)));
 
     await this.audit.record({
       ...ctx,
       actorId: userId,
-      action: 'auth.sessions.listed',
+      action: 'auth.session.terminated',
       resourceType: 'user',
       resourceId: userId,
+      reason,
+    });
+
+    throw invalidCredentials();
+  }
+
+  async listSessions(actor: Actor, ctx: RequestContext): Promise<SessionSummary[]> {
+    const rows = await this.sessionRepo.findAllForActor(actor);
+
+    await this.audit.record({
+      ...ctx,
+      actorId: actor.userId,
+      action: 'auth.sessions.listed',
+      resourceType: 'user',
+      resourceId: actor.userId,
     });
 
     // No hashes leave this method: knowing another session's hash would be knowing a
-    // credential.
+    // credential. `current` comes from the Actor's own session id rather than a hash
+    // comparison, so the hash never has to be handled here at all.
     return rows
       .filter((r) => this.sessions.isUsable(r))
       .map((r) => ({
@@ -431,46 +478,39 @@ export class AuthService {
         createdAt: r.createdAt,
         lastUsedAt: r.lastUsedAt,
         expiresAt: r.expiresAt,
-        current: r.refreshTokenHash === current,
+        current: r.id === actor.sessionId,
       }));
   }
 
-  /** Revokes one of the caller's own sessions. Ownership is checked, not assumed. */
-  async revokeSession(refreshToken: string, sessionId: string, ctx: RequestContext): Promise<void> {
-    const userId = await this.currentUserId(refreshToken);
+  /**
+   * Revokes one of the caller's own sessions.
+   *
+   * Check 4 of the six, done as a scoped read rather than a comparison: the repository
+   * only returns rows belonging to this actor, so a session id owned by somebody else is
+   * simply absent. `authz.visible` turns that absence into a 404 -- the same answer as an
+   * id that never existed, so the endpoint cannot be used to confirm one.
+   */
+  async revokeSession(actor: Actor, sessionId: string, ctx: RequestContext): Promise<void> {
+    const found = await this.sessionRepo.findOneForActor(actor, sessionId);
+    const session = await this.authz.visible(actor, found, {
+      action: 'session.revoke',
+      resourceType: 'session',
+      resourceId: sessionId,
+      correlationId: ctx.correlationId,
+      ipAddress: ctx.ip,
+    });
 
-    const [revoked] = await this.db
+    await this.db
       .update(userSessions)
       .set({ revokedAt: new Date() })
-      // userId in the predicate is the authorization check: a session id belonging to
-      // someone else matches nothing rather than revoking their session.
-      .where(
-        and(
-          eq(userSessions.id, sessionId),
-          eq(userSessions.userId, userId),
-          isNull(userSessions.revokedAt),
-        ),
-      )
-      .returning();
-
-    if (!revoked) {
-      await this.audit.record({
-        ...ctx,
-        actorId: userId,
-        action: 'auth.sessions.revoke_failed',
-        resourceType: 'session',
-        resourceId: sessionId,
-        reason: 'not_found_or_not_owned',
-      });
-      throw invalidCredentials();
-    }
+      .where(eq(userSessions.id, session.id));
 
     await this.audit.record({
       ...ctx,
-      actorId: userId,
+      actorId: actor.userId,
       action: 'auth.sessions.revoked',
       resourceType: 'session',
-      resourceId: revoked.id,
+      resourceId: session.id,
     });
   }
 }

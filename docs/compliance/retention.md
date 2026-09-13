@@ -27,6 +27,7 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `users` | Soft-deleted on request; hard-deleted **30 days** after | Contract, then erasure | Financial and evidence obligations may hold rows longer |
 | `user_roles` | With the user | — | Cascades |
 | `user_sessions` | **90 days** after expiry | Security | Revoked sessions kept for abuse investigation |
+| `user_staff_scopes` | With the user; revoked rows kept **7 years** | Dispute defence, incident review | Not deleted on revocation — who could see payments last March is a question an investigation will ask |
 | `user_identities` | With the user | — | Cascades. Holds no credential — only the provider's opaque account id |
 | `user_tokens` | **30 days** after `expires_at` | Security | Verification and password-reset tokens. Only the hash is stored. Kept past expiry so a redemption attempt on a dead token is still explainable during an abuse investigation |
 | `audit_logs` | **7 years** | Legal obligation, dispute defence | **Never deleted by the application.** A privileged job only, itself audited |

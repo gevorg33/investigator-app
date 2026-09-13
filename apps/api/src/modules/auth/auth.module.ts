@@ -10,8 +10,11 @@ import {
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
+import { SessionRepository } from './session.repository';
 
 @Module({
+  // AuthzModule is @Global and must not be imported here: it would make the two modules
+  // mutually dependent and Nest cannot build that graph.
   controllers: [AuthController],
   providers: [
     AuthService,
@@ -19,6 +22,7 @@ import { UserTokenService } from './user-token.service';
     TokenService,
     SessionService,
     UserTokenService,
+    SessionRepository,
     RateLimitService,
     // In-memory for now. A per-instance counter is not a limit across replicas —
     // swapped for a Redis-backed store when Redis is wired (plan.md §19).
