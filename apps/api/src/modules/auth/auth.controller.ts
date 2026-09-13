@@ -1,9 +1,24 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService, type RequestContext } from './auth.service';
 import { CredentialsDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
 import type { SessionSummary } from './auth.service';
+import { ActorGuard } from '../../common/authz/actor.guard';
+import { CurrentActor } from '../../common/authz/actor.decorator';
+import type { Actor } from '../../common/authz/contract';
 import { REFRESH_TTL_DAYS } from './session.service';
 
 const COOKIE = 'investigator_session';
@@ -104,21 +119,25 @@ export class AuthController {
   }
 
   @Get('sessions')
+  @UseGuards(ActorGuard)
   @ApiOperation({ summary: "List the caller's own active sessions." })
-  async listSessions(@Req() req: Request): Promise<{ sessions: SessionSummary[] }> {
-    const token = String(req.cookies?.[COOKIE] ?? '');
-    return { sessions: await this.auth.listSessions(token, ctx(req)) };
+  async listSessions(
+    @CurrentActor() actor: Actor,
+    @Req() req: Request,
+  ): Promise<{ sessions: SessionSummary[] }> {
+    return { sessions: await this.auth.listSessions(actor, ctx(req)) };
   }
 
   @Delete('sessions/:id')
+  @UseGuards(ActorGuard)
   @HttpCode(204)
   @ApiOperation({ summary: "Revoke one of the caller's own sessions. Takes effect at once." })
   async revokeSession(
+    @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
   ): Promise<void> {
-    const token = String(req.cookies?.[COOKIE] ?? '');
-    await this.auth.revokeSession(token, id, ctx(req));
+    await this.auth.revokeSession(actor, id, ctx(req));
   }
 
   @Post('logout')

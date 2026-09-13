@@ -211,7 +211,7 @@ pnpm --filter api test auth
 ---
 
 ### T-006 — Authorization foundation: RBAC + resource-level guards
-- **Status:** TODO
+- **Status:** DONE — 2026-09-13
 - **Priority:** P0
 - **Depends on:** T-005
 - **Risk:** HIGH
@@ -224,13 +224,47 @@ The six-check authorization primitive from `.claude/skills/authorization/SKILL.m
 the actor-scoped repository pattern and the reusable IDOR test helper.
 
 **Acceptance criteria**
-- [ ] `Actor` type carries id, roles, staff scope, account status
-- [ ] Actor-scoped repository base makes fetch-then-compare the awkward path
-- [ ] Reusable test helper covers all seven authorization cases
-- [ ] Role switching does not require re-login and cannot widen scope
-- [ ] Documented in `docs/architecture/authorization.md`
+- [x] `Actor` type carries id, roles, staff scope, account status
+- [x] Actor-scoped repository base makes fetch-then-compare the awkward path
+- [x] Reusable test helper covers all seven authorization cases
+- [x] Role switching does not require re-login and cannot widen scope
+- [x] Documented in `docs/architecture/authorization.md`
 
-**Validation**
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| `Actor` | `@investigator/auth` defines it, `ActorService` builds it, frozen so nothing downstream can widen it. Roles and staff scopes are read per request, so a revoked role applies on the next request rather than the next sign-in |
+| Repository base | `ActorScopedRepository` has no `findById` — every read demands an Actor, so an unscoped fetch means leaving the repository. `SessionRepository` is the first real consumer, not a demo |
+| Seven cases | `apps/api/test/authz-cases.ts`. The helper is itself tested by driving deliberately broken subjects past each case — a checklist that cannot fail is decoration |
+| Role switching | `X-Active-Role` intersected with roles held: intersect, never union. Verified live that one session switches workspace without re-login, and that asking for a role not held narrows nothing rather than granting it |
+| Documentation | `docs/architecture/authorization.md` |
+
+**Verified live** — two real identities against a running API:
+
+- Session lists are disjoint per user
+- **IDOR:** revoking another user's session by id returns **404, byte-identical to a
+  nonexistent id** — no oracle for confirming an id is real. The victim's session kept working
+- Revoking one's own session returns 204 and takes effect immediately
+- No identity returns 401
+
+**A gap in T-005 found and closed here**
+
+Suspension blocked only the *next login*. An existing session kept refreshing for up to
+`REFRESH_TTL_DAYS` — confirmed by probe before the fix, where a suspended account refreshed
+successfully. An enforcement action that leaves the offender working for thirty days is not
+an enforcement action. Sessions are now ended at resolution *and* revoked in the database
+(verified live: 0 live sessions remain after suspension). A soft-deleted account whose
+`status` still read `ACTIVE` had the same hole; also closed.
+
+**Scope note:** `PENDING_VERIFICATION` is deliberately not session-ending — login admits it,
+so severing the session on first rotation would sign people out for no reason. What such an
+account may *do* is `AuthzService.requireActive`, which demands `ACTIVE`.
+
+**Coverage:** `src/common/authz` at 100% statements, functions and lines. Remaining branch
+gap is the `@Injectable()` transpiler artifact (T-063, ACTIONS-FOR-ME #12).
+
+**Validation** — all green 2026-09-13
 ```bash
 pnpm --filter api test authz
 ```

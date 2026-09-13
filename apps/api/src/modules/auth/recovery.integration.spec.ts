@@ -8,11 +8,14 @@ import type { MailMessage } from '../../common/mail/mailer';
 import * as schema from '../../database/schema';
 import { auditLogs, userSessions, userTokens } from '../../database/schema';
 import { AuthService } from './auth.service';
+import { SessionRepository } from './session.repository';
+import { AuthzService } from '../../common/authz/authz.service';
 import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
+import { ActorService } from '../../common/authz/actor.service';
 
 const URL =
   process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
@@ -29,6 +32,7 @@ describe('verification and password reset', () => {
   let sql: postgres.Sql;
   let auth: AuthService;
   let mailer: CapturingMailer;
+  let actors: ActorService;
   let db: ReturnType<typeof drizzle<typeof schema>>;
 
   const email = () => `recovery-${randomUUID()}@example.test`;
@@ -52,6 +56,9 @@ describe('verification and password reset', () => {
     db = drizzle(sql, { schema });
     const tokens = new TokenService();
     mailer = new CapturingMailer();
+    // The real resolution path, so these exercise the guard's behaviour rather than a
+    // hand-built Actor that could drift from what a request actually produces.
+    actors = new ActorService(db, tokens, new SessionService(tokens));
     auth = new AuthService(
       db,
       new PasswordService(),
@@ -61,6 +68,8 @@ describe('verification and password reset', () => {
       new AuditService(db),
       new UserTokenService(tokens),
       mailer,
+      new SessionRepository(db),
+      new AuthzService(new AuditService(db)),
     );
   });
 
@@ -252,7 +261,7 @@ describe('verification and password reset', () => {
       const a = await auth.login(e, PASSWORD, newCtx());
       await auth.login(e, PASSWORD, newCtx());
 
-      const sessions = await auth.listSessions(a.refreshToken, ctx);
+      const sessions = await auth.listSessions(await actors.fromRefreshToken(a.refreshToken), ctx);
       expect(sessions).toHaveLength(2);
       expect(sessions.filter((s) => s.current)).toHaveLength(1);
     });
@@ -262,7 +271,8 @@ describe('verification and password reset', () => {
       const e = email();
       await auth.register(e, PASSWORD, ctx);
       const a = await auth.login(e, PASSWORD, newCtx());
-      const blob = JSON.stringify(await auth.listSessions(a.refreshToken, ctx));
+      const actor = await actors.fromRefreshToken(a.refreshToken);
+      const blob = JSON.stringify(await auth.listSessions(actor, ctx));
       expect(blob).not.toContain(a.refreshToken);
       expect(blob).not.toContain(new TokenService().fingerprint(a.refreshToken));
     });
@@ -274,8 +284,9 @@ describe('verification and password reset', () => {
       const a = await auth.login(e, PASSWORD, newCtx());
       const b = await auth.login(e, PASSWORD, newCtx());
 
-      const other = (await auth.listSessions(a.refreshToken, ctx)).find((s) => !s.current);
-      await auth.revokeSession(a.refreshToken, other?.id ?? '', ctx);
+      const actor = await actors.fromRefreshToken(a.refreshToken);
+      const other = (await auth.listSessions(actor, ctx)).find((s) => !s.current);
+      await auth.revokeSession(actor, other?.id ?? '', ctx);
 
       await expect(auth.refresh(b.refreshToken, newCtx())).rejects.toMatchObject({
         code: 'UNAUTHENTICATED',
@@ -298,10 +309,12 @@ describe('verification and password reset', () => {
         where: eq(userSessions.refreshTokenHash, new TokenService().fingerprint(victim.refreshToken)),
       });
 
-      // IDOR: a valid session id, but not one of mine.
-      await expect(auth.revokeSession(a.refreshToken, victimRow?.id ?? '', newCtx())).rejects.toMatchObject(
-        { code: 'UNAUTHENTICATED' },
-      );
+      // IDOR: a valid session id, but not one of mine. 404, never 403 — a 403 would
+      // confirm the id is real to someone who should not know it exists.
+      const mineActor = await actors.fromRefreshToken(a.refreshToken);
+      await expect(
+        auth.revokeSession(mineActor, victimRow?.id ?? '', newCtx()),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
       // Still alive.
       await expect(auth.refresh(victim.refreshToken, newCtx())).resolves.toMatchObject({
         userId: expect.any(String),
@@ -314,7 +327,8 @@ describe('verification and password reset', () => {
       await auth.register(e, PASSWORD, ctx);
       const a = await auth.login(e, PASSWORD, newCtx());
       await auth.revoke(a.refreshToken, ctx);
-      await expect(auth.listSessions(a.refreshToken, ctx)).rejects.toMatchObject({
+      // Rejected at resolution: a revoked session yields no Actor at all.
+      await expect(actors.fromRefreshToken(a.refreshToken)).rejects.toMatchObject({
         code: 'UNAUTHENTICATED',
       });
     });
@@ -350,5 +364,111 @@ describe('verification and password reset', () => {
       .map((x) => x.reason);
     // Distinguished in the audit log from a token that existed and was spent.
     expect(reasons).toContain('token_unknown');
+  });
+
+  describe('suspension ends existing sessions, not just new logins', () => {
+    const suspend = async (e: string): Promise<void> => {
+      await db.update(schema.users).set({ status: 'SUSPENDED' }).where(eq(schema.users.email, e));
+    };
+
+    it('refuses to refresh a session belonging to a suspended account', async () => {
+      const e = email();
+      await auth.register(e, PASSWORD, newCtx());
+      const s = await auth.login(e, PASSWORD, newCtx());
+      await suspend(e);
+
+      // Before this was checked, suspension blocked the next login and nothing else: the
+      // session kept rotating for up to REFRESH_TTL_DAYS. An enforcement action that
+      // leaves the offender working for thirty days is not an enforcement action.
+      await expect(auth.refresh(s.refreshToken, newCtx())).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+    });
+
+    it('refuses to list sessions for a suspended account', async () => {
+      const e = email();
+      await auth.register(e, PASSWORD, newCtx());
+      const s = await auth.login(e, PASSWORD, newCtx());
+      await suspend(e);
+      // No Actor is issued for a suspended account, so nothing downstream has to remember
+      // to check again.
+      await expect(actors.fromRefreshToken(s.refreshToken)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+    });
+
+    it('revokes every session rather than merely refusing this one', async () => {
+      const e = email();
+      await auth.register(e, PASSWORD, newCtx());
+      const a = await auth.login(e, PASSWORD, newCtx());
+      const b = await auth.login(e, PASSWORD, newCtx());
+      await suspend(e);
+
+      await expect(auth.refresh(a.refreshToken, newCtx())).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      // The untouched session is dead too: refusing per call site has to be repeated
+      // correctly everywhere, whereas revoking ends it once.
+      const rows = await db
+        .select()
+        .from(userSessions)
+        .where(eq(userSessions.userId, a.userId));
+      expect(rows.every((r) => r.revokedAt !== null)).toBe(true);
+      await expect(auth.refresh(b.refreshToken, newCtx())).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+    });
+
+    it('audits the termination with the reason', async () => {
+      const e = email();
+      const ctx = newCtx();
+      await auth.register(e, PASSWORD, newCtx());
+      const s = await auth.login(e, PASSWORD, newCtx());
+      await suspend(e);
+      await auth.refresh(s.refreshToken, ctx).catch(() => undefined);
+
+      const rows = await db
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, ctx.correlationId));
+      expect(rows.map((r) => r.action)).toContain('auth.session.terminated');
+      expect(rows.map((r) => r.reason)).toContain('account_suspended');
+    });
+
+    it('ends the session of a soft-deleted account whose status still reads ACTIVE', async () => {
+      // Soft delete does not change `status`, so checking status alone would leave an
+      // erased account's sessions rotating until they expired.
+      const e = email();
+      const ctx = newCtx();
+      await auth.register(e, PASSWORD, newCtx());
+      const s = await auth.login(e, PASSWORD, newCtx());
+      await db
+        .update(schema.users)
+        .set({ status: 'ACTIVE', deletedAt: new Date() })
+        .where(eq(schema.users.email, e));
+
+      await expect(auth.refresh(s.refreshToken, ctx)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      const rows = await db
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, ctx.correlationId));
+      expect(rows.map((r) => r.reason)).toContain('account_deleted');
+    });
+
+    it('lets an unverified account keep its session', async () => {
+      // PENDING_VERIFICATION is not an enforcement state. Login admits it, so severing the
+      // session on the first rotation would sign people out for no reason; whether an
+      // unverified account may do a given thing is a per-feature gate.
+      const e = email();
+      await auth.register(e, PASSWORD, newCtx());
+      const s = await auth.login(e, PASSWORD, newCtx());
+      const row = await db.query.users.findFirst({ where: eq(schema.users.email, e) });
+      expect(row?.status).toBe('PENDING_VERIFICATION');
+      await expect(auth.refresh(s.refreshToken, newCtx())).resolves.toMatchObject({
+        userId: expect.any(String),
+      });
+    });
   });
 });
