@@ -27,7 +27,10 @@ jobs:
     # Fresh services every run: no cached database, no reused volume.
     services:
       postgres:
-        image: postgis/postgis:16-3.4
+        # pgvector base + PostGIS installed in the step below. postgis/postgis
+        # ships no pgvector, so `CREATE EXTENSION vector` would fail against it —
+        # and it publishes amd64 only, which differs from local dev on Apple Silicon.
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: investigator_test
@@ -56,10 +59,16 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Install PostGIS into the service container
+        run: |
+          docker exec "$(docker ps -q --filter ancestor=pgvector/pgvector:pg17)" \
+            bash -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends \
+              postgresql-17-postgis-3 postgresql-17-postgis-3-scripts"
+
       - name: Enable extensions
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d investigator_test \
-            -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS vector;"
+            -f infrastructure/docker/postgres/init/01-extensions.sql
 
       # Proves migrations apply to an EMPTY database, in sequence, with no manual state.
       - name: Migrate from empty

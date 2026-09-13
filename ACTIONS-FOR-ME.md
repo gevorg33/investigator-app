@@ -272,6 +272,8 @@ once (T-028).
 | Refero MCP | **No longer required** — declined on cost |
 | CI workflows | Written; T-028 makes them green |
 | Caddy config | Written; needs the server from #9 |
+| Container runtime | **No longer required** — Colima installed and started; chosen over Docker Desktop to avoid its commercial licence |
+| Local database stack | T-003 — PostGIS + pgvector + Redis running and verified |
 
 ---
 

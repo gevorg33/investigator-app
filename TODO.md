@@ -83,7 +83,7 @@ pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && p
 ---
 
 ### T-003 — Local Docker Compose: PostGIS, pgvector, Redis
-- **Status:** TODO
+- **Status:** DONE — stack running; PostGIS 3.6.4 + pgvector 0.8.6 verified by query
 - **Priority:** P0
 - **Depends on:** T-001
 - **Risk:** LOW
@@ -96,12 +96,19 @@ Local stack: PostgreSQL with PostGIS and pgvector extensions, Redis. Named volum
 healthchecks, no ports exposed beyond localhost.
 
 **Acceptance criteria**
-- [ ] `docker compose -f infrastructure/compose/local.yml up -d` brings up healthy services
-- [ ] `CREATE EXTENSION postgis` and `CREATE EXTENSION vector` both succeed
-- [ ] `.env.example` documents every variable; no real secret is committed
-- [ ] Services bind to localhost only
+- [x] `up -d` brings both services to `healthy` — healthchecks target the real database, not the default
+- [x] postgis 3.6.4, vector 0.8.6, citext, pg_trgm, uuid-ossp — **verified by running queries**, not by checking they were listed: `ST_Distance` Yerevan→Gyumri returned 88 km, and pgvector L2 returned 1
+- [x] Env template documents every variable; `scripts/setup.sh` generates the only local secret
+- [x] Both bound `127.0.0.1` — **verified by probing the LAN address and getting refused**, not by reading the config
 
-**Validation**
+**Also done:** volume persistence verified across a restart; Redis AOF on so a queue bug is
+not mistaken for a lost job; `pr.yml` corrected — it used `postgis/postgis`, which ships no
+pgvector, so its `CREATE EXTENSION vector` would have failed. CI now reuses the same init SQL
+rather than duplicating it.
+
+**Runtime:** Colima (open source, no Docker Desktop licensing). Installed and started.
+
+**Validation** — all green 2026-09-13
 ```bash
 docker compose -f infrastructure/compose/local.yml config
 docker compose -f infrastructure/compose/local.yml up -d

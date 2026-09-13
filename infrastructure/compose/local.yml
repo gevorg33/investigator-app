@@ -1,0 +1,62 @@
+# Local development stack. Never used for staging or production — those have their
+# own compose files and their own secrets (ci-cd, ADR-0002).
+#
+#   docker compose -f infrastructure/compose/local.yml up -d
+#
+# Every port binds to 127.0.0.1 explicitly. A bare "5432:5432" listens on all
+# interfaces, which on a laptop on a café network exposes the database to that
+# network — launch-hardening requires verifying this from off-host.
+
+name: investigator-local
+
+services:
+  postgres:
+    build:
+      context: ../docker/postgres
+    image: investigator/postgres:17-3.5-pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      # Local-only credential. Real secrets live in the environment, never here.
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: investigator_dev
+      # Deterministic collation — an OS-dependent default makes index ordering
+      # differ between a developer laptop and CI.
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs only on an empty data directory. To re-run it, remove the volume.
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -q suppresses output; the database name matters because pg_isready against
+      # the default would pass before our database exists.
+      test: ['CMD-SHELL', 'pg_isready -q -U postgres -d investigator_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    # Persistence on: BullMQ jobs should survive a restart during development,
+    # otherwise a queue bug looks like a lost job.
+    command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    name: investigator_postgres_data
+  redis_data:
+    name: investigator_redis_data
