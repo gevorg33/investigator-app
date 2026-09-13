@@ -1303,6 +1303,12 @@ achievable rather than punitive.
 - [ ] Coverage thresholds set to 100% **per package**, wired into `pnpm test:coverage`
 - [ ] `docs/operations/coverage-exclusions.md` referenced by the config, not duplicated
 - [ ] **No real or realistic personal data** in any fixture
+- [ ] `fixtures:load` actually exists and the CI step runs it — it is currently
+      `--if-present` and does nothing, because `pr.yml` referenced the script before
+      anything defined it. Prove the step fails when fixtures fail to load, or it is the
+      coverage gate all over again (T-063)
+- [ ] `test:integration`, `test:api` and `test:e2e` likewise run something — all three are
+      `--if-present` at the root today and match no package script
 
 **Validation**
 ```bash

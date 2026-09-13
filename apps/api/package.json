@@ -10,6 +10,8 @@
     "typecheck": "tsc --build",
     "dev": "node --watch dist/main.js",
     "start": "node dist/main.js",
+    "migration:generate": "drizzle-kit generate",
+    "migration:run": "drizzle-kit migrate",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
