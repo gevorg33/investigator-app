@@ -9,6 +9,6 @@
     ]
   },
   "env": {
-    "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/investigator_dev"
+    "DATABASE_URL": "postgres://postgres:postgres@localhost:5433/investigator_dev"
   }
 }

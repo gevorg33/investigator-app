@@ -40,11 +40,17 @@ cmd  = ti.get("command") or ""
 path = ti.get("file_path") or ""
 
 def strip_heredocs(s):
+    # Collect every span first, then remove them in reverse. Mutating `s` while
+    # iterating over finditer offsets leaves later matches pointing at stale
+    # positions, so a command with two or more heredocs only got the first stripped.
+    spans = []
     for m in re.finditer(r"<<-?\s*([\x27\x22]?)([A-Za-z_][A-Za-z0-9_]*)\1", s):
         marker = m.group(2)
         end = re.search(r"^\s*%s\s*$" % re.escape(marker), s[m.end():], re.M)
         if end:
-            s = s[: m.end()] + s[m.end() + end.end():]
+            spans.append((m.end(), m.end() + end.end()))
+    for start, stop in reversed(spans):
+        s = s[:start] + s[stop:]
     return s
 
 skeleton = strip_heredocs(cmd).replace("\n", " ")

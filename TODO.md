@@ -118,7 +118,7 @@ docker compose -f infrastructure/compose/local.yml ps
 ---
 
 ### T-004 — Core schema: users, roles, sessions, audit_logs
-- **Status:** TODO
+- **Status:** DONE — 4 tables; append-only grant proven by test, not asserted
 - **Priority:** P0
 - **Depends on:** T-002, T-003
 - **Risk:** HIGH
@@ -131,15 +131,21 @@ First migration: `users`, `user_roles`, `user_sessions`, `audit_logs`. Per plan.
 §20. Audit table is append-only from the application role.
 
 **Acceptance criteria**
-- [ ] Migration runs and reverses cleanly on a local database
-- [ ] Application role has no UPDATE or DELETE grant on `audit_logs`
-- [ ] `users.email` is citext or has a case-insensitive unique index
-- [ ] Every table has created_at/updated_at; soft-delete where retention requires it
-- [ ] Retention rule documented for each table in `docs/compliance/retention.md`
+- [x] Migration applies, **down reverses to zero tables, up restores all four** — full round trip run, not assumed
+- [x] `investigator_app` holds **SELECT + INSERT only**. Six tests connect **as that role** and prove UPDATE and DELETE are refused — issuing a GRANT is not the same as the grant working
+- [x] `citext` with a unique index; a test proves `CaseProbe@Example.com` and `caseprobe@example.com` collide
+- [x] Timestamps throughout; `users.deleted_at` soft delete with a partial index excluding deleted rows
+- [x] `docs/compliance/retention.md` — periods marked **provisional**; counsel sets the real ones (brief §5, q12)
 
-**Validation**
+**ORM decision:** Drizzle `0.45.2` (ADR-0010) — pinned to the CVE-patched version.
+
+**Also found:** a Homebrew `postgresql@16` and a host Redis already owned ports 5432/6379, so
+the container mappings were silently shadowed — every connection reached the wrong server while
+`docker ps` showed a correct mapping. Host ports moved to **5433 / 6380**.
+
+**Validation** — all green 2026-09-13
 ```bash
-pnpm --filter api migration:run && pnpm --filter api test database
+pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && pnpm --filter api test
 ```
 
 ---

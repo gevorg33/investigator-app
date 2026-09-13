@@ -24,7 +24,10 @@ services:
       # differ between a developer laptop and CI.
       POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
     ports:
-      - '127.0.0.1:5432:5432'
+      # 5433 on the host, not 5432. A Homebrew postgresql service commonly already
+      # owns 5432, and the forward silently loses to it — the container looks mapped
+      # while every connection reaches the other server. Verified on this machine.
+      - '127.0.0.1:5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Runs only on an empty data directory. To re-run it, remove the volume.
@@ -45,7 +48,8 @@ services:
     # otherwise a queue bug looks like a lost job.
     command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
     ports:
-      - '127.0.0.1:6379:6379'
+      # 6380 for the same reason as postgres above.
+      - '127.0.0.1:6380:6379'
     volumes:
       - redis_data:/data
     healthcheck:

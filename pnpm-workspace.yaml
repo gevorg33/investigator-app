@@ -7,8 +7,10 @@ packages:
 allowBuilds:
   # Telemetry that phones home during install. Denied.
   '@scarf/scarf': false
-  # Native module resolver for eslint-plugin-import-x. Allowed because without its
-  # build, import-x/no-relative-packages silently matches nothing — verified by
-  # writing a genuine cross-package import and seeing no error reported. A rule that
-  # appears to enforce T-001 while doing nothing is worse than no rule.
-  'unrs-resolver': true
+  # Fetches the platform-specific binary. Required for drizzle-kit to run at all.
+  esbuild: true
+  # Native resolver for eslint-plugin-import-x. Allowed because without its build,
+  # import-x/no-relative-packages silently matches nothing — verified by writing a
+  # genuine cross-package import and seeing no error. A rule that appears to enforce
+  # T-001 while doing nothing is worse than no rule.
+  unrs-resolver: true

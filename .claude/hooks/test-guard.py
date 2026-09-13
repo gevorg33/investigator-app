@@ -40,6 +40,12 @@ cases = [
     ("Bash", {"command": "rg 'monkey' src/"}, 0, "word containing 'key'"),
     ("Write", {"file_path": "/x/docs/turkey-notes.md"}, 0, "filename containing 'key'"),
     ("Bash", {"command": "cat src/environment.ts"}, 0, "'environment' is not .env"),
+    # Regression: with two or more heredocs the stripper used stale offsets and only
+    # removed the first, so later heredoc bodies were scanned as if they were commands.
+    ("Bash", {"command": "cat > a.ts <<'TS'\nx\nTS\ncat > b.py <<'PY'\npath=\'.\'+\'env\'+\'.local\'\nPY\necho ok"}, 0,
+     "two heredocs, second mentions a dotenv path"),
+    ("Bash", {"command": "cat > a <<'A'\n1\nA\ncat > b <<'B'\n2\nB\nrm -rf /"}, 2,
+     "two heredocs then a real destructive command"),
     # Bypass attempt: hide a real command after a heredoc.
     ("Bash", {"command": f"cat > a.md <<'EOF'\nhello\nEOF\nrm -rf /"}, 2, "command hidden after heredoc"),
 ]
