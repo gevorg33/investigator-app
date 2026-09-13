@@ -52,10 +52,13 @@ authorization. It calls registered tools; the backend does the rest.
     tables become card lists, modals become sheets. Feature parity is required; visual parity
     is not. No horizontal page scroll, tap targets ≥ 44px, every hover affordance has a tap
     path. See `responsive-design`.
-11. **One visual language.** Every adopted component is re-tokenised before merge — no raw
-    colours, spacing, radii or durations in feature code. The application prioritises
+11. **One visual language, and as little of it as possible.** Every adopted component is
+    re-tokenised before merge — no raw colours, spacing, radii or durations in feature code.
+    Before adding any control, field, step or setting, apply the subtraction test: can it be
+    removed, defaulted, or inferred? The application prioritises
     `clarity > performance > usability > visual effect`; marketing may be expressive but never
-    at the cost of Core Web Vitals, accessibility or mobile performance. See `design-system`.
+    at the cost of Core Web Vitals, accessibility or mobile performance. Nothing ships because
+    it looks impressive. See `interaction-design` and `design-system`.
 12. **Nothing ships untested, and nothing ships unverified.** Every feature, fix, endpoint,
     service, database operation, AI workflow and business rule carries automated tests.
     **100% coverage is a blocking CI gate**, per package — but coverage is the floor, not the

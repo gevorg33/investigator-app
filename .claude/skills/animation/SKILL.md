@@ -61,6 +61,14 @@ Animation should reinforce the workflow, not decorate it:
 | Filter or timeline change | Cross-fade between states, not a rebuild |
 | Focus change | Movement that explains where you went |
 
+## Frequency inverts the rule
+
+An animation that delights on first use irritates on the five-hundredth. Before adding one, ask
+how often the user sees that screen.
+
+The moderation queue, the evidence list and the mission browse are high-frequency surfaces. On
+those, **restraint is the polish** — see `interaction-design`.
+
 ## Reviewing an animation
 
 - [ ] States what it communicates — in a sentence

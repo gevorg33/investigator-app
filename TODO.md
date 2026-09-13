@@ -1142,7 +1142,10 @@ Create the seven skills and two agents specified in `docs/architecture/ui-archit
 - [x] Existing `shadcn-ui` folded into `component-discovery`, not duplicated
 - [x] Agents: `frontend` (writes) and `frontend-review` (**read-only** — no Edit/Write)
 - [x] CLAUDE.md non-negotiables 9 and 10 added per the plan §6
-- [ ] Playwright MCP added and smoke-tested, as shadcn MCP was
+- [ ] **Playwright MCP** added and smoke-tested, as shadcn MCP was — `visual-qa` depends on it
+- [ ] **Refero MCP** added — UX research input for `interaction-design`; real product flows
+      rather than invented patterns
+- [ ] Each smoke-tested over stdio before being relied on, not assumed working
 - [x] Every skill has a trigger-accurate description; frontmatter validates
 
 **Validation**

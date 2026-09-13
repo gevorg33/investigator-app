@@ -11,6 +11,7 @@ You own the web surfaces: `apps/marketing-web`, `apps/app-web`, `apps/admin-web`
 
 ## Load these skills
 
+- `interaction-design` — **first. Should this exist, and can it be smaller?**
 - `ui-architecture` — which library, which surface, and what is not a dependency
 - `component-discovery` — **before writing any component**
 - `responsive-design` — **mobile-first; read before laying out any screen**
@@ -23,12 +24,14 @@ You own the web surfaces: `apps/marketing-web`, `apps/app-web`, `apps/admin-web`
 
 ## Order of work
 
-1. Search registries before building. Reuse beats adaptation beats custom.
-2. Read the source of anything outside `@shadcn` before adopting it.
-3. Re-tokenise it.
-4. Build.
-5. Verify with Playwright across three viewports plus reduced motion.
-6. Record it in the component inventory.
+1. **Apply the subtraction test before building anything.** Can it be removed, defaulted, or
+   inferred? The cheapest component is the one not added.
+2. Search registries before building. Reuse beats adaptation beats custom.
+3. Read the source of anything outside `@shadcn` before adopting it.
+4. Re-tokenise it.
+5. Build.
+6. Verify with Playwright across three viewports plus reduced motion.
+7. Record it in the component inventory.
 
 ## Surface discipline
 
@@ -50,6 +53,7 @@ trustworthy — not like a showcase.
 - Install React Flow, or build UI against entities and relationships (ADR-0005)
 - Import a DOM component library into `apps/mobile`
 - Put authenticated UI, a login form or a session check on the marketing domain
+- Add a control, field or setting that has not survived the subtraction test
 - Ship a screen that scrolls horizontally at 375px, or a tap target under 44px
 - Put an affordance behind hover with no tap path
 - Render user content with `dangerouslySetInnerHTML`

@@ -12,29 +12,33 @@ independent of authorship.
 
 ## Load these skills
 
-`responsive-design` · `design-system` · `animation` · `frontend-accessibility` ·
+`interaction-design` · `responsive-design` · `design-system` · `animation` · `frontend-accessibility` ·
 `frontend-performance` · `component-discovery` · `visual-qa`
 
 ## What you check, in order
 
-1. **Duplication.** Does this component already exist, in the project or in a registry? A new
+1. **Simplicity.** Could anything here be removed, defaulted or inferred? Is there more than
+   one primary action? Is a required field hidden behind disclosure? Redundant labels,
+   decorative icons, triple-encoded status? Does an empty state teach or just report
+   emptiness? Is the design matched to how often the surface is actually used?
+2. **Duplication.** Does this component already exist, in the project or in a registry? A new
    component that duplicates one is the most expensive finding here, because it drifts.
-2. **Tokens.** Any raw hex, spacing, radius or duration? Is an adopted component still
+3. **Tokens.** Any raw hex, spacing, radius or duration? Is an adopted component still
    carrying its own visual language?
-3. **Responsive.** Built mobile-first, or desktop-first and shrunk? Horizontal scroll at
+4. **Responsive.** Built mobile-first, or desktop-first and shrunk? Horizontal scroll at
    375px? Tap targets under 44px? Hover-only affordances? A table that stayed a table, or a
    modal that stayed a modal, on a phone? Full functionality reachable on mobile?
-4. **Accessibility.** Keyboard path end to end. Focus visible, trapped, returned. Real roles
+5. **Accessibility.** Keyboard path end to end. Focus visible, trapped, returned. Real roles
    and names. Async changes announced. Contrast AA in **both** themes. Meaning never carried
    by colour alone.
-5. **Animation.** What does each animation communicate? Within budget? `transform`/`opacity`
+6. **Animation.** What does each animation communicate? Within budget? `transform`/`opacity`
    only? Does reduced motion lose information? Does anything delay the legibility of an error
    or an evidence state?
-6. **Performance.** Bundle delta measured. Heavy visuals dynamically imported with a poster.
+7. **Performance.** Bundle delta measured. Heavy visuals dynamically imported with a poster.
    Long lists virtualised. Pagination server-side.
-7. **Surface discipline.** Marketing expressiveness in the application? Authenticated UI on
+8. **Surface discipline.** Marketing expressiveness in the application? Authenticated UI on
    the marketing domain? A staff-assumption component leaking into the customer app?
-8. **Evidence semantics.** Is assertion class rendered rather than flattened? Are
+9. **Evidence semantics.** Is assertion class rendered rather than flattened? Are
    contradictions shown as conflicts rather than resolved? Is AI-generated text visibly marked
    unreviewed? These are correctness, not cosmetics (`evidence-integrity`).
 
@@ -54,4 +58,4 @@ Close with **ship** or **blocked**, and if blocked, the minimum set of fixes.
 - Edit any file
 - Approve a component that was never searched for first
 - Accept "it looks fine" in place of a reduced-motion or keyboard check
-- Report cosmetic preferences as defects
+- Report cosmetic preferences as defects — "could be simpler" needs a specific thing to remove

@@ -103,7 +103,7 @@ are already in the data model, so the UI should not invent a parallel vocabulary
 | **MUST** | **shadcn** | Already installed and smoke-tested. Registry search is the component-reuse rule's enforcement mechanism |
 | **MUST** | **Playwright** | Visual QA, responsive checks, reduced-motion verification, a11y snapshots. §7 depends on it |
 | **SHOULD** | **Context7** (or equivalent docs MCP) | Version-correct API docs for Motion, React Flow, Next.js. Reduces invented APIs |
-| **OPTIONAL** | **Refero** | Large corpus of real product screens. Useful for UX research; adds no build dependency |
+| **SHOULD** | **Refero** | 142k real product screens and 12k user flows, with an MCP. The research input for `interaction-design` — proven patterns beat invented ones, and it adds no build dependency |
 | **OPTIONAL** | **Figma** | Only if design actually originates in Figma. Otherwise it is a tool with nothing to read |
 | **OPTIONAL** | **GitHub** | `gh` CLI already covers most of it |
 | **AVOID** | Anything per-library | Cult UI and React Bits are reachable through the shadcn registry mechanism. A separate MCP per component source is exactly the sprawl being avoided |
