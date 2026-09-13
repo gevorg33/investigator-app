@@ -92,6 +92,22 @@ Signing out affects only the session you sign out. Each browser and device holds
 so the rest stay active. To end all of them, either revoke them individually or change your
 password.
 
+## My email address was rejected and I cannot see anything wrong with it
+
+Some characters have no visible form — zero-width marks, direction overrides, and a few
+kinds of invisible space. They can be picked up by copying an address out of a document or
+a chat message without anyone intending it.
+
+We reject addresses containing them. Two addresses that differ only by an invisible
+character look identical to everyone who reads them but are different addresses, which
+would let one account be mistaken for another. Given what this platform is used for, being
+sure which account you are dealing with matters more than accepting an unusual address.
+
+If this happens, type the address by hand rather than pasting it.
+
+Addresses in other scripts are fine — this is not a restriction to English or to Latin
+characters, and surrounding spaces are simply trimmed rather than refused.
+
 ## Why does signing in sometimes stop working after several failed attempts?
 
 Repeated failures against the same account, or from the same network, are slowed down for a

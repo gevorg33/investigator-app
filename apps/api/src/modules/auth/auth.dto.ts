@@ -1,12 +1,12 @@
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
+import { EmailField } from '../../common/validation/email';
 
 /**
  * whitelist + forbidNonWhitelisted are on globally (main.ts), so a client cannot
  * set a field we did not declare here — mass-assignment protection.
  */
 export class CredentialsDto {
-  @IsEmail({}, { message: 'error.validation.email.invalid' })
-  @MaxLength(254) // RFC 5321 maximum
+  @EmailField()
   email!: string;
 
   @IsString()
@@ -18,8 +18,7 @@ export class CredentialsDto {
 }
 
 export class EmailOnlyDto {
-  @IsEmail({}, { message: 'error.validation.email.invalid' })
-  @MaxLength(254)
+  @EmailField()
   email!: string;
 }
 
