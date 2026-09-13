@@ -151,7 +151,7 @@ pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && p
 ---
 
 ### T-005 — Authentication: register, login, refresh rotation, sessions
-- **Status:** TODO
+- **Status:** IN_PROGRESS
 - **Priority:** P0
 - **Depends on:** T-004
 - **Risk:** HIGH
@@ -1990,6 +1990,97 @@ Verification
 **Validation**
 ```bash
 pnpm --filter api test auth-oauth
+```
+
+---
+
+### T-063 — Close the coverage gap the repaired gate exposed
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** No — but the exclusions register needs a maintainer (see below)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/**
+
+**Description**
+The coverage gate never ran. CI called `pnpm test:coverage`, which expands to
+`pnpm -r --if-present test:coverage`; no package defined that script, so `--if-present`
+skipped every package and the step exited 0. `@vitest/coverage-v8` was not installed and no
+thresholds existed. The step was labelled "Blocking" in `pr.yml` and blocked nothing.
+
+Wired for real during T-005: provider, `all: true`, 100% thresholds on all four metrics, and
+a `test:coverage` script in `apps/api`. With it measuring, the package sits at **76.61%
+statements / 68.75% branches / 72.3% functions / 76.59% lines** — not the documented 100%.
+
+`src/modules/auth` was brought to 100/98.24/100/100 as part of T-005. The remainder is
+pre-existing debt from T-002/T-003/T-004 and is this task:
+
+| Area | Stmts | Note |
+|---|---|---|
+| `main.ts`, `app.module.ts` | 0% | Bootstrap. Candidate for the exclusions register, not for an agent to decide |
+| `common/logging/logger.options.ts` | 14% | Redaction paths — these carry personal data and must be tested, not excluded |
+| `database/database.module.ts` | 25% | Factory throws without DATABASE_URL; that branch is untested |
+| `common/errors/http-exception.filter.ts` | 50% | Error mapping a user can actually reach |
+| `database/schema/*` | 65% | Partial-index and soft-delete helpers |
+| `modules/health` | branch 50% | |
+
+**Blocked on a maintainer decision.** One branch is unreachable by any test: the transpiler's
+`__decorateClass` helper maps onto each `@Injectable()` line, and its `kind ? … : …` ternary
+can only take one path for a class decorator. Confirmed under both the v8 and istanbul
+providers — both instrument post-TS-transform code, so neither can reach it
+(`session.service.ts:33`, `BRDA:33,5,0,0`). A 100% branch threshold is therefore unreachable
+by construction for decorated classes. Resolving it needs either an exclusions-register entry
+or a documented threshold exception — rules 3 and 5 of `docs/operations/coverage-exclusions.md`
+forbid an agent doing either unilaterally. See `ACTIONS-FOR-ME.md`.
+
+**Acceptance criteria**
+- [ ] `pnpm test:coverage` passes at the declared thresholds, or every shortfall has a
+      register entry approved by a maintainer
+- [ ] Redaction paths in `logger.options.ts` are tested against a payload containing an
+      email, a password and a refresh token
+- [ ] `database.module.ts` missing-`DATABASE_URL` branch is tested
+- [ ] The decorator-helper branch is resolved by decision, never by lowering a number silently
+- [ ] `pr.yml` coverage step is proven to fail on a deliberately uncovered line
+
+**Validation**
+```bash
+pnpm --filter api test:coverage
+```
+
+---
+
+### T-064 — Type-check and lint the test suite
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/tsconfig.json, apps/api/vitest.config.mts
+
+**Description**
+`apps/api/tsconfig.json` excludes `**/*.spec.ts`, so `pnpm typecheck` never sees the test
+suite. Test code is the thing asserting the production code is correct and is currently the
+only unchecked code in the package — a spec can assert against a property that does not
+exist and still pass.
+
+The same exclusion means the transformer does not apply `experimentalDecorators` to spec
+files, so Nest decorator syntax fails to parse inside a test. `auth.boot.spec.ts` works
+around it by applying `Module(...)(cls)` and `Global()(cls)` as plain function calls; that
+workaround should disappear once this is fixed.
+
+Needs a separate `tsconfig.spec.json` so specs are checked without being emitted into `dist`.
+
+**Acceptance criteria**
+- [ ] `pnpm typecheck` covers `**/*.spec.ts`
+- [ ] `dist/` still contains no spec output
+- [ ] A deliberate type error in a spec fails `pnpm typecheck`
+- [ ] Decorator syntax works in a spec; the `auth.boot.spec.ts` workaround is removed
+
+**Validation**
+```bash
+pnpm typecheck && pnpm --filter api build && test ! -e apps/api/dist/modules/auth/auth.boot.spec.js
 ```
 
 ---

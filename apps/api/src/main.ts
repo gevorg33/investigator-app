@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AppExceptionFilter } from './common/errors/http-exception.filter';
@@ -13,6 +14,9 @@ async function bootstrap(): Promise<void> {
   // Information disclosure. Caddy strips it at the edge (ADR-0002); removing it here
   // too means the app is safe behind any proxy — launch-hardening.
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+
+  // Refresh token travels as a host-only cookie (ADR-0002).
+  app.use(cookieParser());
 
   app.setGlobalPrefix('api/v1');
 

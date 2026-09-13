@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { validateEnv } from './config/env.schema';
 import { loggerOptions } from './common/logging/logger.options';
+import { AuditModule } from './common/audit/audit.module';
+import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -20,6 +23,9 @@ import { HealthModule } from './modules/health/health.module';
           process.env['NODE_ENV'] === 'development',
         ),
     }),
+    DatabaseModule,
+    AuditModule,
+    AuthModule,
     HealthModule,
   ],
 })

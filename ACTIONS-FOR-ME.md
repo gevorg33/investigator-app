@@ -255,6 +255,39 @@ once (T-028).
 
 ---
 
+### 12. One coverage decision only you can make — for T-063
+
+**Why:** The 100% coverage gate is now real (it previously never ran — CI's `--if-present`
+skipped it silently and the step passed doing nothing). With it measuring, one branch is
+**unreachable by any test**: the TypeScript transpiler's `__decorateClass` helper maps onto
+every `@Injectable()` line, and its internal `kind ? … : …` ternary can only take one path
+when the decorator is a class decorator. Confirmed under both coverage providers — v8 and
+istanbul both instrument code after the TypeScript transform, so neither can reach it.
+
+A 100% **branch** threshold is therefore unreachable by construction for any decorated class,
+which is most of the NestJS API.
+
+`docs/operations/coverage-exclusions.md` rule 3 says an agent may never add an exclusion
+unilaterally, and rule 5 says lowering a threshold needs a documented maintainer exception.
+So this is yours to decide. I have not changed any threshold.
+
+**The options, as I see them:**
+
+| | Effect | Cost |
+|---|---|---|
+| Register `__decorateClass` helper output as an exclusion | Keeps 100% meaningful for real code | Needs wording that excludes the helper, not the decorated class |
+| Set the **branch** threshold to 99% and keep the other three at 100% | Simple, honest | A real uncovered branch could hide under the allowance |
+| Keep 100% everywhere | Gate can never pass | Not viable |
+
+My recommendation is the first: the helper is generated code, which the register already
+lists as "typically appropriate" to exclude, and it leaves every threshold at 100%.
+
+**What I need:** which option, and if the first, your approval line for the register entry.
+
+**Status:** ⬜ Pending — blocks T-063, and blocks the coverage gate going green
+
+---
+
 ## Already handled — do not do these
 
 | | |

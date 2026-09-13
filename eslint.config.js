@@ -80,4 +80,28 @@ export default tseslint.config(
       ],
     },
   },
+
+  // NestJS dependency injection reads constructor parameter types at runtime from
+  // `design:paramtypes`, which `emitDecoratorMetadata` writes at compile time. A
+  // type-only import erases the value, so the metadata degrades to `[Function]`:
+  //
+  //   import { Dep } from './dep'       -> design:paramtypes [dep_1.Dep]
+  //   import type { Dep } from './dep'  -> design:paramtypes [Function]
+  //
+  // Two consequences, both silent. DI can no longer resolve the provider, and a
+  // `@Body() dto: SomeDto` parameter loses its class metatype, so ValidationPipe
+  // skips the DTO entirely -- taking `whitelist` and `forbidNonWhitelisted` mass
+  // assignment protection (main.ts) with it. Unit tests do not catch either,
+  // because they construct services with `new` rather than through the container.
+  //
+  // typescript-eslint documents this rule as incompatible with
+  // emitDecoratorMetadata. apps/api is the only package that enables it, so the
+  // rule stays on everywhere else. auth.boot.spec.ts is the regression test: it
+  // boots the real container and asserts validation still rejects an unknown field.
+  {
+    files: ['apps/api/**/*.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'off',
+    },
+  },
 );
