@@ -113,9 +113,10 @@ importing DOM libraries would break the mobile build.
 
 ### Web applications — the primary product surface
 
-- Next.js **16.3.5** (React **19.3.0**)
+- Next.js **15.5.25** (React **19.2.8**) — not 16/19.3, which were days old
 - TypeScript **6.0.3** — not 7; typescript-eslint caps at `<6.1.0`
 - Node **24 LTS**, not 26 Current
+- ESLint **9.39.5** — the `maintenance` line
 - Tailwind CSS
 - shadcn/ui foundation with a centralized design-token package (ADR-0003)
 - Shared UI package — **web-only**; never importable from the mobile companion (ADR-0004)

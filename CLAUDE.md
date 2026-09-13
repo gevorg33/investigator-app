@@ -103,19 +103,26 @@ website. Session cookies are **host-only on `app.`** — never scoped to the par
 
 Monorepo layout is defined in `plan.md` §4.
 
-## Pinned versions
+## Pinned versions — stability first
 
-| | Version | Note |
-|---|---|---|
-| Node | **24 LTS (Krypton)** | `.nvmrc` + `engines`. **Not 26** — 26 is *Current*, not LTS. This platform holds evidence and moves money; LTS support windows matter more than newest |
-| pnpm | 12.4.1 | Latest. `packageManager` field pins it |
-| TypeScript | **6.0.3** | **Not 7.** typescript-eslint peers on `typescript >=4.8.4 <6.1.0` — TS 7 breaks linting. Revisit when typescript-eslint supports it |
-| ESLint | 10.10.0 | Latest. Note `@eslint/js` versions independently — it is `10.0.1` |
-| Next.js | **16.3.5** | For T-002 onward. `engines: node >=20.9.0` |
-| React | **19.3.0** | Next 16 peer |
+Only **Node** has a formal LTS programme, and **ESLint** has a `maintenance` line. TypeScript,
+Next, React and pnpm have neither. So the policy is: take the newest version that is both
+**supported by the toolchain** and **has been in the wild long enough to be trusted** — not the
+newest published.
 
-Take the newest version that the toolchain actually supports, not the newest published. Both
-caveats above were found by checking peer ranges, not by assuming.
+| | Version | Age at pinning | Why this one |
+|---|---|---|---|
+| Node | **24 LTS (Krypton)** | LTS line | Not 26 — 26 is *Current*. This platform holds evidence and moves money |
+| pnpm | **12.4.1** | — | Current stable line; `packageManager` pins it exactly |
+| TypeScript | **6.0.3** | ~5 months | Mature. **Not 7** — typescript-eslint peers on `<6.1.0`, so TS 7 breaks linting |
+| ESLint | **9.39.5** | ~2 months | The `maintenance` dist-tag — ESLint's LTS equivalent. **Not 10.10.0**, which was 9 days old |
+| Next.js | **15.5.25** | ~2 weeks | **Not 16.3.5**, which was 2 days old |
+| React | **19.2.8** | ~2 months | **Not 19.3.0**, which was 4 days old |
+
+`@eslint/js` versions independently from `eslint` — check both, do not assume they match.
+
+**Before bumping anything:** check the release date and the peer ranges. Newest published is
+not newest usable, and a package days old has not met anyone else's edge cases yet.
 
 ## Working agreement
 
