@@ -61,6 +61,8 @@ structured JSON logging with correlation IDs, global validation pipe, OpenAPI, a
 HealthModule.
 
 **Acceptance criteria**
+- [ ] Pinned to the versions in CLAUDE.md — Node 24 LTS, TypeScript 6.0.3. **Do not resolve
+      "latest" at install time**; TS 7 breaks typescript-eslint
 - [ ] `GET /health` returns 200 with service and dependency status
 - [ ] Config is validated at boot; missing required env vars fail fast with a clear message
 - [ ] Every request has a correlation ID, propagated into logs

@@ -101,7 +101,21 @@ Domains (ADR-0002): `mydomain.com` marketing (indexable) · `app.` application +
 `/api` (never indexed) · `news.` newsletter · `mail.` transactional sending domain, not a
 website. Session cookies are **host-only on `app.`** — never scoped to the parent domain.
 
-Monorepo layout is defined in `plan.md` §4. Package manager: **pnpm**.
+Monorepo layout is defined in `plan.md` §4.
+
+## Pinned versions
+
+| | Version | Note |
+|---|---|---|
+| Node | **24 LTS (Krypton)** | `.nvmrc` + `engines`. **Not 26** — 26 is *Current*, not LTS. This platform holds evidence and moves money; LTS support windows matter more than newest |
+| pnpm | 12.4.1 | Latest. `packageManager` field pins it |
+| TypeScript | **6.0.3** | **Not 7.** typescript-eslint peers on `typescript >=4.8.4 <6.1.0` — TS 7 breaks linting. Revisit when typescript-eslint supports it |
+| ESLint | 10.10.0 | Latest. Note `@eslint/js` versions independently — it is `10.0.1` |
+| Next.js | **16.3.5** | For T-002 onward. `engines: node >=20.9.0` |
+| React | **19.3.0** | Next 16 peer |
+
+Take the newest version that the toolchain actually supports, not the newest published. Both
+caveats above were found by checking peer ranges, not by assuming.
 
 ## Working agreement
 
