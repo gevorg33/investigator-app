@@ -1147,11 +1147,13 @@ Create the seven skills and two agents specified in `docs/architecture/ui-archit
 - [x] Existing `shadcn-ui` folded into `component-discovery`, not duplicated
 - [x] Agents: `frontend` (writes) and `frontend-review` (**read-only** — no Edit/Write)
 - [x] CLAUDE.md non-negotiables 9 and 10 added per the plan §6
-- [ ] **Playwright MCP** added and smoke-tested, as shadcn MCP was — `visual-qa` depends on it
-- [ ] **Refero MCP** added — UX research input for `interaction-design`; real product flows
-      rather than invented patterns
+- [x] **Playwright MCP** added and smoke-tested — 24 tools, `browser_resize` + `browser_snapshot`
+- [ ] **Refero MCP** — remote HTTP, needs OAuth sign-in:
+      `claude mcp add --transport http refero https://api.refero.design/mcp`
 - [ ] Each smoke-tested over stdio before being relied on, not assumed working
 - [x] Every skill has a trigger-accurate description; frontmatter validates
+- [x] Escalation and law-enforcement procedures written (`docs/operations/`), resolving the
+      dangling pointers from the staff knowledge base
 
 **Validation**
 ```bash
