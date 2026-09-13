@@ -274,7 +274,7 @@ pnpm --filter api test authz
 ## Phase 2 — Profiles and verification
 
 ### T-007 — Customer and investigator profiles with role switching
-- **Status:** TODO
+- **Status:** DONE — 2026-09-13
 - **Priority:** P1
 - **Depends on:** T-006
 - **Risk:** MEDIUM
@@ -283,12 +283,56 @@ pnpm --filter api test authz
 - **Affected:** apps/api/src/modules/{users,investigator-profiles}/**
 
 **Acceptance criteria**
-- [ ] One account holds both roles; switching needs no new account
-- [ ] A user can read only their own profile in full; public projection for others
-- [ ] Investigator profile: specialties, languages, pricing model, availability
-- [ ] `*.authz.spec.ts` asserts a different actor cannot read or write the profile
+- [x] One account holds both roles; switching needs no new account
+- [x] A user can read only their own profile in full; public projection for others
+- [x] Investigator profile: specialties, languages, pricing model, availability
+- [x] `*.authz.spec.ts` asserts a different actor cannot read or write the profile
 
-**Validation**
+**Verified live**
+
+| | |
+|---|---|
+| One account, both roles | `CUSTOMER` and `INVESTIGATOR` activated on one account, 201 each. Self-activating `STAFF` is 400 — staff roles are granted by staff |
+| Owner vs stranger | Owner sees 17 fields; a stranger sees 12. Withheld: `contactPhone`, `userId`, `visibility`, `createdAt`, `updatedAt`. Storefront intact |
+| Customer projection | Owner sees 7 fields, everyone else sees `id` and `displayName`. Organisation and phone do not leak |
+| Draft invisibility | A draft answers **404, byte-identical to a nonexistent id** — a response distinguishing them would confirm someone works here |
+| Write protection | There is no write-by-id route (404); a customer writing `investigator/me` is 403 and the victim's profile is untouched |
+| Role narrowing | Acting as `CUSTOMER` refuses the investigator profile (403) though the role is held |
+
+**The public projection is an allowlist**, never the row with private fields deleted. On the
+day a column is added, an allowlist keeps it invisible until deliberately exposed; a denylist
+publishes it the moment it exists. Same argument as the actor-scoped repository — the safe
+form is the one where forgetting produces less access.
+
+**Writes take no profile id.** The row is found by who the caller is, so there is no id to
+get wrong and no ownership comparison to forget.
+
+**Taxonomy dependency, stated plainly:** specialties are taxonomy nodes (ADR-0007), and T-053
+owns the taxonomy but is not built. This ships the **structural subset only** —
+`taxonomy_nodes` with stable ids, slug, parent, status — because a specialty pointing at
+nothing is not a specialty. T-053 still owns per-locale labels, risk bands, tags,
+tree-walking matching, the admin surface, and seeding the tree (which waits on domain and
+licensing review). A specialty naming an unknown node is rejected: free text can never
+substitute for a declared node.
+
+**Role activation requires a verified, active account.** A freshly registered account is
+`PENDING_VERIFICATION` and is refused — confirmed live. Consistent with T-022.
+
+**A grant that was silently doing nothing:** `GRANT SELECT ON taxonomy_nodes` did not make
+taxonomy read-only for the application. Migration 0000's `ALTER DEFAULT PRIVILEGES` already
+grants all four verbs on every future table, so the grant added nothing — verified by
+inserting a node as `investigator_app` and watching it succeed. An explicit `REVOKE` was
+needed, exactly as `audit_logs` does. **Any table meant to be narrower than the default has
+to say so.**
+
+Ten CHECK constraints are enforced in the database, not only in DTOs — each verified to
+reject: rate without currency, negative rate, lower-case currency, 120 years of experience,
+day 7, a window ending before it starts, a window past midnight, upper-case and three-letter
+language codes, and a node that is its own parent.
+
+**Coverage:** `src/modules/profiles` at 96.09% statements, 100% functions, 98.36% lines.
+
+**Validation** — all green 2026-09-13
 ```bash
 pnpm --filter api test profiles
 ```

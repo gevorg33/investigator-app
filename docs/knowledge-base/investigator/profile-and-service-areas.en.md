@@ -6,11 +6,11 @@ visibility: authenticated
 locale: en
 version: 1
 status: current
-updated: 2026-09-12
+updated: 2026-09-13
 source_of_truth: database
 implementation_status: specified
 related_code:
-  - apps/api/src/modules/investigator-profiles
+  - apps/api/src/modules/profiles
   - apps/api/src/modules/service-areas
 tags: [profile, service-areas, specialties, availability, languages, discovery]
 ---
@@ -47,6 +47,32 @@ You appear once per customer search regardless of how many of your areas match �
 nearest is used for distance ordering. Adding overlapping areas does not increase your
 visibility.
 
+## Which parts of my profile can customers see?
+
+Customers see your storefront: display name, headline, description, years of experience,
+specialties, languages, pricing model and rate, availability windows, and whether you are
+currently accepting work.
+
+They do not see your phone number. Contact happens through the platform, and your number is
+there for staff and support rather than for customers.
+
+Nothing is shown to customers unless it is on that list. New fields are invisible to
+customers until they are deliberately added to it, so a setting that appears in your own
+view has not quietly become public.
+
+## When does my profile become visible?
+
+Not when you activate the investigator role — only when you publish it. A new profile starts
+as a draft, so you can fill it in over several sittings without a half-finished version
+appearing in results.
+
+An unpublished profile is not merely hidden. To anyone else it does not appear to exist at
+all, which is deliberate: a response distinguishing "this person has an unpublished profile"
+from "no such profile" would let anyone confirm you work here.
+
+Publishing is not the same as being verified. They are separate, and verification has its own
+process.
+
 ## Is my home address visible to customers?
 
 No. Service areas are what customers see, and they are about where you work, not where you
@@ -63,6 +89,18 @@ thing you do within it.
 Customers filter on both. Declaring a specialty you do not actually offer services in
 produces mismatched missions; declaring services you cannot lawfully perform in a declared
 area is a compliance problem, not just a mismatch.
+
+## How do I work as a customer as well?
+
+The same account. Activating the customer role adds it to the account you already have — you
+do not register again, and you switch between the two workspaces without signing in again.
+
+This matters beyond convenience. Two accounts would mean two identities, two verification
+histories and two reputations for one person, and nothing tying them together.
+
+While you are working in one role, the platform acts as though you hold only that one. Your
+investigator profile is not reachable from the customer workspace, which keeps the two sides
+of your account from blurring together.
 
 ## Why does availability matter so much?
 
