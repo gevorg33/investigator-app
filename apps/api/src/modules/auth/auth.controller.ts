@@ -13,7 +13,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { AuthService, type RequestContext } from './auth.service';
+import { AuthService } from './auth.service';
+import { requestContext } from '../../common/http/request-context';
 import { CredentialsDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
 import type { SessionSummary } from './auth.service';
 import { ActorGuard } from '../../common/authz/actor.guard';
@@ -44,7 +45,7 @@ export class AuthController {
   @HttpCode(202)
   @ApiOperation({ summary: 'Register. Always 202 — never reveals whether the address exists.' })
   async register(@Body() dto: CredentialsDto, @Req() req: Request): Promise<{ status: string }> {
-    await this.auth.register(dto.email, dto.password, ctx(req));
+    await this.auth.register(dto.email, dto.password, requestContext(req));
     // Identical response whether or not the address was already registered.
     return { status: 'accepted' };
   }
@@ -56,7 +57,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ userId: string }> {
-    const r = await this.auth.login(dto.email, dto.password, ctx(req));
+    const r = await this.auth.login(dto.email, dto.password, requestContext(req));
     res.cookie(COOKIE, r.refreshToken, cookieOptions);
     return { userId: r.userId };
   }
@@ -68,7 +69,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ userId: string }> {
     const token = String(req.cookies?.[COOKIE] ?? '');
-    const r = await this.auth.refresh(token, ctx(req));
+    const r = await this.auth.refresh(token, requestContext(req));
     res.cookie(COOKIE, r.refreshToken, cookieOptions);
     return { userId: r.userId };
   }
@@ -77,7 +78,7 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Redeem an email verification token. Single use.' })
   async verifyEmail(@Body() dto: TokenDto, @Req() req: Request): Promise<{ status: string }> {
-    await this.auth.verifyEmail(dto.token, ctx(req));
+    await this.auth.verifyEmail(dto.token, requestContext(req));
     return { status: 'verified' };
   }
 
@@ -88,7 +89,7 @@ export class AuthController {
     @Body() dto: EmailOnlyDto,
     @Req() req: Request,
   ): Promise<{ status: string }> {
-    await this.auth.requestEmailVerification(dto.email, ctx(req));
+    await this.auth.requestEmailVerification(dto.email, requestContext(req));
     return { status: 'accepted' };
   }
 
@@ -99,7 +100,7 @@ export class AuthController {
     @Body() dto: EmailOnlyDto,
     @Req() req: Request,
   ): Promise<{ status: string }> {
-    await this.auth.requestPasswordReset(dto.email, ctx(req));
+    await this.auth.requestPasswordReset(dto.email, requestContext(req));
     return { status: 'accepted' };
   }
 
@@ -111,7 +112,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ status: string }> {
-    await this.auth.resetPassword(dto.token, dto.password, ctx(req));
+    await this.auth.resetPassword(dto.token, dto.password, requestContext(req));
     // Every session was just revoked, this one included — drop the stale cookie rather
     // than leave the browser holding a token that can no longer work.
     res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined });
@@ -125,7 +126,7 @@ export class AuthController {
     @CurrentActor() actor: Actor,
     @Req() req: Request,
   ): Promise<{ sessions: SessionSummary[] }> {
-    return { sessions: await this.auth.listSessions(actor, ctx(req)) };
+    return { sessions: await this.auth.listSessions(actor, requestContext(req)) };
   }
 
   @Delete('sessions/:id')
@@ -137,25 +138,14 @@ export class AuthController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
   ): Promise<void> {
-    await this.auth.revokeSession(actor, id, ctx(req));
+    await this.auth.revokeSession(actor, id, requestContext(req));
   }
 
   @Post('logout')
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     const token = String(req.cookies?.[COOKIE] ?? '');
-    if (token) await this.auth.revoke(token, ctx(req));
+    if (token) await this.auth.revoke(token, requestContext(req));
     res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined });
   }
-}
-
-function ctx(req: Request): RequestContext {
-  // pino-http sets req.id, typed as string | number. Normalised to string here so
-  // the correlation id has one shape everywhere it travels.
-  const id: unknown = (req as unknown as { id?: unknown }).id;
-  return {
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-    correlationId: typeof id === 'string' || typeof id === 'number' ? String(id) : undefined,
-  };
 }

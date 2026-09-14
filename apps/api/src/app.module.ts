@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { AuthzModule } from './common/authz/authz.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { HealthModule } from './modules/health/health.module';
     MailModule,
     AuthzModule,
     AuthModule,
+    ProfilesModule,
     HealthModule,
   ],
 })
