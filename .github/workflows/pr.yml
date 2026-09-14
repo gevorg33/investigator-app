@@ -13,6 +13,7 @@ concurrency:
 
 permissions:
   contents: read # least privilege; a job needing more asks for exactly that
+  pull-requests: read # gitleaks-action reads the PR's commits; read-only, since its comments are off
 
 env:
   DATABASE_URL: postgres://postgres:postgres@localhost:5432/investigator_test
@@ -116,5 +117,13 @@ jobs:
       - name: Dependency audit
         run: pnpm audit --audit-level=high
 
+      # Full history, not only this PR's diff: a secret committed and later deleted is still
+      # in the history anyone can clone. The token lets the action read the PR's commits.
+      # Comments are off so the job needs no write permission -- a finding fails this job and
+      # is listed in its summary instead. Personal account, so no GITLEAKS_LICENSE is needed.
+      # v3 changes only the runtime (Node 24); v2 ran on the deprecated Node 20.
       - name: Secret scan (full history)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
