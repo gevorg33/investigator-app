@@ -14,3 +14,14 @@ allowBuilds:
   # genuine cross-package import and seeing no error. A rule that appears to enforce
   # T-001 while doing nothing is worse than no rule.
   unrs-resolver: true
+
+# Forced versions of transitive dependencies. Each entry is a reviewed supply-chain
+# decision, with the reason it cannot be solved by bumping the direct dependency.
+overrides:
+  # GHSA-wc9g-mqfw-jrwm, GHSA-535w-7cp7-47q4 (DoS via crafted multipart field names, fixed
+  # in >=2.3.0) and GHSA-qfvm-cv95-jqjf (DoS via file-descriptor leak, affects =2.2.0 only).
+  # Every @nestjs/platform-express 11.x release pins multer to exactly 2.2.0, so no Nest
+  # bump reaches the fix. Exact pin, not a range: 2.3.0 was ~17 days old when chosen, past
+  # the ~2-week bar CLAUDE.md applies, and a security patch in the same minor line. Remove
+  # this once platform-express depends on >=2.3.0 itself.
+  multer: 2.3.0
