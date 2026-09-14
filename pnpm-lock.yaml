@@ -211,6 +211,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@investigator/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@nestjs/common':
         specifier: 11.2.3
         version: 11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)

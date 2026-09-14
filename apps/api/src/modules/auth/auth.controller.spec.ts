@@ -7,9 +7,12 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { ActorService } from '../../common/authz/actor.service';
+import { testActor } from '../../../test/authz-cases';
 
 const CREDENTIALS = { email: 'probe@example.test', password: 'a-sufficiently-long-password' };
 const COOKIE = 'investigator_session';
+const ACTOR = testActor({ userId: 'u1', sessionId: 'sess-1' });
 
 /** Records what the controller passed through, so context handling is observable. */
 const stub = () => ({
@@ -37,7 +40,12 @@ describe('auth controller', () => {
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: auth }],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        // The guard's own behaviour is covered in actor.service.spec.ts; here it stands
+        // in so the session routes can be exercised at the HTTP layer.
+        { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -229,12 +237,12 @@ describe('auth controller', () => {
         .set('Cookie', [`${COOKIE}=tok-old`]);
       expect(res.status).toBe(200);
       expect(res.body.sessions).toHaveLength(1);
-      expect(auth.listSessions).toHaveBeenCalledWith('tok-old', expect.any(Object));
+      expect(auth.listSessions).toHaveBeenCalledWith(ACTOR, expect.any(Object));
     });
 
-    it('passes an empty token when no cookie is present', async () => {
-      await request(app.getHttpServer()).get('/auth/sessions');
-      expect(auth.listSessions).toHaveBeenCalledWith('', expect.any(Object));
+    it('resolves the actor from the cookie rather than trusting the body', async () => {
+      await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', [`${COOKIE}=tok-old`]);
+      expect(auth.listSessions).toHaveBeenCalledWith(ACTOR, expect.any(Object));
     });
 
     it('revokes a named session', async () => {
@@ -243,7 +251,7 @@ describe('auth controller', () => {
         .delete(`/auth/sessions/${id}`)
         .set('Cookie', [`${COOKIE}=tok-old`]);
       expect(res.status).toBe(204);
-      expect(auth.revokeSession).toHaveBeenCalledWith('tok-old', id, expect.any(Object));
+      expect(auth.revokeSession).toHaveBeenCalledWith(ACTOR, id, expect.any(Object));
     });
 
     it('rejects a session id that is not a uuid before reaching the service', async () => {
@@ -254,10 +262,10 @@ describe('auth controller', () => {
       expect(auth.revokeSession).not.toHaveBeenCalled();
     });
 
-    it('passes an empty token to revoke when no cookie is present', async () => {
+    it('passes the resolved actor to revoke, never an id from the request body', async () => {
       const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-      await request(app.getHttpServer()).delete(`/auth/sessions/${id}`);
-      expect(auth.revokeSession).toHaveBeenCalledWith('', id, expect.any(Object));
+      await request(app.getHttpServer()).delete(`/auth/sessions/${id}`).send({ userId: 'someone-else' });
+      expect(auth.revokeSession).toHaveBeenCalledWith(ACTOR, id, expect.any(Object));
     });
   });
 });

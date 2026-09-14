@@ -6,6 +6,7 @@ import { loggerOptions } from './common/logging/logger.options';
 import { AuditModule } from './common/audit/audit.module';
 import { MailModule } from './common/mail/mail.module';
 import { DatabaseModule } from './database/database.module';
+import { AuthzModule } from './common/authz/authz.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 
@@ -27,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
     DatabaseModule,
     AuditModule,
     MailModule,
+    AuthzModule,
     AuthModule,
     HealthModule,
   ],

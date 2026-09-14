@@ -63,7 +63,10 @@ export default defineConfig({
   plugins: [excludeDecoratorMetadataGuards()],
   test: {
     environment: 'node',
-    include: ['src/**/*.spec.ts'],
+    // test/ holds helpers that import vitest and so must not be compiled into dist;
+    // their own specs live alongside them. coverage.include stays src-only, so nothing
+    // under test/ is counted as source.
+    include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     globals: false,
     coverage: {
       provider: 'v8',

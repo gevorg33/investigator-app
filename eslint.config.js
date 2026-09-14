@@ -36,10 +36,18 @@ export default tseslint.config(
       // pattern also blocks legitimate intra-package imports (T-001).
       'import-x/no-relative-packages': 'error',
 
-      // The rule above resolves entry points, so a deep path into another package's
-      // source ('../../validation/src/index') slips past it — verified.
-      // Re-entering a 'src' directory after traversing up is cross-package by
-      // construction: you are already inside your own src and never climb back into it.
+    },
+  },
+
+  // The import-x rule above resolves entry points, so a deep path into another
+  // package's source ('../../validation/src/index') slips past it — verified.
+  // Re-entering a 'src' directory after traversing up is cross-package by
+  // construction, but ONLY for a file that is itself inside src: from there you never
+  // climb back into your own. A sibling of src — apps/api/test — legitimately does,
+  // and the rule flagged it as a cross-package import until this was scoped (T-006).
+  {
+    files: ['**/src/**/*.{ts,tsx,js,jsx}'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
