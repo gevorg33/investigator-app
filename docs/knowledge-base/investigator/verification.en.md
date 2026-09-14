@@ -6,7 +6,7 @@ visibility: authenticated
 locale: en
 version: 1
 status: current
-updated: 2026-09-12
+updated: 2026-09-14
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -36,11 +36,29 @@ is required for your declared areas and specialties.
 
 ## Who can see my verification documents?
 
-Reviewing staff, and only for the purpose of reviewing them. Access is recorded.
+You, and staff whose role is reviewing verification — nobody else. Staff can open them only
+while acting in that role.
+
+Every time anyone opens one, you included, it is recorded: who, which document, and when.
 
 Customers never see your verification documents. They see that you are verified, not the
 documents behind it. Your documents are stored as private files with no public link, the
-same protection applied to evidence.
+same protection applied to evidence. A link to open one is created on request and stops
+working after five minutes, so a link that is copied or forwarded is quickly useless.
+
+## Which files can I upload?
+
+PDF, JPEG or PNG, up to 15 MB each. A photo from a phone or a scan of a licence both fit.
+
+The upload is checked after it arrives, against the file itself rather than what the browser
+said about it. A file that is not really one of those types, or is larger than the limit, is
+removed and you are asked to upload again.
+
+## Why can't I open a document I just uploaded?
+
+Each file is checked for malware before anyone can open it, including you. Until that check
+reports the file as clean, it cannot be opened by anyone. This keeps a harmful file from
+reaching the staff who review it.
 
 ## How long does review take?
 

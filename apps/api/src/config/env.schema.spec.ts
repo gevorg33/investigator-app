@@ -40,4 +40,49 @@ describe('env validation', () => {
   it('labels a problem with no field path as the root rather than a blank name', () => {
     expect(() => validateEnv(null as unknown as Record<string, unknown>)).toThrow(/\(root\)/);
   });
+
+  describe('media storage configuration', () => {
+    const cloud = {
+      CLOUDINARY_CLOUD_NAME: 'cloud',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret',
+    };
+
+    it('boots locally without Cloudinary credentials', () => {
+      expect(() => validateEnv({ ...valid, NODE_ENV: 'development' })).not.toThrow();
+    });
+
+    it('treats an empty value, as in .env.example, as unset', () => {
+      const env = validateEnv({ ...valid, CLOUDINARY_API_KEY: '' });
+      expect(env.CLOUDINARY_API_KEY).toBeUndefined();
+    });
+
+    it.each(['staging', 'production'])('requires all three credentials in %s', (NODE_ENV) => {
+      expect(() =>
+        validateEnv({ ...valid, NODE_ENV, CLOUDINARY_FOLDER: `investigator/${NODE_ENV}` }),
+      ).toThrow(/CLOUDINARY_CLOUD_NAME[\s\S]*CLOUDINARY_API_KEY[\s\S]*CLOUDINARY_API_SECRET/);
+    });
+
+    it.each(['staging', 'production'])('requires a folder named for %s', (NODE_ENV) => {
+      // A configuration copied from another environment fails rather than mixing files.
+      expect(() => validateEnv({ ...valid, ...cloud, NODE_ENV })).toThrow(
+        new RegExp(`CLOUDINARY_FOLDER must end with /${NODE_ENV}`),
+      );
+    });
+
+    it('accepts a complete production configuration', () => {
+      expect(() =>
+        validateEnv({ ...valid, ...cloud, NODE_ENV: 'production', CLOUDINARY_FOLDER: 'investigator/production' }),
+      ).not.toThrow();
+    });
+
+    it('never includes a credential value in the message', () => {
+      try {
+        validateEnv({ ...valid, ...cloud, NODE_ENV: 'production' });
+        expect.unreachable('should have thrown');
+      } catch (e) {
+        expect((e as Error).message).not.toContain('secret');
+      }
+    });
+  });
 });
