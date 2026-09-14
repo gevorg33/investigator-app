@@ -2,6 +2,7 @@ export * from './audit';
 export * from './identities';
 export * from './media';
 export * from './profiles';
+export * from './service-areas';
 export * from './taxonomy';
 export * from './staff-scopes';
 export * from './tokens';
