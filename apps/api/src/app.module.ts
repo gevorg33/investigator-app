@@ -10,6 +10,7 @@ import { AuthzModule } from './common/authz/authz.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
+import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 
 @Module({
@@ -34,6 +35,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     AuthModule,
     ProfilesModule,
     MediaModule,
+    ServiceAreasModule,
     HealthModule,
   ],
 })
