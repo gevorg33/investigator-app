@@ -1,5 +1,6 @@
 export * from './audit';
 export * from './identities';
+export * from './media';
 export * from './profiles';
 export * from './taxonomy';
 export * from './staff-scopes';

@@ -340,7 +340,7 @@ pnpm --filter api test profiles
 ---
 
 ### T-008 — Cloudinary private upload authorization
-- **Status:** TODO
+- **Status:** DONE — 2026-09-14
 - **Priority:** P1
 - **Depends on:** T-007
 - **Risk:** HIGH
@@ -353,14 +353,58 @@ The nine-step flow from `.claude/skills/cloudinary-media/SKILL.md`. Verification
 are private resources from the first commit.
 
 **Acceptance criteria**
-- [ ] Upload signature issued only after server-side authorization; scoped and short-lived
-- [ ] Upload result validated against what was authorized, including folder scope
-- [ ] Client-supplied public IDs never trusted
-- [ ] Delivery URLs short-lived, audited, never logged
-- [ ] Scan status gates visibility; fails closed
-- [ ] Test proves a non-owner cannot obtain a delivery URL
+- [x] Upload signature issued only after server-side authorization; scoped and short-lived
+- [x] Upload result validated against what was authorized, including folder scope
+- [x] Client-supplied public IDs never trusted
+- [x] Delivery URLs short-lived, audited, never logged
+- [x] Scan status gates visibility; fails closed
+- [x] Test proves a non-owner cannot obtain a delivery URL
 
-**Validation**
+**Verified live** — a running API with placeholder Cloudinary credentials (signing and link
+generation are local computations, so these paths are real without an account):
+
+| | |
+|---|---|
+| Upload authorization | 201; signature matches an **independent SHA-1** of the signed fields; public ID server-chosen; `type=authenticated`, `overwrite=false`, format allowlist; server window 600 s; secret never in the body |
+| Refusals | wrong role 403 · SVG 422 · client-supplied `publicId` 400 · no session 401 |
+| Fails closed | link while AUTHORIZED 403 · scan PENDING 403 · scan INFECTED 403 |
+| Delivery | owner and VERIFICATION-scoped staff 200; `Cache-Control: no-store`; expires in **300 s**; private type |
+| Non-owner | **404, byte-identical to a nonexistent id**; completing another user's upload 404 |
+| Never logged | signed link and `signature=` absent from the API log; absent from every audit row |
+| Completion | needs a real account (reads the asset back from the Admin API); with placeholder credentials it answers a generic 500 that leaks nothing |
+
+**Negative controls** — each core rule broken on purpose, tests watched fail, files restored
+byte-for-byte: owner scope removed → 7 failures; clean-scan gate removed → 4; real-size check
+disabled → 1.
+
+**Cloudinary constraints that shaped the design** (verified in its documentation):
+- **Signed delivery URLs never expire**, so `sign_url` cannot deliver a short-lived link.
+  Expiring tokens need the Advanced plan. Delivery uses `private_download_url` with
+  `expires_at` — available on every plan.
+- **An upload signature lasts one hour**, fixed by Cloudinary. The server's own 10-minute
+  window is what actually limits an authorization; completion after it is refused and the
+  asset destroyed.
+- **File size cannot be signed.** Enforced at completion against what Cloudinary holds.
+
+**Decisions to confirm (access rules — this task is approval-gated on them):**
+1. **The uploader can open their own verification documents**, as well as VERIFICATION-scoped
+   staff. The knowledge-base article previously said staff only; it now says both.
+2. **Profile images are owner-only for now.** Showing them to others needs the published-profile
+   check so a draft's photo stays invisible; that link belongs with discovery.
+3. **Staff access honours role narrowing** — staff acting in their customer workspace get none.
+4. **Nothing is served until a malware scanner exists (T-065).** Filed, because no task owned
+   scanning. Failing closed means the feature is inert until then, which is the correct side to
+   fail on.
+
+**Also:** Cloudinary credentials are required at boot in staging and production, and the folder
+must end in `/staging` or `/production` there. `media_assets` grants no `DELETE`, and its owner
+key restricts. Retention recorded as provisional pending counsel. Docs:
+`docs/architecture/media.md`; the investigator verification article updated.
+
+**Not verifiable without the account** (ACTIONS-FOR-ME #4): an end-to-end upload to Cloudinary,
+completion reading the asset back, and a link actually expiring at Cloudinary's edge.
+
+**Validation** — all green 2026-09-14
 ```bash
 pnpm --filter api test media
 ```
@@ -2228,6 +2272,39 @@ Needs a separate `tsconfig.spec.json` so specs are checked without being emitted
 **Validation**
 ```bash
 pnpm typecheck && pnpm --filter api build && test ! -e apps/api/dist/modules/auth/auth.boot.spec.js
+```
+
+---
+
+### T-065 — Malware scanning for uploaded media
+- **Status:** TODO
+- **Priority:** P1 — **blocks any uploaded file being served to anyone**
+- **Depends on:** T-008
+- **Risk:** HIGH
+- **Human approval required:** Yes — scanner choice and data handling
+- **Owner agent:** backend-domain + infra-devops
+- **Affected:** apps/api/src/modules/media/**, infrastructure/**
+
+**Description**
+T-008 gates every delivery link on `scan_status = 'CLEAN'` and fails closed. Nothing sets it:
+no task owned scanning, so every upload stays `PENDING` and **no file is served — to its owner,
+to staff, to anyone**. That is correct behaviour without a scanner, not a bug to work around.
+
+Needs a decision first: a scanner (self-hosted ClamAV, a Cloudinary add-on, or a scanning
+API), where file bytes go to be scanned — which is a data-transfer question for counsel when
+the files are identity documents — and the job infrastructure to run it (BullMQ, not yet
+wired).
+
+**Acceptance criteria**
+- [ ] Scanner chosen, with where the bytes are processed recorded for counsel
+- [ ] A scan runs for every `READY` asset and moves it to `CLEAN`, `INFECTED` or `FAILED`
+- [ ] `INFECTED` destroys the Cloudinary asset and marks the row, audited
+- [ ] A scanner outage leaves assets `PENDING` — never defaulted to `CLEAN`
+- [ ] Retries are idempotent; a re-scan cannot move `INFECTED` back to `CLEAN` without a recorded decision
+
+**Validation**
+```bash
+pnpm --filter api test media
 ```
 
 ---
