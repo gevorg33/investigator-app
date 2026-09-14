@@ -36,4 +36,8 @@ describe('env validation', () => {
       expect((e as Error).message).not.toContain(secret);
     }
   });
+
+  it('labels a problem with no field path as the root rather than a blank name', () => {
+    expect(() => validateEnv(null as unknown as Record<string, unknown>)).toThrow(/\(root\)/);
+  });
 });

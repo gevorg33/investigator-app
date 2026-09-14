@@ -151,7 +151,7 @@ pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm build && p
 ---
 
 ### T-005 — Authentication: register, login, refresh rotation, sessions
-- **Status:** TODO
+- **Status:** DONE — 2026-09-13
 - **Priority:** P0
 - **Depends on:** T-004
 - **Risk:** HIGH
@@ -164,16 +164,46 @@ Email/password auth with verification, password reset, refresh-token rotation wi
 detection, session listing and revocation, rate limiting and brute-force protection.
 
 **Acceptance criteria**
-- [ ] Passwords hashed with argon2id; never logged, never returned
-- [ ] Refresh rotation detects reuse and revokes the whole session family
-- [ ] Rate limits on login, register, reset — per IP and per account
-- [ ] Email enumeration not possible via response body, status, or timing
-- [ ] Every auth event is audited
-- [ ] A revoked session is rejected immediately, not at next expiry
-- [ ] Built so a second auth method can attach to the same account — Google OAuth is T-062,
+- [x] Passwords hashed with argon2id; never logged, never returned
+- [x] Refresh rotation detects reuse and revokes the whole session family
+- [x] Rate limits on login, register, reset — per IP and per account
+- [x] Email enumeration not possible via response body, status, or timing
+- [x] Every auth event is audited
+- [x] A revoked session is rejected immediately, not at next expiry
+- [x] Built so a second auth method can attach to the same account — Google OAuth is T-062,
       and retrofitting identity linking afterwards is materially harder
 
-**Validation**
+**How each was verified** — against a running API, not only in tests
+
+| Criterion | Evidence |
+|---|---|
+| argon2id, never returned | Stored hashes start `$argon2id$`; no response body or audit row contains a password or a refresh token |
+| Reuse revokes the family | Rotation issued a new token; replaying the old one returned 401; the descendant died with it, with `auth.refresh.reuse_detected` audited |
+| Rate limits | `loginPerIp`, `loginPerAccount`, `registerPerIp`, `resetPerIp`, `resetPerAccount` |
+| No enumeration | Wrong password and unknown account return byte-identical 401s; a decoy argon2 verify spends the same CPU when no account exists; reset and resend answer 202 either way |
+| Everything audited | 16 distinct `auth.*` actions, none carrying a token or password |
+| Revocation is immediate | A revoked session's next refresh returned 401 rather than surviving to expiry — the criterion that ruled out stateless JWTs |
+| Second auth method | `user_identities` ships now (migration 0002): unique per `(provider, account)` and per `(user, provider)`, holding no credential. Linking is never automatic on a matching email |
+
+**Design note — why the tokens are opaque**
+
+"A revoked session is rejected immediately, not at next expiry" excludes a stateless JWT by
+definition: a JWT stays valid until it expires. Refresh tokens are 256-bit random values
+checked against `user_sessions` on every use, so revocation takes effect at once.
+
+**Also delivered here**
+
+Email verification, password reset, and session listing/revocation, all of which the task
+description covers. Password reset revokes every session the user holds — someone resetting
+a password is often doing it because an attacker has the old one, and an active session does
+not need the password again. The mailer is a port with a development transport that refuses
+to run under `NODE_ENV=production`; a real provider is ACTIONS-FOR-ME #5.
+
+**Coverage:** `src/modules/auth` is at 100% statements, functions and lines, and 98.09%
+branches. The gap is two `@Injectable()` lines where the transpiler's `__decorateClass`
+helper produces a branch no test can reach — see T-063 and ACTIONS-FOR-ME #12.
+
+**Validation** — all green 2026-09-13
 ```bash
 pnpm --filter api test auth
 ```
@@ -1273,6 +1303,12 @@ achievable rather than punitive.
 - [ ] Coverage thresholds set to 100% **per package**, wired into `pnpm test:coverage`
 - [ ] `docs/operations/coverage-exclusions.md` referenced by the config, not duplicated
 - [ ] **No real or realistic personal data** in any fixture
+- [ ] `fixtures:load` actually exists and the CI step runs it — it is currently
+      `--if-present` and does nothing, because `pr.yml` referenced the script before
+      anything defined it. Prove the step fails when fixtures fail to load, or it is the
+      coverage gate all over again (T-063)
+- [ ] `test:integration`, `test:api` and `test:e2e` likewise run something — all three are
+      `--if-present` at the root today and match no package script
 
 **Validation**
 ```bash
@@ -1990,6 +2026,130 @@ Verification
 **Validation**
 ```bash
 pnpm --filter api test auth-oauth
+```
+
+---
+
+### T-063 — Close the coverage gap the repaired gate exposed
+- **Status:** DONE — 2026-09-14
+- **Priority:** P0
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** No — but the exclusions register needs a maintainer (see below)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/**
+
+**Description**
+The coverage gate never ran. CI called `pnpm test:coverage`, which expands to
+`pnpm -r --if-present test:coverage`; no package defined that script, so `--if-present`
+skipped every package and the step exited 0. `@vitest/coverage-v8` was not installed and no
+thresholds existed. The step was labelled "Blocking" in `pr.yml` and blocked nothing.
+
+Wired for real during T-005: provider, `all: true`, 100% thresholds on all four metrics, and
+a `test:coverage` script in `apps/api`. With it measuring, the package sits at **76.61%
+statements / 68.75% branches / 72.3% functions / 76.59% lines** — not the documented 100%.
+
+`src/modules/auth` was brought to 100/98.24/100/100 as part of T-005. The remainder is
+pre-existing debt from T-002/T-003/T-004 and is this task:
+
+| Area | Stmts | Note |
+|---|---|---|
+| `main.ts`, `app.module.ts` | 0% | Bootstrap. Candidate for the exclusions register, not for an agent to decide |
+| `common/logging/logger.options.ts` | 14% | Redaction paths — these carry personal data and must be tested, not excluded |
+| `database/database.module.ts` | 25% | Factory throws without DATABASE_URL; that branch is untested |
+| `common/errors/http-exception.filter.ts` | 50% | Error mapping a user can actually reach |
+| `database/schema/*` | 65% | Partial-index and soft-delete helpers |
+| `modules/health` | branch 50% | |
+
+**Decided 2026-09-14 (ACTIONS-FOR-ME #12, option 1).** One class of branch is unreachable by any test: the `typeof X === "undefined" ? Object : X` parameter-type guard that `emitDecoratorMetadata` emits for every typed constructor and method parameter. Its `Object` side runs only on a circular import. (Earlier wording blamed a `__decorateClass` helper ternary — inspecting oxc's output showed that was wrong.) It is excluded by the one registered exclusion, implemented in `apps/api/vitest.config.mts`; every threshold stays at 100%.
+
+**Acceptance criteria**
+- [x] `pnpm test:coverage` passes at the declared thresholds, or every shortfall has a
+      register entry approved by a maintainer
+- [x] Redaction paths in `logger.options.ts` are tested against a payload containing an
+      email, a password and a refresh token
+- [x] `database.module.ts` missing-`DATABASE_URL` branch is tested
+- [x] The decorator-metadata guard is resolved by decision, never by lowering a number silently
+- [ ] `pr.yml` coverage step is proven to fail on a deliberately uncovered line — the gate was
+      shown failing locally on real gaps throughout this task and on CI for PR #1; a dedicated
+      deliberately-uncovered-line run on CI is still outstanding
+
+**Result — `apps/api` on the T-005 branch:** 100% statements (368/368), 100% branches
+(176/176), 100% functions (106/106), 100% lines (351/351). 234 tests. Every threshold at 100%;
+one registered exclusion, applied narrowly (below). Up from 83% / 77% / 80% / 83%.
+
+**Three real bugs the gap was hiding** — each with a regression test seen to fail first:
+
+| Bug | Consequence | Found by |
+|---|---|---|
+| **The database pool leaked on shutdown.** `PoolHolder` built a second pool (`max: 1`) and closed *that*; the ten-connection pool drizzle used was never closed | Connections outlive the process on every deploy | Closing the app, then querying through the drizzle client — it still succeeded |
+| **Email addresses were written to logs in the clear.** `REDACT_PATHS` covered credentials but not `email` | Personal data in log storage, outside redaction | Logging a real payload through the configured logger instead of checking the path list for strings |
+| **Malformed geography points parsed as `NaN`.** The pattern admits `1.2.3`, `-`, `.` | A location that silently matches nothing | Four malformed inputs, all returned instead of rejected |
+
+**Two stale behaviours corrected:**
+- The health endpoint hard-coded `database: not_configured` — left from before T-003 — while
+  the app used the database. It now does a real round trip with a 2-second bound; Redis stays
+  `not_configured` because nothing uses it yet. Contract: `docs/api/health.md`.
+- A `split(' ')[0] ?? ''` fallback in the error filter could never run. Replaced with an
+  equivalent expression that has no unreachable branch.
+
+**Structural changes made to test honestly rather than exclude:** process startup moved from
+`main.ts` into `bootstrap.ts` (`configureApp` + `bootstrap`), so the security properties it
+applies — no `X-Powered-By`, strict validation, OpenAPI absent in production — are asserted
+against a real Nest application instead of being bootstrap code nobody checks.
+
+**The exclusion, as applied.** A test-only transform in `apps/api/vitest.config.mts` marks the
+`typeof X === "undefined" ? Object : X` guard `emitDecoratorMetadata` emits — same identifier
+both sides, nothing else. Verified: branch paths 184 → 180, uncovered 41 → 39, lines and
+functions unchanged, only the two affected files changed. Negative controls confirmed it does
+**not** hide an uncovered user ternary, a look-alike guard with different identifiers, or a
+ternary inside a decorator argument — the last of which Vitest's own broader SWC rule would
+hide. SWC was considered and rejected: `unplugin-swc` and `@swc/core` were days old against the
+pinning policy, and switching would have swapped the transformer under 169 passing tests.
+
+**Also documented:** `docs/architecture/logging.md` — what is never written to logs and why.
+
+**Validation** — all green 2026-09-14
+```bash
+pnpm --filter api test:coverage
+```
+
+---
+
+### T-064 — Type-check and lint the test suite
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/tsconfig.json, apps/api/vitest.config.mts
+
+**Description**
+`apps/api/tsconfig.json` excludes `**/*.spec.ts`, so `pnpm typecheck` never sees the test
+suite. This already cost real time during T-005: adding two constructor parameters to
+`AuthService` left an existing spec calling it with the old signature, which the compiler
+would have caught instantly but which instead surfaced as a runtime `TypeError` deep in a
+test run. Test code is the thing asserting the production code is correct and is currently the
+only unchecked code in the package — a spec can assert against a property that does not
+exist and still pass.
+
+The same exclusion means the transformer does not apply `experimentalDecorators` to spec
+files, so Nest decorator syntax fails to parse inside a test. `auth.boot.spec.ts` works
+around it by applying `Module(...)(cls)` and `Global()(cls)` as plain function calls; that
+workaround should disappear once this is fixed.
+
+Needs a separate `tsconfig.spec.json` so specs are checked without being emitted into `dist`.
+
+**Acceptance criteria**
+- [ ] `pnpm typecheck` covers `**/*.spec.ts`
+- [ ] `dist/` still contains no spec output
+- [ ] A deliberate type error in a spec fails `pnpm typecheck`
+- [ ] Decorator syntax works in a spec; the `auth.boot.spec.ts` workaround is removed
+
+**Validation**
+```bash
+pnpm typecheck && pnpm --filter api build && test ! -e apps/api/dist/modules/auth/auth.boot.spec.js
 ```
 
 ---

@@ -22,4 +22,10 @@ describe('correlation id', () => {
   it('rejects an over-long id', () => {
     expect(resolveCorrelationId(req({ [CORRELATION_HEADER]: 'a'.repeat(200) }))).toHaveLength(36);
   });
+
+  it('takes the first value when the header is repeated', () => {
+    expect(
+      resolveCorrelationId(req({ [CORRELATION_HEADER]: ['first_value_1', 'second_value_2'] })),
+    ).toBe('first_value_1');
+  });
 });
