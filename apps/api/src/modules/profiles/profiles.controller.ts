@@ -15,7 +15,8 @@ import type {
   PublicCustomerProfile,
   PublicInvestigatorProfile,
 } from './profile.projection';
-import { ProfilesService, type RequestContext } from './profiles.service';
+import { ProfilesService } from './profiles.service';
+import { requestContext } from '../../common/http/request-context';
 
 /**
  * Every route resolves an Actor. There is no "get profile by id and check afterwards": the
@@ -35,7 +36,7 @@ export class ProfilesController {
     @Body() dto: ActivateRoleDto,
     @Req() req: Request,
   ): Promise<{ profileId: string }> {
-    return this.profiles.activateRole(actor, dto.role, ctx(req));
+    return this.profiles.activateRole(actor, dto.role, requestContext(req));
   }
 
   @Get('investigator/me')
@@ -44,7 +45,7 @@ export class ProfilesController {
     @CurrentActor() actor: Actor,
     @Req() req: Request,
   ): Promise<OwnInvestigatorProfile> {
-    return this.profiles.getMyInvestigatorProfile(actor, ctx(req));
+    return this.profiles.getMyInvestigatorProfile(actor, requestContext(req));
   }
 
   @Patch('investigator/me')
@@ -54,7 +55,7 @@ export class ProfilesController {
     @Body() dto: UpdateInvestigatorProfileDto,
     @Req() req: Request,
   ): Promise<OwnInvestigatorProfile> {
-    return this.profiles.updateMyInvestigatorProfile(actor, dto, ctx(req));
+    return this.profiles.updateMyInvestigatorProfile(actor, dto, requestContext(req));
   }
 
   @Get('customer/me')
@@ -63,7 +64,7 @@ export class ProfilesController {
     @CurrentActor() actor: Actor,
     @Req() req: Request,
   ): Promise<OwnCustomerProfile> {
-    return this.profiles.getMyCustomerProfile(actor, ctx(req));
+    return this.profiles.getMyCustomerProfile(actor, requestContext(req));
   }
 
   @Patch('customer/me')
@@ -73,7 +74,7 @@ export class ProfilesController {
     @Body() dto: UpdateCustomerProfileDto,
     @Req() req: Request,
   ): Promise<OwnCustomerProfile> {
-    return this.profiles.updateMyCustomerProfile(actor, dto, ctx(req));
+    return this.profiles.updateMyCustomerProfile(actor, dto, requestContext(req));
   }
 
   @Get('investigator/:id')
@@ -83,7 +84,7 @@ export class ProfilesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
   ): Promise<PublicInvestigatorProfile> {
-    return this.profiles.getPublicInvestigatorProfile(actor, id, ctx(req));
+    return this.profiles.getPublicInvestigatorProfile(actor, id, requestContext(req));
   }
 
   @Get('customer/:id')
@@ -93,15 +94,6 @@ export class ProfilesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
   ): Promise<PublicCustomerProfile> {
-    return this.profiles.getPublicCustomerProfile(actor, id, ctx(req));
+    return this.profiles.getPublicCustomerProfile(actor, id, requestContext(req));
   }
-}
-
-function ctx(req: Request): RequestContext {
-  const id: unknown = (req as unknown as { id?: unknown }).id;
-  return {
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-    correlationId: typeof id === 'string' || typeof id === 'number' ? String(id) : undefined,
-  };
 }
