@@ -1,4 +1,14 @@
-import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, integer } from 'drizzle-orm/pg-core';
+import {
+  type AnyPgColumn,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 export const taxonomyNodeStatus = pgEnum('taxonomy_node_status', ['ACTIVE', 'DEPRECATED']);
 
@@ -21,7 +31,9 @@ export const taxonomyNodes = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     /** Language-neutral canonical value. A node's Armenian label is not a different node. */
     slug: text('slug').notNull(),
-    parentId: uuid('parent_id').references((): never => taxonomyNodes.id as never, {
+    // AnyPgColumn is drizzle's documented type for a self-reference. It replaces a double
+    // `as never` cast, which compiled only because it switched type checking off.
+    parentId: uuid('parent_id').references((): AnyPgColumn => taxonomyNodes.id, {
       onDelete: 'restrict',
     }),
     status: taxonomyNodeStatus('status').notNull().default('ACTIVE'),

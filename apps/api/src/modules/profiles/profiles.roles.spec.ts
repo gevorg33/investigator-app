@@ -171,4 +171,18 @@ describe('one account, both roles', () => {
     expect(rows.map((r) => r.action)).toContain('profile.role_activated');
     expect(rows.map((r) => r.reason)).toContain('INVESTIGATOR');
   });
+
+  it('is idempotent for the customer role as well', async () => {
+    const { userId } = await account();
+    const bare = testActor({ userId, roles: [] });
+    const first = await profiles.activateRole(bare, 'CUSTOMER', req);
+    const second = await profiles.activateRole(bare, 'CUSTOMER', req);
+
+    expect(second.profileId).toBe(first.profileId);
+    const rows = await db
+      .select()
+      .from(schema.customerProfiles)
+      .where(eq(schema.customerProfiles.userId, userId));
+    expect(rows).toHaveLength(1);
+  });
 });

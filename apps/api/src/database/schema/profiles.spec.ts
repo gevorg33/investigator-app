@@ -8,6 +8,7 @@ import {
   investigatorSpecialties,
 } from './profiles';
 import { taxonomyNodes } from './taxonomy';
+import { users } from './users';
 
 /**
  * The declared shape, asserted rather than assumed.
@@ -66,8 +67,43 @@ describe('profile table shape', () => {
     expect(fk?.onDelete).toBe('restrict');
   });
 
-  it('does cascade a profile away with its user', () => {
-    const fk = getTableConfig(investigatorLanguages).foreignKeys[0];
-    expect(fk?.onDelete).toBe('cascade');
+  // Resolved through reference(), not just read off the key: a delete rule on the wrong
+  // target would pass a check that only looks at onDelete.
+  const keyOf = (table: Parameters<typeof getTableConfig>[0], column: string) =>
+    getTableConfig(table)
+      .foreignKeys.map((f) => ({
+        column: f.reference().columns[0]?.name,
+        target: f.reference().foreignTable,
+        onDelete: f.onDelete,
+      }))
+      .find((k) => k.column === column);
+
+  it.each([
+    ['customer_profiles', customerProfiles],
+    ['investigator_profiles', investigatorProfiles],
+  ] as const)('removes %s with the account', (_name, table) => {
+    expect(keyOf(table, 'user_id')).toEqual({ column: 'user_id', target: users, onDelete: 'cascade' });
+  });
+
+  it.each([
+    ['investigator_languages', investigatorLanguages],
+    ['investigator_specialties', investigatorSpecialties],
+    ['investigator_availability', investigatorAvailability],
+  ] as const)('removes %s with the investigator profile', (_name, table) => {
+    expect(keyOf(table, 'profile_id')).toEqual({
+      column: 'profile_id',
+      target: investigatorProfiles,
+      onDelete: 'cascade',
+    });
+  });
+
+  it('will not let a taxonomy node be deleted out from under its children', () => {
+    // Nodes are deprecated, never deleted (ADR-0007). restrict makes a delete of a parent
+    // with children fail rather than orphan or cascade through the tree.
+    expect(keyOf(taxonomyNodes, 'parent_id')).toEqual({
+      column: 'parent_id',
+      target: taxonomyNodes,
+      onDelete: 'restrict',
+    });
   });
 });
