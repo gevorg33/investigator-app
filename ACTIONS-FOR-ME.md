@@ -133,8 +133,14 @@ and its settings need you.
 **Where they go:** `.env.local` → `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`,
 `CLOUDINARY_API_SECRET`.
 
-**Verify:** After T-008, an uploaded file is **not** reachable by its public URL and only
-opens through a signed link.
+**Plan:** the free plan is enough. T-008 deliberately does not rely on expiring token links,
+which need the Advanced plan; it uses time-limited private download links, available on every
+plan.
+
+**Verify:** After T-008 (built), an uploaded file is **not** reachable by its public URL, and
+the link the API issues stops working after five minutes. Note that nothing is served until a
+malware scanner exists (T-065) — until then, check that the upload completes and that asking
+for a link is refused while the scan is pending.
 
 **Status:** ⬜ Pending
 

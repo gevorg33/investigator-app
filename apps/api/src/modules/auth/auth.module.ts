@@ -28,6 +28,7 @@ import { SessionRepository } from './session.repository';
     // swapped for a Redis-backed store when Redis is wired (plan.md §19).
     { provide: RATE_LIMIT_STORE, useClass: MemoryRateLimitStore },
   ],
-  exports: [AuthService],
+  // RateLimitService is shared: other modules budget their own endpoint classes with it.
+  exports: [AuthService, RateLimitService],
 })
 export class AuthModule {}

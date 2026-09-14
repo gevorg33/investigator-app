@@ -36,6 +36,13 @@
       "when": 1789325743683,
       "tag": "0004_add_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789345619016,
+      "tag": "0005_add_media_assets",
+      "breakpoints": true
     }
   ]
 }
