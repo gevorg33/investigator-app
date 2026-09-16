@@ -36,6 +36,10 @@ export const LIMITS = {
   // Each authorization issues a signature and a row. Provisional; generous enough for a
   // multi-page licence scan, tight enough that the endpoint is not a way to fill storage.
   mediaUploadPerAccount: { max: 30, windowSeconds: 3600 },
+  // Every submission is read by a moderator, and that queue is the publication gate.
+  // Provisional: generous for a customer with genuine work in several places, tight enough
+  // that one account cannot flood the queue faster than people can read it.
+  missionSubmitPerAccount: { max: 10, windowSeconds: 86_400 },
 } as const;
 
 /**

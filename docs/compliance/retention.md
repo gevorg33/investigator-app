@@ -32,13 +32,17 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `user_tokens` | **30 days** after `expires_at` | Security | Verification and password-reset tokens. Only the hash is stored. Kept past expiry so a redemption attempt on a dead token is still explainable during an abuse investigation |
 | `media_assets` | **Per category, provisional:** profile images — with the profile; verification documents — until the verification lapses **+ 12 months** (counsel sets the real period; still listed below) | Contract; verification record | Soft-deleted by the application, which holds no `DELETE`. Removal is one audited retention job that destroys the Cloudinary asset **and** marks the row. The owner key restricts, so no file disappears as a side effect of deleting an account. Upload authorizations that expire are kept **30 days** for abuse investigation |
 | `service_areas` | With the profile; removed when the investigator deletes the area | Contract | Cascades from the profile. Holds no home location, and no centre more precise than about a kilometre (migration 0006 constraints) |
+| `missions` | **7 years** after the mission closes — completed, cancelled, rejected or expired (provisional) | Contract, dispute defence | The application holds no `DELETE`. A mission carries history and later quotes and money, so removal is one audited retention job, never a side effect of closing an account. A mission's location is stored no more precisely than about a kilometre (migration 0007 constraints) |
+| `mission_status_history` | With the mission | Dispute defence | Append-only — the application holds no `UPDATE` or `DELETE`. Holds the customer's own free-text reasons; no other content |
+| `mission_screenings` | With the mission | Lawful-use accountability | Append-only. The record that screening ran, what it flagged, and under which ruleset version — the evidence a policy decision can be reviewed against |
+| `outbox_events` | Published rows pruned **30 days** after delivery; unpublished rows never pruned | Operational | Holds references only — ids, statuses, versions — never content. An unpublished row is undelivered work, so a prune that removed one would lose an event |
 | `audit_logs` | **7 years** | Legal obligation, dispute defence | **Never deleted by the application.** A privileged job only, itself audited |
 
 ## Still to decide — blocked on counsel
 
 Each will be added as its table ships:
 
-evidence items · reports and versions · verification documents · mission descriptions ·
+evidence items · reports and versions · verification documents ·
 messages and attachments · payment and ledger records · consent records · AI sessions, messages
 and memory · investigation sources, notes, tasks and documents · ban identity hashes
 

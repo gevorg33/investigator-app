@@ -34,15 +34,23 @@ dispute unresolvable.
 
 ```ts
 const MISSION_TRANSITIONS: TransitionMap = {
-  DRAFT:              { SUBMITTED: ['customer'], CANCELLED: ['customer'] },
-  SUBMITTED:          { UNDER_REVIEW: ['system'], REJECTED: ['staff'] },
-  UNDER_REVIEW:       { QUOTED: ['system'], REJECTED: ['staff'], SUSPENDED: ['staff'] },
-  QUOTED:             { CUSTOMER_CONFIRMED: ['customer'], EXPIRED: ['system'], CANCELLED: ['customer'] },
-  CUSTOMER_CONFIRMED: { PAID: ['system'], CANCELLED: ['customer'] },
+  DRAFT:              { SUBMITTED: ['CUSTOMER'], CANCELLED: ['CUSTOMER'] },
+  SUBMITTED:          { UNDER_REVIEW: ['SYSTEM'] },
+  UNDER_REVIEW:       { QUOTED: ['STAFF:MODERATION'],     // publish
+                        REJECTED: ['STAFF:MODERATION'],   // reject, with a reason
+                        DRAFT: ['STAFF:MODERATION'],      // request changes
+                        CANCELLED: ['CUSTOMER'] },
+  QUOTED:             { CUSTOMER_CONFIRMED: ['CUSTOMER'], EXPIRED: ['SYSTEM'], CANCELLED: ['CUSTOMER'] },
+  CUSTOMER_CONFIRMED: { PAID: ['SYSTEM'], CANCELLED: ['CUSTOMER'] },
   // ...
   COMPLETED:          {},   // terminal
 };
 ```
+
+**A staff authority names its scope**, never bare `staff` — a moderator is not a disputes
+reviewer (`authorization`). And **only `STAFF:MODERATION` from `UNDER_REVIEW` reaches
+`QUOTED`**: screening never publishes, and neither does the system. The implementation is
+`apps/api/src/modules/missions/mission-transitions.ts`, whose generated matrix asserts both.
 
 Data, not `if` chains. The map is the specification, it is testable exhaustively, and it
 is readable by someone resolving a dispute.

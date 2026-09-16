@@ -10,6 +10,8 @@ import { AuthzModule } from './common/authz/authz.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
+import { MissionPolicyModule } from './modules/mission-policy/mission-policy.module';
+import { MissionsModule } from './modules/missions/missions.module';
 import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 
@@ -36,6 +38,8 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     ProfilesModule,
     MediaModule,
     ServiceAreasModule,
+    MissionPolicyModule,
+    MissionsModule,
     HealthModule,
   ],
 })

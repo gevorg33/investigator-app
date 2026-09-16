@@ -6,6 +6,9 @@ import * as schema from './schema';
 export const DB = Symbol('DB');
 export type Db = PostgresJsDatabase<typeof schema>;
 
+/** The handle inside `db.transaction(...)`. Writes that must commit together all take this. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
 /**
  * The one connection pool. The drizzle client and the shutdown hook both resolve this
  * token, so the pool that serves queries is the pool that gets closed.
