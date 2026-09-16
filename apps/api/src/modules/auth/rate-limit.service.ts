@@ -33,6 +33,9 @@ export const LIMITS = {
   registerPerIp: { max: 5, windowSeconds: 3600 },
   resetPerAccount: { max: 3, windowSeconds: 3600 },
   resetPerIp: { max: 10, windowSeconds: 3600 },
+  // Each authorization issues a signature and a row. Provisional; generous enough for a
+  // multi-page licence scan, tight enough that the endpoint is not a way to fill storage.
+  mediaUploadPerAccount: { max: 30, windowSeconds: 3600 },
 } as const;
 
 /**

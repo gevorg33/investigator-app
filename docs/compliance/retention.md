@@ -30,6 +30,7 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `user_staff_scopes` | With the user; revoked rows kept **7 years** | Dispute defence, incident review | Not deleted on revocation — who could see payments last March is a question an investigation will ask |
 | `user_identities` | With the user | — | Cascades. Holds no credential — only the provider's opaque account id |
 | `user_tokens` | **30 days** after `expires_at` | Security | Verification and password-reset tokens. Only the hash is stored. Kept past expiry so a redemption attempt on a dead token is still explainable during an abuse investigation |
+| `media_assets` | **Per category, provisional:** profile images — with the profile; verification documents — until the verification lapses **+ 12 months** (counsel sets the real period; still listed below) | Contract; verification record | Soft-deleted by the application, which holds no `DELETE`. Removal is one audited retention job that destroys the Cloudinary asset **and** marks the row. The owner key restricts, so no file disappears as a side effect of deleting an account. Upload authorizations that expire are kept **30 days** for abuse investigation |
 | `audit_logs` | **7 years** | Legal obligation, dispute defence | **Never deleted by the application.** A privileged job only, itself audited |
 
 ## Still to decide — blocked on counsel
