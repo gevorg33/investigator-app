@@ -22,6 +22,13 @@
       "when": 1789321662426,
       "tag": "0002_add_user_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789322908895,
+      "tag": "0003_add_staff_scopes",
+      "breakpoints": true
     }
   ]
 }

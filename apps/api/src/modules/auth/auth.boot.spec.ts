@@ -8,6 +8,7 @@ import { MAILER } from '../../common/mail/mailer';
 import { DB } from '../../database/database.module';
 import { AuthController } from './auth.controller';
 import { AuthModule } from './auth.module';
+import { AuthzModule } from '../../common/authz/authz.module';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 
@@ -54,7 +55,7 @@ describe('auth wiring survives the container', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [StubInfrastructureModule, AuthModule],
+      imports: [StubInfrastructureModule, AuthzModule, AuthModule],
     }).compile();
 
     app = moduleRef.createNestApplication();
