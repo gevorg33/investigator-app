@@ -15,6 +15,12 @@ export const EnvSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+  // Origin of the web application, used to build verification and password-reset links.
+  // Validated as a URL so a malformed value fails at boot rather than producing links
+  // that silently go nowhere. Host-only session cookies mean this is app., not the apex
+  // (ADR-0002).
+  APP_BASE_URL: z.url().default('http://localhost:3000'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

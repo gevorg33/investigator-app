@@ -8,6 +8,20 @@
       "when": 1789306356160,
       "tag": "0000_fantastic_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789320951865,
+      "tag": "0001_add_user_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789321662426,
+      "tag": "0002_add_user_identities",
+      "breakpoints": true
     }
   ]
 }

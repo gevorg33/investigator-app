@@ -255,6 +255,28 @@ once (T-028).
 
 ---
 
+### 12. Coverage exclusion for decorator metadata — ✅ decided
+
+**Decision (2026-09-14): option 1.** Exclude the compiler-generated branches; every threshold
+stays at 100%. Recorded in `docs/operations/coverage-exclusions.md`.
+
+**What it actually excludes.** An earlier version of this item attributed the branch to a
+`__decorateClass` helper's `kind ? … : …` ternary. That was wrong. Inspecting oxc's real
+output shows it is the parameter-type guard `emitDecoratorMetadata` writes:
+
+```js
+_decorateMetadata("design:paramtypes", [typeof TokenService === "undefined" ? Object : TokenService])
+```
+
+The `Object` side runs only on a circular import, so no test can reach it. The exclusion
+marks that exact expression — same identifier on both sides — and nothing else, including
+decorator arguments, which are user code. It is narrower than Vitest's own rule for SWC,
+which ignores the whole decorate statement.
+
+**Status:** ✅ Resolved — applied on PR #1 and carried up the stack. Nothing further needed.
+
+---
+
 ## Already handled — do not do these
 
 | | |
