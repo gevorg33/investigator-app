@@ -6,7 +6,7 @@ visibility: authenticated
 locale: en
 version: 1
 status: current
-updated: 2026-09-12
+updated: 2026-09-17
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -46,22 +46,23 @@ limited, because investigators may already be preparing quotes based on it.
 
 ## What happens after I submit a mission?
 
-Your mission is checked before investigators see it. The check confirms the required
-information is present, scans any attachments, and assesses whether the request is one the
-platform can accept.
+Your mission is checked, and then a member of our staff reads it before any investigator can
+see it. The automatic check confirms the required information is present and assesses how
+urgently the mission needs attention; it does not decide anything.
 
-Most missions pass this check and become visible to eligible investigators. Some are held
-for review by our staff, and some are rejected. You are told which happened, and if a
-mission is rejected you are told why.
+**Every mission is reviewed by a person.** That is deliberate: whether work can be carried out
+lawfully depends on who is asking and why, which is not a judgement we make automatically. You
+are told the outcome, and if a mission is rejected you are told why.
 
 ## Why would my mission be held for review?
 
-Because something about it needs a person to look at it. That can be the category of work,
-the way the request is described, or a detail that could indicate the work is not lawful.
+Every mission is, so being reviewed is not an accusation and says nothing about your request in
+particular.
 
-Being held for review is not an accusation. It means the decision is not one we will make
-automatically. If the reviewer needs more information, you will be asked for it rather than
-simply refused.
+What varies is how quickly a mission reaches a reviewer and how closely it is read. The
+category of work, the way the request is described, or a detail that could indicate the work is
+not lawful will move it up the queue. If the reviewer needs more information, you will be asked
+for it rather than simply refused.
 
 ## Why would my mission be rejected?
 
@@ -73,13 +74,16 @@ asked for, you can revise the mission and submit it again, or contact support.
 
 ## Can I edit a mission after submitting it?
 
-Only in limited ways, and not at all once you have accepted a quote. Investigators quote
-against the mission as written, so changing it after quotes exist would change what they
-agreed to.
+No. Editing is something you do to a draft. Once you submit, the mission is fixed — it is
+being reviewed, and after that investigators quote against it as written, so changing it
+underneath them would change what they agreed to.
 
-If your needs change before you accept a quote, the cleanest approach is to cancel the
-mission and create a new one. If they change after you have accepted, discuss it with your
-investigator — a changed scope needs a new quote.
+You have two routes instead. If the reviewer asks for changes, the mission returns to your
+drafts and you can edit it freely and submit it again. Otherwise, cancel it and create a new
+one — you can do that at any point before you accept a quote.
+
+If your needs change after you have accepted, discuss it with your investigator: a changed
+scope needs a new quote.
 
 ## Can I cancel a mission?
 

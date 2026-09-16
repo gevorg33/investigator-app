@@ -50,6 +50,13 @@
       "when": 1789346933813,
       "tag": "0006_add_service_areas",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789349474620,
+      "tag": "0007_add_missions",
+      "breakpoints": true
     }
   ]
 }

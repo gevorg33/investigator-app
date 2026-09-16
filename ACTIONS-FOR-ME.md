@@ -283,6 +283,65 @@ which ignores the whole decorate statement.
 
 ---
 
+### 13. Mission policy decisions — for T-010, needs your confirmation
+
+T-010 is the lawful-use gate, so these were built to the **most conservative** reading of the
+policy documents. Each is reversible, and each is a policy decision rather than an engineering
+one. Confirm or change them.
+
+1. **Screening never rejects, and never publishes.** A prohibited-phrase match flags the
+   mission and moves it up the queue; a person decides. The alternative — automatic rejection
+   on a match — was not taken, because the same phrase is written by victims describing what
+   happened to them. **Confirm: no automatic rejection.**
+2. **A declared protective order does not auto-refuse.** The Lawful Use Policy says partner
+   work is not available to someone subject to one. It is flagged as `RESTRICTED` and refused
+   by a moderator rather than by the system, for the same reason. **Confirm.**
+3. **The relationship vocabulary.** The customer picks one of: self or own organisation,
+   employer, business relationship, legal representative, family member, partner or spouse,
+   former partner, no personal relationship, other. This is a new list, not one taken from a
+   policy document. **Confirm the options.**
+4. **The protective-order question is asked only for personal relationships** — family member,
+   partner or spouse, former partner — and required before submission there.
+5. **Submission rate limit: 10 per account per day**, provisional. Every submission costs a
+   moderator's attention. Raise it if that is too tight for a real customer.
+6. **Seven years' retention for missions** after they close (provisional, in
+   `docs/compliance/retention.md`, for counsel).
+7. **The phrase ruleset covers English and Russian only.** Armenian needs a native speaker with
+   domain knowledge rather than my guess — filed as T-067. Armenian missions are still reviewed;
+   they are just not prioritised by their text.
+
+**Two documents disagree, and T-053 should settle it, not me:**
+`docs/product/taxonomy-draft.md` still lists partner and relationship investigation under
+"Deliberately absent", while ADR-0009 and the Lawful Use Policy put it **in scope with
+controls**. The ADR is the later decision and the code follows it. The taxonomy draft's section
+needs correcting when the tree is reviewed.
+
+Also: T-053 lists three risk bands (`standard`/`elevated`/`high`); the taxonomy draft defines a
+fourth, `restricted`, for surveillance of a private individual in a personal matter. The schema
+has all four, because ADR-0009's controls need the distinction.
+
+**Status:** ⬜ Pending — your confirmation. Nothing blocks on it; the defaults are the safe ones.
+
+---
+
+### 14. Probe databases to drop
+
+Created while verifying migrations apply to an empty database. Safe to delete whenever:
+
+```
+migrate_probe · migrate_probe2 · migrate_probe3 · ci_probe · ci_probe_t8_1789346201
+ci_probe_t9_1789347652 · ci_probe_t10_1789596168 · ci_probe_t10b_1789596197
+ci_probe_t10c_1789596252 · ci_probe_t10d_1789596273 · ci_probe_t10e_1789596294
+```
+
+```bash
+psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%'"
+```
+
+**Status:** ⬜ Pending — cosmetic
+
+---
+
 ## Already handled — do not do these
 
 | | |

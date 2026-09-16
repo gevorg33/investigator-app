@@ -483,21 +483,88 @@ pnpm --filter api test service-areas
 ## Phase 3 — Missions and discovery
 
 ### T-010 — Mission creation, state machine, policy review
-- **Status:** TODO
+- **Status:** DONE — 2026-09-17
 - **Priority:** P1
 - **Depends on:** T-009
 - **Risk:** HIGH
-- **Human approval required:** Yes — lawful-use policy enforcement
+- **Human approval required:** Yes — lawful-use policy enforcement. **The policy decisions are
+  listed in `ACTIONS-FOR-ME.md` #13 and still need confirming.** Every one was built to the most
+  conservative reading; each is reversible.
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/{missions,mission-policy}/**
+- **Affected:** apps/api/src/modules/{missions,mission-policy}/**, migrations
 
 **Acceptance criteria**
-- [ ] Transition map is data; every illegal transition tested
-- [ ] Status, status_history, audit and outbox share one transaction
-- [ ] Prohibited-category detection is deterministic; AI may classify but never decide
-- [ ] High-risk missions route to staff review with the decision and reason stored
-- [ ] `lawfulPurposeConfirmed` required before submission
-- [ ] Concurrent transitions cannot both apply
+- [x] Transition map is data; every illegal transition tested
+- [x] Status, status_history, audit and outbox share one transaction
+- [x] Prohibited-category detection is deterministic; AI may classify but never decide
+- [x] High-risk missions route to staff review with the decision and reason stored
+- [x] `lawfulPurposeConfirmed` required before submission
+- [x] Concurrent transitions cannot both apply
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Map is data, illegal transitions tested | `MISSION_TRANSITIONS` is a table of `from → to → who`. The matrix is **generated** from it — 17 statuses × 17 destinations × 9 authorities = 2,601 triples, every one not listed asserted refused. Two properties are asserted about the whole map rather than one edge: `QUOTED` is reachable only from `UNDER_REVIEW` and only by `STAFF:MODERATION`, and the system can never publish or reject from any status |
+| One transaction | `MissionTransitionService.apply` writes status, `mission_status_history`, the audit entry (through `AuditService`, which now takes the transaction) and the `outbox_events` row inside the caller's transaction. Asserted both ways: a unit test counts all four writes; an integration test asserts a failed submission leaves **no** screening row, no status change and no confirmation |
+| Deterministic detection; AI never decides | The ruleset is versioned data (`RULESET_VERSION`), pure functions, no clock and no model. `screenMission` takes `ScreeningInput` and **nothing else** — there is nowhere to put a classification, so the guarantee is the signature, not a convention. Tested: the same mission screened with an alarming classification, a reassuring one and none produces three identical results, and a classification naming a real rule id does not set that flag |
+| High-risk routes to review, decision stored | Every submission writes a `mission_screenings` row: outcome, band, flags, ruleset version, mission version. `PRIORITY_REVIEW` for a rule match, a high/restricted band, or an unbanded category. **An unbanded category screens as HIGH** — failing closed until T-053 bands the tree |
+| Lawful purpose required | Enforced three times: the DTO accepts `true` and nothing else; the service writes the timestamp **in the same UPDATE as the transition**, so a failed submission is not left looking confirmed; and CHECK `missions_submission_complete` refuses any non-draft mission missing the confirmation or a required field, whatever wrote it |
+| Concurrent transitions | Two guards. Callers read `FOR UPDATE`; the UPDATE also matches on the version and status that were read. Two simultaneous submissions, and a simultaneous submit and cancel, each leave exactly one winner and no second screening or history row |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| Let the system publish (`SUBMITTED → QUOTED: [SYSTEM]`) | 3 of the publication-gate tests fail |
+| Drop the outbox write from the transition | 1 fails — the four-write test |
+| Let the AI classification set the outcome | 1 fails — "cannot raise the band, add a flag or change the outcome" |
+| Remove **both** concurrency guards | 2 fail: both simultaneous submissions succeed (2 winners, expected 1) |
+| Remove only the row lock | **Still passes** — the version+status match catches it alone. Defence in depth, confirmed rather than assumed |
+| Skip the completeness check | 1 fails, and the DB CHECK caught the submission instead — the constraint is a real backstop, not decoration |
+| Restore the unbounded `hack` stem | 1 fails — the "hackathon" false-positive regression |
+
+**Four bugs found and fixed — each with a regression test seen to fail first**
+
+1. **The append-only tables were fully writable.** Migration 0000 sets `ALTER DEFAULT PRIVILEGES`
+   granting SELECT/INSERT/UPDATE/DELETE on every table created in this schema, so a new table
+   arrives writable and a narrower `GRANT` adds nothing — withholding a privilege means
+   `REVOKE`ing it. 0007 shipped its GRANTs without REVOKEs, and `mission_status_history` and
+   `mission_screenings` could both be updated and deleted. `grants.spec.ts` failed against the
+   applied schema, then passed; the privileges are now proven on all four tables from a database
+   built only from the migration files.
+2. **An impossible date reached the database.** `Date.parse('2026-02-31')` does not return NaN —
+   it rolls forward to 3 March — so the validity check passed it through and the customer got a
+   500 instead of a field error. Now built and read back; `missions.policy.spec.ts` covers the
+   rollover cases.
+3. **`hack\p{L}*` matched "hackathon".** Due diligence on a hackathon sponsor is not an
+   account-access request. Bounded to real inflections.
+4. **The rules missed "read my wife's messages".** The possessive pattern did not cover
+   `my <person>'s`, which is how these requests are actually worded — found by a normalisation
+   test, fixed, and the phrasing is now covered.
+
+**Also found, filed not fixed:** the suite fails a different unrelated test on roughly one run in
+three under its own parallelism (T-069). T-010 raised `testTimeout`/`hookTimeout` to 15s, which
+fixes the timeout class; the timing-oracle ratio in `password.service.spec.ts` needs its own fix
+and is a security test I will not quietly rewrite.
+
+**Verification:** 747 tests across 62 files, green. Coverage **100%** on all four metrics
+(1138 statements, 516 branches, 320 functions, 1041 lines) with the single registered exclusion.
+Lint, typecheck and build clean. All migrations apply to an empty database and the grants are
+correct when built from the files alone. Knowledge base validates 0 errors, 0 warnings.
+`pnpm audit`: no high-severity advisories (1 moderate — esbuild via drizzle-kit, dev-only,
+below the gate).
+
+**Scope note — what this deliberately did not build:** the moderation queue and its three
+outcomes (T-051, which the map already declares as moderator-only moves); mission attachments
+(T-066), so screening reads text and structured answers only and a moderator has nothing to
+open; native-speaker review of the ruleset, Armenian missing entirely (T-067); and the
+jurisdiction gate ADR-0009 requires for restricted categories (T-068).
+
+**Documentation:** `docs/architecture/missions.md` (new), the retention register, the customer
+knowledge-base article — two of whose answers no longer matched reality and were corrected — and
+the `mission-state-machine` skill, whose example map had the **system** publishing, contradicting
+T-051.
 
 **Validation**
 ```bash
@@ -2351,6 +2418,139 @@ wired).
 **Validation**
 ```bash
 pnpm --filter api test media
+```
+
+---
+
+### T-066 — Mission attachments
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-010, T-008, T-065
+- **Risk:** HIGH
+- **Human approval required:** Yes — staff access to customer material
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{media,missions,mission-policy}/**
+
+**Description**
+`plan.md` §10 lists attachments among a mission's fields, and the staff article instructs
+moderators to **open them** — "a mission's text can read cleanly while an attached document is
+the problem". T-010 shipped without them: screening reads text and structured answers only, and
+there is nothing for a moderator to open. A mission cannot be properly reviewed until this
+lands.
+
+**Acceptance criteria**
+- [ ] A `MISSION_ATTACHMENT` media category with its own size, formats, visibility and retention
+- [ ] Attachments belong to a mission and are authorised through the existing media flow
+- [ ] **A mission with an unscanned or infected attachment cannot be published** — fails closed
+- [ ] A moderator may open a mission's attachments; **every access is audited** (T-051 surfaces it)
+- [ ] Attachments are editable while the mission is a draft, frozen once submitted
+- [ ] The "lawful but excessive" path is request-changes, not rejection — the more common case
+- [ ] Retention rule recorded in `docs/compliance/retention.md`
+
+**Validation**
+```bash
+pnpm --filter api test missions
+```
+
+---
+
+### T-067 — Native-speaker review of the mission policy ruleset
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-010
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it is lawful-use policy detection
+- **Owner agent:** backend-domain + a native speaker per locale
+- **Affected:** apps/api/src/modules/mission-policy/mission-policy.rules.ts
+
+**Description**
+The deterministic ruleset covers English and Russian, written by me without domain or native
+review. **Armenian is not covered at all** — an Armenian mission is still reviewed by a
+moderator, it is simply not prioritised by its text, which is a queue-ordering gap rather than a
+safety hole (the gate is closed either way).
+
+**Acceptance criteria**
+- [ ] Armenian patterns added for every rule id, by a native speaker
+- [ ] Existing English and Russian patterns reviewed by someone with investigation-domain
+      knowledge — both for wording that is missed and for wording that is over-caught
+- [ ] A corpus of realistic missions that must NOT flag, tested — victims describing what
+      happened to them use the same vocabulary as people requesting it
+- [ ] `RULESET_VERSION` bumped; the version is what makes an old decision explainable
+- [ ] False-positive and false-negative examples recorded alongside the rules
+
+**Validation**
+```bash
+pnpm --filter api test mission-policy
+```
+
+---
+
+### T-068 — Jurisdiction gate for restricted categories
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-010, T-053
+- **Risk:** HIGH
+- **Human approval required:** Yes — it is an ADR-0009 control
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{mission-policy,missions}/**
+
+**Description**
+ADR-0009 offers partner and relationship investigation under controls, and the first is a
+**jurisdiction gate**: "available only where the work is lawful. The platform does not offer it
+everywhere it has users." That gate does not exist. T-010 screens such missions as `RESTRICTED`
+and routes them to a moderator every time, so nothing unlawful publishes automatically — but
+the moderator is currently the whole control, which ADR-0009 did not intend.
+
+**Acceptance criteria**
+- [ ] Per-country configuration of which risk bands and categories are offered at all
+- [ ] A mission in a country where the category is not offered is refused at submission, with a
+      reason the customer can act on — not silently queued
+- [ ] Configuration is staff-managed and audited, never a code constant
+- [ ] The other ADR-0009 controls are checked against the implementation and any further gaps
+      filed: licensed-for-surveillance verification (T-013), defined scope and duration
+- [ ] A test proves a restricted mission cannot publish in a country where it is not offered
+
+**Validation**
+```bash
+pnpm --filter api test mission-policy
+```
+
+---
+
+### T-069 — The suite is flaky under its own parallelism
+- **Status:** TODO
+- **Priority:** P1 — it will make CI untrustworthy, which is worse than a slow CI
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain + infra-devops
+- **Affected:** apps/api/vitest.config.mts, apps/api/src/modules/auth/password.service.spec.ts
+
+**Description**
+Three consecutive full-suite runs during T-010 failed three **different, unrelated** tests, each
+passing on its own: `app.module.spec.ts` and two mission tests timed out at the 5s default, and
+`password.service.spec.ts`'s timing-oracle ratio came out at 5.58 against a `< 5` assertion.
+Sixty-odd spec files run in parallel against one PostgreSQL, and the machine is the variable.
+
+T-010 raised `testTimeout`/`hookTimeout` to 15s, which addresses the timeout class. It does
+**not** address the timing-ratio assertion, which measures relative duration and so gets worse
+the busier the box is.
+
+A suite that fails a different test each run teaches people to re-run rather than to read the
+failure, and that habit is what lets a real regression through.
+
+**Acceptance criteria**
+- [ ] The timing-oracle test is made robust without weakening what it asserts — it exists to
+      prove the decoy hash closes an account-enumeration oracle, and that property must still
+      be tested. Median of several samples, or a comparison that is not a raw wall-clock ratio
+- [ ] Database-backed specs do not exhaust connections or serialise unpredictably — decide
+      deliberately between a connection cap, a shared pool, and limited file parallelism
+- [ ] Ten consecutive full-suite runs, green, recorded as the evidence
+- [ ] CI runs the same configuration as a developer machine, so a flake is reproducible
+
+**Validation**
+```bash
+cd apps/api && for i in $(seq 1 10); do pnpm exec vitest run || break; done
 ```
 
 ---

@@ -13,6 +13,16 @@ import {
 export const taxonomyNodeStatus = pgEnum('taxonomy_node_status', ['ACTIVE', 'DEPRECATED']);
 
 /**
+ * How much scrutiny work under a node needs (docs/product/taxonomy-draft.md). Ordered: each band
+ * is at least as sensitive as the one before it. It orders the moderation queue (T-051); it
+ * never lets a mission skip review.
+ *
+ * RESTRICTED is surveillance of a private individual in a personal matter, including partner
+ * investigation (ADR-0009) — moderated every time without exception.
+ */
+export const riskBand = pgEnum('risk_band', ['STANDARD', 'ELEVATED', 'HIGH', 'RESTRICTED']);
+
+/**
  * One taxonomy, drawn from by both missions and investigator specialties (ADR-0007).
  *
  * This is the STRUCTURAL subset only. T-053 owns the rest — per-locale labels, risk bands,
@@ -39,6 +49,11 @@ export const taxonomyNodes = pgTable(
     status: taxonomyNodeStatus('status').notNull().default('ACTIVE'),
     /** Display order among siblings. */
     position: integer('position').notNull().default(0),
+    /**
+     * Nullable until T-053 bands the reviewed tree. Mission screening treats an unbanded node
+     * as HIGH: a band nobody has assigned is not evidence the work is low-risk.
+     */
+    riskBand: riskBand('risk_band'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
