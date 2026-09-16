@@ -412,7 +412,7 @@ pnpm --filter api test media
 ---
 
 ### T-009 — Service areas with PostGIS
-- **Status:** TODO
+- **Status:** DONE — 2026-09-14
 - **Priority:** P1
 - **Depends on:** T-007
 - **Risk:** MEDIUM
@@ -421,13 +421,59 @@ pnpm --filter api test media
 - **Affected:** apps/api/src/modules/service-areas/**, migrations
 
 **Acceptance criteria**
-- [ ] `geography(Point, 4326)` and polygon support, GIST indexed
-- [ ] `ST_DWithin` filters, `ST_Distance` only sorts
-- [ ] Investigator home location is not discoverable
-- [ ] Multiple service areas per investigator deduplicate in results
-- [ ] Query plan confirms index use on a seeded dataset
+- [x] `geography(Point, 4326)` and polygon support, GIST indexed
+- [x] `ST_DWithin` filters, `ST_Distance` only sorts
+- [x] Investigator home location is not discoverable
+- [x] Multiple service areas per investigator deduplicate in results
+- [x] Query plan confirms index use on a seeded dataset
 
-**Validation**
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Point + polygon, GIST | A radius is stored as its buffered polygon, so one `area` column serves both kinds; `ST_DWithin` can use the index only with a constant distance. Index confirmed `USING gist` on a database migrated from empty |
+| `ST_DWithin` filters | The coverage query filters with `ST_DWithin` and uses `ST_Distance` only to order and to pick each investigator's nearest area |
+| Home not discoverable | No home column in any table (asserted). Centres coarsened to 2 dp (≈1.1 km) and a 5 km minimum radius/area — both CHECK constraints, proven to refuse direct inserts. Coverage returns an id and a distance rounded **up** to whole km, nothing else. No route reads another investigator's areas. Live: a centre sent as `44.51523, 40.18724` was stored as `POINT(44.52 40.19)`; zero coordinates in the API log or audit rows |
+| Dedup | An investigator with three overlapping areas appears once, at the nearest distance |
+| Query plan | 5,000 areas seeded inside a rolled-back transaction; `EXPLAIN` of the **production** query shows `service_areas_area_gist`; the `WHERE ST_Distance(...) <=` form cannot use it even with sequential scans disabled |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+dedup (`min()` and `GROUP BY` removed, query still valid) → exactly the dedup test fails, 30 others
+pass; index-usable filter swapped for `ST_Distance` → the index-use test fails; coarsening removed
+→ 1; rounding removed → 2; published-only filter removed → 1.
+
+A first dedup control removed `min()` but left `GROUP BY`, which made the query invalid — its 7
+failures came from a broken query, not from duplicates, and proved nothing. Redone as above.
+
+**Three bugs found and fixed — each with a regression test seen to fail first**
+
+1. **Geography values could never be read back.** T-004's `geographyPoint` parsed `POINT(…)`
+   text; postgres.js returns hex EWKB. Any geography row read through drizzle threw. Fixed with a
+   minimal EWKB reader (both byte orders, optional SRID; refuses truncated, trailing, 3D and
+   non-finite values) and a new `geographyPolygon` type, with real round trips through PostGIS.
+2. **drizzle-kit generated invalid SQL for these types.** It quotes custom column types as
+   identifiers, and a quoted `geography(Point, 4326)` names a type that does not exist. Migration
+   0006 unquoted by hand; `migrations.spec.ts` now fails the build if a quoted geography type ever
+   reaches a migration again.
+3. **Genuine 5 km areas were refused in the tropics.** PostGIS buffers geography through a local
+   projection chosen by longitude band; a 5 km buffer measures 77,948,988–78,097,887 m². The
+   minimum-area constraint was first 78,000,000, calibrated from one point, and refused minimum
+   areas on four of every sixteen grid longitudes between 35°S and 35°N. Now 77,500,000, from a
+   global measurement. The regression test uses the measured coordinates — a first version picked
+   random longitudes, mostly missed the affected bands, and passed against the broken constraint.
+   Also fixed: a radius area with no centre passed validation and crashed the service (500).
+
+**Privacy defaults to confirm** — engineering choices, not yet product decisions:
+- Centre precision **≈1.1 km** (2 decimal places)
+- Minimum radius **5 km**, and the same minimum area for drawn regions
+- Distances reported **rounded up to whole kilometres**
+- At most **10** areas; drawn regions **3–200 points**, one outline, no holes; radius up to **300 km**
+
+**Scope note:** verification status is not yet in the coverage filter — it does not exist until
+T-013. Coverage currently requires a published profile accepting work. Discovery (T-011) composes
+the rest; there is deliberately no search route in this task.
+
+**Validation** — all green 2026-09-14
 ```bash
 pnpm --filter api test service-areas
 ```

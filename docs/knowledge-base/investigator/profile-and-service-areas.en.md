@@ -6,7 +6,7 @@ visibility: authenticated
 locale: en
 version: 1
 status: current
-updated: 2026-09-13
+updated: 2026-09-14
 source_of_truth: database
 implementation_status: specified
 related_code:
@@ -34,6 +34,9 @@ never whether you qualify.
 A service area is either a location with a working radius, or a region you draw. A customer's
 requested location must fall inside one of your areas for you to appear.
 
+A radius must be at least 5 km and at most 300 km. A drawn region must be at least as large as
+a 5 km circle, have a single outline without holes, and use no more than 200 points.
+
 Define them where you actually work, not where you would consider working. An area you
 cannot reach reliably produces missions you decline, and a high decline rate affects how
 missions are routed to you. Refusals on substantiated policy grounds are excluded from that —
@@ -41,7 +44,7 @@ see "Does refusing on policy grounds hurt my record?" in the assignments article
 
 ## Can I have more than one service area?
 
-Yes, as many as you genuinely work in. They can overlap.
+Yes, up to 10, covering where you genuinely work. They can overlap.
 
 You appear once per customer search regardless of how many of your areas match — the
 nearest is used for distance ordering. Adding overlapping areas does not increase your
@@ -75,11 +78,19 @@ process.
 
 ## Is my home address visible to customers?
 
-No. Service areas are what customers see, and they are about where you work, not where you
-live.
+No. Your home address is never asked for and never stored. Service areas are about where you
+work, and several protections keep an area from revealing where you live even if you centre
+it close to home:
 
-Define your service area around a working reference point rather than your home if the two
-are the same place and you would rather they were not associated.
+- **The centre of a radius area is stored only to about a kilometre.** Whatever point you
+  choose is rounded before it is saved.
+- **No area can be smaller than a 5 km radius** — or, for a region you draw, smaller than the
+  same area — so an area cannot be drawn tightly around one building.
+- **Customers never see the shape of your areas.** Results show how far you are, rounded up to
+  whole kilometres, not where your areas are drawn.
+
+Even so, if you would rather your working area were not associated with your home, centre it
+on the town or district you work in rather than your street.
 
 ## What is the difference between a specialty and a service?
 
