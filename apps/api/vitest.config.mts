@@ -68,6 +68,14 @@ export default defineConfig({
     // under test/ is counted as source.
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     globals: false,
+    // Vitest's default is 5s, which is not a statement about behaviour — it is a cap that a
+    // database-backed test can exceed purely because 60-odd spec files are running against one
+    // PostgreSQL at once. It produced intermittent failures in tests that pass every time in
+    // isolation, including `app.module.spec.ts`, which asserts nothing about timing. Raised so
+    // a slow machine reports what a test found rather than how loaded the box was; a test that
+    // genuinely hangs still fails, just later.
+    testTimeout: 15_000,
+    hookTimeout: 15_000,
     coverage: {
       provider: 'v8',
       // `all` is what makes the gate honest: without it a source file with no spec is

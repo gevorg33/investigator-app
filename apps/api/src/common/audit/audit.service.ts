@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DB, type Db } from '../../database/database.module';
+import { DB, type Db, type Tx } from '../../database/database.module';
 import { auditLogs } from '../../database/schema';
 
 export interface AuditEvent {
@@ -25,8 +25,13 @@ export interface AuditEvent {
 export class AuditService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  async record(e: AuditEvent): Promise<void> {
-    await this.db.insert(auditLogs).values({
+  /**
+   * Pass `tx` when the audited change is written in a transaction. The entry then commits or
+   * rolls back with the change, so the log never records something that did not happen — and
+   * never misses something that did.
+   */
+  async record(e: AuditEvent, tx?: Tx): Promise<void> {
+    await (tx ?? this.db).insert(auditLogs).values({
       correlationId: e.correlationId ?? null,
       actorId: e.actorId ?? null,
       actorRole: e.actorRole ?? null,

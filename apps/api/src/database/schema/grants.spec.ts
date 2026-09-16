@@ -99,4 +99,66 @@ describe('users.email uniqueness is case-insensitive', () => {
   });
 });
 
+/**
+ * The same proof for the mission tables, and it is needed for a reason worth stating.
+ *
+ * Migration 0000 sets ALTER DEFAULT PRIVILEGES granting SELECT, INSERT, UPDATE and DELETE on
+ * every table created in this schema. A new table therefore arrives fully writable, and a
+ * narrower GRANT in a later migration changes nothing — withholding a privilege means
+ * REVOKING it. Migration 0007 shipped with the GRANTs and without the REVOKEs, and these
+ * tests failed against the applied schema: mission_status_history and mission_screenings
+ * were both updatable and deletable.
+ */
+describe('the mission tables hold only the privileges they were meant to', () => {
+  let sql: postgres.Sql;
+
+  beforeAll(() => {
+    sql = postgres(URL, { max: 1, onnotice: () => {} });
+  });
+
+  afterAll(async () => {
+    await sql.end();
+  });
+
+  const granted = async (table: string): Promise<string[]> => {
+    const rows = await sql<{ privilege_type: string }[]>`
+      SELECT privilege_type FROM information_schema.role_table_grants
+      WHERE grantee = 'investigator_app' AND table_name = ${table}
+      ORDER BY privilege_type`;
+    return rows.map((r) => r.privilege_type);
+  };
+
+  it.each(['mission_status_history', 'mission_screenings'])('%s is append-only', async (table) => {
+    // A status history that can be edited settles no dispute, and a screening result that can
+    // be rewritten explains nothing.
+    expect(await granted(table)).toEqual(['INSERT', 'SELECT']);
+  });
+
+  it.each(['missions', 'outbox_events'])(
+    '%s cannot be deleted from by the application',
+    async (table) => {
+      // Removing a mission is the retention workflow's job; pruning delivered events likewise.
+      expect(await granted(table)).toEqual(['INSERT', 'SELECT', 'UPDATE']);
+    },
+  );
+
+  it('refuses UPDATE on mission_status_history from the application role', async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE investigator_app`;
+        await tx`UPDATE mission_status_history SET reason = 'tampered'`;
+      }),
+    ).rejects.toThrow(/permission denied/i);
+  });
+
+  it('refuses DELETE on missions from the application role', async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE investigator_app`;
+        await tx`DELETE FROM missions`;
+      }),
+    ).rejects.toThrow(/permission denied/i);
+  });
+});
+
 class RollbackSignal extends Error {}
