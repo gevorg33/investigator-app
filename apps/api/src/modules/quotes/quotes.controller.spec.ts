@@ -11,7 +11,11 @@ import { QuotesService } from './quotes.service';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const KEY = '01J8XQ7M2K4NQ8Z9V3B7C1D2E3';
+// Deliberately low-entropy and obviously fake. A ULID-shaped literal here read as a credential
+// to the secret scanner — correctly, on the evidence available to it — and the fix is a test
+// value that cannot be mistaken for one, not an allowlist that teaches the scanner to ignore
+// this file.
+const IDEM_HEADER = 'test-quote-accept-1';
 
 describe('quotes controller', () => {
   let app: INestApplication;
@@ -76,9 +80,12 @@ describe('quotes controller', () => {
 
   describe('accepting', () => {
     it('requires an Idempotency-Key header', async () => {
-      const res = await http().post(`/quotes/${ID}/accept`).set('Idempotency-Key', KEY).send({});
+      const res = await http()
+        .post(`/quotes/${ID}/accept`)
+        .set('Idempotency-Key', IDEM_HEADER)
+        .send({});
       expect(res.status).toBe(201);
-      expect(quotes['accept']).toHaveBeenCalledWith(ACTOR, ID, KEY, expect.any(Object));
+      expect(quotes['accept']).toHaveBeenCalledWith(ACTOR, ID, IDEM_HEADER, expect.any(Object));
     });
 
     it.each([
@@ -118,7 +125,7 @@ describe('quotes controller', () => {
       // acceptance.
       const res = await http()
         .post(`/quotes/${ID}/accept`)
-        .set('Idempotency-Key', KEY)
+        .set('Idempotency-Key', IDEM_HEADER)
         .send({ priceMinor: 1 });
       expect(res.status).toBe(400);
       expect(quotes['accept']).not.toHaveBeenCalled();
