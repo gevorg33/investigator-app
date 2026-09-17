@@ -1,5 +1,8 @@
-import { createHash } from 'node:crypto';
 import { AppError } from '../../common/errors/app-error';
+// One implementation, shared with idempotency keys: both answer "is this the same request as
+// before", and two copies of that answer would drift. The canonical-JSON rules and the
+// undefined/null collision they were written to avoid live in that file now.
+import { stableFingerprint } from '../../common/hash/stable-fingerprint';
 
 /** docs/api/pagination.md: default 25, maximum 100, and a request above the maximum is clamped. */
 export const DEFAULT_LIMIT = 25;
@@ -35,25 +38,7 @@ export interface Cursor {
  * A hash, not the filters themselves: a cursor is opaque, and echoing the filter set back to
  * the client inside it would make it readable and forgeable.
  */
-export function fingerprint(filters: unknown): string {
-  return createHash('sha256').update(canonical(filters)).digest('hex').slice(0, 16);
-}
-
-/** Stable JSON: key order must not change the fingerprint, or paging breaks at random. */
-function canonical(value: unknown): string {
-  // `JSON.stringify` returns undefined for undefined, functions and symbols. The fallback must
-  // not be 'null', which is what null itself produces: a test caught the two hashing
-  // identically, and two different filter sets sharing a fingerprint is the one thing this
-  // function exists to prevent.
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'undefined';
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    // `a < b ? -1 : 1` rather than a three-way compare: `Object.entries` cannot yield the same
-    // key twice, so an "equal" arm would be a branch no input can reach.
-    .sort(([a], [b]) => (a < b ? -1 : 1));
-  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
-}
+export const fingerprint = stableFingerprint;
 
 export function encodeCursor(filters: unknown, last: Cursor): string {
   const payload = { f: fingerprint(filters), d: last.distanceM, i: last.profileId };
