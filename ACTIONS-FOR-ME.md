@@ -332,7 +332,7 @@ Created while verifying migrations apply to an empty database. Safe to delete wh
 migrate_probe · migrate_probe2 · migrate_probe3 · ci_probe · ci_probe_t8_1789346201
 ci_probe_t9_1789347652 · ci_probe_t10_1789596168 · ci_probe_t10b_1789596197
 ci_probe_t10c_1789596252 · ci_probe_t10d_1789596273 · ci_probe_t10e_1789596294
-ci_probe_t11_1789674197
+ci_probe_t11_1789674197 · ci_probe_t12_1789679229
 ```
 
 ```bash
@@ -340,6 +340,53 @@ psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP D
 ```
 
 **Status:** ⬜ Pending — cosmetic
+
+---
+
+### 15. Quote and assignment defaults — for T-012, needs your confirmation
+
+Engineering bounds chosen so nothing shipped undefined. None is a product decision, and each
+is a constant to change rather than a redesign.
+
+1. **An investigator has 48 hours to accept an assignment.** `kb-investigator-quoting` promises
+   a window and says failing to accept "releases the customer and counts against your response
+   record", but no document sets its length.
+2. **A quote's expiry must be at least 1 hour and at most 90 days out.** The investigator picks
+   inside that; the platform refuses an expiry already past or absurdly far away.
+3. **Estimated duration is capped at 365 days**, and quote text fields at 5,000 characters for
+   scope and 2,000 for deliverables, assumptions, exclusions and cancellation terms.
+
+**Status:** ⬜ Pending — your confirmation. Nothing blocks on it.
+
+---
+
+### 16. Where T-012 stops, and what Stripe still needs
+
+You said the Stripe account exists, so I built the **whole chain**: quote → acceptance →
+payment authorization → assignment, with the assignment created only once an authorization
+exists. What T-012 does **not** contain is the Stripe integration itself — payment intents,
+webhook signature verification, the ledger, fee splits, refunds, payouts and reconciliation.
+
+That is deliberate, not an oversight:
+
+- `.claude/agents/backend-domain.md` — the owning agent for this task — says in as many words:
+  *"Do not touch Stripe, ledger, fee or payout logic — that is `payments`."*
+- `payments-webhooks` forbids moving money **without a ledger entry and an audit event in the
+  same transaction**, and no ledger exists yet.
+- Fee and refund policy "must not change without explicit human approval", and those decisions
+  have not been made.
+
+So the chain ends at one named boundary, `PaymentAuthorizer`. Today its only implementation
+refuses, which means **no assignment can be created in production until the payments module
+lands** — the same fail-closed shape verification has in discovery. Wiring Stripe behind that
+boundary is a Phase 5 task with its own approval.
+
+**Still unanswered, and it is the gating question for Phase 5:** ACTIONS-FOR-ME #1 asks whether
+the provider *accepts this business category* in your launch countries, with licensing, tax and
+payout support. An account existing is not the same answer. `plan.md` §12 and the payments
+skill both say to settle that before building against a provider.
+
+**Status:** ⬜ Pending — confirm the boundary is where you want it, and answer #1 before Phase 5
 
 ---
 

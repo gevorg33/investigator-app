@@ -12,6 +12,9 @@ import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { MissionPolicyModule } from './modules/mission-policy/mission-policy.module';
 import { MissionsModule } from './modules/missions/missions.module';
+import { IdempotencyModule } from './common/idempotency/idempotency.module';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { QuotesModule } from './modules/quotes/quotes.module';
 import { SearchModule } from './modules/search/search.module';
 import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
@@ -35,6 +38,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     AuditModule,
     MailModule,
     AuthzModule,
+    IdempotencyModule,
     AuthModule,
     ProfilesModule,
     MediaModule,
@@ -42,6 +46,8 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     SearchModule,
     MissionPolicyModule,
     MissionsModule,
+    QuotesModule,
+    AssignmentsModule,
     HealthModule,
   ],
 })

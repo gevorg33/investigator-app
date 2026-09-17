@@ -64,6 +64,13 @@
       "when": 1789598225997,
       "tag": "0008_add_verification_and_area_place",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789677287298,
+      "tag": "0009_add_quotes_and_assignments",
+      "breakpoints": true
     }
   ]
 }

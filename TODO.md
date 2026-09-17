@@ -638,20 +638,78 @@ pnpm --filter api test search
 ## Phase 4 — Quotes and assignments
 
 ### T-012 — Quotes and idempotent assignment creation
-- **Status:** TODO
+- **Status:** DONE — 2026-09-18
 - **Priority:** P1
 - **Depends on:** T-011
 - **Risk:** HIGH
-- **Human approval required:** Yes — assignment and money-adjacent state
+- **Human approval required:** Yes — assignment and money-adjacent state. **Two decisions were
+  confirmed during the task** (payment sequencing, assignment state vocabulary); the provisional
+  constants and the payments boundary are recorded in `ACTIONS-FOR-ME.md` #15 and #16.
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/{quotes,assignments}/**
+- **Affected:** apps/api/src/modules/{quotes,assignments}/**, apps/api/src/common/{idempotency,hash}/**, migrations
 
 **Acceptance criteria**
-- [ ] Quote fields per plan.md §11, with expiry enforced server-side
-- [ ] Accepting an expired or withdrawn quote is rejected
-- [ ] Concurrent acceptance creates **exactly one** assignment — proven by a concurrency test
-- [ ] Idempotency enforced by a unique constraint, not read-then-write
-- [ ] Only the mission's customer can accept; only eligible investigators can quote
+- [x] Quote fields per plan.md §11, with expiry enforced server-side
+- [x] Accepting an expired or withdrawn quote is rejected
+- [x] Concurrent acceptance creates **exactly one** assignment — proven by a concurrency test
+- [x] Idempotency enforced by a unique constraint, not read-then-write
+- [x] Only the mission's customer can accept; only eligible investigators can quote
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Quote fields, expiry server-side | Every field plan.md §11 lists except taxes and fees, which belong to payments — "your quote is what your work is worth", and fees are shown to the customer separately. Expiry is checked against the clock at acceptance rather than trusted from a status column, because time passes without anyone writing a row. Bounded 1 hour to 90 days at submission |
+| Expired or withdrawn rejected | Both refused with 403. `quotes_expiry_after_creation` additionally refuses a quote born past its own expiry — an offer nobody could ever accept |
+| Exactly one assignment | **Two layers, tested separately.** The service locks the mission `FOR UPDATE`, so a second acceptance waits and finds it already confirmed; `quotes_one_accepted_per_mission`, `assignments_mission_unique` and `assignments_quote_unique` hold the same rule against every other writer. Two acceptances and two authorizations fired simultaneously each leave exactly one survivor |
+| Idempotency by unique constraint | `idempotency_keys (actor_id, endpoint, key)`. Replay returns the stored response; a different body is `IDEMPOTENCY_KEY_REUSED`; an in-flight replay is a retryable conflict; a rolled-back first call frees the key, because the key row and the effect share a transaction. A concurrent claim test proves exactly one caller does the work |
+| Only the customer accepts; only eligible investigators quote | Acceptance is scoped to the mission's customer (404 otherwise, 403 for an investigator). Quoting requires published **and** `VERIFIED` **and** accepting work — the same conditions discovery applies, so someone who cannot be found cannot arrive through the back door of a quote |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| Drop `quotes_one_accepted_per_mission` | **First run: nothing failed.** See the finding below. After the gap was closed: 1 fails |
+| Remove the expiry check from acceptance | 1 fails — "refuses an expired offer" |
+| Stop matching the authorization against the quote | 2 fail — the amount and currency mismatches |
+| Unbind the idempotency key from its request | 1 fails — "refuses a key reused for a different request" |
+| Write an assignment status outside the transition service | 1 fails — the static guard names the offending file |
+
+**The finding that mattered:** dropping the unique index left the concurrency test **passing**,
+because the mission row lock was carrying it alone. The constraint was real defence in depth,
+but nothing proved it load-bearing — a test can pass for a reason you did not intend. Direct-write
+tests now bypass the service and assert the database itself refuses the second accepted quote and
+the second assignment, and the control then fails precisely. Without the control I would have
+shipped a documented guarantee that no test actually checked.
+
+**Two decisions taken during the task**
+
+1. **Where the chain stops.** Acceptance confirms scope and price; the assignment is created only
+   when a payment authorization exists, by a system entry point the payments module (Phase 5)
+   calls after verifying a webhook. There is deliberately **no payment port with a stub
+   implementation** — a stub returning a fake authorization would commit investigators to work
+   nobody paid for. With no code path that manufactures an authorization, that cannot happen.
+2. **The assignment state machine.** No document enumerated these states, though the skill insists
+   it is a separate machine from the mission's. The map is the smallest set covering what the
+   knowledge base already promises, declared as data, with a generated matrix over 441 triples and
+   properties asserted over the whole map: only the investigator accepts, only the customer
+   completes, a policy halt is available from both windows after acceptance and never before, only
+   a moderator lifts a suspension, and the system's only move is closing an assignment nobody
+   accepted in time.
+
+**Also fixed on the way:** an iCloud sync silently reverted six T-011 files in the working tree —
+including the `service_areas` columns — which made drizzle-kit generate a migration that would
+have **dropped three live columns**. Caught before it ran, restored from HEAD, and the migration
+regenerated clean. The database was never touched.
+
+**Verification:** 996 tests across 82 files, green. Coverage **100%** on all four metrics
+(1511 statements, 707 branches, 411 functions, 1380 lines). Lint, typecheck and build clean. All
+migrations apply to an empty database, with 0009's CHECK constraints, grants and REVOKEs confirmed
+there — `assignment_status_history` is INSERT/SELECT only, and nothing carries DELETE.
+
+**Documentation:** `docs/architecture/quotes-and-assignments.md` (new), retention rows for all four
+tables, and `ACTIONS-FOR-ME.md` #15 (provisional constants) and #16 (where T-012 stops, and what
+Stripe still needs).
 
 **Validation**
 ```bash
