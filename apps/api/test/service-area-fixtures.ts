@@ -9,7 +9,17 @@ export type TestDb = ReturnType<typeof drizzle<typeof schema>>;
 /** An investigator with a real profile row. Published and accepting work unless told otherwise. */
 export async function investigator(
   db: TestDb,
-  opts: { visibility?: 'DRAFT' | 'PUBLISHED'; acceptingWork?: boolean; status?: Actor['status'] } = {},
+  opts: {
+    visibility?: 'DRAFT' | 'PUBLISHED';
+    acceptingWork?: boolean;
+    status?: Actor['status'];
+    /**
+     * VERIFIED by default so a test that is about geography is about geography. Discovery and
+     * coverage both refuse anyone else, so a test proving that exclusion passes UNVERIFIED
+     * explicitly — which is the only way this default can hide a bug.
+     */
+    verificationStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  } = {},
 ): Promise<{ actor: Actor; profileId: string }> {
   const [user] = await db
     .insert(schema.users)
@@ -21,10 +31,16 @@ export async function investigator(
       userId: user?.id ?? '',
       visibility: opts.visibility ?? 'PUBLISHED',
       acceptingWork: opts.acceptingWork ?? true,
+      verificationStatus: opts.verificationStatus ?? 'VERIFIED',
+      verifiedAt: (opts.verificationStatus ?? 'VERIFIED') === 'VERIFIED' ? new Date() : null,
     })
     .returning();
   return {
-    actor: testActor({ userId: user?.id ?? '', roles: ['INVESTIGATOR'], status: opts.status ?? 'ACTIVE' }),
+    actor: testActor({
+      userId: user?.id ?? '',
+      roles: ['INVESTIGATOR'],
+      status: opts.status ?? 'ACTIVE',
+    }),
     profileId: profile?.id ?? '',
   };
 }
@@ -40,7 +56,10 @@ export function somewhere(): { lon: number; lat: number } {
 }
 
 /** A square boundary of `sizeDeg` degrees with its south-west corner at `at`, open (not closed). */
-export function square(at: { lon: number; lat: number }, sizeDeg: number): Array<{ lon: number; lat: number }> {
+export function square(
+  at: { lon: number; lat: number },
+  sizeDeg: number,
+): Array<{ lon: number; lat: number }> {
   return [
     { lon: at.lon, lat: at.lat },
     { lon: at.lon + sizeDeg, lat: at.lat },

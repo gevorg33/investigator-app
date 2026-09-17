@@ -574,20 +574,59 @@ pnpm --filter api test missions
 ---
 
 ### T-011 — Investigator discovery
-- **Status:** TODO
+- **Status:** DONE — 2026-09-17
 - **Priority:** P1
 - **Depends on:** T-010
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/search/**
+- **Affected:** apps/api/src/modules/search/**, apps/api/src/modules/service-areas/**, migrations
 
 **Acceptance criteria**
-- [ ] Order: hard filters → eligibility → geographic → quality ranking
-- [ ] An unverified or suspended investigator never appears, by any path
-- [ ] Filters: country, city, radius, language, specialty, availability, verification
-- [ ] Pagination bounded; no unbounded limit
-- [ ] Results are projections — no private profile fields leak
+- [x] Order: hard filters → eligibility → geographic → quality ranking
+- [x] An unverified or suspended investigator never appears, by any path
+- [x] Filters: country, city, radius, language, specialty, availability, verification
+- [x] Pagination bounded; no unbounded limit
+- [x] Results are projections — no private profile fields leak
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Pipeline order | One statement: hard filters and eligibility in the `WHERE`, `ST_DWithin` for geography, sort key last, projection in TypeScript. Eligibility cannot be separated from ranking because there is no second pass to forget. A test searches with every other filter matching perfectly and still gets nothing back for an unverified investigator |
+| Never appears, by any path | Eight exclusions tested one at a time: unverified, pending, rejected, draft profile, not accepting work, suspended account, unverified account, soft-deleted account. **Enforced in the coverage query too**, not only in discovery — "any path" is only true if every path enforces it, and coverage is a path reachable directly by the assistant's tools (T-018) |
+| Filters | Country, region, city (case-insensitive, matched on the **service area**, so they mean "works there"), radius, language (**all** requested, not any), specialty (taxonomy walked **both** directions per ADR-0007), availability (overlap, not containment), pricing model. **Verification is deliberately not a client filter** — it is an eligibility invariant whose only legal value is VERIFIED, and offering it would imply otherwise |
+| Pagination bounded | Cursor-based keyset, default 25, maximum 100, **clamped not rejected** as `docs/api/pagination.md` requires. No offset, no unbounded limit. The cursor is bound to its filter set by a hash, so page two of one search cannot become page two of another |
+| Projections only | Results reuse `toPublicInvestigatorProfile`, so there is one allowlist rather than a second place to leak. A test serialises a result and asserts it contains no contact phone, no `userId`, no coordinates, no geometry and no area centre — only a distance **rounded up to whole kilometres** |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| Remove the verification filter | 4 fail: the three verification exclusions and "matches everything else perfectly" |
+| Remove the account-status filter | 2 fail: suspended and pending accounts. The soft-delete test still passes — it is a separate condition |
+| Filter with `ST_Distance` instead of `ST_DWithin` | 1 fails: the plan no longer uses `service_areas_area_gist` |
+| Drop the ancestor half of the taxonomy walk | 1 fails: "declared a parent, asked for the child". The descendant cases still pass — the asymmetry ADR-0007 describes |
+| Drop the cursor fingerprint check | 3 fail: two in the cursor spec, one in discovery — a cursor becomes portable between searches |
+
+**Schema this task had to add**
+
+Two gaps blocked the acceptance criteria and had to be filled structurally, as T-007 did for `taxonomy_nodes`:
+
+1. **`investigator_profiles.verification_status`** (+ `verified_at`). Nothing existed — T-013 is an admin queue with no schema — so "an unverified investigator never appears" had nothing to read. Defaults to `UNVERIFIED`, so **until T-013 ships, discovery lists nobody**. That is the correct direction for an eligibility gate to fail. A CHECK keeps the status and the date consistent in both directions, so T-013 must set the date when it grants the status.
+2. **`service_areas.country_code`, `region`, `city`.** Geography cannot answer "in Armenia" without a country table nobody has built. Nullable, because T-009 shipped areas before these existed; an area with no country does not match a country filter, because an unanswered question is not a match.
+
+**Two bugs found, each with a regression test seen to fail first**
+
+1. **Two different filter sets hashed to the same cursor fingerprint.** `JSON.stringify(undefined)` returns `undefined`, and the fallback substituted `'null'` — the same string `null` itself produces. A cursor from one search would have been accepted by another. The fallback is now distinct.
+2. **An unreachable branch in the fingerprint's sort comparator.** `Object.entries` cannot yield the same key twice, so the "equal" arm was a branch no input could reach. Removed rather than covered with a contrived test.
+3. **My own tests were not isolated from the shared database.** Verification had to be granted by the fixture — discovery refuses everyone else — which quietly made the **538** investigators other suites leave in the development database eligible results. A 50 km search found a foreign fixture and took the first place: one failure in a full run, three passes when run alone, which is the signature of shared state rather than of the code under test. Each test now tags its investigators with a unique city and filters every search on it, so a search answers with that test's data or nothing. Same class of problem as T-069, and worth watching for in any suite that queries globally.
+
+**Not a T-011 bug, but it blocked the task:** 135 iCloud conflict copies (`missions 2.ts`, `media.spec 2.ts`, …) had appeared under `src/`, `test/` and `docs/`, breaking `tsc` and standing to be executed by vitest and counted by the coverage gate. All 135 plus 16 stray compiled artifacts were quarantined (moved, not deleted), and `.gitignore` now covers both shapes. **The real fix is moving the repository off iCloud Desktop** — it will happen again otherwise.
+
+**Deliberately not built:** quality ranking has **no inputs** — rating, review count and response time do not exist (T-037 owns reviews), so results order by distance when a location is given and by declared experience otherwise, rather than by an invented proxy. Free-text relevance ranking waits for the AI gateway (T-018) and may only reorder an already-eligible set. Verification decisions are T-013.
+
+**Verification:** 844 tests across 67 files, green. Coverage **100%** on all four metrics (1255 statements, 619 branches, 353 functions, 1142 lines). Lint, typecheck and build clean. All migrations apply to an empty database, with 0008's three CHECK constraints and both indexes confirmed there. Knowledge base validates 0 errors, 0 warnings.
 
 **Validation**
 ```bash
