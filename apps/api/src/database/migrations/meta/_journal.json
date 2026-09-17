@@ -57,6 +57,13 @@
       "when": 1789349474620,
       "tag": "0007_add_missions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789598225997,
+      "tag": "0008_add_verification_and_area_place",
+      "breakpoints": true
     }
   ]
 }

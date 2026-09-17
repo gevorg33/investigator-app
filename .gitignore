@@ -25,3 +25,24 @@ secrets/
 
 .DS_Store
 .idea/
+
+# iCloud conflict copies: syncing the repo from iCloud Desktop duplicates files as
+# "name 2.ts", "name 3.ts". They are not edits anyone made — they are copies of files that
+# already exist, and inside src/ they break `tsc` (duplicate declarations), get executed by
+# vitest when they end in .spec.ts, and are counted by the 100% coverage gate. 135 of them
+# appeared during T-011 and had to be quarantined by hand.
+#
+# Ignoring them keeps them out of commits. It does not stop them breaking the local build —
+# the real fix is moving the repository off iCloud Desktop (ACTIONS-FOR-ME).
+* [0-9].*
+
+# tsc emitting next to its sources. apps/api/test/ and src/ hold TypeScript only; compiled
+# output belongs in dist/. When these appear, tsc can then refuse to overwrite its own inputs.
+apps/api/src/**/*.js
+apps/api/src/**/*.js.map
+apps/api/src/**/*.d.ts
+apps/api/src/**/*.d.ts.map
+apps/api/test/**/*.js
+apps/api/test/**/*.js.map
+apps/api/test/**/*.d.ts
+apps/api/test/**/*.d.ts.map

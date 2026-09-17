@@ -34,8 +34,13 @@ LIMIT :limit
   same investigator repeatedly or raise their visibility.
 - `search_radius_m` of **0** means the point must fall inside an area — what the investigator
   article promises. Discovery may widen it, up to 100 km.
-- Verification status joins the filter when it exists (T-013). Discovery composes the rest
-  (T-011): hard filters, then geography, then ranking — never the other way round.
+- **Verification is part of the filter**, added in T-011 with the `verification_status` column.
+  It is enforced here as well as in discovery, because "an unverified investigator never appears,
+  by any path" is only true if every path enforces it — and this is a path, reachable directly by
+  discovery, by the assistant's tools and by anything added later. T-013 owns granting the status.
+- Discovery composes the rest (T-011): hard filters, then geography, then ranking — never the
+  other way round. Areas also carry a declared country, region and city, which is what the
+  country and city filters match on; geography cannot answer "in Armenia" on its own.
 
 ## Home locations are not discoverable
 

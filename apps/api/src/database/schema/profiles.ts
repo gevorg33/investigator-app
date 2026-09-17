@@ -49,6 +49,25 @@ export const pricingModel = pgEnum('pricing_model', ['HOURLY', 'FIXED_FEE', 'RET
  */
 export const profileVisibility = pgEnum('profile_visibility', ['DRAFT', 'PUBLISHED']);
 
+/**
+ * Whether staff have verified this investigator (T-013).
+ *
+ * Structural subset only, as `taxonomy_nodes` was for T-053: T-013 owns the queue, the
+ * documents, the decisions and their audit trail. The column exists here because discovery
+ * must refuse to list an unverified investigator (plan.md §9, `investigator-discovery`), and a
+ * hard filter with no column behind it is a filter nobody actually wrote.
+ *
+ * UNVERIFIED is the default, and that is the point: verification is something staff grant,
+ * never something an account arrives holding. Until T-013 ships nobody is VERIFIED and
+ * discovery lists nobody — the correct direction for an eligibility gate to fail.
+ */
+export const verificationStatus = pgEnum('verification_status', [
+  'UNVERIFIED',
+  'PENDING',
+  'VERIFIED',
+  'REJECTED',
+]);
+
 export const investigatorProfiles = pgTable(
   'investigator_profiles',
   {
@@ -70,6 +89,13 @@ export const investigatorProfiles = pgTable(
     /** The investigator's own switch: are they taking work right now? */
     acceptingWork: boolean('accepting_work').notNull().default(false),
     visibility: profileVisibility('visibility').notNull().default('DRAFT'),
+    /**
+     * Set by staff only (T-013). Published is not verified: an investigator may present a
+     * complete storefront and still not be listed, because the two are separate axes.
+     */
+    verificationStatus: verificationStatus('verification_status').notNull().default('UNVERIFIED'),
+    /** When the current VERIFIED status was granted. Null unless verified. */
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
     /** Private. Contact happens through the platform; this is for staff and support. */
     contactPhone: text('contact_phone'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -77,8 +103,13 @@ export const investigatorProfiles = pgTable(
   },
   (t) => [
     uniqueIndex('investigator_profiles_user_unique').on(t.userId),
-    // Discovery filters on both (plan.md §9), and only published profiles are ever listed.
-    index('investigator_profiles_visibility_idx').on(t.visibility, t.acceptingWork),
+    // The three columns discovery filters on before it touches geography (plan.md §9). All
+    // three are hard filters, so they belong in one index in the order the query applies them.
+    index('investigator_profiles_visibility_idx').on(
+      t.visibility,
+      t.verificationStatus,
+      t.acceptingWork,
+    ),
   ],
 );
 

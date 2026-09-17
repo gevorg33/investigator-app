@@ -37,6 +37,11 @@ requested location must fall inside one of your areas for you to appear.
 A radius must be at least 5 km and at most 300 km. A drawn region must be at least as large as
 a 5 km circle, have a single outline without holes, and use no more than 200 points.
 
+Each area also names the country, and optionally the region and city, it covers. Customers
+filter by those, and geography alone cannot answer "in Armenia" — so an area with no country
+named does not appear in a search filtered by country, even when it covers the right place.
+Name them for every area you want found that way.
+
 Define them where you actually work, not where you would consider working. An area you
 cannot reach reliably produces missions you decline, and a high decline rate affects how
 missions are routed to you. Refusals on substantiated policy grounds are excluded from that —

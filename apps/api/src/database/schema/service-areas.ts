@@ -26,6 +26,18 @@ export const serviceAreas = pgTable(
     kind: serviceAreaKind('kind').notNull(),
     /** What the investigator calls the area — "Yerevan", "Shirak region". */
     label: text('label').notNull(),
+    /**
+     * Where this area is, as text, for the country/region/city filters discovery offers
+     * (plan.md §9). Geography answers "within 20 km of this point"; it cannot answer "in
+     * Armenia" without a country table nobody has built.
+     *
+     * Nullable, because T-009 shipped areas before these existed and never asked for them. An
+     * area with no country simply does not match a country filter — the filter narrows, and an
+     * unanswered question is not a match.
+     */
+    countryCode: text('country_code'),
+    region: text('region'),
+    city: text('city'),
     /** RADIUS only. Coarsened to two decimal places (about a kilometre) before it is stored. */
     centre: geographyPoint('centre'),
     radiusM: integer('radius_m'),
@@ -38,5 +50,7 @@ export const serviceAreas = pgTable(
     // GIST, always: without it every coverage query is a sequential scan of every area.
     index('service_areas_area_gist').using('gist', t.area),
     index('service_areas_profile_idx').on(t.profileId),
+    // Country is a hard filter applied before any geography (postgis-search).
+    index('service_areas_country_idx').on(t.countryCode, t.city),
   ],
 );

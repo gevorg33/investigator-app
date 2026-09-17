@@ -24,6 +24,10 @@ export interface OwnServiceArea {
   id: string;
   kind: 'RADIUS' | 'POLYGON';
   label: string;
+  /** Where the area is, as text — what the country/city filters in discovery match on. */
+  countryCode: string | null;
+  region: string | null;
+  city: string | null;
   centre: LonLat | null;
   radiusKm: number | null;
   boundary: LonLat[] | null;
@@ -63,6 +67,7 @@ export function coverageQuery(point: LonLat, searchRadiusM: number, limit: numbe
     FROM service_areas sa
     JOIN investigator_profiles ip ON ip.id = sa.profile_id
     WHERE ip.visibility = 'PUBLISHED'
+      AND ip.verification_status = 'VERIFIED'
       AND ip.accepting_work = true
       AND ST_DWithin(sa.area, ${at}, ${searchRadiusM})
     GROUP BY sa.profile_id
@@ -90,15 +95,25 @@ export class ServiceAreasService {
       id: r.id,
       kind: r.kind,
       label: r.label,
+      countryCode: r.countryCode,
+      region: r.region,
+      city: r.city,
       centre: r.centre,
       radiusKm: r.radiusM === null ? null : r.radiusM / 1000,
       // The outer ring without its closing point: the shape as the investigator drew it.
-      boundary: r.kind === 'POLYGON' ? r.area.rings[0]!.slice(0, -1).map(([lon, lat]) => ({ lon, lat })) : null,
+      boundary:
+        r.kind === 'POLYGON'
+          ? r.area.rings[0]!.slice(0, -1).map(([lon, lat]) => ({ lon, lat }))
+          : null,
       createdAt: r.createdAt,
     }));
   }
 
-  async createMine(actor: Actor, dto: CreateServiceAreaDto, req: RequestContext): Promise<OwnServiceArea> {
+  async createMine(
+    actor: Actor,
+    dto: CreateServiceAreaDto,
+    req: RequestContext,
+  ): Promise<OwnServiceArea> {
     const c = this.ctx('service_area.create', req);
     const profileId = await this.myProfileId(actor, c);
 
@@ -109,23 +124,37 @@ export class ServiceAreasService {
       .where(eq(serviceAreas.profileId, profileId));
     if (existing!.n >= MAX_AREAS_PER_PROFILE) {
       throw AppError.validation([
-        { field: 'kind', code: 'LIMIT_REACHED', messageKey: 'error.validation.service_area.limit_reached' },
+        {
+          field: 'kind',
+          code: 'LIMIT_REACHED',
+          messageKey: 'error.validation.service_area.limit_reached',
+        },
       ]);
     }
 
     const values =
-      dto.kind === 'RADIUS' ? this.radiusValues(dto) : { kind: 'POLYGON' as const, area: this.polygon(dto) };
+      dto.kind === 'RADIUS'
+        ? this.radiusValues(dto)
+        : { kind: 'POLYGON' as const, area: this.polygon(dto) };
 
     let row: { id: string } | undefined;
     try {
       [row] = await this.db
         .insert(serviceAreas)
-        .values({ profileId, label: dto.label, ...values })
+        .values({
+          profileId,
+          label: dto.label,
+          countryCode: dto.countryCode ?? null,
+          region: dto.region ?? null,
+          city: dto.city ?? null,
+          ...values,
+        })
         .returning({ id: serviceAreas.id });
     } catch (e) {
       const cause = (e as { cause?: { code?: string; constraint_name?: string } }).cause;
       // A check violation always names its constraint; anything unmapped is rethrown as it is.
-      const reason = cause?.code === '23514' ? SHAPE_VIOLATIONS[String(cause.constraint_name)] : undefined;
+      const reason =
+        cause?.code === '23514' ? SHAPE_VIOLATIONS[String(cause.constraint_name)] : undefined;
       if (!reason) throw e;
       throw AppError.validation([
         { field: 'boundary', code: reason, messageKey: 'error.validation.service_area.shape' },
@@ -156,8 +185,12 @@ export class ServiceAreasService {
    * Published investigators accepting work whose areas cover a point, nearest first, each once.
    *
    * Takes no actor: it answers a question about investigators' public storefronts, and returns
-   * nothing that is not already public except a rounded distance. Verification status joins
-   * this filter when it exists (T-013); discovery composes the rest (T-011).
+   * nothing that is not already public except a rounded distance.
+   *
+   * Verification is now part of the filter, as this comment promised it would be once the
+   * column existed. It belongs here rather than only in discovery: "an unverified investigator
+   * never appears, by any path" (T-011) is only true if every path enforces it, and this is a
+   * path — one that discovery, the assistant's tools and anything else can reach directly.
    */
   async findCoverage(
     point: LonLat,
@@ -174,14 +207,21 @@ export class ServiceAreasService {
             ? 'limit'
             : undefined;
     if (bad) {
-      throw AppError.validation([{ field: bad, code: 'OUT_OF_RANGE', messageKey: 'error.validation.coverage.range' }]);
+      throw AppError.validation([
+        { field: bad, code: 'OUT_OF_RANGE', messageKey: 'error.validation.coverage.range' },
+      ]);
     }
 
-    const rows = (await this.db.execute(coverageQuery(point, searchRadiusM, limit))) as unknown as Array<{
+    const rows = (await this.db.execute(
+      coverageQuery(point, searchRadiusM, limit),
+    )) as unknown as Array<{
       profileId: string;
       distanceM: number;
     }>;
-    return rows.map((r) => ({ profileId: r.profileId, distanceKm: toReportedKm(Number(r.distanceM)) }));
+    return rows.map((r) => ({
+      profileId: r.profileId,
+      distanceKm: toReportedKm(Number(r.distanceM)),
+    }));
   }
 
   private radiusValues(dto: CreateServiceAreaDto) {
@@ -213,7 +253,13 @@ export class ServiceAreasService {
     return profile.id;
   }
 
-  private async record(actor: Actor, req: RequestContext, action: string, resourceId: string, reason: string) {
+  private async record(
+    actor: Actor,
+    req: RequestContext,
+    action: string,
+    resourceId: string,
+    reason: string,
+  ) {
     await this.audit.record({
       correlationId: req.correlationId,
       ipAddress: req.ip,
@@ -227,6 +273,12 @@ export class ServiceAreasService {
   }
 
   private ctx(action: string, req: RequestContext, resourceId?: string): AuthzContext {
-    return { action, resourceType: 'service_area', resourceId, correlationId: req.correlationId, ipAddress: req.ip };
+    return {
+      action,
+      resourceType: 'service_area',
+      resourceId,
+      correlationId: req.correlationId,
+      ipAddress: req.ip,
+    };
   }
 }

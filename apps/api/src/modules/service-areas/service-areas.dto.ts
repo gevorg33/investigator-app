@@ -7,8 +7,10 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsOptional,
   IsString,
   Length,
+  Matches,
   Max,
   Min,
   ValidateIf,
@@ -36,6 +38,22 @@ export class CreateServiceAreaDto {
   @IsString()
   @Length(1, 80)
   label!: string;
+
+  // Where the area is, for the country/city filters in discovery (T-011). Optional: an area
+  // without a country still works geographically, it just cannot match a country filter.
+  @IsOptional()
+  @Matches(/^[A-Z]{2}$/, { message: 'error.validation.country_code.invalid' })
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  region?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  city?: string;
 
   // IsDefined is what refuses a missing centre: ValidateNested alone passes `undefined`, which
   // let a RADIUS area with no centre through to the service and a 500.
