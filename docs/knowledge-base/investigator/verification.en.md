@@ -4,9 +4,9 @@ title: Verification — documents, review, and keeping it current
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-14
+updated: 2026-09-18
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -31,8 +31,12 @@ Proof of identity, and proof of your professional standing where your jurisdicti
 it — a licence, a registration, or an equivalent. Some categories of work require
 additional evidence of qualification.
 
-The exact set depends on where you work and what you do. The verification screen lists what
-is required for your declared areas and specialties.
+The exact set depends on where you work and what you do. A list of required documents per
+jurisdiction and specialty is specified but not yet built, so the platform does not currently
+tell you which documents your declared areas and specialties need. A reviewer checks what you
+submit against what you declared, and a rejection says what was missing.
+
+You can attach up to ten documents to one application.
 
 ## Who can see my verification documents?
 
@@ -60,10 +64,20 @@ Each file is checked for malware before anyone can open it, including you. Until
 reports the file as clean, it cannot be opened by anyone. This keeps a harmful file from
 reaching the staff who review it.
 
+## How do I apply for verification?
+
+Upload your documents, then submit an application with them. The application records the
+specialties and service areas on your profile at the moment you submit, and that is what a
+reviewer checks your documents against. Set up your profile before you apply.
+
+You can have one application open at a time. While it is open your status shows as pending,
+unless you were already verified, in which case you stay verified.
+
 ## How long does review take?
 
-Review is carried out by staff rather than automatically, so it is not instant. You are
-notified when a decision is made.
+Review is carried out by staff rather than automatically, so it is not instant. Decision
+notifications are not built yet; you can see each application's status and the reason for
+its decision in your verification history.
 
 Submitting complete, legible documents that match the areas and specialties you declared is
 the single biggest factor in how quickly it resolves. Mismatches between what you declared
@@ -75,22 +89,32 @@ The decision states its reason. Common ones: a document that is expired, illegib
 does not cover the jurisdiction you declared; a licence that does not extend to a specialty
 you listed; or a mismatch between your identity document and your profile name.
 
-Rejection is not permanent. Correct what the reason identifies and submit again.
+Rejection is not permanent. Correct what the reason identifies and submit a new
+application. Your earlier application and its decision stay in your history.
+
+A decision covers the whole application. If your documents support only some of what you
+declared, the application is rejected with a reason that says which parts; remove the
+unsupported specialties or areas from your profile, or add documents that cover them, and
+apply again.
 
 ## What happens when my licence is due to expire?
 
-You are notified before it expires so you can submit a renewal.
+Document expiry is not yet tracked by the platform. Expiry reminders, and the automatic lapse
+of verified status when a required document expires, are specified but not built.
 
-If a required document lapses, your verified status lapses with it — you stop appearing in
-discovery and cannot quote until it is restored. Assignments already in progress are not
-cancelled, but you should expect to resolve it promptly.
+When they are, a lapsed required document will lapse your verified status with it: you will
+stop appearing in discovery and be unable to quote until it is restored, while assignments
+already in progress continue. Until then, submit a new application with the renewed document
+before the old one expires.
 
 ## Can I change my specialties or service areas after being verified?
 
-Yes, but adding a specialty or area that requires additional proof will put that addition
-through review. Your existing verified scope is unaffected while the addition is reviewed.
+Yes. Removing a specialty or area takes effect immediately.
 
-Removing a specialty or area takes effect immediately.
+Verification currently applies to your profile as a whole rather than to each specialty or
+area. Review of individual additions is specified but not built. To have additions checked,
+submit a new application with documents that cover them; you stay verified while it is
+reviewed, and a rejected addition does not remove your existing verification.
 
 ## Does being verified mean the platform vouches for my work?
 

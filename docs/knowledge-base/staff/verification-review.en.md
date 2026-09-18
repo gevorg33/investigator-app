@@ -4,9 +4,9 @@ title: Reviewing investigator verification
 audience: staff
 visibility: staff
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-18
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -42,13 +42,31 @@ produces a resubmission with the same problem.
 "The licence provided covers jurisdiction X, but service areas were declared in X and Y" is
 actionable. The reason is stored and shown to the applicant, so write it for them.
 
+## Do I need a reason to approve an application?
+
+Yes. Every verification decision, approval or rejection, requires a reason. For an approval,
+say what you checked — "Licence number confirmed against the national registry" — because an
+approval nobody can later explain is not a review. The reason for an approval is shown to the
+applicant as well, so write it for them too.
+
+## What was the applicant's declaration when they applied?
+
+Each application records the specialties and service areas the applicant had declared at the
+moment they submitted it, and that record does not change while you review. Check the
+documents against that recorded declaration, not against the live profile, which the applicant
+may have edited since.
+
 ## Can I approve part of what was declared?
 
-Yes. Approving the specialties and areas the documents support, while rejecting the
-remainder with a reason, is usually better than refusing the whole application.
+Not yet. A verification decision currently covers the whole application: you approve
+everything the applicant declared, or you reject the application. There is no partial
+approval, because verification is not yet tracked per specialty or per service area.
 
-The applicant can then work within their verified scope and supply further documents for the
-rest.
+If the documents support only part of what was declared, reject the application and say
+exactly which parts the documents support and which they do not. The applicant can then
+remove the unsupported specialties or areas from their profile, or supply documents that cover
+them, and apply again. Do not approve an application whose documents cover only part of the
+declaration.
 
 ## What if documents look altered?
 
@@ -67,15 +85,28 @@ are held under a retention rule that only applies while they stay inside the pla
 
 ## What happens when a document is about to expire?
 
-The investigator is notified before expiry. If it lapses, their verified status lapses with
-it automatically — you do not need to act.
+Document expiry is not yet tracked by the platform. Expiry notifications and the automatic
+lapse of verified status when a required document expires are specified but not built.
 
-Assignments already in progress continue. An investigator working with a lapsed licence is a
-compliance matter to escalate, not something to resolve by re-approving.
+Until they are, check expiry dates yourself as part of every review. A document that has
+already expired is a reason to reject the application, stated as such.
+
+An investigator working with a lapsed licence is a compliance matter to escalate, not
+something to resolve by re-approving.
 
 ## Someone I know has applied. What do I do?
 
-Reassign it. Do not review an application where you have a personal or commercial
-relationship with the applicant.
+Leave it for another reviewer. Do not review an application where you have a personal or
+commercial relationship with the applicant. There is no assignment of applications to
+reviewers yet, so leaving it means not opening it and telling your lead.
+
+The platform refuses only one case on its own: you cannot decide your own application, even
+if you hold the verification scope.
 
 Your decision is attributed to you permanently and is visible in any later dispute or audit.
+
+## Can a decision be changed after it is made?
+
+No. An application is decided once, and the decision and its reason are kept permanently. If
+the applicant corrects the problem, they submit a new application, and both decisions stay in
+the history you see when reviewing.
