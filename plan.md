@@ -11,6 +11,8 @@ The platform supports two primary roles in one account:
 
 A user can switch roles without creating separate accounts. Staff and administrators use a separate web application with elevated permissions.
 
+**Agencies (ADR-0011).** Investigation agencies register as organisations: a public profile, employees, teams, several investigator profiles, and work taken through the marketplace as the agency. Every user also has a **Personal workspace**, where individual customers and independent investigators work exactly as before. A person can belong to several workspaces and switches between them. Workspaces are isolated by the database, not only by application code — see §29 and `docs/architecture/tenancy.md`.
+
 ### Initial languages
 
 - English: `en`
@@ -424,6 +426,10 @@ Cross-module access must happen through application services, domain events, or 
 
 Use RBAC plus resource-level authorization. Role checks alone are insufficient.
 
+### Inside an agency workspace (ADR-0011)
+
+Platform roles above describe what a person may do on the platform. Inside an agency, a member's **tenant roles** — `OWNER`, `ADMIN`, `MANAGER`, `INVESTIGATOR`, `AGENCY_STAFF` (shown as "Staff"), `VIEWER` — grant explicit **permissions** (`employees.invite`, `investigations.assign`, …). Authorization checks permissions, never role names, and access to an individual assignment inside an agency still depends on being staffed on it or holding `investigations.read_all`. The full catalog and matrix: `docs/architecture/tenancy.md` §3. Custom roles are designed for, not built.
+
 ---
 
 ## 7. Authentication and Security
@@ -444,12 +450,15 @@ Use RBAC plus resource-level authorization. Role checks alone are insufficient.
 
 Every protected resource must verify:
 
+0. Active workspace — an ACTIVE membership in an ACTIVE workspace, read per request (ADR-0011)
 1. User identity
 2. Active account status
-3. Role permissions
+3. Role permissions — and, inside a workspace, tenant permissions
 4. Resource ownership or assignment relationship
 5. Mission/assignment state
-6. Staff scope, if applicable
+6. Staff scope, if applicable — cross-workspace staff access only inside the audited `PlatformContext`
+
+Underneath all six, **PostgreSQL row-level security enforces the workspace boundary** on every tenant-scoped table, keyed on transaction-local context the application sets at the request or job boundary. The application's checks decide what a member may do; the database guarantees that a forgotten filter returns nothing rather than another workspace's data. A client-supplied tenant id is never an authorization source.
 
 ### Security requirements
 
@@ -535,6 +544,12 @@ Initial entities:
 - AiMemory
 - AiPlan
 - AiToolResult
+- Tenant (workspace: `PERSONAL` | `AGENCY`) — ADR-0011
+- TenantProfile (public) · TenantSettings (private)
+- TenantMembership · TenantInvitation
+- Role · Permission · RolePermission · MembershipRole
+- Team · TeamMember
+- AssignmentStaff (who inside the supplier works an assignment)
 
 ### Taxonomy and tags (ADR-0007)
 
@@ -621,9 +636,11 @@ window is a temporary working set.** They are separate systems — see
 Uses pgvector for message and memory embeddings, and Postgres full-text search for exact terms —
 hybrid, per ADR-0001.
 
-**Not in v1 (ADR-0006):** DAG orchestration, multi-step command planning, a risk engine beyond
-the mission policy screening in §10, and multi-tenancy. This product has no tenants; isolation
-is by resource relationship, enforced by the six-check authorization procedure.
+**Superseded in part (2026-09-19).** ADR-0006 deferred multi-tenancy and DAG orchestration.
+ADR-0011 now makes workspaces real — every AI session, message, summary, memory, plan and tool
+result is tenant-scoped, and a session belongs to one workspace for life. ADR-0012 brings
+multi-command plans ordered as a DAG, over the same persisted plan rows. A learned risk engine
+remains out of scope: risk is declared per command plus the mission policy screening in §10.
 
 ### Investigation workspace (v1)
 
@@ -964,6 +981,7 @@ Cloudinary is the selected media provider for the MVP.
 7. Access is granted only after backend authorization.
 8. Backend generates short-lived signed delivery URLs or authenticated delivery responses.
 9. Every sensitive access is auditable.
+10. Storage paths are derived from the execution context (`tenant/{tenantId}/{category}/{uuid}`) by the storage layer, never built in business code — and folders are organisation, not authorization (ADR-0011).
 
 ### MediaAsset fields
 
@@ -1078,6 +1096,14 @@ Localized Response
 
 ### AI pipeline
 
+**The active workspace and actor come from the execution context before step 1 and hold to the last step.** No step produces, changes or infers them; the model never chooses a tenant, a user id or a membership (ADR-0011). Multi-command requests are planned as a DAG with one confirmation over the whole plan hash, and the pipeline asks rather than guesses when a request is ambiguous (ADR-0012):
+
+```text
+normalise → classify → model semantics → resolve context and entities → retrieve
+  → select commands (registry) → plan → order as a DAG → validate → authorize
+  → assess risk (declared) → confirm → execute → verify → audit → respond
+```
+
 1. Classify intent.
 2. Resolve conversation and user context.
 3. Identify entities such as mission, quote, assignment, investigator, report, or payment.
@@ -1127,6 +1153,15 @@ Investigator:
 - Draft report sections for human review
 - Explain earnings and payout status
 
+Agency members (within their permissions):
+
+- Invite, update, suspend or remove employees
+- Create and manage teams
+- Create and update investigator profiles
+- Quote, staff and reassign assignments
+- Search the agency's own knowledge base
+- Status and workload questions across the agency's assignments
+
 Staff:
 
 - Search missions within staff scope
@@ -1151,6 +1186,8 @@ The AI must not:
 - Make legal determinations
 - Invent investigation findings
 - Decide whether an investigator is legally licensed without verified records
+- Choose, infer or accept a workspace, tenant id or membership from conversation, retrieval or tool output
+- Carry memory or context from one workspace into another
 
 ---
 
@@ -1206,6 +1243,8 @@ Ranked authorized results
 ```
 
 ### Permission-aware RAG
+
+**Tenant scope first.** Platform documents carry no tenant and are filtered by visibility; agency documents carry `tenant_id` and are visible only in that workspace, enforced by RLS on the knowledge tables and again in the query. Order: context → permission filter → tenant filter → semantic search → rerank → context build (ADR-0011).
 
 1. Vector search returns source IDs and similarity scores.
 2. Backend loads source records from PostgreSQL.
@@ -1305,6 +1344,8 @@ Example tool categories:
 - `getPayoutStatus`
 - `searchKnowledge`
 
+**The command contract (ADR-0012)** supersedes the list below: name and version, intent examples and aliases, domain/entity/operation, input and output schemas, tenant permissions and platform roles, `tenantScope` (`workspace` or `platform` — never a parameter), confirmation, declared risk level, bulk support and maximum batch size, idempotency, side effects, audit, failure behaviour, timeout and retry. Bulk variants exist only where many targets are natural, authorize every record, and report partial failure as partial. The list below is the original minimum and remains true.
+
 Each tool should declare:
 
 - Required role(s)
@@ -1357,6 +1398,8 @@ Use an outbox pattern for reliable event publication:
 
 All jobs must be idempotent.
 
+**Jobs carry their workspace (ADR-0011).** A job stores `tenantId`, `userId` and `membershipId` — ids, never permissions. The worker re-reads the membership and workspace status, restores the execution context, and runs through the same transaction path as a request, so row-level security applies exactly as it does over HTTP. A job queued by a member who has since been removed does not run with their old authority.
+
 ---
 
 ## 20. Observability and Audit
@@ -1389,6 +1432,9 @@ Audit events should include:
 - Timestamp
 - Correlation ID
 - Reason or policy reference
+- Workspace (`tenant_id`), membership and session — filled from the execution context, never passed by callers (ADR-0011)
+- For AI actions: normalised intent, classification, command and version, plan id and hash, confirmation, execution result and affected resources (ADR-0012)
+- For platform staff acting across workspaces: the scope and the stated reason
 
 Audit logs must be append-only from the application perspective and protected from ordinary user access.
 
@@ -1442,6 +1488,8 @@ Audit logs must be append-only from the application perspective and protected fr
 - Prompt injection tests for RAG
 - Tool authorization tests
 - Sensitive-data leakage tests
+- **Tenant isolation matrix** — generated per table: cross-workspace SELECT/INSERT/UPDATE/DELETE refused as the runtime role; no context returns nothing; connection reuse across tenants leaks nothing (ADR-0011)
+- Cross-workspace probes over every route, RAG query, memory read, command, confirmation, cache entry, file delivery and worker job
 
 A task is not complete until relevant tests and validation commands pass.
 
@@ -1478,6 +1526,8 @@ Admin web capabilities:
 - Retention and deletion workflows
 
 Every staff action must be permissioned, logged, and explainable.
+
+Staff see across workspaces **only inside `PlatformContext`**: a platform staff scope plus a stated reason, audited with every access, for one unit of work. There is no ambient cross-tenant role and no `BYPASSRLS` database role. Agency owners and admins are never platform staff by virtue of their tenant role. Admin capabilities gain: agency verification review, agency suspension and lifecycle actions, and workspace-scoped audit review.
 
 ---
 
@@ -1580,6 +1630,8 @@ Artifact creation
 
 Do not introduce sharding, microservices, or a graph database before metrics demonstrate the need.
 
+Tenancy is designed so these stay open without being built: `tenant_id` (or a party column) leads every tenant-scoped index, and the tenant context is established in one place — so partitioning by tenant, moving one large agency to its own database, read replicas and regional residency are additive when metrics justify them (ADR-0011).
+
 ---
 
 ## 26. MVP Development Phases
@@ -1629,6 +1681,19 @@ Do not introduce sharding, microservices, or a graph database before metrics dem
 - Assignment creation.
 - Assignment state machine.
 - Notifications.
+
+### Phase 4b — Workspaces, agencies and tenant isolation (ADR-0011, §29)
+
+Lands before any further feature work, so everything after it is born tenant-aware.
+
+- Runtime connects as the non-bypass application role; tests move with it.
+- Workspaces, memberships and a Personal workspace for every user.
+- Execution context, workspace resolution, transaction-local database context.
+- Tenant and party columns on existing tables; row-level security with a generated isolation matrix.
+- Tenant permissions; `PlatformContext` for staff; tenant-aware audit, storage, cache and jobs.
+- Agency registration, profile, settings and branding; employees; teams; investigator profiles under workspaces; agency verification; supplier-workspace quotes and assignment staffing; agency lifecycle.
+- Workspace switcher and mobile-first agency console.
+- Command registry contract and plan DAGs (ADR-0012) as Phase 7 is built.
 
 ### Phase 5 — Payments and payouts
 
@@ -1698,6 +1763,9 @@ The MVP is complete when:
 - pgvector retrieval is permission-aware.
 - English, Russian, and Armenian are supported through translation keys.
 - Automated tests, security checks, backups, monitoring, and deployment runbooks exist.
+- An agency can register, complete a profile progressively, invite employees who accept, organise teams, run investigator profiles, quote and staff assignments — and suspend or remove a member with effect on their next request.
+- Workspace isolation is enforced by PostgreSQL row-level security as the runtime role, proven by the generated isolation matrix, connection-reuse tests and cross-workspace probes over API, AI, RAG, cache, files and workers.
+- Users belonging to several workspaces switch safely; nothing tenant-specific survives a switch.
 
 ---
 
@@ -1719,3 +1787,59 @@ Start with the smallest vertical slice that proves the architecture:
 12. Update `TODO.md` only after validation passes.
 
 The first milestone is **web-only** (ADR-0004) — the mobile companion follows once the core web workflow is proven. It should not include advanced AI agents, the investigation intelligence layer or its graph (ADR-0005), live video, Pinecone, microservices, sharding, or autoscaling. Those should be added after the core marketplace flow is reliable and measurable.
+
+---
+
+## 29. Workspaces, Agencies and Tenant Isolation (ADR-0011, ADR-0012)
+
+The platform becomes multi-tenant: agencies register as organisations and operate through the marketplace as organisations. This is an **architectural change, not a column**. Design reference: `docs/architecture/tenancy.md`. Work queue: `TODO.md` Phase 4b.
+
+### The rule
+
+> Tenant isolation is an infrastructure and database security boundary, not business-domain plumbing. The active workspace is resolved from trusted authentication context at the request or job boundary; the execution environment carries it; PostgreSQL enforces it. Services, domain methods, AI commands and repositories never take a `tenant_id` parameter. `tenant_id` lives in schemas, indexes, policies, cache keys, audit rows, jobs and infrastructure metadata — and isolation never depends on a developer remembering a filter.
+
+(CLAUDE.md non-negotiable 16.)
+
+### Model
+
+`User` (identity) ≠ `Tenant` (workspace) ≠ `Membership` (employee) ≠ `InvestigatorProfile` (capability). Every user has a **Personal** workspace; agencies are `AGENCY` workspaces. Individual customers and independent investigators keep working exactly as before, from their Personal workspace.
+
+### Marketplace across workspaces
+
+A mission belongs to the customer's workspace; quotes and assignments carry `customer_tenant_id` and `supplier_tenant_id` and name a lead investigator. **The assignment remains the investigation** (§8) — agency staffing (team, members, lead) is recorded against it, and inside an agency a member reaches an assignment only by being staffed on it or holding `investigations.read_all`.
+
+### Isolation
+
+| Layer | Answers | Mechanism |
+|---|---|---|
+| Database | Which workspace's rows can this execution touch? | RLS as the non-bypass runtime role, `FORCE`d, keyed on `set_config(…, true)` set as the first statement of every transaction; no context → no rows |
+| Application | What may this member do, to which record, in which state? | The six checks (§7) plus tenant permissions |
+
+The client selects the workspace with `X-Workspace`; the server intersects it with ACTIVE memberships read per request. Body, query, URL, AI output and MCP input are never a tenant. Platform staff cross workspaces only inside `PlatformContext` (scope + reason + audit).
+
+### Everything inherits the context
+
+Jobs, cache keys, storage paths, audit rows, notifications, embeddings and retrieval, AI sessions (one workspace for life), memory (explicit scopes — `user_in_tenant` by default, `user_global` only for declared preferences), plans and confirmations. Commands declare `tenantScope`; it is never an input.
+
+### Where the brief was adapted, not copied
+
+| Brief | Adopted as | Why |
+|---|---|---|
+| §44 "reject surveillance; public information only" | **ADR-0009 stands** (owner decision, 2026-09-19): lawful surveillance with a stated basis, screening and licensing; every standing prohibition unchanged | The brief also requires preserving the existing safety policies, which are ADR-0009's. Agencies inherit every restriction and weaken none |
+| `investigations`, `investigation_assignments` tables | Mission + Assignment, and `assignment_staff` | The assignment is the investigation (§8); a second entity would split its state machine and audit trail |
+| Employee lifecycle `INVITED → ACCEPTED → ACTIVE → …` | Invitations (`PENDING/ACCEPTED/CANCELLED/EXPIRED`) + memberships (`ACTIVE/SUSPENDED/REMOVED`) | "Accepted" is an event, not a state anyone remains in |
+| Agency role "Staff" | Key `AGENCY_STAFF`, labelled "Staff" | `STAFF` already means platform employee with scopes |
+| Billing, subscriptions, usage records | Permissions and model reserved; **not built** until the payments provider and pricing are decided (ACTIONS-FOR-ME #17) | Owner decision, 2026-09-19 |
+| Customers/Orders inside a tenant | The customers of the agency's assignments, derived | An off-platform CRM would route work around the marketplace |
+| Cache infrastructure | A tenant-deriving cache wrapper built with its first consumer | No cache exists; infrastructure is not added before it is needed |
+| Mobile UX | The responsive web app (ADR-0009) — mobile-first, sheets not modals, card lists not tables | The native companion remains deferred |
+| React Bits | Within the existing registry order: `@shadcn` → `@cult-ui` → `@react-bits` → custom (ADR-0003) | Already the project rule; React Bits' commercial terms are still with counsel (T-030) |
+| Risk assessment | Declared per command + mission policy screening | A learned risk engine is not in scope (ADR-0012) |
+
+### Compliance carries over
+
+Investigator compliance and permanent bans (T-049) are unchanged and now reach the agency: an agency answers for its members' conduct on the platform, a banned person is banned in every workspace, and registering a new agency does not reset a banned identity. Decisions still follow a documented review with sufficient evidence.
+
+### Definition of done
+
+§27's tenancy criteria, plus: existing functionality passes unchanged under isolation, the documentation in `docs/architecture/` and the knowledge base describes what shipped, and no manual step remains in `ACTIONS-FOR-ME.md` that tooling could have done.

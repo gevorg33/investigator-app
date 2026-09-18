@@ -77,6 +77,18 @@ These stop and ask, every time: dropping a column or table, truncating, altering
 in a way that loses precision, removing a constraint, any data-rewriting update, anything
 touching `audit_logs` or ledger tables.
 
+## Tenant-scoped tables (ADR-0011)
+
+Every new table is classified first. A tenant-owned or two-party table ships in the same
+migration with:
+
+- the tenant or party columns, defaulting to `app_current_tenant()`
+- `ENABLE` and `FORCE ROW LEVEL SECURITY`, and the class's policy with `USING` and `WITH CHECK`
+- grants and REVOKEs for `investigator_app`
+- an index led by the tenant or party column
+
+A policy must never join a table whose policy joins back. Procedure: `tenant-isolation`.
+
 ## Checklist
 
 - [ ] Down path written and correct

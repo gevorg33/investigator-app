@@ -98,6 +98,7 @@ inside your transaction. Name events past-tense and domain-specific:
 ## Checklist
 
 - [ ] Domain imports nothing from infrastructure
+- [ ] No `tenantId` parameter on any service, repository or domain method: the workspace comes from the execution context (`tenant-isolation`)
 - [ ] Repository is the only DB caller
 - [ ] Authorization in the service, actor-scoped queries
 - [ ] State change, outbox and audit share one transaction

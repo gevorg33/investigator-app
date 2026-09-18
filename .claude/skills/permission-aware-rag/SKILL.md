@@ -99,6 +99,19 @@ When a source is deleted or its visibility narrows, its chunks are deleted or re
 the same unit of work. A stale vector row pointing at revoked content is a leak waiting
 for a query — though step 3 is what actually saves you, which is why step 3 is not optional.
 
+## Workspaces (ADR-0011)
+
+Tenant scope comes before similarity:
+
+```
+context → permission filter → tenant filter → search → rerank → build
+```
+
+Platform documents have no tenant and are filtered by `visibility`. Agency documents are visible
+only in their workspace, enforced by RLS on the knowledge tables and again in the query. A result
+cache keys on the workspace (and the membership, when permissions shape the result), through the
+cache wrapper and never by hand.
+
 ## Checklist
 
 - [ ] Vector search returns IDs only

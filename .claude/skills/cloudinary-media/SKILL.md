@@ -81,6 +81,12 @@ Every media category has a retention rule written down before the category ships
 verification documents, evidence, reports, message attachments, deleted-account data.
 Deletion removes the Cloudinary asset *and* marks the row — and is audited.
 
+## Workspaces (ADR-0011)
+
+The storage layer derives `tenant/{tenantId}/{category}/{uuid}` from the execution context.
+Business code never builds a path, and a client never names one. Folders are organisation, not
+authorization: `media_assets` (under RLS) and the delivery check decide, as before.
+
 ## Checklist
 
 - [ ] Upload authorized server-side before the signature is issued
