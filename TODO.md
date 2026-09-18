@@ -719,29 +719,81 @@ pnpm --filter api test quotes assignments
 ---
 
 ### T-013 — Admin verification queue
-- **Status:** TODO
+- **Status:** DONE — 2026-09-18 (API). The console is T-070
 - **Priority:** P2
 - **Depends on:** T-008
 - **Risk:** MEDIUM
-- **Human approval required:** No
-- **Owner agent:** admin-web
-- **Affected:** apps/admin-web/**, apps/api/src/modules/verification/**
+- **Human approval required:** No. **Two decisions were confirmed during the task:** API now, with
+  the UI as its own task (T-070); and whole-application decisions, with scope-level verification
+  filed as T-071
+- **Owner agent:** backend-domain (API); admin-web for T-070
+- **Affected:** apps/api/src/modules/verification/**, apps/api/src/modules/media/media.module.ts, migration 0010
 
 **Acceptance criteria**
-- [ ] Staff scope checked per screen; `isStaff` alone is insufficient
-- [ ] Approve/reject requires a typed reason, stored and audited
-- [ ] Opening a verification document is itself an audited event
-- [ ] Decision trail visible, not just current state
+- [x] Staff scope checked per screen; `isStaff` alone is insufficient
+- [x] Approve/reject requires a typed reason, stored and audited
+- [x] Opening a verification document is itself an audited event
+- [x] Decision trail visible, not just current state
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Staff scope per screen | Every reviewer route (queue, detail, decide, open document) calls `requireActive`, `requireRole(STAFF)` **and** `requireStaffScope(VERIFICATION)`. Tested on all four routes: an investigator, staff with only MODERATION, and staff narrowed to their investigator role are each refused 403 everywhere. A reviewer cannot decide their own application |
+| Typed reason, stored and audited | Required for **both** outcomes — an approval nobody can explain is not a review. DTO requires a non-blank reason ≤ 2000; CHECK `verification_decisions_reason_present` holds it against every writer. The decision row, the request status and the audit row commit in one transaction; `verification_decisions` is INSERT/SELECT only for the application role |
+| Opening a document audited | `GET /verification/requests/:id/documents/:assetId/delivery-url` checks the document belongs to *that* application, then delegates to the media module's delivery path — which re-checks READY + CLEAN and writes `media.delivered` — and records `verification.document_opened` against the application. A file not yet scanned clean is refused and no opening is recorded |
+| Decision trail | The review view returns every application the profile has made, newest first, each with outcome, reason, reviewer and time. The applicant sees their own history with reasons but not reviewer identity. Decided requests are never reopened — a resubmission is a new request, so the trail keeps both |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| Allow a reviewer to decide their own application | 1 fails — "refuses a reviewer deciding their own application" |
+| Drop `requireRole(STAFF)`, leaving the scope check alone | 1 fails — staff working as an investigator was let through |
+| Skip the "document belongs to this application" check | 1 fails — a document from another application became openable |
+| Add a second writer of `verification_status` | 1 fails — the static guard names the file |
+
+**Three bugs found on the way, each with a test seen to fail first:**
+
+1. **A CHECK that passed on absence.** `jsonb_typeof(x -> 'serviceAreas') = 'array'` is NULL when
+   the key is missing, and a CHECK that evaluates to NULL passes — so a declaration missing a list
+   was accepted. Now `IS NOT DISTINCT FROM`. Caught by the schema spec; the dev database's
+   constraint was replaced to match.
+2. **A subquery that counted the wrong table.** Inside a `sql` fragment drizzle writes columns
+   unqualified, so the queue's correlated `count(*)` bound `"id"` to the documents table and
+   reported 0 documents. Now a join with GROUP BY.
+3. **Decisions timed before their submission.** First with the Node clock (behind the database's),
+   then — in the full suite, with both times from the database — because the Docker VM's clock
+   stepped back 74 ms under load. Wall clocks are not monotonic. `decided_at` is now
+   `greatest(now(), submitted_at)`, with the CHECK kept as the backstop; the regression test times a
+   submission an hour ahead.
+
+**Verification:** 1107 tests across 88 files, green. Coverage **100%** on all four metrics (1662
+statements, 757 branches, 455 functions, 1521 lines). Lint and typecheck clean. All 11 migrations
+apply to an empty database (with the extensions CI loads first), with 0010's five CHECKs and the
+grants confirmed there; `drizzle-kit generate` reports no drift. **No browser surface** — this is
+API only; the HTTP layer is covered by a supertest controller spec (routing, validation, `no-store`
+on the link, closed request bodies) and the service by integration tests against PostgreSQL.
+
+**Documentation:** `docs/architecture/verification.md` (new); `kb-staff-verification-review` v2 —
+**partial approval corrected to "not yet"**, reasons required for approvals, expiry not yet tracked,
+no reviewer assignment yet; `kb-investigator-verification` v2 — how to apply, one open application,
+no required-document list, no notifications, no expiry tracking, additions not reviewed
+individually. Retention rows for the three tables.
+
+**Found, and filed rather than fixed:** a verified investigator's **later additions are live
+without review**, because verification is profile-wide — the KB promised otherwise. The KB now says
+so plainly; the fix is T-071.
 
 **Validation**
 ```bash
-pnpm --filter api test verification && pnpm --filter admin-web test
+pnpm --filter api test verification
 ```
 
 ---
 
 ### T-014 — Initialize shadcn/ui in admin-web
-- **Status:** BLOCKED
+- **Status:** TODO — unblocked by T-013 (API) on 2026-09-18
 - **Priority:** P2
 - **Depends on:** T-001, T-013
 - **Risk:** LOW
@@ -2648,6 +2700,96 @@ failure, and that habit is what lets a real regression through.
 **Validation**
 ```bash
 cd apps/api && for i in $(seq 1 10); do pnpm exec vitest run || break; done
+```
+
+---
+
+### T-070 — Staff verification console (admin-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-013, T-014
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** admin-web
+- **Affected:** apps/admin-web/**
+
+**Description**
+The screens for the API T-013 built: the queue (oldest first, cursor-paginated), one application
+with its recorded declaration, documents and full decision trail, opening a document through the
+audited per-application link, and the decision form (outcome + required reason). Mobile-first per
+`responsive-design`: the queue is a card list on a phone, the decision form a sheet.
+Endpoints and rules: `docs/architecture/verification.md`.
+
+**Acceptance criteria**
+- [ ] Every screen reachable only with the VERIFICATION scope; the API refuses regardless
+- [ ] Documents open only through `/verification/requests/:id/documents/:assetId/delivery-url`;
+      the link is never cached, stored or shown as text
+- [ ] The declaration shown is the one recorded on the application, not the live profile
+- [ ] The decision form cannot submit without a reason; the refusal of one's own application is
+      shown as such
+- [ ] admin-web has a `test` script, and it runs in CI
+
+**Validation**
+```bash
+pnpm --filter admin-web test && pnpm --filter admin-web build
+```
+
+---
+
+### T-071 — Scope-level verification
+- **Status:** TODO
+- **Priority:** P1 — a verified investigator's later additions are currently live without review
+- **Depends on:** T-013
+- **Risk:** HIGH
+- **Human approval required:** Yes — changes who discovery lists and who may quote
+- **Owner agent:** backend-domain + database
+- **Affected:** apps/api/src/modules/{verification,search,quotes,service-areas,profiles}/**, migrations
+
+**Description**
+Verification is profile-wide (T-013). `kb-staff-verification-review` specified approving part of
+a declaration, and `kb-investigator-verification` that additions are reviewed while existing scope
+stands. Neither can be honest until verification is tracked per specialty and per service area,
+and discovery and quoting filter on it. Until then, an area or specialty added after verification
+is immediately discoverable under the existing verification.
+
+**Acceptance criteria**
+- [ ] Verification recorded per specialty and per area, each traceable to the decision that granted it
+- [ ] A decision can approve part of a declaration and reject the rest, with reasons
+- [ ] Discovery and quoting consider only verified scope; an unverified addition is not listed
+- [ ] Both KB articles updated from "not yet" to the real behaviour
+
+**Validation**
+```bash
+pnpm --filter api test verification search quotes
+```
+
+---
+
+### T-072 — Verification documents: expiry, lapse and required sets
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-013, notifications
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — which documents each jurisdiction requires is a compliance decision
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/verification/**, background jobs
+
+**Description**
+Specified in the KB, not built: expiry dates on verification documents, reminders before expiry,
+the automatic lapse of verified status when a required document lapses (assignments in progress
+continue), and the list of required documents per jurisdiction and specialty shown to applicants.
+Also decision notifications, once a notification channel exists.
+
+**Acceptance criteria**
+- [ ] Expiry recorded per document; a lapse moves the profile out of VERIFIED through the
+      verification service, audited, with the reason
+- [ ] Reminders sent before expiry, idempotently
+- [ ] Required documents per jurisdiction/specialty are data, not code
+- [ ] Both KB articles updated
+
+**Validation**
+```bash
+pnpm --filter api test verification
 ```
 
 ---

@@ -18,6 +18,7 @@ import { QuotesModule } from './modules/quotes/quotes.module';
 import { SearchModule } from './modules/search/search.module';
 import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
+import { VerificationModule } from './modules/verification/verification.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
     MissionsModule,
     QuotesModule,
     AssignmentsModule,
+    VerificationModule,
     HealthModule,
   ],
 })

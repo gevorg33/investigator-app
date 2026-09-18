@@ -16,5 +16,8 @@ import { MEDIA_STORAGE } from './media.storage';
     ViewableMediaRepository,
     { provide: MEDIA_STORAGE, useFactory: () => storageFromEnv(process.env) },
   ],
+  // Verification review opens documents through the same authorized, audited delivery path as
+  // everything else — one place that issues signed links, not a second one beside it.
+  exports: [MediaService],
 })
 export class MediaModule {}

@@ -71,6 +71,13 @@
       "when": 1789677287298,
       "tag": "0009_add_quotes_and_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789759670730,
+      "tag": "0010_add_verification",
+      "breakpoints": true
     }
   ]
 }
