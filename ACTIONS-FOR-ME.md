@@ -28,7 +28,7 @@ time regardless of engineering pace.
 experience.
 
 **What to give them:** [`docs/compliance/counsel-brief.md`](docs/compliance/counsel-brief.md) —
-the platform facts and **31 numbered questions** (26–31 added for agencies, ADR-0011), written so they can start without a discovery
+the platform facts and **33 numbered questions** (26–31 added for agencies, ADR-0011; 32–33 for the hiring experience, plan.md §30), written so they can start without a discovery
 call. Plus the three drafts in `docs/compliance/`.
 
 **Flag when you brief them:**
@@ -60,9 +60,13 @@ business model changes regardless of what the code does.
 
 **Where:** Stripe, or a regional marketplace processor for your launch countries.
 
-**What to ask, before building anything:** whether they will process a marketplace for private
-investigation services including surveillance, under their acceptable use policy — and whether
-Connect-style split payouts are available in your countries.
+**Changed 2026-09-19: this is now a go-live gate, not a build gate.** You chose to build against
+Stripe Connect now (plan.md §12). Engineering proceeds (T-109 to T-115); **no real money moves
+until this is answered in writing.** If Stripe declines, only the provider adapter changes.
+
+**What to ask Stripe:** whether they will process a marketplace for private investigation
+services including surveillance, under their acceptable use policy, in your launch market
+(#18) — and whether Connect payouts to investigators are available there.
 
 **Then obtain:** secret key, publishable key, webhook signing secret.
 
@@ -406,6 +410,24 @@ This is genuinely manual: it is a pricing decision, not an engineering one. The 
 catalog already reserves `billing.read` and `billing.manage`, so no migration waits on it.
 
 **Status:** ⬜ Pending — nothing blocks on it until Phase 5
+
+---
+
+### 18. Choose the first launch market
+
+**Why:** The delivery order (plan.md §26) builds the core loop for **one market** first. A
+marketplace is won on liquidity: enough verified investigators in one place that customers get a
+good match fast. That market decides:
+
+- the licensing rules verification must check (#2)
+- the payment provider's answer (#1)
+- counsel's jurisdiction (#0)
+- which languages the app launches in (T-128)
+
+**What to decide:** one country (ideally one city to start), and whether surveillance is lawful
+and licensable there on the terms ADR-0009 requires.
+
+**Status:** ⬜ Pending — the most leveraged decision on this list
 
 ---
 

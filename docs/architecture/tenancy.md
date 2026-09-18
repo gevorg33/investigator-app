@@ -26,7 +26,7 @@ another name, and two must not be built as the brief spells them:
 | Command Registry | The **tool registry**, grown into the command contract | ADR-0012. One registry, not two |
 | `workflows`, `workflow_steps`, `plans`, `confirmations` | **Plan rows** (`ai_plans`) ordered as a DAG, with per-node results | ADR-0012: a DAG is an ordering over plan rows that already exist; no second workflow engine |
 | `sessions` (AI) | `ai_sessions` | `user_sessions` are authentication sessions; the two are unrelated |
-| Customers / Orders (inside a tenant) | **The customers of the agency's assignments**, derived | An agency CRM of off-platform clients would route work around the marketplace; not planned |
+| Customers / Orders (inside a tenant) | **The customers of the agency's assignments**, derived | Marketplace first (2026-09-19). Agencies' own off-platform clients come later under their own ADR, and would still pass lawful-use screening (plan.md §30) |
 | Agency role "Staff" | Tenant role key `AGENCY_STAFF`, shown as "Staff" | `STAFF` is already the platform-employee role with scopes. Two meanings for one key is a privilege-confusion bug waiting to happen |
 
 ---
@@ -129,6 +129,9 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 | `reports.create` · `reports.update` · `evidence.upload` | ✓ | ✓ | ✓ | ✓ | | |
 | `knowledge.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `knowledge.create` · `knowledge.update` · `knowledge.delete` | ✓ | ✓ | ✓ | | | |
+| `leads.read` (every lead and its pre-hire conversation) | ✓ | ✓ | ✓ | | | |
+| `leads.route` | ✓ | ✓ | ✓ | | | |
+| `analytics.read` | ✓ | ✓ | ✓ | | | |
 | `billing.read` | ✓ | ✓ | | | | |
 | `billing.manage` | ✓ | | | | | |
 | `audit.read` | ✓ | ✓ | | | | |
@@ -340,6 +343,8 @@ New tables are all tenant-owned unless they appear in this table:
 - `tenant_profiles`, `tenant_settings`, `tenant_memberships`, `tenant_invitations`
 - `teams`, `team_members`
 - `membership_roles`, `assignment_staff`
+- `leads` (tenant-owned; a member reaches a lead routed to them, or holds `leads.read`)
+- `matches`, `conversations`, `messages`: **two-party**, carrying `customer_tenant_id` and `supplier_tenant_id` (plan.md §9, §13, §30)
 - AI and knowledge tables (§11)
 
 `permissions`, `roles` and `role_permissions` are platform-global in v1. Custom roles later add

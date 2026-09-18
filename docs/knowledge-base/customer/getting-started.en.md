@@ -4,9 +4,9 @@ title: What the platform does and how to get started
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-19
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -65,8 +65,8 @@ and by when — but you do not need to provide that to open an account.
 ## Is my information visible to investigators?
 
 Not by default. Investigators can see a mission's details only when they are eligible to
-quote on it, and they see your contact details only within an assignment you have paid
-for. Your evidence, reports and messages are private to the people involved in that
+quote on it. Before you hire, they know you by first name only. They see your contact
+details only within an assignment you have paid for. Your evidence, reports and messages are private to the people involved in that
 specific assignment.
 
 See the privacy article for exactly who can see what at each stage.

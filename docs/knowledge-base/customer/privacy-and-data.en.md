@@ -4,9 +4,9 @@ title: Your privacy — who can see what, and what happens to your data
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-19
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -22,8 +22,9 @@ tags: [privacy, data, deletion, export, retention, security]
 
 Before submission, only you. Drafts are private and appear in no search.
 
-After submission, investigators who are eligible to quote on it can see the mission
-details. They cannot see your contact details at that stage. Once you accept a quote, that
+After a moderator publishes it, investigators who are eligible to quote on it can see the
+mission details. They see you by first name only: never your surname, email, phone number or
+photo before you hire. Messages that contain contact details are not delivered. Once you accept a quote, that
 one investigator sees what the assignment requires them to see; the others no longer have
 access.
 

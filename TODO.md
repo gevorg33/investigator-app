@@ -1344,7 +1344,7 @@ Recorded decisions in the ADR. Not a code validation.
 ### T-031 — Investigation sources
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-012, T-089
+- **Depends on:** T-012, T-077
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
@@ -1354,7 +1354,7 @@ Recorded decisions in the ADR. Not a code validation.
 `InvestigationSource` per plan.md §8. Assignment-scoped record of where information came from,
 distinct from the evidence obtained from it.
 
-**Tenancy (ADR-0011).** Workspace objects belong to the supplier workspace. Internal access follows assignment staffing (T-089); `shared` items are visible to the customer's workspace through the two-party policy.
+**Tenancy (ADR-0011).** Workspace objects belong to the supplier workspace. Inside an agency, access follows assignment staffing once T-089 lands, and T-089 extends these objects; `shared` items are visible to the customer's workspace through the two-party policy.
 
 **Acceptance criteria**
 - [ ] Assignment-scoped; `*.authz.spec.ts` proves a non-participant gets 404
@@ -1375,7 +1375,7 @@ pnpm --filter api test investigation-sources
 ### T-032 — Investigation notes and tasks
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-012, T-089
+- **Depends on:** T-012, T-077
 - **Risk:** MEDIUM
 - **Human approval required:** Yes — note visibility is a privacy surface
 - **Owner agent:** backend-domain
@@ -1385,7 +1385,7 @@ pnpm --filter api test investigation-sources
 `InvestigationNote` and `InvestigationTask` per plan.md §8. The investigator's working
 material and work plan.
 
-**Tenancy (ADR-0011).** As T-031: supplier-workspace rows, reachable inside the agency only by staffed members or `investigations.read_all`. `private` notes stay private to their author, even from agency admins.
+**Tenancy (ADR-0011).** As T-031: supplier-workspace rows, reachable inside an agency only by staffed members or `investigations.read_all` once T-089 lands. `private` notes stay private to their author, even from agency admins.
 
 **Acceptance criteria**
 - [ ] Both default to `visibility: private` — author only
@@ -1406,7 +1406,7 @@ pnpm --filter api test investigation-workspace
 ### T-033 — Investigation documents and evidence promotion
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-008, T-032, T-089
+- **Depends on:** T-008, T-032, T-077, T-116
 - **Risk:** HIGH
 - **Human approval required:** Yes — touches the evidence boundary
 - **Owner agent:** backend-domain
@@ -2027,6 +2027,11 @@ and prioritises the queue; it never publishes. Per plan.md §10 and
 **Note on throughput:** at launch volume one moderator can gate everything. If review latency
 becomes the constraint, the per-category configuration is the lever — not removing the gate.
 
+**Hiring experience (plan.md §10, §30).** Every mission is reviewed at launch. Record review
+latency per category and risk band from day one, so that any later decision to auto-publish a
+low-risk category rests on data and counsel's confirmation. Partner investigation is never
+auto-published.
+
 **Validation**
 ```bash
 pnpm --filter api test mission-moderation && pnpm --filter admin-web test
@@ -2151,7 +2156,7 @@ pnpm --filter api test taxonomy
 ### T-054 — Investigator mission browse and filter
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-053, T-011
+- **Depends on:** T-053, T-011, T-091
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain (API) + frontend (UI)
@@ -2859,13 +2864,17 @@ than by application filters alone. Design: `docs/architecture/tenancy.md`. Proce
 - this phase goes **next, before new features**
 - billing is planned but not decided
 
-**Order.** T-069 first, because this phase adds many database-heavy tests to a suite that is
-already flaky. Then:
+**Order (revised 2026-09-19, plan.md §26 "Delivery order").** T-069 first, because this phase
+adds many database-heavy tests to a suite that is already flaky. Then:
 
-- **Foundation:** T-073 → T-074 → T-075 → T-076 → T-077 → T-078 → T-079 → T-080
-- **Product:** T-083 → T-084 → T-085 → T-086 → T-087 → T-088 → T-089 → T-090
-- **UI:** T-091 → T-092 → T-093 → T-094
-- **Validation:** T-098
+- **Foundation, now:** T-073 → T-074 → T-075 → T-076 → T-077 → T-078 → T-079 → T-080
+- **Then the Core loop section.** T-091 (app-web foundation) moves there. The foundation is
+  enough for it: T-076 already makes profiles, quotes and assignments workspace-owned, so a
+  Personal workspace behaves exactly as today.
+- **Then agencies:** T-083 → T-084 → T-085 → T-086 → T-087 → T-088 → T-089 → T-090, then UI
+  T-092 → T-093 → T-094. T-087 and T-089 add the agency parts (profiles for members, staffing)
+  to what the core loop already built
+- **Validation:** T-098 after the foundation, and again when agencies land
 
 T-081 and T-082 land with their first consumer. T-095 to T-097 land as Phase 7 is built. The
 foundation (T-073 to T-080) changes no behaviour for anyone who never creates an agency: every
@@ -3405,7 +3414,7 @@ pnpm --filter api test verification
 **Acceptance criteria**
 - [ ] Every T-012 invariant still holds: exactly one assignment, idempotent acceptance, the payment boundary
 - [ ] An unstaffed colleague is refused an assignment the agency holds (404), and a staffed one is allowed
-- [ ] T-031 to T-033 workspace objects inherit this access rule when built
+- [ ] Extends the already-built workspace objects (T-031 to T-033), evidence (T-116), reports (T-117) and conversations (T-101) to staffing: an unstaffed colleague is refused each of them
 - [ ] `quotes-and-assignments.md` and KB updated
 
 **Validation**
@@ -3710,18 +3719,881 @@ pnpm --filter api test billing
 
 ---
 
+## Phase 4c — Hiring experience (plan.md §13, §30 — the Pursuut benchmark)
+
+How hiring feels. The owner's reference product is Pursuut. Decisions taken on 2026-09-19:
+
+- pre-hire messaging with a masked customer identity is **adopted**
+- calling comes **later**
+- **marketplace first** for agencies
+- **every mission reviewed at launch**
+
+**Order (revised 2026-09-19).** T-100 to T-103 and T-106 belong to the **Core loop**. T-104,
+T-105 and T-107 land with agencies. T-108 comes later.
+
+---
+
+### T-100 — Customer identity masked until hire (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-077
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — changes what personal data investigators receive
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{missions,quotes,search}/**
+
+**Description**
+Before hire, every investigator-facing projection shows the customer by **first name** and an
+opaque per-mission alias. This covers missions, quotes, matches and conversations. It never
+shows a surname, email, phone, photo or user id. After hire, the assignment exposes what it
+requires; anything further is the customer's choice.
+
+**Acceptance criteria**
+- [ ] A generated spec walks every investigator-facing view and fails if it contains a customer surname, email, phone, avatar or user id before hire
+- [ ] The per-mission alias cannot be correlated across missions
+- [ ] KB already describes this (`kb-customer-privacy-data` v2, `kb-customer-messaging` v2, `kb-investigator-finding-work` v2): confirm it matches what shipped
+
+**Validation**
+```bash
+pnpm --filter api test missions quotes identity-masking
+```
+
+---
+
+### T-101 — Conversations: pre-hire and assignment (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-100, T-036
+- **Risk:** HIGH
+- **Human approval required:** Yes — private communication between users
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/messaging/**, migrations
+
+**Description**
+One model with two kinds (plan.md §13):
+
+- **`PRE_HIRE`** covers one mission × one supplier workspace. The customer opens it with a
+  matched or quoting investigator. An eligible investigator opens it with one question, and
+  **one unanswered message** is the limit until the customer replies.
+- **`ASSIGNMENT`** is the hired supplier's pre-hire thread continuing into the assignment, with
+  its history intact. The mission's other pre-hire threads close, read-only and retained.
+
+Beyond the kinds:
+
+- Rows are two-party under RLS (ADR-0011).
+- Inside an agency, the member handling the lead or assignment sees the thread, as do holders
+  of `leads.read`.
+- Attachments go through media, scanned. There are read markers and a reporting control on
+  every thread.
+
+This replaces the Backlog item "Messaging with assignment-scoped authorization".
+
+**Acceptance criteria**
+- [ ] The one-unanswered-message limit is enforced server-side, with a test for the second message refused
+- [ ] Hiring continues the thread and closes the others atomically with assignment creation
+- [ ] Cross-workspace probes and an unstaffed-colleague probe; rate limits per sender and per mission
+- [ ] **Not exposed to users until T-102 lands**: screening is part of the feature, not a follow-up
+- [ ] Retention rows for conversations and messages, including closed pre-hire threads
+
+**Validation**
+```bash
+pnpm --filter api test messaging
+```
+
+---
+
+### T-102 — Message screening: contact details and prohibited requests
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-101
+- **Risk:** HIGH
+- **Human approval required:** Yes — automated screening of private messages (counsel brief Q33)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{messaging,mission-policy}/**
+
+**Description**
+Deterministic, versioned rules, the same discipline as the mission policy ruleset (T-010):
+
+- **Contact details:** phone numbers in international and local formats, email addresses, and
+  messaging-app handles and links, in `en`, `ru` and `hy`. These are **blocked before
+  delivery**, and the sender is told why. Repeated attempts are flagged to moderation.
+- **Prohibited requests:** ADR-0009's standing prohibitions. These are **flagged**, not
+  silently blocked, and the investigator is shown the policy.
+
+AI may classify. It never decides.
+
+**Acceptance criteria**
+- [ ] A blocked message is never stored as delivered, and the sender sees the reason and can rephrase
+- [ ] Rules are versioned, and every flag records the rule version, as mission screening does
+- [ ] Tests in all three languages, including obfuscations ("nine one seven…", "t.me/…", spaced digits)
+- [ ] False-positive handling documented; native-speaker review joins T-067
+
+**Validation**
+```bash
+pnpm --filter api test message-screening
+```
+
+---
+
+### T-103 — Matching: a shortlist at publication, and invitations to quote
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-076, T-036
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — decides who is shown to customers
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{search,matching}/**
+
+**Description**
+When a moderator publishes a mission, the top eligible profiles are computed once, from the
+**same ranking discovery uses** (T-011), and stored as `matches`. There is no paid placement.
+The customer sees the shortlist, can message any match (T-101) and invite them to quote.
+Matched investigators are notified. When agencies land, a matched agency also gets a lead (T-104). Discovery and
+open quoting are unchanged.
+
+**Acceptance criteria**
+- [ ] Shortlist size is a provisional constant, recorded in ACTIONS-FOR-ME for confirmation, like #15
+- [ ] Blocked users (T-052) and ineligible profiles are never matched; a test proves the eligibility filters match discovery's
+- [ ] Deterministic for the same inputs; the ranking inputs are stored with the match, so "why was I matched" is answerable
+- [ ] KB: `kb-customer-finding-an-investigator` and `kb-investigator-finding-work` describe matching
+
+**Validation**
+```bash
+pnpm --filter api test matching search
+```
+
+---
+
+### T-104 — Agency lead inbox and routing (API)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-103, T-101, T-089
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — authorization inside an agency
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/leads/**
+
+**Description**
+A `lead` is an agency's inbox item for one mission (plan.md §30). It is created by any of:
+
+- a match
+- a customer's invitation
+- the agency's own pre-hire question
+- a member choosing to pursue a mission
+
+Its states are `NEW → ROUTED → QUOTED → WON | LOST`, or `DECLINED`. `leads.route` routes a lead
+to a member or team; the handler sees its conversation and quotes. Time to first response is
+measured.
+
+**Acceptance criteria**
+- [ ] A member sees only the leads routed to them, unless they hold `leads.read`
+- [ ] Routing and state changes are audited; the lead state follows the quote and assignment automatically
+- [ ] Personal workspaces get the same inbox with no routing, so independent investigators are not second-class
+
+**Validation**
+```bash
+pnpm --filter api test leads
+```
+
+---
+
+### T-105 — Agency reporting
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-104, T-089
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/analytics/**, apps/app-web/**
+
+**Description**
+Read-only reporting behind `analytics.read`, computed from PostgreSQL:
+
+- pipeline (leads → quotes → won)
+- response times
+- active assignments by member and team
+- overdue work
+- earnings, once Phase 5 exists
+
+It is shown on a mobile-first dashboard with no third-party analytics receiving client data.
+
+**Acceptance criteria**
+- [ ] Every figure is tenant-scoped (matrix and probe) and traceable to its query
+- [ ] Usable on a phone: key figures first, detail on tap
+
+**Validation**
+```bash
+pnpm --filter api test analytics && pnpm --filter app-web test reporting
+```
+
+---
+
+### T-106 — Conversations UI (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-101, T-102
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Thread list and thread for customers, investigators and agency members: a full-screen thread
+on phones, and split view from tablet up. It shows:
+
+- the masked name before hire
+- a blocked message's reason inline, where the text was
+- the one-unanswered-message state stated plainly
+- the reporting control on every thread
+
+**Acceptance criteria**
+- [ ] Playwright flows at 375 and 1280: customer opens a pre-hire thread, investigator's second message refused, hire continues the thread
+- [ ] Accessibility checks; tap targets of at least 44px; no horizontal scroll
+- [ ] Component-discovery log records what was reused
+
+**Validation**
+```bash
+pnpm --filter app-web test conversations
+```
+
+---
+
+### T-107 — Matches and lead inbox UI (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-106, T-103, T-104, T-093
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+- **Customer:** the shortlist on the mission, with message and invite-to-quote actions.
+- **Agency:** the lead inbox with routing, as cards on phones and a table from desktop.
+- **Independent investigator:** the same inbox without routing.
+
+**Acceptance criteria**
+- [ ] The shortlist explains itself ("matched because…") from the stored ranking inputs
+- [ ] Routing is one action from a lead card, and the state change animates subtly (`animation`)
+
+**Validation**
+```bash
+pnpm --filter app-web test matches leads
+```
+
+---
+
+### T-108 — In-app voice calling
+- **Status:** BLOCKED — on counsel (brief Q32, recording consent) and T-101
+- **Priority:** P3
+- **Depends on:** T-101
+- **Risk:** HIGH
+- **Human approval required:** Yes — a new provider, and a legal question
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/calling/**, apps/app-web/**
+
+**Description**
+Voice calls between the parties of a pre-hire or assignment conversation:
+
+- **masked**: neither side sees the other's number
+- **no recording by default**; recording only where counsel confirms consent rules for the
+  jurisdictions involved
+- call metadata (who, when, duration) is kept on the thread, never content
+- works in mobile browsers
+
+A calling provider account is needed when this starts. That is the only manual step, and it is
+added to ACTIONS-FOR-ME then, not before.
+
+**Acceptance criteria**
+- [ ] No personal number is ever exposed in either direction
+- [ ] Rate-limited per conversation; both sides can block and report
+- [ ] KB messaging articles updated from "not yet"
+
+**Validation**
+```bash
+pnpm --filter api test calling
+```
+
+---
+
+## Core loop — one market, end to end (plan.md §26 "Delivery order")
+
+The flow a launch needs: mission → match → talk → quote → pay → work → deliver → release. It
+comes after the tenancy foundation (T-073 to T-080) and **before** agency features. Decided
+2026-09-19. Payments are built against **Stripe Connect**; provider acceptance is a **go-live
+gate** (ACTIONS-FOR-ME #1), not a build gate.
+
+**Order**
+
+1. App foundation: T-091 (app-web), T-128 (translation catalogs), T-127 (accounts)
+2. Hiring: T-119, T-120, T-100, T-101, T-102, T-103, T-106
+3. Money: T-110 → T-111 → T-109 → T-121
+4. Work and delivery: T-116, T-117, T-031 to T-033, T-123, T-124, T-125
+5. Completion: T-112, T-113, T-118, T-122, T-114, T-115, T-126
+
+Every money task is HIGH risk, owned by the `payments` agent, and follows `payments-webhooks`.
+
+---
+
+### T-109 — Stripe Connect accounts for suppliers
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-077, T-110
+- **Risk:** HIGH
+- **Human approval required:** Yes — payment logic
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**
+
+**Description**
+Each supplier workspace (Personal or agency) onboards a connected account through Stripe's
+hosted onboarding. The platform stores the account id and the state that webhooks report
+(details submitted, charges and payouts enabled, requirements due), **never** identity
+documents or bank details. A workspace cannot quote until payouts are enabled, or it can quote
+with a clear "complete payout setup" block before acceptance. The task decides which,
+recording the choice.
+
+**Acceptance criteria**
+- [ ] Account state is changed only by verified webhooks; the onboarding link is single-use and short-lived
+- [ ] One connected account per supplier workspace, under RLS
+- [ ] KB: `kb-investigator-payouts` gains "setting up payouts"
+
+**Validation**
+```bash
+pnpm --filter api test payments connect
+```
+
+---
+
+### T-110 — Ledger and verified webhook intake
+- **Status:** TODO
+- **Priority:** P0 — nothing moves money before this exists
+- **Depends on:** T-077, T-082
+- **Risk:** HIGH
+- **Human approval required:** Yes
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**, migrations
+
+**Description**
+The foundation `payments-webhooks` requires:
+
+- an **append-only, double-entry-shaped ledger**: integer minor units, corrections as
+  compensating entries, S/I only
+- a webhook endpoint that verifies the signature on the raw body and rejects stale
+  timestamps
+- storing the event, acknowledging it fast, and processing it in a job
+- idempotency by provider event id, and out-of-order safety against the state machine
+- every event type mapped explicitly, including the ones deliberately ignored
+
+**Acceptance criteria**
+- [ ] A forged, replayed, stale or duplicated webhook changes nothing, with a test for each
+- [ ] Ledger rows cannot be updated or deleted by the application role (grants and REVOKE, as 0009)
+- [ ] Unmapped event types alert and never pass silently
+
+**Validation**
+```bash
+pnpm --filter api test ledger webhooks
+```
+
+---
+
+### T-111 — Payment at acceptance, funds held
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-110, T-012
+- **Risk:** HIGH
+- **Human approval required:** Yes
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/{payments,quotes,assignments}/**
+
+**Description**
+Accepting a quote creates a PaymentIntent on the backend. When a **verified**
+`payment_intent.succeeded` arrives, three things happen in one transaction:
+
+- the ledger records the customer's funds held
+- the payments module builds a `PaymentAuthorization`
+- it calls `AssignmentsService.createForAuthorizedPayment`, the T-012 boundary
+
+The funds stay in the platform balance (plan.md §12, "Holding funds").
+
+**Acceptance criteria**
+- [ ] An assignment is created only by the verified webhook path; a client callback or redirect changes nothing (tested)
+- [ ] Exactly one assignment under concurrent and duplicated webhooks (T-012's guarantee, extended)
+- [ ] The amount and currency are checked against the accepted quote; a mismatch holds the payment for staff review
+- [ ] `ACTIONS-FOR-ME #16` updated: the boundary now has a real implementation
+
+**Validation**
+```bash
+pnpm --filter api test payments assignments
+```
+
+---
+
+### T-112 — Release on completion, and payouts
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-111, T-109, T-117
+- **Risk:** HIGH
+- **Human approval required:** Yes — fee and payout logic
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**
+
+**Description**
+When the customer accepts the final report, or the review window lapses without a
+dispute, the platform:
+
+1. calculates the fee with written rounding rules (the remainder's destination decided, not
+   left to `Math.round`)
+2. transfers the remainder to the supplier's connected account
+3. records ledger entries for both
+
+Payout status is synced from webhooks.
+
+**Acceptance criteria**
+- [ ] Fee rate is a provisional constant pending the owner's fee decision (ACTIONS-FOR-ME #16), recorded like #15
+- [ ] Adversarial rounding tests: 1 minor unit, amounts that do not divide evenly
+- [ ] A disputed assignment never releases; release is idempotent
+
+**Validation**
+```bash
+pnpm --filter api test payouts fees
+```
+
+---
+
+### T-113 — Refunds, cancellations and chargebacks
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-111
+- **Risk:** HIGH
+- **Human approval required:** Yes — refund policy
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**
+
+**Description**
+Full and partial refunds follow the quote's cancellation terms and dispute outcomes (T-118).
+Chargebacks are handled from webhooks, and allocated per counsel brief question 17. Every
+movement is a ledger entry.
+
+**Acceptance criteria**
+- [ ] Refund amounts can never exceed what was held, net of earlier refunds (tested under concurrency)
+- [ ] The assignment and mission state machines move only through their transition services
+- [ ] KB payments and refund articles checked against the behaviour
+
+**Validation**
+```bash
+pnpm --filter api test refunds
+```
+
+---
+
+### T-114 — Receipts and invoices
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-111, T-112
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — tax documents (counsel brief question 18)
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**
+
+**Description**
+Receipts for customers and invoices for suppliers are **generated from ledger entries**, never
+computed separately. They are numbered, immutable once issued, and stored as private PDFs
+through media. They are localised, and branded for agencies when T-084 exists.
+
+**Acceptance criteria**
+- [ ] Every figure on a document traces to ledger entry ids
+- [ ] A correction is a new document referencing the old one, never an edit
+
+**Validation**
+```bash
+pnpm --filter api test invoices
+```
+
+---
+
+### T-115 — Reconciliation
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-110
+- **Risk:** HIGH
+- **Human approval required:** Yes
+- **Owner agent:** payments + infra-devops
+- **Affected:** apps/api/src/modules/payments/**, workers
+
+**Description**
+A scheduled job compares the ledger with Stripe's balance transactions and **alerts on drift**.
+It never auto-corrects.
+
+**Acceptance criteria**
+- [ ] A seeded drift raises an alert, and a clean day raises none
+- [ ] Runbook in `docs/operations/` for investigating drift
+
+**Validation**
+```bash
+pnpm --filter api test reconciliation
+```
+
+---
+
+### T-116 — Evidence items with chain of custody and access grants
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-077, T-080
+- **Risk:** HIGH
+- **Human approval required:** Yes — evidence access rules
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/evidence/**, migrations
+
+**Description**
+Evidence per plan.md §15 and `evidence-integrity`:
+
+- assignment-linked and immutable once submitted
+- a server-computed checksum
+- chain-of-custody entries for every view, download and transfer
+- location metadata only when lawful and necessary
+
+Access is by **grant**, short-lived and audited. There is no "staff can browse evidence" mode;
+staff access requires a dispute-linked grant in `PlatformContext`.
+
+**Acceptance criteria**
+- [ ] Evidence cannot be edited or deleted by the application; a correction is a new item referencing the old
+- [ ] Every access writes a custody entry and an audit row; the customer can see the access history
+- [ ] Legal hold (T-035) blocks retention deletion
+
+**Validation**
+```bash
+pnpm --filter api test evidence
+```
+
+---
+
+### T-117 — Reports: versions, evidence classes, sign-off and customer review
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-116
+- **Risk:** HIGH
+- **Human approval required:** Yes — a delivery that triggers payment release
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/reports/**, migrations
+
+**Description**
+Versioned reports per plan.md §15 and `report-generation`:
+
+- every finding is classed FACT, CLAIM, INFERENCE, HYPOTHESIS or UNKNOWN, with no silent
+  promotion
+- AI-drafted text is marked unverified until the investigator approves it
+- investigator sign-off freezes a version
+
+The customer's review then either accepts the report, which triggers release (T-112), requests
+a revision, which opens a new version, or opens a dispute (T-118).
+
+**Acceptance criteria**
+- [ ] A FACT must cite evidence ids; a HYPOTHESIS only appears in its marked section (tested)
+- [ ] A signed version is immutable; a revision is a new version with the diff available
+- [ ] The review window and its lapse behaviour are provisional constants recorded for confirmation
+
+**Validation**
+```bash
+pnpm --filter api test reports
+```
+
+---
+
+### T-118 — Disputes
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-117, T-079
+- **Risk:** HIGH
+- **Human approval required:** Yes — decisions that move money
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/disputes/**, admin-web
+
+**Description**
+A customer disputes a delivered report from its review state. The dispute freezes release.
+Both parties submit statements and references. A staff member with the DISPUTES scope reads the
+evidence through a dispute-linked grant in `PlatformContext` and decides: release, a partial
+refund, or a full refund. The decision is recorded with its reasons, and the money moves
+through T-112 and T-113. The flow follows the existing KB articles on disputes.
+
+**Acceptance criteria**
+- [ ] Release is impossible while a dispute is open (tested against T-112)
+- [ ] The decision, its reasons and every staff access are audited; the parties see the outcome and the reasons
+- [ ] Staff console screen, with T-070's patterns
+
+**Validation**
+```bash
+pnpm --filter api test disputes
+```
+
+---
+
+### T-119 — Guided mission intake (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-128, T-010
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Plain questions, one per screen on a phone (plan.md §10): what you need, where, by when,
+budget, languages. They produce a structured brief. It then shows the lawful-purpose
+confirmation in the customer's own words, the draft saved automatically, and submission into
+moderation with a plain explanation of what happens next. When the assistant exists (Phase 7)
+it may draft the brief, and the customer confirms it.
+
+**Acceptance criteria**
+- [ ] Completable on a 375px phone in one hand; no investigation vocabulary required
+- [ ] Screening outcomes (rejected, needs changes) explained in plain language, with what to fix
+- [ ] Playwright flow; accessibility checks; component-discovery log
+
+**Validation**
+```bash
+pnpm --filter app-web test mission-intake
+```
+
+---
+
+### T-120 — Finding investigators: discovery and public profiles (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-128, T-011
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Discovery filters per plan.md §9: a map and list view on desktop, and a list with a map on
+demand on phones. The public investigator profile page shows verification, specialties, areas,
+languages and reviews (T-037), and the agency once T-087 exists. Matches (T-107) reuse the same
+card.
+
+**Acceptance criteria**
+- [ ] Filters are the typed, closed set the API accepts; an empty result suggests widening, not a dead end
+- [ ] Profile pages expose only the public projection
+
+**Validation**
+```bash
+pnpm --filter app-web test discovery profiles
+```
+
+---
+
+### T-121 — Quotes, checkout and assignment tracking (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-111, T-101
+- **Risk:** HIGH — the payment surface
+- **Human approval required:** Yes
+- **Owner agent:** frontend + payments
+- **Affected:** apps/app-web/**
+
+**Description**
+- **Quotes:** compared side by side on desktop and stacked on phones, with scope, exclusions,
+  cancellation terms and expiry visible before acceptance.
+- **Checkout:** Stripe's Payment Element. No card data touches our servers, and a return from
+  checkout shows "confirming" until the webhook-created assignment appears.
+- **Tracking:** the assignment timeline shows status, the investigator's acceptance window, and
+  updates.
+
+**Acceptance criteria**
+- [ ] The UI never shows "paid" or "assigned" from the client's own callback, only from server state (tested)
+- [ ] Idempotent acceptance: a double-tap produces one payment
+- [ ] CSP allows Stripe's origins only where required (T-025)
+
+**Validation**
+```bash
+pnpm --filter app-web test quotes checkout assignment
+```
+
+---
+
+### T-122 — Evidence and report review (app-web, customer)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-117, T-118, T-106
+- **Risk:** HIGH — evidence access
+- **Human approval required:** Yes
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+The customer reads the report, with evidence classes shown plainly (fact, claim, inference),
+and opens evidence through short-lived grants. They then accept, request a revision, or
+dispute. Accepting explains that it releases payment.
+
+**Acceptance criteria**
+- [ ] No evidence URL is stored, cached or shareable beyond its grant
+- [ ] Revision and dispute forms ask what is wrong specifically, as the KB advises
+
+**Validation**
+```bash
+pnpm --filter app-web test report-review
+```
+
+---
+
+### T-123 — Investigator profile, service areas and verification (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-128, T-013
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Profile editing, service areas (a map draw or radius on desktop; search a place plus a radius on
+phones), languages, availability, and the verification application. The application uploads
+documents through the private flow and shows its status and the decision reasons (T-013).
+
+**Acceptance criteria**
+- [ ] The profile preview is exactly the public projection customers see
+- [ ] Verification history shows each decision's reason, never the reviewer
+
+**Validation**
+```bash
+pnpm --filter app-web test investigator-profile verification
+```
+
+---
+
+### T-124 — Quoting and assignment acceptance (app-web, investigator)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-054, T-106
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+The quote form carries the fields T-012 validates, with expiry bounds explained. Withdrawal
+and replacement are supported. The assignment acceptance screen shows the 48-hour window
+counting down, and the customer's first name only until acceptance (T-100).
+
+**Acceptance criteria**
+- [ ] Validation messages match the API's field codes; nothing is validated only in the client
+- [ ] The acceptance window is visible without opening the assignment
+
+**Validation**
+```bash
+pnpm --filter app-web test quoting
+```
+
+---
+
+### T-125 — Investigation workspace (app-web, investigator)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-031, T-032, T-033, T-116, T-117
+- **Risk:** HIGH — evidence handling
+- **Human approval required:** Yes
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+The workspace is one page per assignment: sources, notes (private by default), tasks,
+documents, evidence upload with a custody receipt, and the report editor with evidence
+classes. Tabs on desktop, a segmented view on phones. Promoting a document to evidence is
+explicit and explained as irreversible.
+
+**Acceptance criteria**
+- [ ] Changing a note from private to shared requires confirmation and is audited
+- [ ] The report editor cannot mark a finding FACT without citing evidence
+- [ ] Usable on a phone for field updates: add a note, upload evidence, tick a task
+
+**Validation**
+```bash
+pnpm --filter app-web test workspace
+```
+
+---
+
+### T-126 — Earnings, payouts and invoices (app-web, investigator)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-109, T-112, T-114
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Payout setup through a Stripe onboarding link, earnings by assignment (the gross, the fee and
+the net shown separately), payout status, and invoice downloads.
+
+**Acceptance criteria**
+- [ ] Every figure comes from the API's ledger-derived values, never recomputed in the client
+- [ ] Payout troubleshooting matches `kb-investigator-payouts`
+
+**Validation**
+```bash
+pnpm --filter app-web test earnings
+```
+
+---
+
+### T-127 — Sign-up, sign-in and account screens (app-web)
+- **Status:** TODO
+- **Priority:** P0 — every other screen starts here
+- **Depends on:** T-091, T-128, T-022
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Registration with versioned legal acceptance (T-022), sign-in, email verification, password
+reset, the session and device list, and role switching between customer and investigator.
+Google sign-in joins with T-062.
+
+**Acceptance criteria**
+- [ ] Every auth error is privacy-preserving, and never reveals whether an email is registered
+- [ ] Session cookie behaviour matches T-025; the flows are tested end to end against the API
+
+**Validation**
+```bash
+pnpm --filter app-web test auth
+```
+
+---
+
+### T-128 — App translation catalogs (en, ru, hy)
+- **Status:** TODO
+- **Priority:** P0 — screens are written against keys from the first one
+- **Depends on:** T-091
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** localization
+- **Affected:** apps/app-web/**, packages/i18n/**
+
+**Description**
+Translation catalogs for the application UI, with a build-time parity check across `en`, `ru`
+and `hy`. Dates, numbers and currencies are locale-aware, and there is a documented fallback.
+This moves the Backlog item into the core loop, because the launch market's languages are not
+optional.
+
+**Acceptance criteria**
+- [ ] A missing key in any locale fails the build
+- [ ] No user-facing string literal in feature code (lint rule)
+
+**Validation**
+```bash
+pnpm --filter app-web test i18n && pnpm --filter app-web build
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.
 
-- Messaging with assignment-scoped authorization (Phase 6)
-- Evidence items with chain of custody and access grants (Phase 6)
-- Report versions and customer review (Phase 6)
-- Payments: intents, webhooks, ledger, fees (Phase 5, all HIGH risk)
-- Payouts and reconciliation (Phase 5, all HIGH risk)
+- Agencies' own off-platform clients and cases — later, under their own ADR; lawful-use screening
+  must cover them too (plan.md §30, owner decision 2026-09-19)
 - AI gateway and tool registry (Phase 7) — see T-017, T-018
-- Application UI i18n catalogs for en/ru/hy with build-time parity check (separate from
-  knowledge-base translation — see T-026)
 - Prometheus/Grafana dashboards and alert runbooks (Phase 8)
 - Encrypted backups with a tested restore drill (Phase 8)
 

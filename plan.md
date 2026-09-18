@@ -391,6 +391,7 @@ Cross-module access must happen through application services, domain events, or 
 - Submit missions
 - View eligible investigator profiles
 - Receive and compare quotes
+- See matched investigators and message them before hiring, free (§13)
 - Confirm a quote
 - Pay for assignments
 - Message assigned investigators
@@ -406,6 +407,7 @@ Cross-module access must happen through application services, domain events, or 
 - Upload verification documents
 - Apply for verification
 - Discover eligible missions
+- Answer and ask pre-hire questions on a mission (§13)
 - Submit quotes
 - Accept assignments
 - Update assignment progress
@@ -550,6 +552,8 @@ Initial entities:
 - Role · Permission · RolePermission · MembershipRole
 - Team · TeamMember
 - AssignmentStaff (who inside the supplier works an assignment)
+- Match (a mission's shortlisted investigator profile, §9) · Lead (an agency's inbox item, §30)
+- Conversation kind: `PRE_HIRE` (one mission × one supplier) · `ASSIGNMENT` (§13)
 
 ### Taxonomy and tags (ADR-0007)
 
@@ -812,6 +816,10 @@ Optional semantic relevance ranking
 Availability and response-quality ranking
 ```
 
+### Matching (§30)
+
+When a moderator publishes a mission, the platform builds a **shortlist**: the top eligible investigator profiles from the same ranking discovery uses, computed once and stored as `Match` rows. Nothing about it is paid placement. The customer sees the shortlist on the mission, can message any match before hiring (§13) and invite them to quote. Matched investigators, and matched agencies' lead inboxes, are notified. Customers can still browse discovery and receive quotes from anyone eligible; matching is a shortcut, not a gate.
+
 ---
 
 ## 10. Mission Creation and Policy Review
@@ -828,6 +836,8 @@ Mission creation should support:
 - Attachments
 - Confidentiality expectations
 - Consent and lawful-purpose confirmation
+
+**Guided, plain-language intake (§30).** The customer answers a few plain questions — what they need, where, by when — and the platform turns them into a structured brief investigators can act on. No investigation vocabulary is required. The assistant may draft the brief; the customer confirms it, and the lawful-purpose confirmation is always the customer's own.
 
 Before publication or quote requests:
 
@@ -847,6 +857,12 @@ changes from the customer.
 The gate is configurable per category and risk band, so that low-risk categories can be
 auto-published later if review volume makes that necessary. It starts closed: everything is
 reviewed.
+
+**Decided 2026-09-19: every mission is reviewed at launch.** Faster matching is not bought by
+publishing unreviewed missions. Review latency is measured per category and risk band from the
+first day (T-051), so a later decision to auto-publish a low-risk category — records checks, for
+example — rests on data and on counsel's confirmation. Partner and relationship investigation is
+**never** auto-published (ADR-0009).
 
 AI may assist with classification and drafting, but final policy enforcement must be
 deterministic and auditable. A classification is an input to the moderator's decision, never
@@ -898,6 +914,10 @@ Use transactions and idempotency keys for quote acceptance, assignment creation,
 
 Use a marketplace payment provider such as Stripe Connect only after confirming availability, licensing, tax, and payout support for target countries.
 
+**Decided 2026-09-19: build against Stripe Connect.** The owner chose Stripe as the working provider so payments are built now rather than blocked. **Provider acceptance becomes a go-live gate instead of a build gate:** no real money moves until Stripe confirms in writing that it will process this business, surveillance included, in the launch market (ACTIONS-FOR-ME #1, ADR-0009). Everything provider-specific stays behind the payments module's boundary, so a refusal means replacing an adapter, not the ledger or the assignment flow.
+
+**Holding funds ("escrow").** A card authorization hold expires within days, and an investigation can take weeks. Funds are therefore **charged when the customer accepts, held in the platform balance, and transferred to the supplier's connected account on release**, with the platform fee kept at that point. "Escrow" in customer-facing copy means this mechanism, and the terms must describe it accurately (counsel brief §2). The connected account belongs to the supplier workspace — Personal or agency (ADR-0011).
+
 Requirements:
 
 - Payment intent creation on the backend
@@ -912,6 +932,7 @@ Requirements:
 - Payout status synchronization
 - Currency and rounding rules
 - No raw card data stored by the platform
+- Receipts for customers and invoices for investigators and agencies, generated from the ledger — never computed separately from it (§30)
 
 Do not mark an assignment as paid based only on a client-side callback. Trust verified provider webhooks and reconcile periodically.
 
@@ -921,7 +942,18 @@ Do not mark an assignment as paid based only on a client-side callback. Trust ve
 
 ### Messaging
 
-- Assignment-scoped conversations
+Two kinds of conversation, one model (§30):
+
+- **Pre-hire** — one mission × one supplier workspace, free, before any payment. The customer can open one with any matched or quoting investigator. An eligible investigator can ask a question on a published mission, which opens a thread; **until the customer replies, the investigator can send one message and no more** — pre-hire contact must never become unsolicited approaches.
+- **Assignment** — the pre-hire thread with the hired supplier continues as the assignment conversation, history intact. Every other pre-hire thread on the mission closes, read-only and retained.
+
+Rules for both:
+
+- **The customer's identity is masked until hire.** Investigators see a first name and the mission — never a surname, email, phone or photo. After hire they see what the assignment requires; anything more is the customer's choice to disclose.
+- **Contact details are blocked, not delivered.** Phone numbers, email addresses and messaging-app handles are detected server-side before delivery; the sender is told why. Repeated attempts are flagged to moderation. Work and payment stay on the platform.
+- **Messages pass the same deterministic policy screening as missions.** A request for something prohibited (ADR-0009's standing prohibitions) is flagged to moderation and the investigator is shown the policy, not left to judge alone.
+- **In-app voice calling is planned for later** (T-108): masked numbers, no recording by default, and recording consent confirmed by counsel first.
+- Conversations are two-party rows under row-level security (ADR-0011); inside an agency, the member handling the lead or assignment sees the thread, as do holders of `leads.read`.
 - Customer/investigator participants only unless staff is authorized
 - Text messages initially
 - Attachments through MediaModule
@@ -1695,6 +1727,17 @@ Lands before any further feature work, so everything after it is born tenant-awa
 - Workspace switcher and mobile-first agency console.
 - Command registry contract and plan DAGs (ADR-0012) as Phase 7 is built.
 
+### Delivery order (decided 2026-09-19)
+
+Phases describe *what*; this is *when*. The goal is the core loop working end to end in **one launch market** before anything that market does not need:
+
+1. **T-069**, then the **tenancy foundation** (T-073 to T-080) — everything after it is born tenant-aware.
+2. **The core loop**, API and screens together (`TODO.md` "Core loop"): sign-up, guided mission intake, discovery and matching, identity masking, pre-hire conversations, quotes, Stripe payments with funds held, the investigation workspace, evidence, reports, disputes, payouts, receipts and invoices — in the market's languages.
+3. **Agencies** (T-083 to T-094, T-104, T-105, T-107).
+4. **The AI assistant** (Phase 7) continues on its own dependencies, tenant-aware throughout.
+
+Liquidity — enough verified investigators in one place that a customer gets a good match fast — decides a marketplace. A thin presence in several countries loses to a dense one in one market, which is why the market is chosen first (ACTIONS-FOR-ME #18).
+
 ### Phase 5 — Payments and payouts
 
 - Payment provider integration.
@@ -1830,7 +1873,7 @@ Jobs, cache keys, storage paths, audit rows, notifications, embeddings and retri
 | Employee lifecycle `INVITED → ACCEPTED → ACTIVE → …` | Invitations (`PENDING/ACCEPTED/CANCELLED/EXPIRED`) + memberships (`ACTIVE/SUSPENDED/REMOVED`) | "Accepted" is an event, not a state anyone remains in |
 | Agency role "Staff" | Key `AGENCY_STAFF`, labelled "Staff" | `STAFF` already means platform employee with scopes |
 | Billing, subscriptions, usage records | Permissions and model reserved; **not built** until the payments provider and pricing are decided (ACTIONS-FOR-ME #17) | Owner decision, 2026-09-19 |
-| Customers/Orders inside a tenant | The customers of the agency's assignments, derived | An off-platform CRM would route work around the marketplace |
+| Customers/Orders inside a tenant | The customers of the agency's assignments, derived. **Agencies' own off-platform clients: later, under their own ADR** (§30) | Marketplace first (owner decision, 2026-09-19); off-platform cases would still need lawful-use screening |
 | Cache infrastructure | A tenant-deriving cache wrapper built with its first consumer | No cache exists; infrastructure is not added before it is needed |
 | Mobile UX | The responsive web app (ADR-0009) — mobile-first, sheets not modals, card lists not tables | The native companion remains deferred |
 | React Bits | Within the existing registry order: `@shadcn` → `@cult-ui` → `@react-bits` → custom (ADR-0003) | Already the project rule; React Bits' commercial terms are still with counsel (T-030) |
@@ -1843,3 +1886,51 @@ Investigator compliance and permanent bans (T-049) are unchanged and now reach t
 ### Definition of done
 
 §27's tenancy criteria, plus: existing functionality passes unchanged under isolation, the documentation in `docs/architecture/` and the knowledge base describes what shipped, and no manual step remains in `ACTIONS-FOR-ME.md` that tooling could have done.
+
+---
+
+## 30. Hiring Experience — the Pursuut Benchmark
+
+The owner's reference product is **Pursuut** (pursuut.com, reviewed 2026-09-19): a consumer marketplace for vetted, licensed investigators with surveillance as its headline service, case management for investigators, and "AgentOS" — an operating system for firm owners, announced but not yet released. It is the same three-sided shape as this platform: customers, investigators, agencies. What it adds is mostly about **how hiring feels**, and this section records how those ideas are adopted here.
+
+### Mapping
+
+| Pursuut | Here | Where |
+|---|---|---|
+| Vetted, licensed investigators | Verification, licensing gate for surveillance | T-013, T-071, ADR-0009 |
+| Describe your case in plain language → a brief | Guided intake; the assistant may draft; the customer confirms | §10 |
+| Get matched | A shortlist computed at publication, plus discovery | §9, T-103 |
+| Talk before you pay; free | Pre-hire conversations | §13, T-101 |
+| Investigators see your case, not your identity | Identity masked until hire | §13, T-100 |
+| Payments protected in escrow against an agreement | The accepted quote is the agreement; charged at acceptance, held, released on completion | T-012, T-110 to T-113 |
+| Case management: cases, evidence, timelines | The investigation workspace, evidence and reports | T-031 to T-033, T-116, T-117, T-125 |
+| Track findings in one place | Evidence and report review for the customer | T-116, T-117, T-122 |
+| Invoicing and payouts in-platform | Payouts to connected accounts; receipts and invoices from the ledger | T-112, T-114, T-126 |
+| AgentOS: lead triage and routing | Agency lead inbox | T-104 |
+| AgentOS: oversee cases across the team | Staffing and `investigations.read_all` | T-089, T-093 |
+| AgentOS: billing, branding, reporting | Branding built; reporting planned; billing reserved | T-084, T-105, T-099 |
+| Secure in-app calling | Planned for later | T-108 |
+
+### Owner decisions, 2026-09-19
+
+| Question | Decision |
+|---|---|
+| Pre-hire messaging and identity masking | **Adopted.** First name only until hire; contact details blocked; one unanswered message per investigator |
+| In-app calling | **Later.** After messaging; masked numbers; no recording by default; counsel confirms recording consent (counsel brief Q32) |
+| Agencies' own off-platform clients and cases | **Marketplace first.** The lead inbox and reporting ship with agencies; off-platform clients come later under their own ADR, and would still pass lawful-use screening |
+| Matching within minutes vs moderation | **Every mission reviewed at launch.** Latency measured from day one; auto-publishing low-risk categories is a later, data-based decision confirmed by counsel; partner investigation never auto-published |
+
+### Where this platform deliberately differs
+
+- **Every mission is moderated before an investigator sees it.** Slower than "matched within minutes", and the main protection against unlawful requests.
+- **Global and multilingual** (`en`, `ru`, `hy`), not a single-country directory.
+- **An AI assistant** over the whole product, under the same authorization as the web app (§16).
+- **Workspace isolation enforced by the database** (ADR-0011), because agencies' client data is exactly what a competitor would want.
+
+### Agency lead inbox (AgentOS parity)
+
+A `Lead` is an agency's inbox item for one mission: created by a match, a customer's invitation, an investigator's pre-hire question or a member choosing to pursue a mission from browse. States: `NEW → ROUTED → QUOTED → WON | LOST`, or `DECLINED`. A member with `leads.route` routes a lead to a member or team, who then handles the conversation and the quote; routing is audited. Response time is measured, because customers compare it. Leads are tenant-owned rows under row-level security.
+
+### Agency reporting
+
+Pipeline (leads → quotes → won), response times, active assignments by member and team, overdue work, and — once Phase 5 exists — earnings. Read-only, computed from PostgreSQL, behind `analytics.read`. No third-party analytics receives client data.
