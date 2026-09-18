@@ -175,6 +175,17 @@ generated but must be renameable, and must not expose anything the UI policy wou
 On resume: load metadata, summary, structured state and recent messages — then **resolve
 current application state**. Do not assume yesterday's answer still holds.
 
+## Workspaces (ADR-0011)
+
+- **A session belongs to one workspace for life.** Switching workspace opens that workspace's
+  sessions; a context is never rebuilt across a switch.
+- **Memory scopes:** `platform`, `tenant`, `user_in_tenant` (the default for anything learned in
+  a conversation), `user_global` (only preferences the user declared, explicitly marked), and
+  `session`.
+- A summary never carries a workspace or authority.
+- A confirmation from one workspace is invalid in another, because its plan row is not visible
+  there.
+
 ## Agents are disposable
 
 Never keep workflow state in memory. A crashed worker must be replaceable by another that

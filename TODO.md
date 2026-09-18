@@ -807,6 +807,8 @@ the project and produce working add commands. Until `components.json` exists, th
 search registries but `get_add_command_for_items` does not return a usable command.
 Procedure and conventions: `.claude/skills/component-discovery/SKILL.md`.
 
+**Tenancy (ADR-0011).** Admin-web is the **platform staff** console. Agency owners and admins use `app-web` (T-091 to T-094), never admin-web — their authority is tenant permissions, not a platform staff scope.
+
 **Acceptance criteria**
 - [ ] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn`
 - [ ] Tailwind and CSS variables wired; light and dark themes both render
@@ -857,7 +859,7 @@ python3 scripts/validate-knowledge-base.py
 ### T-016 — Knowledge ingestion pipeline with sync and supersession
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-004, T-015
+- **Depends on:** T-004, T-015, T-077
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** ai-rag
@@ -867,6 +869,8 @@ python3 scripts/validate-knowledge-base.py
 Ingest `docs/knowledge-base/**` into `knowledge_documents` / `knowledge_chunks` with
 pgvector embeddings. Content-hash keyed, idempotent, and synchronized on change. Per
 plan.md §17 and the `documentation-first` skill.
+
+**Tenancy (ADR-0011).** `knowledge_documents` and `knowledge_chunks` carry `tenant_id`, which is NULL for the platform knowledge base, under RLS from the first migration. Agency documents are T-097.
 
 **Acceptance criteria**
 - [ ] Ingestion keyed on `(document_id, content_hash, model_version)`; re-running is a no-op
@@ -888,7 +892,7 @@ pnpm --filter api test knowledge
 ### T-017 — Assistant knowledge answering over RAG
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-016
+- **Depends on:** T-016, T-077
 - **Risk:** HIGH
 - **Human approval required:** Yes — AI retrieval surface
 - **Owner agent:** ai-rag
@@ -897,6 +901,8 @@ pnpm --filter api test knowledge
 **Description**
 Answer customer knowledge questions from the knowledge base through permission-aware
 retrieval. Per `.claude/skills/permission-aware-rag/SKILL.md`.
+
+**Tenancy (ADR-0011).** Retrieval runs as context → permission filter → tenant filter → search. The cross-workspace retrieval test ships with this task (`tenant-isolation`).
 
 **Acceptance criteria**
 - [ ] Hybrid retrieval: pgvector + tsvector fused by RRF, per ADR-0001
@@ -917,7 +923,7 @@ pnpm --filter api test ai-knowledge
 ### T-018 — Assistant investigator discovery tools
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-011, T-017
+- **Depends on:** T-011, T-017, T-078
 - **Risk:** HIGH
 - **Human approval required:** Yes — AI tool surface over business data
 - **Owner agent:** ai-rag
@@ -927,6 +933,8 @@ pnpm --filter api test ai-knowledge
 Structured discovery tools so the Assistant can find investigators by location, distance,
 specialty, service, availability and language, and explain each match from real criteria.
 **Not RAG.** Per `.claude/skills/investigator-discovery/SKILL.md`.
+
+**Tenancy (ADR-0011).** Discovery tools run in the caller's execution context; results show each profile's agency (T-087). No tool accepts a workspace, tenant or user id as input.
 
 **Acceptance criteria**
 - [ ] `searchInvestigators` takes typed, closed filters; free text only ranks, never filters
@@ -1052,6 +1060,8 @@ pnpm --filter api test legal
 **Description**
 Block registration until the required documents are accepted, and gate investigator
 capabilities on acceptance of the investigator-specific documents at role activation.
+
+**Tenancy (ADR-0011).** Registration also creates the user's Personal workspace and OWNER membership in the same transaction (T-074). Agency terms acceptance is its own gate (T-083).
 
 **Acceptance criteria**
 - [ ] Registration cannot complete without acceptance — enforced **server-side**
@@ -1334,7 +1344,7 @@ Recorded decisions in the ADR. Not a code validation.
 ### T-031 — Investigation sources
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-012
+- **Depends on:** T-012, T-089
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
@@ -1343,6 +1353,8 @@ Recorded decisions in the ADR. Not a code validation.
 **Description**
 `InvestigationSource` per plan.md §8. Assignment-scoped record of where information came from,
 distinct from the evidence obtained from it.
+
+**Tenancy (ADR-0011).** Workspace objects belong to the supplier workspace. Internal access follows assignment staffing (T-089); `shared` items are visible to the customer's workspace through the two-party policy.
 
 **Acceptance criteria**
 - [ ] Assignment-scoped; `*.authz.spec.ts` proves a non-participant gets 404
@@ -1363,7 +1375,7 @@ pnpm --filter api test investigation-sources
 ### T-032 — Investigation notes and tasks
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-012
+- **Depends on:** T-012, T-089
 - **Risk:** MEDIUM
 - **Human approval required:** Yes — note visibility is a privacy surface
 - **Owner agent:** backend-domain
@@ -1372,6 +1384,8 @@ pnpm --filter api test investigation-sources
 **Description**
 `InvestigationNote` and `InvestigationTask` per plan.md §8. The investigator's working
 material and work plan.
+
+**Tenancy (ADR-0011).** As T-031: supplier-workspace rows, reachable inside the agency only by staffed members or `investigations.read_all`. `private` notes stay private to their author, even from agency admins.
 
 **Acceptance criteria**
 - [ ] Both default to `visibility: private` — author only
@@ -1392,7 +1406,7 @@ pnpm --filter api test investigation-workspace
 ### T-033 — Investigation documents and evidence promotion
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-008, T-032
+- **Depends on:** T-008, T-032, T-089
 - **Risk:** HIGH
 - **Human approval required:** Yes — touches the evidence boundary
 - **Owner agent:** backend-domain
@@ -1402,6 +1416,8 @@ pnpm --filter api test investigation-workspace
 `InvestigationDocument` per plan.md §8, plus the one-way promotion path to evidence. The
 document/evidence boundary is load-bearing: without it, evidence gets attached as documents
 and the chain of custody is lost.
+
+**Tenancy (ADR-0011).** As T-031. Evidence promotion keeps chain of custody inside the supplier workspace; storage paths come from the context (T-080).
 
 **Acceptance criteria**
 - [ ] All files go through the Cloudinary flow (`cloudinary-media`) — no separate storage path
@@ -1485,7 +1501,7 @@ pnpm --filter api test legal-hold retention
 ### T-036 — Notifications
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-006
+- **Depends on:** T-006, T-082
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
@@ -1494,6 +1510,8 @@ pnpm --filter api test legal-hold retention
 **Description**
 `NotificationsModule` per plan.md §13 — one of two modules with no task. Load-bearing: quote
 received, report submitted, verification expiring and message received all depend on it.
+
+**Tenancy (ADR-0011).** Notifications are tenant-scoped rows, delivered by jobs that restore their workspace context (T-082). They route to teams (T-086) and carry agency branding (T-084). A notification never names data from a workspace the recipient is not in.
 
 **Acceptance criteria**
 - [ ] Push, email and in-app centre; per-channel preferences
@@ -1668,7 +1686,7 @@ A rehearsed deploy and a rehearsed rollback against production, signed off.
 ### T-042 — Test infrastructure: factories, fixtures, coverage config
 - **Status:** TODO
 - **Priority:** P0
-- **Depends on:** T-002
+- **Depends on:** T-002, T-073
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
@@ -1677,6 +1695,8 @@ A rehearsed deploy and a rehearsed rollback against production, signed off.
 **Description**
 The shared test substrate. Landing it before module work is what makes the 100% gate
 achievable rather than punitive.
+
+**Tenancy (ADR-0011).** Factories create workspaces and memberships. Integration tests use **two pools**: owner fixtures, and the code under test on `investigator_app` inside a context helper (`withContext`), per the `tenant-isolation` skill.
 
 **Acceptance criteria**
 - [ ] Factories with sensible defaults and explicit overrides for every core entity
@@ -1773,7 +1793,7 @@ Completed checklist in `docs/mobile/release-checklist.md`, signed off before sub
 ### T-045 — AI session and message persistence
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-004
+- **Depends on:** T-004, T-077
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** ai-rag
@@ -1782,6 +1802,8 @@ Completed checklist in `docs/mobile/release-checklist.md`, signed off before sub
 **Description**
 The persistent conversation layer per ADR-0006. Must exist before the assistant, because the
 alternative is a chatbot whose memory is a prompt.
+
+**Tenancy (ADR-0011).** `ai_sessions`, `ai_messages` and their state carry `tenant_id` under RLS. **A session belongs to one workspace for life**; switching workspace opens that workspace's sessions.
 
 **Acceptance criteria**
 - [ ] `AiSession` with lifecycle `ACTIVE`/`IDLE`/`ARCHIVED`/`DELETED`, separate from workflow state
@@ -1802,7 +1824,7 @@ pnpm --filter api test ai-sessions
 ### T-046 — Context Builder, summaries and compaction
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-045, T-016
+- **Depends on:** T-045, T-016, T-077
 - **Risk:** HIGH
 - **Human approval required:** Yes — it decides what reaches the model
 - **Owner agent:** ai-rag
@@ -1811,6 +1833,8 @@ pnpm --filter api test ai-sessions
 **Description**
 The service that decides what enters the model context. Per
 `.claude/skills/ai-session-context/SKILL.md`.
+
+**Tenancy (ADR-0011).** The Context Builder reads only through the execution context. A summary never carries a workspace or authority. There is a test for stale context after a workspace switch.
 
 **Acceptance criteria**
 - [ ] **Permissions applied before assembly**, not after; a test proves no cross-session or
@@ -1834,11 +1858,13 @@ pnpm --filter api test context-builder
 ### T-047 — AI memory with provenance
 - **Status:** TODO
 - **Priority:** P2
-- **Depends on:** T-046
+- **Depends on:** T-046, T-077
 - **Risk:** HIGH
 - **Human approval required:** Yes — persistent memory is a privacy surface
 - **Owner agent:** ai-rag
 - **Affected:** apps/api/src/modules/ai/memory/**
+
+**Tenancy (ADR-0011).** Memory scopes: `platform`, `tenant`, `user_in_tenant` (default), `user_global` (declared preferences only, explicitly marked) and `session`. A cross-workspace memory test ships with this task.
 
 **Acceptance criteria**
 - [ ] Session memory and user memory stored separately; session memory dies with its session
@@ -1860,7 +1886,7 @@ pnpm --filter api test ai-memory
 ### T-048 — Plan persistence, confirmation survival and tool result store
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-045, T-018
+- **Depends on:** T-045, T-018, T-077
 - **Risk:** HIGH
 - **Human approval required:** Yes — confirmation is the mutation gate
 - **Owner agent:** ai-rag
@@ -1868,6 +1894,8 @@ pnpm --filter api test ai-memory
 
 **Description**
 What makes a confirmation survive a browser close, and keeps 10,000 records out of a prompt.
+
+**Tenancy (ADR-0011).** Plans, confirmations and tool results are tenant-scoped rows. A confirmation from workspace A is invalid in B. Superseded in scope by ADR-0012: the command contract and DAGs follow in T-095 and T-096.
 
 **Acceptance criteria**
 - [ ] `AiPlan` persisted with `plan_id`, `plan_hash`, commands, status, confirmation status
@@ -1878,7 +1906,7 @@ What makes a confirmation survive a browser close, and keeps 10,000 records out 
 - [ ] Large tool results stored and referenced by `result_id` with summary, top-N and cursor
 - [ ] A test proves a large result set never enters a prompt in full
 - [ ] A killed worker is replaced by another that resumes from persisted state
-- [ ] **No DAG orchestration, no risk engine, no `tenant_id`** — deferred/rejected by ADR-0006
+- [ ] Plan rows are workspace-scoped (`tenant_id` under RLS, ADR-0011). **No DAG orchestration here**: it lands in T-096 over these rows (ADR-0012). No learned risk engine
 
 **Validation**
 ```bash
@@ -1899,6 +1927,8 @@ pnpm --filter api test ai-plans ai-results
 **Description**
 Enforcement for investigator policy violations, with the due process a career-affecting
 decision requires. Per `.claude/skills/enforcement-actions/SKILL.md`.
+
+**Tenancy (ADR-0011).** Enforcement reaches agencies (ADR-0011, plan.md §29). A permanently banned person is banned in every workspace they belong to. An agency answers for its members' conduct. Registering a new agency does not reset a banned identity (`BanIdentityHash`; principals checked in T-088).
 
 **Acceptance criteria**
 - [ ] `InvestigatorViolation` and `EnforcementDecision`; evidence stored as **references, never content**
@@ -1967,7 +1997,7 @@ pnpm --filter api test assignments-policy-refusal
 ### T-051 — Mission moderation queue (admin console)
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-010, T-013
+- **Depends on:** T-010, T-013, T-079
 - **Risk:** HIGH
 - **Human approval required:** Yes — it is the publication gate for lawful-use policy
 - **Owner agent:** admin-web (UI) + backend-domain (decision service)
@@ -1977,6 +2007,8 @@ pnpm --filter api test assignments-policy-refusal
 No mission reaches investigators without a moderator publishing it. Automatic screening sorts
 and prioritises the queue; it never publishes. Per plan.md §10 and
 `docs/product/mission-lifecycle.md`.
+
+**Tenancy (ADR-0011).** The moderation queue reads across workspaces **only inside `PlatformContext`** (T-079).
 
 **Acceptance criteria**
 - [ ] Queue of `UNDER_REVIEW` missions, ordered by risk band then age
@@ -2183,7 +2215,7 @@ pnpm --filter api test mission-tags
 ### T-056 — Assistant shell and conversation UI
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-017, T-045, T-039
+- **Depends on:** T-017, T-045, T-039, T-091
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
@@ -2192,6 +2224,8 @@ pnpm --filter api test mission-tags
 **Description**
 The conversation interface. Six backend tasks build a full assistant engine with no way to
 reach it; this is the surface.
+
+**Tenancy (ADR-0011).** Needs the app-web foundation (T-091). The assistant shows the active workspace and opens that workspace's sessions.
 
 **Acceptance criteria**
 - [ ] Docked panel on desktop; **full-screen sheet on mobile** (`responsive-design`)
@@ -2221,6 +2255,8 @@ pnpm --filter app-web test assistant
 - **Human approval required:** No
 - **Owner agent:** frontend
 - **Affected:** apps/app-web/**
+
+**Tenancy (ADR-0011).** Session lists are per workspace; switching workspace switches the list.
 
 **Acceptance criteria**
 - [ ] Session list with create, open, rename, archive, delete — and search across sessions
@@ -2254,6 +2290,8 @@ user when they return**, which makes that persistence invisible and therefore po
 
 Every state-changing assistant action passes through this UI. It is the last thing between a
 model proposal and a real mutation.
+
+**Tenancy (ADR-0011).** The confirmation UI shows the workspace a plan will run in. From T-096 it shows the whole DAG under one confirmation.
 
 **Acceptance criteria**
 - [ ] A write tool renders the **exact proposed action and arguments** — never a paraphrase
@@ -2315,6 +2353,8 @@ pnpm --filter app-web test assistant-results
 - **Owner agent:** frontend
 - **Affected:** apps/app-web/**
 
+**Tenancy (ADR-0011).** The memory UI shows each memory's scope. `user_global` memories are marked as visible in every workspace.
+
 **Acceptance criteria**
 - [ ] User can see everything remembered about them, session and cross-session, separately
 - [ ] Each entry shows **where it came from** — the source message, openable (`ai-session-context`)
@@ -2333,7 +2373,7 @@ pnpm --filter app-web test assistant-memory
 ### T-061 — Staff assistant in the admin console
 - **Status:** TODO
 - **Priority:** P2
-- **Depends on:** T-056, T-013, T-051
+- **Depends on:** T-056, T-013, T-051, T-079
 - **Risk:** HIGH
 - **Human approval required:** Yes — staff scope over customer data
 - **Owner agent:** admin-web
@@ -2346,6 +2386,8 @@ explaining policy decisions.
 
 `admin.` is a separate origin with a separate session (ADR-0002), so this is a separate
 integration, not the same component mounted twice.
+
+**Tenancy (ADR-0011).** The staff assistant acts across workspaces only inside `PlatformContext`, with the staff scope and a stated reason.
 
 **Acceptance criteria**
 - [ ] Runs with the **staff member's specific scope** — never blanket `isStaff` (`authorization`)
@@ -2374,6 +2416,8 @@ pnpm --filter admin-web test assistant
 **Description**
 Sign in with Google, alongside email/password. Authorization Code flow with PKCE, server-side
 token exchange. The web app is the only surface — mobile is deferred (ADR-0009).
+
+**Tenancy (ADR-0011).** First OAuth sign-in creates the Personal workspace and OWNER membership in the same transaction as the user (T-074).
 
 **Acceptance criteria**
 
@@ -2541,7 +2585,7 @@ pnpm typecheck && pnpm --filter api build && test ! -e apps/api/dist/modules/aut
 ### T-065 — Malware scanning for uploaded media
 - **Status:** TODO
 - **Priority:** P1 — **blocks any uploaded file being served to anyone**
-- **Depends on:** T-008
+- **Depends on:** T-008, T-082
 - **Risk:** HIGH
 - **Human approval required:** Yes — scanner choice and data handling
 - **Owner agent:** backend-domain + infra-devops
@@ -2556,6 +2600,8 @@ Needs a decision first: a scanner (self-hosted ClamAV, a Cloudinary add-on, or a
 API), where file bytes go to be scanned — which is a data-transfer question for counsel when
 the files are identity documents — and the job infrastructure to run it (BullMQ, not yet
 wired).
+
+**Tenancy (ADR-0011).** Scan jobs restore the uploading workspace's context (T-082).
 
 **Acceptance criteria**
 - [ ] Scanner chosen, with where the bytes are processed recorded for counsel
@@ -2574,7 +2620,7 @@ pnpm --filter api test media
 ### T-066 — Mission attachments
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-010, T-008, T-065
+- **Depends on:** T-010, T-008, T-065, T-077
 - **Risk:** HIGH
 - **Human approval required:** Yes — staff access to customer material
 - **Owner agent:** backend-domain
@@ -2586,6 +2632,8 @@ moderators to **open them** — "a mission's text can read cleanly while an atta
 the problem". T-010 shipped without them: screening reads text and structured answers only, and
 there is nothing for a moderator to open. A mission cannot be properly reviewed until this
 lands.
+
+**Tenancy (ADR-0011).** Attachments are tenant-owned media of the customer's workspace, visible to suppliers only through the two-party mission policy.
 
 **Acceptance criteria**
 - [ ] A `MISSION_ATTACHMENT` media category with its own size, formats, visibility and retention
@@ -2668,7 +2716,7 @@ pnpm --filter api test mission-policy
 
 ### T-069 — The suite is flaky under its own parallelism
 - **Status:** TODO
-- **Priority:** P1 — it will make CI untrustworthy, which is worse than a slow CI
+- **Priority:** P0 — gates Phase 4b (tenancy adds many database-heavy tests to a suite that is already flaky); it was P1 because it makes CI untrustworthy
 - **Depends on:** —
 - **Risk:** MEDIUM
 - **Human approval required:** No
@@ -2707,7 +2755,7 @@ cd apps/api && for i in $(seq 1 10); do pnpm exec vitest run || break; done
 ### T-070 — Staff verification console (admin-web)
 - **Status:** TODO
 - **Priority:** P2
-- **Depends on:** T-013, T-014
+- **Depends on:** T-013, T-014, T-079
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** admin-web
@@ -2719,6 +2767,8 @@ with its recorded declaration, documents and full decision trail, opening a docu
 audited per-application link, and the decision form (outcome + required reason). Mobile-first per
 `responsive-design`: the queue is a card list on a phone, the decision form a sheet.
 Endpoints and rules: `docs/architecture/verification.md`.
+
+**Tenancy (ADR-0011).** Reviewer routes run inside `PlatformContext` (T-079) once it lands.
 
 **Acceptance criteria**
 - [ ] Every screen reachable only with the VERIFICATION scope; the API refuses regardless
@@ -2739,7 +2789,7 @@ pnpm --filter admin-web test && pnpm --filter admin-web build
 ### T-071 — Scope-level verification
 - **Status:** TODO
 - **Priority:** P1 — a verified investigator's later additions are currently live without review
-- **Depends on:** T-013
+- **Depends on:** T-013, T-087
 - **Risk:** HIGH
 - **Human approval required:** Yes — changes who discovery lists and who may quote
 - **Owner agent:** backend-domain + database
@@ -2751,6 +2801,8 @@ a declaration, and `kb-investigator-verification` that additions are reviewed wh
 stands. Neither can be honest until verification is tracked per specialty and per service area,
 and discovery and quoting filter on it. Until then, an area or specialty added after verification
 is immediately discoverable under the existing verification.
+
+**Tenancy (ADR-0011).** Profiles belong to workspaces from T-087. Scope-level verification attaches to the profile, and an agency's added areas follow the same rule.
 
 **Acceptance criteria**
 - [ ] Verification recorded per specialty and per area, each traceable to the decision that granted it
@@ -2768,7 +2820,7 @@ pnpm --filter api test verification search quotes
 ### T-072 — Verification documents: expiry, lapse and required sets
 - **Status:** TODO
 - **Priority:** P2
-- **Depends on:** T-013, notifications
+- **Depends on:** T-013, notifications, T-036
 - **Risk:** MEDIUM
 - **Human approval required:** Yes — which documents each jurisdiction requires is a compliance decision
 - **Owner agent:** backend-domain
@@ -2780,6 +2832,8 @@ the automatic lapse of verified status when a required document lapses (assignme
 continue), and the list of required documents per jurisdiction and specialty shown to applicants.
 Also decision notifications, once a notification channel exists.
 
+**Tenancy (ADR-0011).** Expiry reminders are tenant-aware notifications (T-036); lapse jobs restore context (T-082).
+
 **Acceptance criteria**
 - [ ] Expiry recorded per document; a lapse moves the profile out of VERIFIED through the
       verification service, audited, with the reason
@@ -2790,6 +2844,868 @@ Also decision notifications, once a notification channel exists.
 **Validation**
 ```bash
 pnpm --filter api test verification
+```
+
+---
+
+## Phase 4b — Workspaces, agencies and tenant isolation (ADR-0011, ADR-0012, plan.md §29)
+
+Agencies become organisations on the platform, and workspaces are isolated by PostgreSQL rather
+than by application filters alone. Design: `docs/architecture/tenancy.md`. Procedure:
+`.claude/skills/tenant-isolation/SKILL.md`. Owner decisions taken on 2026-09-19:
+
+- ADR-0009 stands
+- every workspace is a tenant
+- this phase goes **next, before new features**
+- billing is planned but not decided
+
+**Order.** T-069 first, because this phase adds many database-heavy tests to a suite that is
+already flaky. Then:
+
+- **Foundation:** T-073 → T-074 → T-075 → T-076 → T-077 → T-078 → T-079 → T-080
+- **Product:** T-083 → T-084 → T-085 → T-086 → T-087 → T-088 → T-089 → T-090
+- **UI:** T-091 → T-092 → T-093 → T-094
+- **Validation:** T-098
+
+T-081 and T-082 land with their first consumer. T-095 to T-097 land as Phase 7 is built. The
+foundation (T-073 to T-080) changes no behaviour for anyone who never creates an agency: every
+existing test must pass unchanged at every step.
+
+---
+
+### T-073 — Runtime connects as the non-bypass application role
+- **Status:** TODO
+- **Priority:** P0 — until this lands, every row-level security policy is decorative
+- **Depends on:** T-069
+- **Risk:** HIGH
+- **Human approval required:** Yes — security control and infrastructure change
+- **Owner agent:** infra-devops + database
+- **Affected:** apps/api/src/database/**, apps/api/test/**, .env.example, .github/workflows/pr.yml, infrastructure/compose/**, scripts/setup.sh
+
+**Description**
+The API, the tests and CI all connect as `postgres`, a superuser. Superusers and table owners
+bypass row-level security, so a policy would pass its own tests while protecting nothing. The
+split is:
+
+- `DATABASE_URL` is the runtime role `investigator_app`: `NOBYPASSRLS`, owns nothing.
+- `MIGRATION_DATABASE_URL` is the owner.
+
+Integration tests use two pools. Fixtures are written by the owner; the code under test runs
+as the application role. The role's password stops being a literal in migration 0000 for
+non-local environments. `scripts/setup.sh` and CI set it from the environment, which is
+automated rather than a manual step.
+
+**Acceptance criteria**
+- [ ] The API refuses to boot if its role is a superuser, owns any table, or has `BYPASSRLS`, and a test proves it
+- [ ] Every existing spec passes with the code under test on `investigator_app`; any missing grant surfaces here, not later under RLS
+- [ ] CI runs the same split; coverage stays at 100%
+- [ ] No non-local credential committed; setup is scripted, not an `ACTIONS-FOR-ME` item
+- [ ] `docs/architecture/tenancy.md` §7 "Roles" marked built
+
+**Validation**
+```bash
+pnpm --filter api test:coverage
+```
+
+---
+
+### T-074 — Workspaces and memberships, and a Personal workspace for every user
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-073
+- **Risk:** HIGH
+- **Human approval required:** Yes — the authorization model
+- **Owner agent:** database + backend-domain
+- **Affected:** apps/api/src/database/**, apps/api/src/modules/{auth,tenants}/**, migrations
+
+**Description**
+This task adds the following tables:
+
+- `tenants`: kind `PERSONAL | AGENCY`, lifecycle `CREATING/ACTIVE/SUSPENDED/ARCHIVED/DELETED`
+- `tenant_memberships`: `ACTIVE/SUSPENDED/REMOVED`
+- the permission catalog: `permissions`, `roles`, `role_permissions`, `membership_roles`,
+  seeded as data from `tenancy.md` §3
+- `user_sessions.default_tenant_id`
+
+Every existing user gets a Personal workspace and an OWNER membership. Registration, and
+first OAuth sign-in (T-062), create them in the same transaction as the user. RLS does not
+start here.
+
+**Acceptance criteria**
+- [ ] Exactly one PERSONAL workspace per user, held by a constraint, and a Personal workspace can never gain a second member
+- [ ] System roles and permissions seeded by migration and immutable; the matrix in `tenancy.md` §3 is asserted against the seed
+- [ ] The last OWNER of a workspace cannot be removed or demoted
+- [ ] Backfill proven on a copy of the dev data (zero users without a Personal workspace), and the migration is reversible
+- [ ] Retention rows for every new table
+
+**Validation**
+```bash
+pnpm --filter api test tenants auth
+```
+
+---
+
+### T-075 — Execution context and workspace resolution
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-074
+- **Risk:** HIGH
+- **Human approval required:** Yes — authorization plumbing
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/{context,authz}/**, apps/api/src/database/**, apps/api/src/modules/tenants/**
+
+**Description**
+The context and its resolution:
+
+- `ExecutionContext` lives in `AsyncLocalStorage` and is frozen.
+- `WorkspaceResolver` runs after `ActorGuard`. It takes `X-Workspace` intersected with the
+  ACTIVE memberships read now, falls back to the session's `default_tenant_id`, and refuses a
+  suspended or archived workspace.
+- A **driver-level wrapper** makes every transaction and every bare query begin with
+  `set_config('app.tenant_id' | 'app.user_id' | 'app.membership_id', …, true)`.
+- The unscoped path has an allowlisted set of callers: pre-authentication identity lookups
+  and system workers.
+- `GET /workspaces` lists the caller's workspaces, and `POST /workspaces/:id/activate` sets
+  the default.
+
+**Not** a request-wide transaction: it would roll back `AuthzService`'s denial audit rows
+(ADR-0011 §4).
+
+**Acceptance criteria**
+- [ ] A header naming a foreign workspace → 403, audited; a removed or suspended member is refused on their next request
+- [ ] Pooling: on one reserved connection, tenant A then tenant B — the settings read empty after commit and nothing carries over; concurrent A/B requests on a pool of two never cross
+- [ ] Regression: a denied request that then fails still leaves its denial audit row
+- [ ] Static specs: no service, repository or domain method takes `tenantId`; only allowlisted callers use the unscoped path
+- [ ] `authorization.md` documents check 0
+
+**Validation**
+```bash
+pnpm --filter api test context tenants authz
+```
+
+---
+
+### T-076 — Tenant and party columns on existing tables (expand and backfill)
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-075
+- **Risk:** HIGH — touches quotes and assignments
+- **Human approval required:** Yes
+- **Owner agent:** database
+- **Affected:** apps/api/src/database/**, migrations, docs/compliance/retention.md
+
+**Description**
+Columns for every existing table per the classification in `tenancy.md` §7:
+
+- `tenant_id` on tenant-owned rows
+- `customer_tenant_id` and `supplier_tenant_id` on marketplace rows
+
+The party ids are denormalised so that no policy has to join. Backfill per `tenancy.md` §5:
+
+- investigator profiles → the owner's Personal workspace
+- missions → the customer's Personal workspace
+- quotes and assignments → supplier = the lead investigator's Personal workspace
+
+Then set `NOT NULL` and `DEFAULT app_current_tenant()`, and lead the indexes with the tenant
+or party column. Two constraints change:
+
+- `investigator_profiles` becomes `UNIQUE (tenant_id, user_id)`
+- `idempotency_keys` includes the tenant in its unique key
+
+**Acceptance criteria**
+- [ ] Zero NULLs after backfill, asserted by the migration itself
+- [ ] The classification registry covers every table; a spec fails on an unclassified table
+- [ ] Every existing test passes unchanged; the migration is reversible; applies from empty
+- [ ] Discovery's `EXPLAIN` spec (T-011) still uses its indexes
+
+**Validation**
+```bash
+pnpm --filter api test && pnpm --filter api migration:run
+```
+
+---
+
+### T-077 — Row-level security policies and the isolation matrix
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-076
+- **Risk:** HIGH
+- **Human approval required:** Yes, plus a `security-privacy` review before merge
+- **Owner agent:** database; review by security-privacy
+- **Affected:** migrations, apps/api/src/database/**, apps/api/test/isolation/**
+
+**Description**
+The policies:
+
+- `app_current_tenant()` and `app_platform_access()`
+- `ENABLE` and `FORCE` RLS by class, with the policy templates in `tenancy.md` §7
+- the special cases: the public projection of published profiles, QUOTED missions readable by
+  any workspace, two-party rows, and `audit_logs`
+
+A **generated isolation matrix** runs as `investigator_app` for every scoped table:
+
+- cross-workspace SELECT, INSERT, UPDATE and DELETE are refused
+- no context returns nothing, and an insert without context fails
+
+**Acceptance criteria**
+- [ ] Matrix green; a policy recursion check passes (no policy reaches a table whose policy reaches back)
+- [ ] Negative control per class: drop the policy, watch the matrix fail, restore byte-for-byte
+- [ ] Every existing test green under RLS; discovery and quoting unchanged for Personal workspaces
+- [ ] `tenancy.md` §7 marked built, with any deviation recorded
+
+**Validation**
+```bash
+pnpm --filter api test isolation && pnpm --filter api test:coverage
+```
+
+---
+
+### T-078 — Tenant permissions in authorization
+- **Status:** TODO
+- **Priority:** P0
+- **Depends on:** T-077
+- **Risk:** HIGH
+- **Human approval required:** Yes — authorization logic
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/authz/**, packages/auth/**, the `authorization` skill
+
+**Description**
+`AuthzService.requirePermission(permission, ctx)`. Permissions are resolved with the
+membership on every request, never carried. Existing endpoints behave identically in Personal
+workspaces. Agency endpoints check permissions, never tenant role names.
+
+**Acceptance criteria**
+- [ ] Every role × permission pair from the seeded catalog is tested (generated), not sampled
+- [ ] A revoked permission or removed role takes effect on the next request
+- [ ] A static spec forbids checking a tenant role name where a permission exists
+- [ ] `authorization.md` and the `authorization` skill updated
+
+**Validation**
+```bash
+pnpm --filter api test authz
+```
+
+---
+
+### T-079 — PlatformContext: staff across workspaces, scoped, reasoned and audited
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-077
+- **Risk:** HIGH
+- **Human approval required:** Yes, plus a `security-privacy` review
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/context/**, apps/api/src/modules/{verification,missions,media}/**
+
+**Description**
+`PlatformContext.run({ scope, reason }, fn)` is the **only** setter of `app.platform_access`.
+The existing cross-workspace staff paths move into it:
+
+- verification review (T-013)
+- mission moderation (T-010)
+- verification-document delivery
+
+Fixed-purpose staff routes carry a route-defined purpose. Ad-hoc cross-workspace access, such
+as a support lookup, requires typed reason text.
+
+**Acceptance criteria**
+- [ ] Staff without the scope refused; agency owners and admins can never enter (entry checks the platform `STAFF` role)
+- [ ] Every platform access audited with scope and purpose or reason
+- [ ] A static spec holds that nothing else sets `app.platform_access`; there is no `BYPASSRLS` role
+- [ ] T-013 and T-010 staff tests pass through the new path
+
+**Validation**
+```bash
+pnpm --filter api test platform-context verification missions
+```
+
+---
+
+### T-080 — Tenant-aware audit and storage paths
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-077
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/audit/**, apps/api/src/modules/media/**, migrations
+
+**Description**
+`audit_logs` gains nullable `tenant_id` and `membership_id`. `AuditService.record` fills the
+tenant, user, membership, session and correlation from the context, and the event type no
+longer accepts them from callers. The existing call sites are migrated.
+
+The storage layer derives `tenant/{tenantId}/{category}/{uuid}` for new uploads. Existing assets
+keep their stored `public_id`.
+
+**Acceptance criteria**
+- [ ] Every audited action in the codebase writes the workspace; a caller cannot supply or override it
+- [ ] New uploads carry the derived prefix; no business code builds a path (static spec)
+- [ ] `audit-logging` and `cloudinary-media` skills already describe this — confirm, do not duplicate
+
+**Validation**
+```bash
+pnpm --filter api test audit media
+```
+
+---
+
+### T-081 — Tenant-scoped cache wrapper
+- **Status:** TODO — build with the first cache consumer; until then nothing caches tenant data
+- **Priority:** P2
+- **Depends on:** T-075; the first task that introduces a cache
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/cache/**
+
+**Description**
+`cache.get(namespace, query)` / `cache.set(...)`. The key is derived from the context as
+`tenant + namespace + hash(query) + version`, plus the membership when permissions shape the
+result. The API takes no key.
+
+**Acceptance criteria**
+- [ ] Tenant A's entry is unreachable from B; a permission-shaped entry is unreachable by another member
+- [ ] A static spec forbids direct Redis access outside the wrapper
+- [ ] Web client query caches are keyed by workspace id (T-092)
+
+**Validation**
+```bash
+pnpm --filter api test cache
+```
+
+---
+
+### T-082 — Jobs carry and restore their workspace
+- **Status:** TODO — with the first queue (BullMQ) or outbox dispatcher, whichever lands first
+- **Priority:** P1
+- **Depends on:** T-075
+- **Risk:** HIGH
+- **Human approval required:** Yes — authorization outside HTTP
+- **Owner agent:** backend-domain + infra-devops
+- **Affected:** apps/api/src/common/jobs/**, apps/api/src/database/schema/outbox.ts, workers
+
+**Description**
+The job envelope is `{jobId, tenantId, userId, membershipId, command, payload}`: ids, never
+permissions. The worker:
+
+1. re-reads the membership and workspace status, and refuses a removed member or a suspended
+   workspace
+2. restores the context
+3. runs through the scoped database path
+
+Outbox rows record the producer's tenant. The dispatcher runs in a system context and hands off
+work per tenant.
+
+**Acceptance criteria**
+- [ ] Tests: context restored; a removed member's job refused; retries and duplicates idempotent per workspace; failed jobs dead-lettered with their context
+- [ ] No worker path touches a scoped table outside a restored context (static spec over worker entry points)
+
+**Validation**
+```bash
+pnpm --filter api test jobs outbox
+```
+
+---
+
+### T-083 — Agency registration and progressive onboarding (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-078, T-021
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a new acceptance gate (agency terms, `legal-consent`)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/**, docs/knowledge-base/agency/**, scripts/validate-knowledge-base.py
+
+**Description**
+`POST /agencies` creates an `AGENCY` workspace in `CREATING` and makes the creator its OWNER,
+in one transaction. It is idempotent.
+
+The minimum to become ACTIVE is name, country, business email, time zone and currency. Time
+zone and currency default from the creator. Everything else in plan.md §29 can be completed
+later: legal name, type, size, languages, areas, services, specialties, credentials,
+experience, hours and branding.
+
+Agency terms are accepted per version (`legal-consent`). The text itself waits on counsel;
+the gate does not.
+
+**Acceptance criteria**
+- [ ] Status, verification and tenant kind can never be set by the client
+- [ ] ACTIVE only when the minimum is complete; everything else optional and editable later
+- [ ] The creator is the OWNER; the agency appears in their workspace list at once
+- [ ] Knowledge base: an `agency` audience and folder added to `scripts/validate-knowledge-base.py` (visibility `authenticated`); first article `kb-agency-getting-started`. Agency owners are not necessarily investigators, so the investigator folder is the wrong home
+
+**Validation**
+```bash
+pnpm --filter api test agencies && python3 scripts/validate-knowledge-base.py
+```
+
+---
+
+### T-084 — Agency public profile, private settings and branding (API)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-083
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/**, apps/api/src/modules/media/**
+
+**Description**
+- `tenant_profiles` is the public projection, with publish and unpublish.
+- `tenant_settings` holds typed sections with defaults: general, branding, localisation,
+  notifications, AI, investigations, employees, security, privacy, integrations, and billing
+  (reserved).
+- Branding is logo, cover, display name, and accent and report tokens, validated for contrast.
+- New media categories are `AGENCY_LOGO` and `AGENCY_COVER`.
+
+**Acceptance criteria**
+- [ ] The public endpoint returns only projection fields; a test asserts no private settings, employees, customers or financial fields appear
+- [ ] Every settings section has a default; nothing is required to use the product
+- [ ] Branding cannot break contrast (tokens validated)
+
+**Validation**
+```bash
+pnpm --filter api test agencies
+```
+
+---
+
+### T-085 — Employees: invitations and the membership lifecycle (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-083
+- **Risk:** HIGH
+- **Human approval required:** Yes — authorization and account suspension
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/**, apps/api/src/common/mail/**
+
+**Description**
+- **Invitations:** invite, resend (rotates the token), cancel, accept and expire. The token is
+  hashed and single-use, and is bound to the invited email.
+- **Memberships:** suspend, reactivate and remove, and assign roles and teams.
+- **Employee fields:** job title, department, locale and time zone overrides. Identity fields
+  are read from the user, never copied.
+
+**Acceptance criteria**
+- [ ] Suspension and removal take effect on the member's next request (tested over HTTP)
+- [ ] An invitation cannot be accepted by a different account; resent tokens void the old one
+- [ ] The last OWNER is protected; invitations are rate-limited per workspace
+- [ ] When AI sessions exist (T-045), a removed member's sessions in that workspace close and their pending confirmations void
+- [ ] Knowledge base: `kb-agency-employees`
+
+**Validation**
+```bash
+pnpm --filter api test memberships invitations
+```
+
+---
+
+### T-086 — Teams (API)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-085
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/teams/**
+
+**Description**
+Teams and team members. A member may belong to several teams. Teams feed assignment staffing
+and `investigations.read` (T-089), and notification routing (T-036).
+
+**Acceptance criteria**
+- [ ] CRUD behind `teams.*`; removing a member from the workspace removes their team memberships
+- [ ] Cross-workspace probes; KB updated
+
+**Validation**
+```bash
+pnpm --filter api test teams
+```
+
+---
+
+### T-087 — Investigator profiles under workspaces (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-085
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — changes who discovery lists
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{profiles,search,service-areas}/**
+
+**Description**
+A profile belongs to a workspace and is held by one membership. An agency creates and manages
+profiles for its members with `investigators.*`; an independent investigator's profile stays in
+their Personal workspace. Discovery shows the agency a profile belongs to. Eligibility gains
+"the workspace is ACTIVE". Whether agency verification also gates listing is decided in T-088.
+
+**Acceptance criteria**
+- [ ] Several profiles per agency; one per person per workspace; no identity fields duplicated
+- [ ] A suspended or archived agency's profiles disappear from discovery on the next query
+- [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
+- [ ] KB: profile articles updated for agencies
+
+**Validation**
+```bash
+pnpm --filter api test profiles search
+```
+
+---
+
+### T-088 — Agency verification
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-083, T-079
+- **Risk:** HIGH
+- **Human approval required:** Yes — a compliance decision, and counsel input (ACTIONS-FOR-ME #0)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/verification/**
+
+**Description**
+Business-level verification, separate from each investigator's individual verification:
+
+- business registration
+- an agency licence where the jurisdiction licenses agencies
+- identity of the principals, which also closes ban evasion by incorporation (T-049)
+
+ADR-0009 applies: surveillance licensing is checked for the jurisdiction of the work. The
+staff queue reuses T-013's patterns inside `PlatformContext`.
+
+**Acceptance criteria**
+- [ ] Decision recorded: does an unverified agency's verified investigator appear in discovery? (Recommendation: yes, labelled as an unverified agency — individual verification is what licensing attaches to)
+- [ ] Whole-application decisions with reasons, trail and audited document opening, as T-013
+- [ ] A banned principal cannot verify a new agency
+- [ ] KB: `kb-agency-verification`, staff review article
+
+**Validation**
+```bash
+pnpm --filter api test verification
+```
+
+---
+
+### T-089 — Supplier-workspace quotes, assignment staffing and access inside an agency (API)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-087, T-086
+- **Risk:** HIGH — assignment and money-adjacent state
+- **Human approval required:** Yes
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/{quotes,assignments}/**, migrations
+
+**Description**
+- **Quoting is a workspace act** (`investigations.create`) that names a lead profile from that
+  workspace.
+- **`assignment_staff`** records the team, the members and the lead, and is managed with
+  `investigations.assign`.
+- **Inside the supplier**, a member reads an assignment only when they are staffed on it or in a
+  staffed team, or hold `investigations.read_all`.
+- **The customer** sees the agency and the lead, never internal staffing or notes.
+
+**Acceptance criteria**
+- [ ] Every T-012 invariant still holds: exactly one assignment, idempotent acceptance, the payment boundary
+- [ ] An unstaffed colleague is refused an assignment the agency holds (404), and a staffed one is allowed
+- [ ] T-031 to T-033 workspace objects inherit this access rule when built
+- [ ] `quotes-and-assignments.md` and KB updated
+
+**Validation**
+```bash
+pnpm --filter api test quotes assignments staffing
+```
+
+---
+
+### T-090 — Agency lifecycle: suspend, archive, delete
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-079, T-085, T-089
+- **Risk:** HIGH
+- **Human approval required:** Yes — account suspension, deletion and retention
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/**, retention jobs
+
+**Description**
+- Staff suspend and reactivate an agency inside `PlatformContext`, with a reason.
+- Owners archive, and request deletion.
+- The treatment table in `tenancy.md` §2 is implemented: members, discovery, open assignments,
+  files, AI and audit.
+- Nothing retention requires is deleted, and deletion is a job with an audit trail.
+
+**Acceptance criteria**
+- [ ] Suspension refuses every member on their next request and hides the agency from discovery, while customers keep access to what was delivered
+- [ ] An agency with open assignments cannot be archived
+- [ ] Deletion leaves audit records, legal holds (T-035) and dispute material intact
+- [ ] Retention doc and staff KB updated
+
+**Validation**
+```bash
+pnpm --filter api test tenant-lifecycle
+```
+
+---
+
+### T-091 — app-web UI foundation
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-030
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**, packages/ui/**
+
+**Description**
+`app-web` is still a stub (`src/index.ts`). Every customer, investigator and agency screen —
+including the assistant (T-056) — needs a real Next.js app first:
+
+- shadcn initialised per app, with the registries `@shadcn`, `@cult-ui` and `@react-bits` in
+  that order (ADR-0003)
+- the tokens package
+- a mobile-first app shell: bottom navigation on phones, a sidebar from tablet up
+- `test` and `build` scripts that run in CI
+
+**Acceptance criteria**
+- [ ] `components.json` in app-web; `get_project_registries` returns the three registries
+- [ ] Light and dark themes from tokens; no raw values in feature code
+- [ ] The shell passes visual QA at 375, 768 and 1280, with no horizontal scroll and tap targets of at least 44px
+- [ ] CI runs app-web tests and build; Core Web Vitals budget recorded (`frontend-performance`)
+
+**Validation**
+```bash
+pnpm --filter app-web test && pnpm --filter app-web build
+```
+
+---
+
+### T-092 — Workspace switcher and agency onboarding (app-web)
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-091, T-075, T-083
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+- **Switcher:** a sheet on phones and a menu on desktop. Every request sends `X-Workspace`.
+  Client caches are keyed by workspace, so nothing from the previous workspace renders after a
+  switch.
+- **Onboarding:** the five required fields, then done. The rest is a dismissible checklist, not
+  a wizard.
+- **Motion:** subtle, confirming the switch (`animation`), and `prefers-reduced-motion`
+  respected.
+
+**Acceptance criteria**
+- [ ] Switching shows no stale data from the previous workspace (tested: A's list never flashes in B)
+- [ ] Onboarding completes in one short screen on a phone; component-discovery log records what was reused
+- [ ] Playwright flows at 375 and 1280; accessibility checks pass
+
+**Validation**
+```bash
+pnpm --filter app-web test workspace onboarding
+```
+
+---
+
+### T-093 — Agency console: employees, teams and investigators (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-092, T-085, T-086, T-087
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Employees, invitations, teams and investigator profiles:
+
+- card lists on phones and tables from desktop
+- destructive actions (suspend, remove) confirmed in a sheet that names the person
+- bulk actions only where the API has a bulk command
+
+**Acceptance criteria**
+- [ ] Every action has a tap path, and a hover affordance is never the only path
+- [ ] Empty states say what to do next; errors say what failed and how to fix it
+- [ ] Visual QA at three widths; flows tested end to end against the API
+
+**Validation**
+```bash
+pnpm --filter app-web test agency
+```
+
+---
+
+### T-094 — Agency profile, settings and branding (app-web)
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-092, T-084
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+- The public profile editor, with a live preview of what customers see.
+- Settings sections with their defaults visible: nothing must be configured to proceed.
+- Branding limited to logo, cover and validated accent tokens.
+
+**Acceptance criteria**
+- [ ] The preview matches the public projection exactly (shared component)
+- [ ] Branding cannot produce unreadable contrast; the core UI is never forked per agency
+
+**Validation**
+```bash
+pnpm --filter app-web test agency-settings
+```
+
+---
+
+### T-095 — Command registry contract and bulk commands (ADR-0012)
+- **Status:** TODO
+- **Priority:** P1 — with Phase 7
+- **Depends on:** T-048, T-078
+- **Risk:** HIGH
+- **Human approval required:** Yes — each command that mutates business state (AGENTS.md)
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai/**, the `ai-tool-registry` skill
+
+**Description**
+The full command contract from ADR-0012, validated at registration. `tenantScope` is never an
+input. Commands call the same application services as HTTP. Bulk commands:
+
+- authorize each record separately
+- enforce a maximum batch size and de-duplicate
+- are idempotent per record
+- report partial failure as partial
+- run as a job above their size limit
+
+The first agency commands are `employee.invite`, `employee.update`, `team.create` and
+`investigator.search`, each with its bulk variant where the target is naturally plural.
+
+**Acceptance criteria**
+- [ ] A command missing any field does not register (static spec)
+- [ ] Cross-workspace probes for every command; a model-supplied tenant, user or membership id is ignored or refused
+- [ ] Prompt-injection test per command, as the skill requires
+
+**Validation**
+```bash
+pnpm --filter api test ai-commands
+```
+
+---
+
+### T-096 — Plan DAG orchestration (ADR-0012)
+- **Status:** TODO
+- **Priority:** P2 — with Phase 7
+- **Depends on:** T-095
+- **Risk:** HIGH
+- **Human approval required:** Yes
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai/**
+
+**Description**
+Multi-command plans as a DAG over the persisted plan rows:
+
+- independent nodes run in parallel and dependent nodes wait
+- one confirmation covers the whole plan hash
+- each node re-authorizes at execution
+- per-node results persist so a restart resumes
+- the planner asks rather than guesses when a request is ambiguous
+
+**Acceptance criteria**
+- [ ] The brief's canonical request (create the investigation, find two investigators, assign them, notify the customer) runs as one confirmed plan
+- [ ] A permission revoked between confirmation and execution refuses that node; a changed node voids the confirmation
+- [ ] "Remove the investigator from this case" produces a clarifying question, never an action
+
+**Validation**
+```bash
+pnpm --filter api test ai-plans
+```
+
+---
+
+### T-097 — Agency knowledge base (tenant-scoped RAG)
+- **Status:** TODO
+- **Priority:** P2 — with Phase 7
+- **Depends on:** T-016, T-077
+- **Risk:** HIGH
+- **Human approval required:** Yes — retrieval that could leak across workspaces
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/{knowledge,ai}/**
+
+**Description**
+Agencies add their own documents (`knowledge.*`). Knowledge documents and chunks carry
+`tenant_id`, which is NULL for the platform knowledge base, and are covered by RLS. Retrieval
+filters by tenant before similarity (`permission-aware-rag`). Deleting a document deletes its
+chunks in the same unit of work.
+
+**Acceptance criteria**
+- [ ] Cross-workspace retrieval returns nothing, tested at the SQL layer and through the assistant
+- [ ] Platform documents are visible in every workspace per their visibility, and never writable by agencies
+- [ ] Deletion leaves no retrievable chunk
+
+**Validation**
+```bash
+pnpm --filter api test knowledge rag
+```
+
+---
+
+### T-098 — Tenant isolation verification pass
+- **Status:** TODO
+- **Priority:** P0 — the phase is not complete until this passes
+- **Depends on:** T-077 to T-090; re-run as T-095 to T-097 land
+- **Risk:** HIGH
+- **Human approval required:** Yes
+- **Owner agent:** security-privacy + qa-reviewer (review), then the owning agents
+- **Affected:** apps/api/test/isolation/**, apps/app-web/e2e/**
+
+**Description**
+The whole-system check:
+
+- a cross-workspace probe generated from the route table
+- a pool under load, with the connection-reuse attack
+- worker, cache and file isolation
+- AI and RAG isolation as it exists
+- mobile flows at phone width
+- a production-like end-to-end flow on staging (T-040): register an agency, invite, staff,
+  quote, deliver
+
+It also decides whether identity tables get RLS keyed on `app.user_id`.
+
+**Acceptance criteria**
+- [ ] Every probe refused; every negative control seen to fail first
+- [ ] All pre-existing functionality verified in the browser, not only by tests
+- [ ] `tenancy.md` updated from "specified" to what shipped, with any deviation explained
+- [ ] Findings fixed and re-verified, never noted and shipped
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build
+```
+
+---
+
+### T-099 — Agency billing (reserved)
+- **Status:** BLOCKED — on the pricing decision (ACTIONS-FOR-ME #17) and the payments provider (#1, Phase 5)
+- **Priority:** P3
+- **Depends on:** Phase 5
+- **Risk:** HIGH
+- **Human approval required:** Yes — payment logic
+- **Owner agent:** payments
+- **Affected:** apps/api/src/modules/payments/**
+
+**Description**
+`billing.read` and `billing.manage` are reserved in the permission catalog now, so nothing needs
+to move later. Subscriptions and usage records are **not** built until an agency pricing model
+exists. Marketplace fees remain as plan.md §12 specifies.
+
+**Acceptance criteria**
+- [ ] Pricing decision recorded before any schema
+- [ ] Money moves only with a ledger entry and an audit event in the same transaction (`payments-webhooks`)
+
+**Validation**
+```bash
+pnpm --filter api test billing
 ```
 
 ---

@@ -84,6 +84,16 @@ authorization. It calls registered tools; the backend does the rest.
    Engineering changes the plumbing of legal pages, never their substance. Acceptance is
    recorded per document, per version, with the exact text shown — see the `legal-consent`
    skill.
+16. **Tenant isolation is an infrastructure and database security boundary, not business-domain
+   plumbing** (ADR-0011). The active workspace is resolved from trusted authentication context at
+   the request or job boundary — `X-Workspace` intersected with memberships read per request, never
+   a body, query, URL, AI or MCP value. The execution context carries it; PostgreSQL row-level
+   security enforces it, as the non-bypass runtime role, with context set transaction-locally.
+   Services, domain methods, AI commands and repositories **never take a `tenant_id` parameter**;
+   `tenant_id` lives in schemas, indexes, policies, cache keys, audit rows, jobs and infrastructure
+   metadata. **The database assumes application code will make mistakes** and still prevents
+   cross-tenant access. Every table is classified; cross-workspace access exists only inside the
+   audited `PlatformContext`. See the `tenant-isolation` skill and `docs/architecture/tenancy.md`.
 
 ## Stack
 
@@ -190,3 +200,4 @@ approval-gated jobs. See `ci-cd`.
 - Skills (repeatable procedures): `.claude/skills/`
 - Slash commands: `.claude/commands/`
 - Harness explanation: `.claude/README.md`
+- Tenancy (workspaces, agencies, isolation): `docs/architecture/tenancy.md`, ADR-0011, ADR-0012

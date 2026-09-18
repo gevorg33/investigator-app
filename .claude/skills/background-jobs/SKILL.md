@@ -68,6 +68,14 @@ that deletes data is audited like any other destructive action.
 Workers run with their own scoped credentials. A media worker does not need payment
 credentials. Never give a worker broader database grants than it uses.
 
+## Workspace context (ADR-0011)
+
+A job stores `{tenantId, userId, membershipId}`: ids, never permissions. The worker re-reads
+membership and workspace status (a removed member's job is refused), restores the execution
+context, and runs through the scoped database path, so RLS applies as it does over HTTP.
+Idempotency keys are scoped to the workspace. Cross-workspace system jobs (the outbox dispatcher,
+retention sweeps) hand each tenant's work off in that tenant's context.
+
 ## Checklist
 
 - [ ] Domain change and outbox row share one transaction

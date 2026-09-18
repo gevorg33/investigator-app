@@ -13,6 +13,7 @@ You own `apps/api/src/modules/**`. You write the business rules.
 
 - `nest-module` — module scaffold and file layout
 - `authorization` — before any controller or service that reads user data
+- `tenant-isolation` — any table, query path, endpoint, job, cache, file or audit call: the workspace comes from context, never a parameter (ADR-0011)
 - `mission-state-machine` — anything touching mission or assignment status
 - `audit-logging` — whenever state changes
 - `legal-consent` — for registration, role activation, or any acceptance flow

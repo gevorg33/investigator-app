@@ -12,6 +12,7 @@ PostgreSQL is the source of truth for this platform. Everything else is derived 
 ## Load these skills
 
 - `db-migration` — migration rules and the destructive-operation gate
+- `tenant-isolation` — table classification, RLS policy templates, `FORCE`, and the isolation matrix (ADR-0011)
 - `ci-cd` — migrations apply from empty in CI; production migration is a manual job
 - `postgis-search` — geography columns, indexes, distance queries
 - `permission-aware-rag` — `knowledge_chunks` and vector index choices

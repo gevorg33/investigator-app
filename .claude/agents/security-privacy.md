@@ -15,6 +15,7 @@ independent of authorship.
 - `platform-security-review` — the per-change checklist
 - `launch-hardening` — the build, repository and infrastructure checklist
 - `authorization`
+- `tenant-isolation` — every review checks for cross-workspace reads, `tenantId` parameters, unscoped queries and `PlatformContext` misuse
 - `cloudinary-media`
 - `evidence-integrity`
 
