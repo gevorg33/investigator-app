@@ -1,4 +1,14 @@
-import { index, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  foreignKey,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { investigatorProfiles } from './profiles';
 import { geographyPoint, geographyPolygon } from './types';
 
@@ -45,6 +55,12 @@ export const serviceAreas = pgTable(
     area: geographyPolygon('area').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     // GIST, always: without it every coverage query is a sequential scan of every area.
@@ -52,5 +68,11 @@ export const serviceAreas = pgTable(
     index('service_areas_profile_idx').on(t.profileId),
     // Country is a hard filter applied before any geography (postgis-search).
     index('service_areas_country_idx').on(t.countryCode, t.city),
+    foreignKey({
+      name: 'service_areas_profile_tenant_fk',
+      columns: [t.profileId, t.tenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('cascade'),
+    index('service_areas_tenant_idx').on(t.tenantId),
   ],
 );

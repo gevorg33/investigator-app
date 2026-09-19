@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -5,9 +6,10 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
 
 /**
  * Client-supplied idempotency keys (docs/api/idempotency.md).
@@ -46,9 +48,22 @@ export const idempotencyKeys = pgTable(
      */
     completedAt: timestamp('completed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The workspace the key was claimed in (T-076): the execution context's, else the actor's
+     * Personal workspace. **NULL for a system action** — assignment creation from a payment runs
+     * as a system actor with no workspace, and a key for it belongs to none rather than to an
+     * invented one. Never changes after insert.
+     */
+    tenantId: uuid('tenant_id')
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
   },
   (t) => [
-    uniqueIndex('idempotency_keys_scope_unique').on(t.actorId, t.endpoint, t.key),
+    // Per workspace (T-076): a replay in another workspace must never return this one's response.
+    // NULLS NOT DISTINCT so two system claims (tenant NULL) of one key still collide.
+    unique('idempotency_keys_scope_unique')
+      .on(t.tenantId, t.actorId, t.endpoint, t.key)
+      .nullsNotDistinct(),
     // Keys live at least 24 hours; the retention job finds expired ones by age.
     index('idempotency_keys_created_idx').on(t.createdAt),
   ],

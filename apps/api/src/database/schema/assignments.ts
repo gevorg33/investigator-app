@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -6,6 +8,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -113,6 +116,18 @@ export const assignments = pgTable(
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the quote by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    /**
+     * Copied from the quote by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('assignments_mission_unique').on(t.missionId),
@@ -120,6 +135,14 @@ export const assignments = pgTable(
     uniqueIndex('assignments_quote_unique').on(t.quoteId),
     index('assignments_investigator_idx').on(t.investigatorProfileId, t.status),
     index('assignments_customer_idx').on(t.customerId, t.createdAt),
+    foreignKey({
+      name: 'assignments_quote_parties_fk',
+      columns: [t.quoteId, t.customerTenantId, t.supplierTenantId],
+      foreignColumns: [quotes.id, quotes.customerTenantId, quotes.supplierTenantId],
+    }).onDelete('restrict'),
+    unique('assignments_id_parties_unique').on(t.id, t.customerTenantId, t.supplierTenantId),
+    index('assignments_customer_tenant_idx').on(t.customerTenantId, t.status),
+    index('assignments_supplier_tenant_idx').on(t.supplierTenantId, t.status),
   ],
 );
 
@@ -143,6 +166,25 @@ export const assignmentStatusHistory = pgTable(
     staffScope: text('staff_scope'),
     reason: text('reason'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the assignment by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    /**
+     * Copied from the assignment by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
   },
-  (t) => [index('assignment_status_history_assignment_idx').on(t.assignmentId, t.occurredAt)],
+  (t) => [
+    index('assignment_status_history_assignment_idx').on(t.assignmentId, t.occurredAt),
+    foreignKey({
+      name: 'assignment_history_parties_fk',
+      columns: [t.assignmentId, t.customerTenantId, t.supplierTenantId],
+      foreignColumns: [assignments.id, assignments.customerTenantId, assignments.supplierTenantId],
+    }).onDelete('restrict'),
+  ],
 );

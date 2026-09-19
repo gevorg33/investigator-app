@@ -24,14 +24,19 @@ describe('coverage query plan', () => {
     const rollback = new Error('rollback');
     await sql
       .begin(async (tx) => {
+        // Three statements, not one (T-076): a row's workspace is derived from rows inserted before
+        // it — the user's Personal workspace, the profile's workspace — and a single statement
+        // cannot see what it has itself inserted.
         await tx`
-          WITH u AS (
-            INSERT INTO users (email)
-            SELECT 'plan-' || g || '-' || ${run} || '@example.test' FROM generate_series(1, 1000) g
-            RETURNING id
-          ), p AS (
-            INSERT INTO investigator_profiles (user_id, visibility, accepting_work)
-            SELECT id, 'PUBLISHED', true FROM u RETURNING id
+          INSERT INTO users (email)
+            SELECT 'plan-' || g || '-' || ${run} || '@example.test' FROM generate_series(1, 1000) g`;
+        await tx`
+          INSERT INTO investigator_profiles (user_id, visibility, accepting_work)
+          SELECT id, 'PUBLISHED', true FROM users WHERE email LIKE 'plan-%-' || ${run} || '@example.test'`;
+        await tx`
+          WITH seeded_profiles AS (
+            SELECT p.id FROM investigator_profiles p JOIN users u ON u.id = p.user_id
+             WHERE u.email LIKE 'plan-%-' || ${run} || '@example.test'
           )
           INSERT INTO service_areas (profile_id, kind, label, centre, radius_m, area)
           SELECT id, 'RADIUS', 'seed',
@@ -41,7 +46,7 @@ describe('coverage query plan', () => {
             SELECT p.id,
                    round((random() * 300 - 150)::numeric, 2)::float8 AS lon,
                    round((random() * 120 - 60)::numeric, 2)::float8 AS lat
-            FROM p, generate_series(1, 5)
+            FROM seeded_profiles p, generate_series(1, 5)
           ) seeded`;
         await tx`ANALYZE service_areas`;
         await tx`ANALYZE investigator_profiles`;

@@ -209,8 +209,10 @@ describe('verification references', () => {
       onDelete: f.onDelete,
     }));
 
-  it('a request restricts its profile', () => {
+  it('a request restricts its profile, and shares its workspace (T-076)', () => {
+    // The composite key holds the request's workspace equal to its profile's.
     expect(refs(verificationRequests)).toEqual([
+      { column: 'profile_id', target: investigatorProfiles, onDelete: 'restrict' },
       { column: 'profile_id', target: investigatorProfiles, onDelete: 'restrict' },
     ]);
   });
@@ -222,12 +224,15 @@ describe('verification references', () => {
         { column: 'media_asset_id', target: mediaAssets, onDelete: 'restrict' },
       ]),
     );
-    expect(refs(verificationRequestDocuments)).toHaveLength(2);
+    // Plus the two composite keys that hold its workspace equal to the request's and the file's.
+    expect(refs(verificationRequestDocuments)).toHaveLength(4);
   });
 
   it('a decision restricts its request, and records its reviewer without a reference', () => {
     // Attribution must survive the reviewer's account, as in audit_logs.
     expect(refs(verificationDecisions)).toEqual([
+      { column: 'request_id', target: verificationRequests, onDelete: 'restrict' },
+      // T-076: the composite key holding the decision's workspace equal to the request's.
       { column: 'request_id', target: verificationRequests, onDelete: 'restrict' },
     ]);
   });

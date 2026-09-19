@@ -1,4 +1,5 @@
 import {
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -6,6 +7,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -80,6 +82,18 @@ export const quotes = pgTable(
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the mission by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    /**
+     * Copied from the lead investigator's profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     // The customer's list: every quote on their mission, newest first.
@@ -98,5 +112,18 @@ export const quotes = pgTable(
     uniqueIndex('quotes_one_accepted_per_mission')
       .on(t.missionId)
       .where(sql`${t.status} = 'ACCEPTED'`),
+    foreignKey({
+      name: 'quotes_mission_customer_tenant_fk',
+      columns: [t.missionId, t.customerTenantId],
+      foreignColumns: [missions.id, missions.customerTenantId],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'quotes_profile_supplier_tenant_fk',
+      columns: [t.investigatorProfileId, t.supplierTenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('restrict'),
+    unique('quotes_id_parties_unique').on(t.id, t.customerTenantId, t.supplierTenantId),
+    index('quotes_supplier_tenant_idx').on(t.supplierTenantId, t.status),
+    index('quotes_customer_tenant_idx').on(t.customerTenantId),
   ],
 );

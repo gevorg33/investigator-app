@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -7,9 +9,11 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
 import { taxonomyNodes } from './taxonomy';
 import { users } from './users';
 
@@ -34,8 +38,19 @@ export const customerProfiles = pgTable(
     contactPhone: text('contact_phone'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The workspace that owns this row (T-076). Filled from the execution context, else from the
+     * owning user's Personal workspace (trigger `fill_owner_tenant`); never changes after insert.
+     */
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
   },
-  (t) => [uniqueIndex('customer_profiles_user_unique').on(t.userId)],
+  (t) => [
+    uniqueIndex('customer_profiles_user_unique').on(t.userId),
+    index('customer_profiles_tenant_idx').on(t.tenantId),
+  ],
 );
 
 export const pricingModel = pgEnum('pricing_model', ['HOURLY', 'FIXED_FEE', 'RETAINER', 'MIXED']);
@@ -100,9 +115,18 @@ export const investigatorProfiles = pgTable(
     contactPhone: text('contact_phone'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The workspace that owns this row (T-076). Filled from the execution context, else from the
+     * owning user's Personal workspace (trigger `fill_owner_tenant`); never changes after insert.
+     */
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
   },
   (t) => [
-    uniqueIndex('investigator_profiles_user_unique').on(t.userId),
+    // One profile per person per workspace (T-076); was one per person.
+    uniqueIndex('investigator_profiles_tenant_user_unique').on(t.tenantId, t.userId),
     // The three columns discovery filters on before it touches geography (plan.md §9). All
     // three are hard filters, so they belong in one index in the order the query applies them.
     index('investigator_profiles_visibility_idx').on(
@@ -110,6 +134,8 @@ export const investigatorProfiles = pgTable(
       t.verificationStatus,
       t.acceptingWork,
     ),
+    unique('investigator_profiles_id_tenant_unique').on(t.id, t.tenantId),
+    index('investigator_profiles_tenant_idx').on(t.tenantId),
   ],
 );
 
@@ -134,10 +160,21 @@ export const investigatorLanguages = pgTable(
     /** ISO 639-1, lower case. Not the app's en/ru/hy set: an investigator may work in more. */
     languageCode: text('language_code').notNull(),
     proficiency: languageProficiency('proficiency').notNull(),
+    /**
+     * Copied from the profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('investigator_languages_unique').on(t.profileId, t.languageCode),
     index('investigator_languages_code_idx').on(t.languageCode),
+    foreignKey({
+      name: 'investigator_languages_profile_tenant_fk',
+      columns: [t.profileId, t.tenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('cascade'),
   ],
 );
 
@@ -160,10 +197,21 @@ export const investigatorSpecialties = pgTable(
     taxonomyNodeId: uuid('taxonomy_node_id')
       .notNull()
       .references(() => taxonomyNodes.id, { onDelete: 'restrict' }),
+    /**
+     * Copied from the profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('investigator_specialties_unique').on(t.profileId, t.taxonomyNodeId),
     index('investigator_specialties_node_idx').on(t.taxonomyNodeId),
+    foreignKey({
+      name: 'investigator_specialties_profile_tenant_fk',
+      columns: [t.profileId, t.tenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('cascade'),
   ],
 );
 
@@ -187,6 +235,19 @@ export const investigatorAvailability = pgTable(
     dayOfWeek: smallint('day_of_week').notNull(),
     startMinute: smallint('start_minute').notNull(),
     endMinute: smallint('end_minute').notNull(),
+    /**
+     * Copied from the profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
-  (t) => [index('investigator_availability_profile_idx').on(t.profileId)],
+  (t) => [
+    index('investigator_availability_profile_idx').on(t.profileId),
+    foreignKey({
+      name: 'investigator_availability_profile_tenant_fk',
+      columns: [t.profileId, t.tenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('cascade'),
+  ],
 );

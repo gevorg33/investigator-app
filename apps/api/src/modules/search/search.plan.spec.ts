@@ -26,14 +26,19 @@ describe('discovery query plan', () => {
     const rollback = new Error('rollback');
     await sql
       .begin(async (tx) => {
+        // Three statements, not one (T-076): a row's workspace is derived from rows inserted before
+        // it — the user's Personal workspace, the profile's workspace — and a single statement
+        // cannot see what it has itself inserted.
         await tx`
-          WITH u AS (
-            INSERT INTO users (email, status)
-            SELECT 'dplan-' || g || '-' || ${run} || '@example.test', 'ACTIVE' FROM generate_series(1, 1000) g
-            RETURNING id
-          ), p AS (
-            INSERT INTO investigator_profiles (user_id, visibility, accepting_work, verification_status, verified_at)
-            SELECT id, 'PUBLISHED', true, 'VERIFIED', now() FROM u RETURNING id
+          INSERT INTO users (email, status)
+            SELECT 'dplan-' || g || '-' || ${run} || '@example.test', 'ACTIVE' FROM generate_series(1, 1000) g`;
+        await tx`
+          INSERT INTO investigator_profiles (user_id, visibility, accepting_work, verification_status, verified_at)
+          SELECT id, 'PUBLISHED', true, 'VERIFIED', now() FROM users WHERE email LIKE 'dplan-%-' || ${run} || '@example.test'`;
+        await tx`
+          WITH seeded_profiles AS (
+            SELECT p.id FROM investigator_profiles p JOIN users u ON u.id = p.user_id
+             WHERE u.email LIKE 'dplan-%-' || ${run} || '@example.test'
           )
           INSERT INTO service_areas (profile_id, kind, label, country_code, city, centre, radius_m, area)
           SELECT id, 'RADIUS', 'seed', 'AM', 'Yerevan',
@@ -43,7 +48,7 @@ describe('discovery query plan', () => {
             SELECT p.id,
                    round((random() * 300 - 150)::numeric, 2)::float8 AS lon,
                    round((random() * 120 - 60)::numeric, 2)::float8 AS lat
-            FROM p, generate_series(1, 5)
+            FROM seeded_profiles p, generate_series(1, 5)
           ) seeded`;
         await tx`ANALYZE service_areas`;
         await tx`ANALYZE investigator_profiles`;

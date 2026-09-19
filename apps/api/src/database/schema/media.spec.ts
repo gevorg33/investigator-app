@@ -6,6 +6,7 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from './index';
 import { mediaAssets } from './media';
+import { tenants } from './tenants';
 import { users } from './users';
 import { testPool } from '../../../test/db';
 
@@ -31,7 +32,11 @@ describe('media_assets', () => {
       target: f.reference().foreignTable,
       onDelete: f.onDelete,
     }));
-    expect(fk).toEqual([{ column: 'owner_id', target: users, onDelete: 'restrict' }]);
+    expect(fk).toEqual([
+      { column: 'owner_id', target: users, onDelete: 'restrict' },
+      // T-076: and the workspace it belongs to, which it can outlive no more than its owner.
+      { column: 'tenant_id', target: tenants, onDelete: 'restrict' },
+    ]);
   });
 
   it('declares one row per public ID', () => {
