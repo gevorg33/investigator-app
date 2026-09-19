@@ -4,7 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { MAILER, type Mailer } from '../../common/mail/mailer';
 import { DB, type Db } from '../../database/database.module';
-import { userSessions, userTokens, users } from '../../database/schema';
+import { tenants, userSessions, userTokens, users } from '../../database/schema';
 import { invalidCredentials } from './auth.errors';
 import { PasswordService } from './password.service';
 import { RateLimitService } from './rate-limit.service';
@@ -157,6 +157,13 @@ export class AuthService {
     }
 
     const issued = this.sessions.create(user.id);
+    // A new session opens in the Personal workspace (tenancy.md §6). The trigger that created
+    // the user created it in the same statement, and the unique index allows only one, so it
+    // exists exactly once; switching workspace moves this (T-075).
+    const [personal] = await this.db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.personalOwnerId, user.id));
     await this.db.insert(userSessions).values({
       id: issued.sessionId,
       userId: user.id,
@@ -165,6 +172,7 @@ export class AuthService {
       expiresAt: issued.expiresAt,
       ipAddress: ctx.ip ?? null,
       userAgent: ctx.userAgent ?? null,
+      defaultTenantId: personal!.id,
     });
 
     await this.audit.record({
@@ -223,6 +231,8 @@ export class AuthService {
         expiresAt: next.expiresAt,
         ipAddress: ctx.ip ?? null,
         userAgent: ctx.userAgent ?? null,
+        // Rotation replaces the token, not the user's place: the workspace carries over.
+        defaultTenantId: found.defaultTenantId,
       });
     });
 

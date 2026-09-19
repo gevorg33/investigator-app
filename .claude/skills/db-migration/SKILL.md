@@ -58,6 +58,25 @@ Foreign keys everywhere, with deliberate delete semantics:
 - Join rows and derived data: cascade is usually right.
 - Anything user-facing: restrict, and handle the error meaningfully.
 
+## Triggers (since T-074)
+
+Allowed for **invariants the database must hold whoever the writer is**: registration, a script,
+a fixture, a bug. Never for business workflows, which belong in services.
+
+- **Invoker's privileges, never `SECURITY DEFINER`**, and a fixed `SET search_path = pg_catalog,
+  public`. A spec asserts both for every trigger function.
+- **Name the rule in the message** (`RAISE EXCEPTION 'rule_name: …' USING CONSTRAINT = 'rule_name'`).
+  A custom `CONSTRAINT` only sets the error's field, so without the name in the message, logs and
+  tests cannot see which rule refused.
+- **Deferred (`DEFERRABLE INITIALLY DEFERRED`) when a legitimate transaction passes through an
+  invalid state**, such as moving ownership. A count-then-decide check **locks the parent row
+  first** (`FOR UPDATE`), or concurrent writers each see the other's uncommitted state and both
+  commit. Prove the lock with a test that forces the overlap: both check, then both commit.
+- **Backfill before creating row-level checks,** then assert the invariant once, set-based
+  (`DO $$ … RAISE …`). Row triggers firing once per backfilled row took over five minutes on 40k
+  users; set-based took one second.
+- **Test with direct writes**, as the owner, bypassing the application.
+
 ## Indexes
 
 Every index names the query it serves, in a comment. No speculative indexes — each one
