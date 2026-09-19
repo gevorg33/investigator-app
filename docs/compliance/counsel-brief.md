@@ -191,3 +191,17 @@ investigators continue alongside them.
     individual licence, or both, before the agency may quote?
 31. **Principals and ban evasion.** Is verifying the identity of an agency's principals, and
     refusing an agency whose principal is permanently banned, lawful on the same basis as §19a?
+
+### Hiring experience (plan.md §30, added 2026-09-19)
+
+Customers will be able to message investigators before hiring. The customer is shown by first
+name only, and messages containing contact details are blocked. In-app voice calling is planned
+for later.
+
+32. **Call recording.** If in-app calls are ever recorded, for disputes or safety, what consent
+    is required in each launch jurisdiction (one-party or all-party)? Is announcing it at the
+    start of each call sufficient? The default is not to record.
+33. **Automated screening of private messages.** The platform will scan messages before delivery,
+    blocking contact details and flagging requests the policy prohibits. What lawful basis
+    covers this, what must the privacy notice say, and does flagging a message to a human
+    moderator change the answer?

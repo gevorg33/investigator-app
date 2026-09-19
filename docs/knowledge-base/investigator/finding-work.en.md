@@ -4,9 +4,9 @@ title: Finding missions you can quote on
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-19
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -30,8 +30,22 @@ reaches you, which is why keeping your profile accurate directly determines your
 The category, the description, the area, the timeframe, the budget range, the languages
 required, and any attachments the customer provided.
 
-You do not see the customer's contact details at this stage. Those become available within
-an assignment once your quote has been accepted and paid.
+You see the customer by first name only: no surname, email, phone number or photo. What the
+assignment requires becomes available once your quote has been accepted and paid.
+
+## Can I talk to the customer before quoting?
+
+Yes. You can ask one question on a published mission you are eligible for. After that, you
+cannot send anything further until the customer replies; once they do, the conversation is
+open. A customer can also start a conversation with you if you are matched to their mission
+or have quoted on it.
+
+Messages containing a phone number, an email address or a messaging-app handle are not
+delivered. Work, contact and payment stay on the platform, which is also what protects you in
+a dispute. Anything you agree in a conversation belongs in your quote.
+
+If a customer asks for something the platform prohibits, it is flagged to staff. Decline it:
+you are never expected to judge the request alone.
 
 ## Can I see who else is quoting?
 

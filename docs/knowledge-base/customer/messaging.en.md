@@ -4,9 +4,9 @@ title: Messaging your investigator
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-19
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -18,19 +18,38 @@ tags: [messaging, communication, attachments]
 
 ## Who can I message?
 
-The investigator on your assignment. Conversations are scoped to a single assignment, so
-each piece of work has its own thread and its own history.
+Before you hire anyone, you can message the investigators matched to your mission and any
+investigator who has quoted on it. It is free, and you do not have to pay or commit to
+anything to ask questions. After you hire, you message the investigator on your assignment.
 
-You cannot message investigators who have not been assigned to you, and they cannot message
-you. This is deliberate — it prevents unsolicited approaches.
+Each conversation belongs to one mission and one investigator or agency, so every
+conversation has its own thread and its own history.
 
-## Can I contact an investigator before accepting their quote?
+## Can I talk to an investigator before paying?
 
-You can ask questions about their quote through the mission. That conversation is limited
-in scope until an assignment exists.
+Yes. Open a conversation from your mission with a matched or quoting investigator and ask
+what you need to know: how they would approach it, what the quote includes, what they would
+need from you.
 
-Use it to clarify scope, assumptions and exclusions before you accept. Ambiguity resolved
-before acceptance is far cheaper than a dispute afterwards.
+Use it to clarify scope, assumptions and exclusions before you accept. Anything you agree
+in a conversation should end up in the quote, because the quote is the agreement. Ambiguity
+resolved before acceptance is far cheaper than a dispute afterwards.
+
+When you hire, the conversation with that investigator continues into the assignment with
+its history intact. Your other conversations on the mission close and stay readable.
+
+## Can investigators message me first?
+
+Only about your mission, and only once. An investigator who is eligible for your mission can
+ask one question on it. They cannot send anything further until you reply. If you do not
+reply, that is the end of it. This keeps pre-hire contact from turning into unsolicited
+approaches.
+
+## Do investigators see my name before I hire them?
+
+They see your first name and your mission, and nothing else: not your surname, email, phone
+number or photo. After you hire, the investigator sees what the assignment requires, and you
+decide whether to share anything more.
 
 ## Can I send files in a message?
 
@@ -43,15 +62,25 @@ assignment record.
 
 ## Should I move the conversation to email or a messaging app?
 
-No. Messages in the platform are part of the assignment record, and staff can see them if
-there is a dispute. Conversations held elsewhere cannot be considered.
+No. Messages in the platform are part of the record, and staff can see them if there is a
+dispute. Conversations held elsewhere cannot be considered.
+
+Messages containing a phone number, an email address or a messaging-app handle are not
+delivered, and you are told why. This applies to both sides and protects you as much as the
+investigator: payment and contact stay where there is a record.
 
 If an investigator asks you to move the conversation off-platform — particularly if it is
 about payment — treat that as a warning sign and contact support.
 
+## Can I call an investigator?
+
+Not yet. In-app calling is planned. Until it arrives, use messages, which also keep a record
+you can rely on later.
+
 ## Are my messages private?
 
-They are private to you and the investigator on that assignment. Staff can read them only
+They are private to you and the investigator or agency in that conversation. Inside an
+agency, the people handling your mission can read it. Staff can read them only
 where there is a specific reason, such as a dispute or an abuse report, and that access is
 recorded.
 
