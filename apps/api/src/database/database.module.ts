@@ -1,6 +1,14 @@
-import { Global, Inject, Injectable, Module, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Global,
+  Inject,
+  Injectable,
+  Module,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { assertRuntimeRole } from './runtime-role';
 import * as schema from './schema';
 
 export const DB = Symbol('DB');
@@ -46,12 +54,26 @@ export class PoolLifecycle implements OnModuleDestroy {
   }
 }
 
+/**
+ * The API does not start as a role row-level security would not apply to (T-073). See
+ * `runtime-role.ts` for why this fails closed rather than warning.
+ */
+@Injectable()
+export class RuntimeRoleCheck implements OnApplicationBootstrap {
+  constructor(@Inject(SQL) private readonly sql: Sql) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    await assertRuntimeRole(this.sql);
+  }
+}
+
 @Global()
 @Module({
   providers: [
     { provide: SQL, useFactory: (): Sql => createPool(process.env['DATABASE_URL']) },
     { provide: DB, inject: [SQL], useFactory: (sql: Sql): Db => drizzle(sql, { schema }) },
     PoolLifecycle,
+    RuntimeRoleCheck,
   ],
   exports: [DB],
 })

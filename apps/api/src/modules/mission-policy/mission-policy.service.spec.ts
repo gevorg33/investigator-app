@@ -14,23 +14,29 @@ import { testPool } from '../../../test/db';
 describe('recording a screening', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   const policy = new MissionPolicyService();
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** A real mission row, because screening reads its category's band from the database. */
   const mission = async (
     opts: { riskBand?: 'STANDARD' | 'HIGH' | null; description?: string } = {},
   ) => {
-    const { userId } = await customer(db);
-    const taxonomyNodeId = await category(db, {
+    const { userId } = await customer(ownerDb);
+    const taxonomyNodeId = await category(ownerDb, {
       riskBand: opts.riskBand === undefined ? 'STANDARD' : opts.riskBand,
     });
     const [row] = await db
@@ -149,20 +155,26 @@ describe('recording a screening', () => {
 describe('an AI classification is input, not a decision', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   const policy = new MissionPolicyService();
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   const screenWith = async (classification: MissionClassification | null) => {
-    const { userId } = await customer(db);
-    const taxonomyNodeId = await category(db, { riskBand: 'STANDARD' });
+    const { userId } = await customer(ownerDb);
+    const taxonomyNodeId = await category(ownerDb, { riskBand: 'STANDARD' });
     const [row] = await db
       .insert(missions)
       .values({

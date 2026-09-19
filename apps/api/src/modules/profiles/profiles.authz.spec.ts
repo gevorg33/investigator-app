@@ -20,12 +20,17 @@ import { testPool } from '../../../test/db';
 describe('profile authorization', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  // Taxonomy is platform data the application may not write; the test sets it up as the owner (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let profiles: ProfilesService;
   const req = { ip: '198.51.100.7', userAgent: 'vitest', correlationId: 'authz-test' };
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
     profiles = new ProfilesService(
       db,
       new AuthzService(new AuditService(db)),
@@ -37,6 +42,7 @@ describe('profile authorization', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** An account with the given roles, and the profiles those roles imply. */
@@ -181,7 +187,7 @@ describe('profile authorization', () => {
 
     it('accepts a specialty that names a real node', async () => {
       const { actor } = await publishedInvestigator();
-      const [node] = await db
+      const [node] = await ownerDb
         .insert(taxonomyNodes)
         .values({ slug: `probe-${randomUUID()}` })
         .returning();

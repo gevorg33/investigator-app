@@ -2,8 +2,10 @@ import { Test } from '@nestjs/testing';
 import { sql } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPool, DatabaseModule, DB, type Db } from './database.module';
+import { TEST_DATABASE_URL, TEST_OWNER_URL } from '../../test/db';
 
-const LOCAL = 'postgres://postgres:postgres@localhost:5433/investigator_dev';
+// The runtime role: the app must boot as investigator_app, never as the owner (T-073).
+const LOCAL = TEST_DATABASE_URL;
 
 describe('database module', () => {
   const original = process.env['DATABASE_URL'];
@@ -28,11 +30,24 @@ describe('database module', () => {
     await expect(db.execute(sql`select 1`)).rejects.toThrow();
   });
 
+  it('refuses to start as a role row-level security would not apply to (T-073)', async () => {
+    // The owner's credentials in DATABASE_URL: the misconfiguration that would make every
+    // isolation test pass while protecting nothing. Boot fails; it does not start with a warning.
+    process.env['DATABASE_URL'] = TEST_OWNER_URL;
+    const mod = await Test.createTestingModule({ imports: [DatabaseModule] }).compile();
+    const app = mod.createNestApplication();
+    try {
+      await expect(app.init()).rejects.toThrow(/Refusing to start: the database role/);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('refuses to start without DATABASE_URL, and says which variable', async () => {
     delete process.env['DATABASE_URL'];
-    await expect(
-      Test.createTestingModule({ imports: [DatabaseModule] }).compile(),
-    ).rejects.toThrow(/DATABASE_URL is required/);
+    await expect(Test.createTestingModule({ imports: [DatabaseModule] }).compile()).rejects.toThrow(
+      /DATABASE_URL is required/,
+    );
   });
 
   it('builds a pool from a URL', async () => {

@@ -32,12 +32,17 @@ import { testPool } from '../../../test/db';
 describe('missions', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let service: MissionsService;
   const req = () => ({ ip: '198.51.100.70', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
@@ -56,12 +61,13 @@ describe('missions', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** A customer with a complete, submittable draft. */
   const withDraft = async (over: Record<string, unknown> = {}) => {
-    const { actor } = await customer(db);
-    const nodeId = await category(db);
+    const { actor } = await customer(ownerDb);
+    const nodeId = await category(ownerDb);
     const draft = await service.createDraft(actor, { ...completeDraft(nodeId), ...over }, req());
     return { actor, draft, nodeId };
   };
@@ -75,13 +81,13 @@ describe('missions', () => {
 
   describe('drafting', () => {
     it('saves an empty draft, so a customer can start without having decided everything', async () => {
-      const { actor } = await customer(db);
+      const { actor } = await customer(ownerDb);
       const draft = await service.createDraft(actor, {}, req());
       expect(draft).toMatchObject({ status: 'DRAFT', version: 1, title: null, languages: [] });
     });
 
     it('records creation in the history with no previous status', async () => {
-      const { actor } = await customer(db);
+      const { actor } = await customer(ownerDb);
       const draft = await service.createDraft(actor, { title: 'Something' }, req());
       expect(await historyOf(draft.id)).toMatchObject([
         { fromStatus: null, toStatus: 'DRAFT', actorKind: 'CUSTOMER', actorId: actor.userId },
@@ -138,7 +144,7 @@ describe('missions', () => {
     it('refuses a category that is not current', async () => {
       // Deprecated nodes keep old missions valid; they do not accept new ones.
       const { actor, draft } = await withDraft();
-      const deprecated = await category(db, { status: 'DEPRECATED' });
+      const deprecated = await category(ownerDb, { status: 'DEPRECATED' });
       await expect(
         service.updateDraft(
           actor,
@@ -219,7 +225,7 @@ describe('missions', () => {
     });
 
     it('lists every missing field rather than refusing one at a time', async () => {
-      const { actor } = await customer(db);
+      const { actor } = await customer(ownerDb);
       const draft = await service.createDraft(actor, { title: 'Only a title' }, req());
       await expect(
         service.submit(
@@ -274,7 +280,7 @@ describe('missions', () => {
 
     it('leaves the draft untouched when submission fails', async () => {
       // Nothing half-applied: no confirmation recorded for a submission that did not happen.
-      const { actor } = await customer(db);
+      const { actor } = await customer(ownerDb);
       const draft = await service.createDraft(actor, { title: 'Incomplete' }, req());
       await expect(
         service.submit(
@@ -370,8 +376,8 @@ describe('missions', () => {
     });
 
     it('rate-limits submissions, because each one costs a moderator’s attention', async () => {
-      const { actor } = await customer(db);
-      const nodeId = await category(db);
+      const { actor } = await customer(ownerDb);
+      const nodeId = await category(ownerDb);
       const submitOnce = async () => {
         const draft = await service.createDraft(actor, completeDraft(nodeId), req());
         return service.submit(
@@ -389,8 +395,8 @@ describe('missions', () => {
   describe('the database as the last line', () => {
     it('refuses a submitted mission with no lawful-purpose confirmation, whatever wrote it', async () => {
       // The service is not the only thing that could ever write this table.
-      const { userId } = await customer(db);
-      const nodeId = await category(db);
+      const { userId } = await customer(ownerDb);
+      const nodeId = await category(ownerDb);
       const [row] = await db
         .insert(missions)
         .values({ customerId: userId, ...completeDraft(nodeId) })
@@ -404,7 +410,7 @@ describe('missions', () => {
     });
 
     it('refuses a submitted mission that is missing a required field', async () => {
-      const { userId } = await customer(db);
+      const { userId } = await customer(ownerDb);
       const [row] = await db
         .insert(missions)
         .values({ customerId: userId, title: 'Only a title' })
@@ -422,7 +428,7 @@ describe('missions', () => {
     });
 
     it('refuses a budget whose minimum exceeds its maximum', async () => {
-      const { userId } = await customer(db);
+      const { userId } = await customer(ownerDb);
       await expect(
         db
           .insert(missions)
@@ -431,7 +437,7 @@ describe('missions', () => {
     });
 
     it('refuses a location more precise than about a kilometre', async () => {
-      const { userId } = await customer(db);
+      const { userId } = await customer(ownerDb);
       await expect(
         db
           .insert(missions)
@@ -440,7 +446,7 @@ describe('missions', () => {
     });
 
     it('refuses a language code that is not ISO 639-1', async () => {
-      const { userId } = await customer(db);
+      const { userId } = await customer(ownerDb);
       await expect(
         db.insert(missions).values({ customerId: userId, languages: ['en', 'English'] }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'missions_languages_valid' } });
@@ -500,8 +506,8 @@ describe('missions', () => {
 
   describe('editing each field', () => {
     it('saves every field a draft can hold', async () => {
-      const { actor } = await customer(db);
-      const nodeId = await category(db);
+      const { actor } = await customer(ownerDb);
+      const nodeId = await category(ownerDb);
       const draft = await service.createDraft(actor, {}, req());
       const updated = await service.updateDraft(
         actor,
@@ -574,7 +580,7 @@ describe('missions', () => {
     });
 
     it('refuses a draft created under a category that does not exist', async () => {
-      const { actor } = await customer(db);
+      const { actor } = await customer(ownerDb);
       await expect(
         service.createDraft(actor, { taxonomyNodeId: randomUUID() }, req()),
       ).rejects.toMatchObject({
@@ -675,7 +681,7 @@ describe('missions', () => {
   describe('authorization', () => {
     it('answers the seven cases for reading a mission', async () => {
       const { actor, draft } = await withDraft();
-      const other = await customer(db);
+      const other = await customer(ownerDb);
       const investigator = testActor({ userId: randomUUID(), roles: ['INVESTIGATOR'] });
       const suspended = testActor({ ...actor, status: 'SUSPENDED' });
 
@@ -689,7 +695,7 @@ describe('missions', () => {
 
     it('does not let another customer submit or cancel someone else’s mission', async () => {
       const { draft } = await withDraft();
-      const intruder = await customer(db);
+      const intruder = await customer(ownerDb);
       // 404, not 403: a 403 confirms the id is real to somebody who should not know.
       await expect(
         service.submit(
@@ -706,7 +712,7 @@ describe('missions', () => {
 
     it('lists only the caller’s own missions', async () => {
       const { actor, draft } = await withDraft();
-      const other = await customer(db);
+      const other = await customer(ownerDb);
       await service.createDraft(other.actor, { title: 'Theirs' }, req());
 
       const mine = await service.listMine(actor, req());

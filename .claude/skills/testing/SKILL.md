@@ -139,7 +139,10 @@ const assignment = await assignmentFactory({ status: 'IN_PROGRESS' });
 
 These three are how this suite used to flake. Each is now enforced by a spec:
 
-- **Open database pools only through `testPool()`** (`apps/api/test/db.ts`). It caps every pool
+- **Open database pools only through `testPool()`** (`apps/api/test/db.ts`). The code under test runs
+  on `testPool()`, which is `investigator_app`, the runtime role, so row-level security applies
+  to it. Fixtures and schema-rule tests use `testPool({ role: 'owner' })`, because they write what
+  the application may not (T-073). Every pool is capped
   at `TEST_POOL_MAX`, and the suite runs on a fixed `MAX_WORKERS`
   (`apps/api/test/db-budget.ts`). `connection-budget.spec.ts` fails if a spec opens its own pool,
   exceeds the per-file budget, or the worst case stops fitting in `max_connections`. A pool must

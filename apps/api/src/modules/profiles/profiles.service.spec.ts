@@ -20,12 +20,17 @@ import { testPool } from '../../../test/db';
 describe('profile persistence', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  // Taxonomy is platform data the application may not write; the test sets it up as the owner (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let profiles: ProfilesService;
   const req = { ip: '198.51.100.11', userAgent: 'vitest', correlationId: 'persist-test' };
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
     profiles = new ProfilesService(
       db,
       new AuthzService(new AuditService(db)),
@@ -37,6 +42,7 @@ describe('profile persistence', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   const investigator = async (): Promise<Actor> => {
@@ -50,7 +56,7 @@ describe('profile persistence', () => {
   };
 
   const node = async (): Promise<string> => {
-    const [n] = await db.insert(taxonomyNodes).values({ slug: `n-${randomUUID()}` }).returning();
+    const [n] = await ownerDb.insert(taxonomyNodes).values({ slug: `n-${randomUUID()}` }).returning();
     return n?.id ?? '';
   };
 

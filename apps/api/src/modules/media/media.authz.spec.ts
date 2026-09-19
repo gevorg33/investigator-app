@@ -20,6 +20,9 @@ import { testPool } from '../../../test/db';
 describe('who can obtain a delivery link', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let storage: FakeStorage;
   let media: MediaService;
   const req = () => ({ ip: '198.51.100.41', userAgent: 'vitest', correlationId: randomUUID() });
@@ -27,6 +30,8 @@ describe('who can obtain a delivery link', () => {
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
@@ -44,6 +49,7 @@ describe('who can obtain a delivery link', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** An uploaded, scanned asset owned by a fresh investigator. */
@@ -51,13 +57,13 @@ describe('who can obtain a delivery link', () => {
     category: 'VERIFICATION_DOCUMENT' | 'PROFILE_IMAGE' = 'VERIFICATION_DOCUMENT',
     scan: 'PENDING' | 'CLEAN' | 'INFECTED' | 'FAILED' = 'CLEAN',
   ): Promise<{ owner: Actor; assetId: string }> => {
-    const owner = await person(db);
+    const owner = await person(ownerDb);
     const input =
       category === 'VERIFICATION_DOCUMENT'
         ? { category, mimeType: 'application/pdf', bytes: 10 }
         : { category, mimeType: 'image/png', bytes: 10 };
     const { assetId } = await media.authorizeUpload(owner, input, req());
-    await makeReady(db, assetId, scan);
+    await makeReady(ownerDb, assetId, scan);
     return { owner, assetId };
   };
 
@@ -77,7 +83,7 @@ describe('who can obtain a delivery link', () => {
     it('another investigator gets 404, the same as for an id that does not exist', async () => {
       // The criterion T-008 names. 404 rather than 403 so the refusal confirms nothing.
       const { assetId } = await asset();
-      const stranger = await person(db);
+      const stranger = await person(ownerDb);
       const notYours = await deliver(stranger, assetId).catch((e: { status?: number; code?: string }) => e);
       const missing = await deliver(stranger, randomUUID()).catch((e: { status?: number; code?: string }) => e);
       expect(notYours).toMatchObject({ status: 404, code: 'NOT_FOUND' });
@@ -90,7 +96,7 @@ describe('who can obtain a delivery link', () => {
 
     it('a customer gets 404', async () => {
       const { assetId } = await asset();
-      await expect(deliver(await person(db, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
+      await expect(deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
         status: 404,
       });
     });
@@ -99,10 +105,10 @@ describe('who can obtain a delivery link', () => {
       // Serving it to others must respect the profile's published state; until that link
       // exists the restrictive answer applies.
       const { assetId } = await asset('PROFILE_IMAGE');
-      await expect(deliver(await person(db, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
+      await expect(deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
         status: 404,
       });
-      const reviewer = await person(db, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
+      const reviewer = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
       await expect(deliver(reviewer, assetId)).rejects.toMatchObject({ status: 404 });
     });
   });
@@ -110,20 +116,20 @@ describe('who can obtain a delivery link', () => {
   describe('staff', () => {
     it('with the VERIFICATION scope can open a verification document', async () => {
       const { assetId } = await asset();
-      const reviewer = await person(db, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
+      const reviewer = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
       await expect(deliver(reviewer, assetId)).resolves.toHaveProperty('signedUrl');
     });
 
     it('with any other scope cannot — a moderator is not a verification reviewer', async () => {
       const { assetId } = await asset();
-      const moderator = await person(db, { roles: ['STAFF'], staffScopes: ['MODERATION', 'PAYMENTS'] });
+      const moderator = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['MODERATION', 'PAYMENTS'] });
       // 404, not 403: staff outside the scope should not learn the document exists either.
       await expect(deliver(moderator, assetId)).rejects.toMatchObject({ status: 404 });
     });
 
     it('do not carry staff access into another workspace', async () => {
       const { assetId } = await asset();
-      const narrowed = await person(db, {
+      const narrowed = await person(ownerDb, {
         roles: ['STAFF', 'CUSTOMER'],
         staffScopes: ['VERIFICATION'],
         activeRole: 'CUSTOMER',
@@ -133,7 +139,7 @@ describe('who can obtain a delivery link', () => {
 
     it('acting explicitly as staff keeps access', async () => {
       const { assetId } = await asset();
-      const asStaff = await person(db, {
+      const asStaff = await person(ownerDb, {
         roles: ['STAFF', 'CUSTOMER'],
         staffScopes: ['VERIFICATION'],
         activeRole: 'STAFF',
@@ -153,7 +159,7 @@ describe('who can obtain a delivery link', () => {
     );
 
     it('refuses an upload that never completed', async () => {
-      const owner = await person(db);
+      const owner = await person(ownerDb);
       const { assetId } = await media.authorizeUpload(
         owner,
         { category: 'VERIFICATION_DOCUMENT', mimeType: 'application/pdf', bytes: 10 },
@@ -179,7 +185,7 @@ describe('who can obtain a delivery link', () => {
   describe('auditing', () => {
     it('records who opened which file, and never the link itself', async () => {
       const { assetId } = await asset();
-      const reviewer = await person(db, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
+      const reviewer = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
       const r = req();
       const { signedUrl } = await media.getDeliveryUrl(reviewer, assetId, r);
 
@@ -199,7 +205,7 @@ describe('who can obtain a delivery link', () => {
     it('audits a refused attempt too', async () => {
       const { assetId } = await asset();
       const r = req();
-      await media.getDeliveryUrl(await person(db), assetId, r).catch(() => undefined);
+      await media.getDeliveryUrl(await person(ownerDb), assetId, r).catch(() => undefined);
       const rows = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows.map((x) => x.action)).toContain('authz.denied.media.deliver');
     });
@@ -207,8 +213,8 @@ describe('who can obtain a delivery link', () => {
 
   it('meets the seven-case authorization contract', async () => {
     const { owner, assetId } = await asset();
-    const reviewer = await person(db, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
-    const otherInvestigator = await person(db);
+    const reviewer = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
+    const otherInvestigator = await person(ownerDb);
 
     await expectAuthorized((actor) => deliver(actor, assetId), {
       owner,
@@ -222,7 +228,7 @@ describe('who can obtain a delivery link', () => {
       },
     });
     // Out-of-scope staff answer 404 rather than the helper's 403 — asserted separately above.
-    await makeReady(db, assetId, 'CLEAN');
+    await makeReady(ownerDb, assetId, 'CLEAN');
     await expect(deliver(reviewer, assetId)).resolves.toHaveProperty('signedUrl');
   });
 });

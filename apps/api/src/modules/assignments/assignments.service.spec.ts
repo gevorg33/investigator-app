@@ -25,12 +25,17 @@ import { testPool } from '../../../test/db';
 describe('assignments', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let service: AssignmentsService;
   const req = () => ({ ip: '198.51.100.30', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
@@ -48,13 +53,14 @@ describe('assignments', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** A mission whose customer has accepted a quote: the state a payment arrives into. */
   const awaitingPayment = async (over: { priceMinor?: number; currency?: string } = {}) => {
-    const mission = await quotableMission(db, { status: 'CUSTOMER_CONFIRMED' });
-    const inv = await eligibleInvestigator(db);
-    const quote = await submittedQuote(db, {
+    const mission = await quotableMission(ownerDb, { status: 'CUSTOMER_CONFIRMED' });
+    const inv = await eligibleInvestigator(ownerDb);
+    const quote = await submittedQuote(ownerDb, {
       missionId: mission.missionId,
       investigatorProfileId: inv.profileId,
       status: 'ACCEPTED',
@@ -128,9 +134,9 @@ describe('assignments', () => {
     });
 
     it('refuses a quote nobody accepted', async () => {
-      const mission = await quotableMission(db, { status: 'CUSTOMER_CONFIRMED' });
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb, { status: 'CUSTOMER_CONFIRMED' });
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
@@ -194,7 +200,7 @@ describe('assignments', () => {
           missionId: mission.missionId,
           // A different quote, so only the mission uniqueness can refuse this.
           quoteId: (
-            await submittedQuote(db, {
+            await submittedQuote(ownerDb, {
               missionId: mission.missionId,
               investigatorProfileId: inv.profileId,
               status: 'CLOSED',
@@ -262,7 +268,7 @@ describe('assignments', () => {
 
     it('refuses an investigator who is not the one assigned', async () => {
       const { assignment } = await created();
-      const other = await eligibleInvestigator(db);
+      const other = await eligibleInvestigator(ownerDb);
       await expect(service.accept(other.actor, assignment.id, req())).rejects.toMatchObject({
         status: 404,
       });

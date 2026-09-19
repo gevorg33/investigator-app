@@ -1676,6 +1676,7 @@ are not implemented.
 - [ ] Health checks and smoke tests gate deployment success
 - [ ] Rollback procedure documented **and exercised at least once**
 - [ ] Rollback output states plainly that a contract migration is recovered by restore, not revert
+- [ ] Migrations run with `MIGRATION_DATABASE_URL` (the owner); the API's environment holds **only** `DATABASE_URL` (`investigator_app`) and never the owner's credentials. The deploy runs `scripts/set-app-role-password.sh` with `APP_DB_PASSWORD` from the environment's secrets after migrating (T-073)
 - [ ] Deployment audit log: version, actor, approver, outcome
 
 **Validation**
@@ -2919,11 +2920,11 @@ existing test must pass unchanged at every step.
 ---
 
 ### T-073 — Runtime connects as the non-bypass application role
-- **Status:** TODO
+- **Status:** DONE — 2026-09-19
 - **Priority:** P0 — until this lands, every row-level security policy is decorative
 - **Depends on:** T-069
 - **Risk:** HIGH
-- **Human approval required:** Yes — security control and infrastructure change
+- **Human approval required:** Yes — security control and infrastructure change. **Approved 2026-09-19** as designed: boot refusal everywhere including local, and `setup.sh` migrates existing `.env.local` files
 - **Owner agent:** infra-devops + database
 - **Affected:** apps/api/src/database/**, apps/api/test/**, .env.example, .github/workflows/pr.yml, infrastructure/compose/**, scripts/setup.sh
 
@@ -2941,11 +2942,32 @@ non-local environments. `scripts/setup.sh` and CI set it from the environment, w
 automated rather than a manual step.
 
 **Acceptance criteria**
-- [ ] The API refuses to boot if its role is a superuser, owns any table, or has `BYPASSRLS`, and a test proves it
-- [ ] Every existing spec passes with the code under test on `investigator_app`; any missing grant surfaces here, not later under RLS
-- [ ] CI runs the same split; coverage stays at 100%
-- [ ] No non-local credential committed; setup is scripted, not an `ACTIONS-FOR-ME` item
-- [ ] `docs/architecture/tenancy.md` §7 "Roles" marked built
+- [x] The API refuses to boot if its role is a superuser, owns any table, or has `BYPASSRLS`, and a test proves it
+- [x] Every existing spec passes with the code under test on `investigator_app`; any missing grant surfaces here, not later under RLS
+- [x] CI runs the same split; coverage stays at 100%
+- [x] No non-local credential committed; setup is scripted, not an `ACTIONS-FOR-ME` item
+- [x] `docs/architecture/tenancy.md` §7 "Roles" marked built
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Refuses to boot as a privileged role | `RuntimeRoleCheck` runs at application bootstrap. It refuses a superuser, `BYPASSRLS`, a role owning any table, and a role that can `SET ROLE` into either. It is tested against **real roles**, each built in a rolled-back owner transaction and entered with `SET LOCAL ROLE`. A Nest app wired with the owner's credentials fails `init()` |
+| Every spec passes as `investigator_app` | 1,127 tests at 100% on all four metrics. **Measured first:** with everything as the app role, no grant was missing from any real application path. The 94 failures were 93 fixture taxonomy inserts (platform data the app may not write) and one schema test that the revoked privilege reached before the foreign key it tests. The split: 231 fixture calls in 9 specs, and 13 schema specs, move to the owner. A spec asserts each pool's `current_user` |
+| CI runs the same split | `MIGRATION_DATABASE_URL` is the owner. After migrating, a step generates a per-run password, masks it, sets it with the script, and only then defines `DATABASE_URL` as `investigator_app`. Replayed locally on a fresh database: 11 migrations from empty, the app role connected, `superuser=false`, `bypassrls=false`, and DDL was refused |
+| No non-local credential committed | The password comes from `APP_DB_PASSWORD`, through psql's `\getenv` (never the command line) and psql's literal quoting. A 55-character password containing `'; ALTER ROLE investigator_app SUPERUSER; --` was stored literally and logged in, with superuser still false. Passwords under 24 characters are refused. `setup.sh` migrates an existing `.env.local` idempotently and prints no values; tested twice on a copy |
+| Documentation | `tenancy.md` §7 marked built. T-041 gains the deploy criterion (the API environment never holds the owner's credentials). `.env.example`, the `testing` skill |
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| Remove `RuntimeRoleCheck` from the module | 1 fails — the owner boots |
+| `testPool()` silently uses the owner | 2 fail — the role check and the pool-identity spec |
+| Ignore role membership, direct ownership only | 2 fail — both "can SET ROLE into" cases |
+
+**Worth knowing:** roles are cluster-wide. On a shared Postgres server, every database shares one
+`investigator_app` password; CI's is its own server.
 
 **Validation**
 ```bash

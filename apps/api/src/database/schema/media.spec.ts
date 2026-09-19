@@ -15,7 +15,7 @@ describe('media_assets', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>;
 
   beforeAll(() => {
-    sql = testPool({ max: 2 });
+    sql = testPool({ max: 2, role: 'owner' });
     db = drizzle(sql, { schema });
   });
 
