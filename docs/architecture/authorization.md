@@ -6,10 +6,9 @@ shaped the way it is.
 
 Built in T-006.
 
-> **Specified change (ADR-0011).** Workspaces add a **check 0** (an ACTIVE membership in the
-> active workspace) and tenant **permissions** to check 3. PostgreSQL row-level security enforces
-> the workspace boundary underneath all six. Design: `tenancy.md` §8. Built in T-075, T-077 and
-> T-078; this document is updated as each one lands.
+> **Workspaces (ADR-0011).** Check 0 is **built** (T-075, below). Tenant permissions in check 3
+> (T-078) and row-level security underneath all six (T-077) are specified in `tenancy.md` §8, and
+> this document is updated as each lands.
 
 ## The shape of it
 
@@ -76,6 +75,7 @@ that asked for it.
 
 | | Check | Where |
 |---|---|---|
+| 0 | Workspace — an ACTIVE membership in a workspace that is neither suspended, archived nor deleted | `WorkspaceResolver`, via `ActorGuard` (T-075) |
 | 1 | Identity — live, unrevoked session | `ActorService`, via `ActorGuard` |
 | 2 | Account status | `ActorService` (session-ending) and `AuthzService.requireActive` (per action) |
 | 3 | Role permission | `AuthzService.requireRole` |
@@ -199,3 +199,24 @@ decoration.
   participation — see `evidence-integrity` and the relevant phase task.
 - **AI tool scoping.** A tool executes with the caller's scope and re-runs the six checks;
   it never accepts an actor id from the model. Built with the AI gateway.
+
+## Check 0 — the workspace (T-075)
+
+`ActorGuard` resolves the actor and then the workspace, and `ContextInterceptor` (global) runs the
+handler inside the resulting execution context. The DB provider carries that context into every
+query (`database/scoped-client.ts`).
+
+- **`X-Workspace` chooses; memberships decide.** The header is intersected with the caller's
+  ACTIVE memberships, read on this request. So it can only choose among workspaces already held,
+  as `X-Active-Role` can only narrow. A workspace the caller is not in, or one that is suspended,
+  archived or deleted, is refused with **403** and audited as `workspace_not_available`.
+- **No header** uses the session's default while it is usable. Otherwise it uses the caller's
+  Personal workspace, and the default follows it.
+- **Permissions are read with the membership,** on every request, and travel in the frozen
+  context. A removed member is refused on their very next request.
+- **Nothing takes a workspace as a parameter.** A static spec (`tenant-plumbing.spec.ts`) parses
+  the source and refuses any `tenantId` parameter or DTO field. Only the database module may touch
+  the raw pool, which is the unscoped path.
+- **Denials outlive the transaction around them.** Context is set per unit of work, not per
+  request. `AuthzService.deny` records through its own short transaction, so a denial inside a
+  transaction that rolls back still leaves its audit row (end-to-end test).

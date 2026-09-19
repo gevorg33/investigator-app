@@ -3044,11 +3044,11 @@ pnpm --filter api test tenants auth
 ---
 
 ### T-075 — Execution context and workspace resolution
-- **Status:** TODO
+- **Status:** DONE — 2026-09-19
 - **Priority:** P0
 - **Depends on:** T-074
 - **Risk:** HIGH
-- **Human approval required:** Yes — authorization plumbing
+- **Human approval required:** Yes — authorization plumbing. **Approved 2026-09-19** as designed, with the fallback to Personal when a request names no workspace and the session default is no longer usable
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/common/{context,authz}/**, apps/api/src/database/**, apps/api/src/modules/tenants/**
 
@@ -3070,11 +3070,50 @@ The context and its resolution:
 (ADR-0011 §4).
 
 **Acceptance criteria**
-- [ ] A header naming a foreign workspace → 403, audited; a removed or suspended member is refused on their next request
-- [ ] Pooling: on one reserved connection, tenant A then tenant B — the settings read empty after commit and nothing carries over; concurrent A/B requests on a pool of two never cross
-- [ ] Regression: a denied request that then fails still leaves its denial audit row
-- [ ] Static specs: no service, repository or domain method takes `tenantId`; only allowlisted callers use the unscoped path
-- [ ] `authorization.md` documents check 0
+- [x] A header naming a foreign workspace → 403, audited; a removed or suspended member is refused on their next request
+- [x] Pooling: on one reserved connection, tenant A then tenant B — the settings read empty after commit and nothing carries over; concurrent A/B requests on a pool of two never cross
+- [x] Regression: a denied request that then fails still leaves its denial audit row
+- [x] Static specs: no service, repository or domain method takes `tenantId`; only allowlisted callers use the unscoped path
+- [x] `authorization.md` documents check 0
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Foreign workspace refused; removed or suspended member refused next request | `WorkspaceResolver` intersects `X-Workspace` with ACTIVE memberships in usable workspaces, read on the request. Tests: someone else's Personal workspace, a missing id and a malformed header each get 403 with an audit row (`workspace_not_available`); SUSPENDED and REMOVED members are refused on their next request; SUSPENDED and ARCHIVED workspaces are refused to everyone; CREATING admits its owner. **End to end** through AppModule: a foreign header is refused before the handler runs |
+| Pooling | On **one connection**: tenant A's query commits, the next query outside any context reads `''`, then tenant B's reads B. **60 interleaved queries** across two contexts on a two-connection pool, a third of them in transactions: zero crossings |
+| Denial audit survives a failed request | End to end: a request denied *inside a transaction that rolls back* still leaves its `authz.denied` row — the reason there is no request-wide transaction |
+| Static specs | `tenant-plumbing.spec.ts` parses the source with the TypeScript compiler: no `tenantId` / `workspaceId` parameter or DTO field anywhere, and the raw pool is reachable only from `database.module.ts`. **It caught my own first draft**: two methods taking a client-named workspace, now named `requested` so a candidate is never mistaken for the context |
+| `authorization.md` | Check 0 documented; `tenancy.md` §6 marked built |
+
+**End to end** (`context.e2e.spec.ts`): cookie → ActorGuard → WorkspaceResolver → ContextInterceptor
+→ scoped client → PostgreSQL, through the real AppModule, with a probe controller asking the database
+what context it sees: Personal by default, the agency when `X-Workspace` names it — tenant, user and
+membership all correct.
+
+**Measured cost:** **+0.73 ms per bare query** locally (0.19 → 0.93 ms), for the `BEGIN; set_config; …;
+COMMIT` each needs. Pipelining the settings with the query saved only 0.02 ms locally, so it was not
+taken; it is the first optimisation to try if latency shows up (ADR-0011 "revisit when").
+
+**Found on the way:**
+- **Lazy queries.** A drizzle query built inside a context but awaited outside it runs with *no*
+  context. The first draft of a test did exactly that. Services await inside, so it cannot happen on
+  the request path; a test pins the behaviour (no context → no rows under RLS, the safe direction),
+  and the `tenant-isolation` skill says to await inside.
+- **Spec files were compiled without legacy decorators** — `tsconfig.json` excludes them — so a spec
+  declaring its own controller could not parse parameter decorators. Vitest's transformer now uses
+  the same decorator settings as the build, for every file.
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| `set_config(…, false)` — session-level, the pooled-connection bug | 4 fail, including "never carries a context over on a reused connection" |
+| The resolver ignores who the member is | 5 fail, including the end-to-end refusal |
+| The context interceptor unregistered | 3 end-to-end tests fail |
+| A service method taking `tenantId` | the static spec names the file and line |
+
+**Verification:** 1,216 tests, 100% on all four metrics. Lint and typecheck clean.
 
 **Validation**
 ```bash
@@ -3148,6 +3187,7 @@ A **generated isolation matrix** runs as `investigator_app` for every scoped tab
 **Acceptance criteria**
 - [ ] Matrix green; a policy recursion check passes (no policy reaches a table whose policy reaches back)
 - [ ] Negative control per class: drop the policy, watch the matrix fail, restore byte-for-byte
+- [ ] **Workspace resolution under RLS** (from T-075): `WorkspaceResolver` reads the caller's memberships, tenants and role permissions *before* any workspace context exists — that is how it chooses one. The membership and tenant policies must let a user read their own rows (for example keyed on `app.user_id`, which the resolver would then set on its own queries), and nothing else, with an end-to-end test resolving a workspace as `investigator_app` with RLS on
 - [ ] **Registration under RLS** (from T-074): the trigger that creates a Personal workspace runs during registration, before any workspace context exists, and inserts into `tenants`, `tenant_memberships` and `membership_roles`. Their policies must let exactly that through — and nothing else — with a test that registers a user as `investigator_app` with RLS on
 - [ ] Every existing test green under RLS; discovery and quoting unchanged for Personal workspaces
 - [ ] `tenancy.md` §7 marked built, with any deviation recorded

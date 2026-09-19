@@ -217,6 +217,20 @@ Agency or independent ──quotes──► Quote (customer_tenant_id, supplier_
 
 ## 6. Tenant context
 
+> **Built in T-075.** `ExecutionContext` lives in `common/context/execution-context.ts`, frozen,
+> held in AsyncLocalStorage. `WorkspaceResolver` implements the resolution below, and
+> `ContextInterceptor` runs each handler inside the context. `database/scoped-client.ts` sets
+> `app.tenant_id`, `app.user_id` and `app.membership_id` transaction-locally on every query run in
+> a context: a bare query becomes `BEGIN; set_config(…); query; COMMIT`. Measured on the local
+> database: **+0.73 ms per bare query** (0.19 → 0.93 ms). Pipelining `set_config` with the query
+> saved only 0.02 ms locally, so it was not taken; across a network it would save one round trip,
+> and it is the first optimisation to try if latency shows up.
+>
+> **The one footgun:** drizzle queries are lazy. A query built inside a context but awaited
+> outside it runs with **no** context. Under RLS that means no rows, which is the safe direction,
+> but the rule is simple: await queries inside the code that runs in the context. A test pins
+> this behaviour.
+
 ```ts
 interface ExecutionContext {         // infrastructure; frozen; never a function parameter
   tenantId: string;                  // the active workspace

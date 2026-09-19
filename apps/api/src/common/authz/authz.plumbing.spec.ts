@@ -7,6 +7,8 @@ import * as schema from '../../database/schema';
 import { users } from '../../database/schema';
 import { testActor } from '../../../test/authz-cases';
 import { ActorScopedRepository } from './actor-scoped.repository';
+import { CONTEXT_KEY } from '../context/request-context-key';
+import { testContext } from '../../../test/context';
 import { ActorGuard } from './actor.guard';
 import { ACTOR_KEY, actorFromRequest } from './actor.decorator';
 import type { Actor } from './contract';
@@ -113,18 +115,38 @@ describe('the CurrentActor decorator', () => {
 describe('the guard', () => {
   const contextFor = (req: unknown) =>
     ({ switchToHttp: () => ({ getRequest: () => req }) }) as never;
+  const resolved = testContext({ userId: 'u1' });
+  const workspaces = () => ({ resolve: vi.fn().mockResolvedValue(resolved) });
+
+  it('resolves the workspace from X-Workspace, and leaves it where the interceptor looks', async () => {
+    // T-075, check 0. The header only chooses; the resolver intersects it with memberships.
+    const actor = testActor({ userId: 'u1' });
+    const actors = { fromRefreshToken: vi.fn().mockResolvedValue(actor) };
+    const resolver = workspaces();
+    const req: Record<string, unknown> = {
+      cookies: { investigator_session: 'tok' },
+      get: (h: string) => (h === 'x-workspace' ? 'ws-1' : undefined),
+      ip: '198.51.100.9',
+    };
+    await new ActorGuard(actors as never, resolver as never).canActivate(contextFor(req));
+    expect(resolver.resolve).toHaveBeenCalledWith(actor, 'ws-1', {
+      correlationId: undefined,
+      ipAddress: '198.51.100.9',
+    });
+    expect(req[CONTEXT_KEY]).toBe(resolved);
+  });
 
   it('passes the cookie to actor resolution', async () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(testActor({ userId: 'u1' })) };
     const req: Record<string, unknown> = { cookies: { investigator_session: 'tok' }, get: () => undefined };
-    await new ActorGuard(actors as never).canActivate(contextFor(req));
+    await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
     expect(actors.fromRefreshToken).toHaveBeenCalledWith('tok', undefined);
   });
 
   it('passes an empty token when the request carries no cookie', async () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(testActor({ userId: 'u1' })) };
     const req: Record<string, unknown> = { get: () => undefined };
-    await new ActorGuard(actors as never).canActivate(contextFor(req));
+    await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
     // The service decides; the guard must not throw on a missing cookie.
     expect(actors.fromRefreshToken).toHaveBeenCalledWith('', undefined);
   });
@@ -135,7 +157,7 @@ describe('the guard', () => {
       cookies: { investigator_session: 'tok' },
       get: (h: string) => (h === 'x-active-role' ? 'INVESTIGATOR' : undefined),
     };
-    await new ActorGuard(actors as never).canActivate(contextFor(req));
+    await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
     expect(actors.fromRefreshToken).toHaveBeenCalledWith('tok', 'INVESTIGATOR');
   });
 
@@ -143,7 +165,7 @@ describe('the guard', () => {
     const actor = testActor({ userId: 'u1' });
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(actor) };
     const req: Record<string, unknown> = { get: () => undefined };
-    await new ActorGuard(actors as never).canActivate(contextFor(req));
+    await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
     expect(req[ACTOR_KEY]).toBe(actor);
   });
 });

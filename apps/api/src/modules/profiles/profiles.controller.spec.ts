@@ -8,6 +8,7 @@ import { testActor } from '../../../test/authz-cases';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const ACTOR = testActor({ userId: 'u1', sessionId: 's1', roles: ['CUSTOMER', 'INVESTIGATOR'] });
 const UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -32,6 +33,7 @@ describe('profiles controller', () => {
       providers: [
         { provide: ProfilesService, useValue: profiles },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
 

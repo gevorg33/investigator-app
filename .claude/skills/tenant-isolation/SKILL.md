@@ -45,6 +45,12 @@ command, stop. The context already has it.
 
 ## Adding a query path
 
+- **Await every query inside the context.** Drizzle queries are lazy. One returned un-awaited
+  from a function the caller awaits *outside* the context runs with no context (no rows under
+  RLS). Services are `async` and await their queries; keep it that way.
+- The raw pool (`@Inject(SQL)`, `drizzle(`, `createPool(`) is the unscoped path. Only
+  `database.module.ts` may touch it, and `tenant-plumbing.spec.ts` enforces that.
+
 - Inside a request or job, use the injected database handle. It opens the transaction and sets
   the context. Do nothing else.
 - Outside any context (authentication before a session exists, the outbox dispatcher, retention

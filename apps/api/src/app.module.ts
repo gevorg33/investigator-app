@@ -19,6 +19,7 @@ import { SearchModule } from './modules/search/search.module';
 import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { VerificationModule } from './modules/verification/verification.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { VerificationModule } from './modules/verification/verification.module';
     QuotesModule,
     AssignmentsModule,
     VerificationModule,
+    TenantsModule,
     HealthModule,
   ],
 })

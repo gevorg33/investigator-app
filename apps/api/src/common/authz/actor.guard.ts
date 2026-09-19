@@ -1,4 +1,7 @@
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { CONTEXT_KEY, type RequestWithContext } from '../context/request-context-key';
+import { WorkspaceResolver } from '../context/workspace.resolver';
+import { requestContext } from '../http/request-context';
 import { ActorService } from './actor.service';
 import { ACTOR_KEY, type RequestWithActor } from './actor.decorator';
 
@@ -16,7 +19,10 @@ const COOKIE = 'investigator_session';
  */
 @Injectable()
 export class ActorGuard implements CanActivate {
-  constructor(private readonly actors: ActorService) {}
+  constructor(
+    private readonly actors: ActorService,
+    private readonly workspaces: WorkspaceResolver,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<RequestWithActor>();
@@ -27,7 +33,17 @@ export class ActorGuard implements CanActivate {
     // ActorService intersects it with the roles actually held, so this can only narrow.
     const requested = req.get('x-active-role');
 
-    req[ACTOR_KEY] = await this.actors.fromRefreshToken(token, requested);
+    const actor = await this.actors.fromRefreshToken(token, requested);
+    req[ACTOR_KEY] = actor;
+
+    // Check 0 (T-075): the workspace, from `X-Workspace` intersected with the caller's
+    // memberships. ContextInterceptor then runs the handler inside it.
+    const { correlationId, ip } = requestContext(req);
+    (req as RequestWithContext)[CONTEXT_KEY] = await this.workspaces.resolve(
+      actor,
+      req.get('x-workspace'),
+      { correlationId, ipAddress: ip },
+    );
     return true;
   }
 }
