@@ -33,6 +33,26 @@ another name, and two must not be built as the brief spells them:
 
 ## 2. The model
 
+> **Built in T-074:** workspaces, memberships, the permission catalog and a Personal workspace
+> for every user (migration 0011). Each invariant below that says "never" or "always" is held
+> by the database itself, whoever the writer is:
+>
+> - **Every user has exactly one Personal workspace.** A trigger on `users` creates it, with an
+>   OWNER membership, in the same statement as the user. It runs with the invoker's privileges,
+>   never elevated. A unique index allows at most one.
+> - **A Personal workspace holds only its owner.** A trigger checks the member is the owner, with
+>   a partial unique index behind it as a backstop.
+> - **Every workspace not DELETED has an ACTIVE owner at commit.** A deferred constraint trigger,
+>   so ownership can move within one transaction. It locks the workspace row before counting,
+>   because two concurrent removals of different owners otherwise both commit and leave nobody.
+>   A test forces that overlap, and without the lock it fails 5 of 5 times.
+> - **A workspace's kind and owner, and a membership's workspace and person, never change.**
+> - Deleting a user, which only the retention workflow does, takes their empty Personal
+>   workspace with it. An agency membership blocks the delete. That check is deferred to commit,
+>   because a per-statement check ran before the cascade and refused even an empty workspace.
+> - Sessions open in the Personal workspace (`user_sessions.default_tenant_id`), and it survives
+>   token rotation.
+
 ```
 User ─────────────< Membership >───────────── Tenant (PERSONAL | AGENCY)
  (identity)          (employee: status,        │
@@ -138,7 +158,13 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 | `settings.read` · `settings.update` | ✓ | ✓ (read + update) | read | | | |
 
 - The catalog (`permissions`, `roles`, `role_permissions`) is **data**, seeded by migration. The
-  system roles are immutable. Custom roles are a later addition to the same tables.
+  system roles are immutable. Custom roles are a later addition to the same tables. **Built in
+  T-074:** 40 permissions, 6 roles, 134 grants, generated from this table. `tenants.spec.ts`
+  parses the table and fails if the seed and this document ever disagree, naming the role.
+  The application role can only read the catalog.
+- **Open:** as written, `AGENCY_STAFF` ("Staff") and `VIEWER` grant identical permissions. That
+  is fine until support work needs something Viewer should not have. It is a product decision,
+  made when that permission exists.
 - A **Personal** workspace's single member holds an implicit owner set restricted to what a
   Personal workspace can do. There are no invitations, teams or employee operations.
 - Permissions are read per request with the membership. A revoked permission takes effect on

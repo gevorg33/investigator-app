@@ -1061,7 +1061,7 @@ pnpm --filter api test legal
 Block registration until the required documents are accepted, and gate investigator
 capabilities on acceptance of the investigator-specific documents at role activation.
 
-**Tenancy (ADR-0011).** Registration also creates the user's Personal workspace and OWNER membership in the same transaction (T-074). Agency terms acceptance is its own gate (T-083).
+**Tenancy (ADR-0011).** The user's Personal workspace and OWNER membership are created by a database trigger in the same statement as the user (T-074): nothing to add here. Agency terms acceptance is its own gate (T-083).
 
 **Acceptance criteria**
 - [ ] Registration cannot complete without acceptance — enforced **server-side**
@@ -2423,7 +2423,7 @@ pnpm --filter admin-web test assistant
 Sign in with Google, alongside email/password. Authorization Code flow with PKCE, server-side
 token exchange. The web app is the only surface — mobile is deferred (ADR-0009).
 
-**Tenancy (ADR-0011).** First OAuth sign-in creates the Personal workspace and OWNER membership in the same transaction as the user (T-074).
+**Tenancy (ADR-0011).** The Personal workspace comes with the user, created by the database trigger (T-074). A first OAuth sign-in that creates a user gets one without any code here.
 
 **Acceptance criteria**
 
@@ -2977,11 +2977,11 @@ pnpm --filter api test:coverage
 ---
 
 ### T-074 — Workspaces and memberships, and a Personal workspace for every user
-- **Status:** TODO
+- **Status:** DONE — 2026-09-19
 - **Priority:** P0
 - **Depends on:** T-073
 - **Risk:** HIGH
-- **Human approval required:** Yes — the authorization model
+- **Human approval required:** Yes — the authorization model. **Approved 2026-09-19:** a database trigger creates the Personal workspace (the repo's first triggers), and the owner rules are enforced by the database now, with T-085's service adding friendly errors later
 - **Owner agent:** database + backend-domain
 - **Affected:** apps/api/src/database/**, apps/api/src/modules/{auth,tenants}/**, migrations
 
@@ -2999,11 +2999,42 @@ first OAuth sign-in (T-062), create them in the same transaction as the user. RL
 start here.
 
 **Acceptance criteria**
-- [ ] Exactly one PERSONAL workspace per user, held by a constraint, and a Personal workspace can never gain a second member
-- [ ] System roles and permissions seeded by migration and immutable; the matrix in `tenancy.md` §3 is asserted against the seed
-- [ ] The last OWNER of a workspace cannot be removed or demoted
-- [ ] Backfill proven on a copy of the dev data (zero users without a Personal workspace), and the migration is reversible
-- [ ] Retention rows for every new table
+- [x] Exactly one PERSONAL workspace per user, held by a constraint, and a Personal workspace can never gain a second member
+- [x] System roles and permissions seeded by migration and immutable; the matrix in `tenancy.md` §3 is asserted against the seed
+- [x] The last OWNER of a workspace cannot be removed or demoted
+- [x] Backfill proven on a copy of the dev data (zero users without a Personal workspace), and the migration is reversible
+- [x] Retention rows for every new table
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Exactly one Personal workspace, one member | A trigger creates it in the same statement as the user, **tested as `investigator_app`**, so registration works with the runtime role's own privileges and never elevated ones. A unique index refuses a second. A trigger refuses any member but the owner, and a partial unique index refuses a second member even with that trigger disabled |
+| Catalog seeded and immutable; matrix asserted | 40 permissions, 6 roles and 134 grants, generated from `tenancy.md` §3. The spec parses that table and compares it with the database role by role. The application role can only `SELECT` the catalog |
+| Last OWNER protected | A deferred constraint trigger refuses, at commit, removing the OWNER role, suspending, removing or deleting the last owner, of an agency or a Personal workspace. Ownership can move within one transaction |
+| Backfill on a copy of dev data | **40,815 users** in the copy: 40,815 Personal workspaces, **0 users without one**, 40,815 OWNER memberships, 0 sessions without a default workspace. Reversible (`0011_add_workspaces.down.sql`; not executed, because the guard hook blocks `DROP` through a client) |
+| Retention rows | `tenants`, `tenant_memberships`, `membership_roles`, and the catalog |
+
+**Found on the way, each caught by a test:**
+
+1. **Race: concurrent owner removals left a workspace ownerless.** Two transactions each removing a different owner each saw the other still there, uncommitted, and both committed. The check now locks the workspace row first. The first version of the test **passed without the lock**, because the checks rarely overlapped. It now forces them to (both check, then both commit): **5/5 fail without the lock, 5/5 pass with it.**
+2. **A CHECK that passed on NULL again.** `name ~ '\S'` is NULL for a NULL name, and a NULL CHECK passes, so an agency with no name was accepted. That is the same class as T-013's. `name IS NOT NULL` is now explicit.
+3. **A foreign key checked too early.** A per-statement `NO ACTION` check on memberships ran before the user → Personal workspace → membership cascade, refusing to delete even a user with nothing else. It is now deferred to commit, and an agency membership still blocks the delete (tested).
+4. **A five-minute migration.** Row-level owner checks fired once per backfilled workspace: over 5 minutes on the 40,815-user copy, holding locks. The backfill now runs before those triggers exist and asserts the invariant once, set-based: **1 second**.
+
+**Negative controls** — each rule broken on purpose, tests watched fail, restored:
+
+| Control | Result |
+|---|---|
+| Owner check without its lock | the race test fails 5/5 (two commits, nobody left) |
+| Personal-workspace trigger disabled | 19 fail across the schema and auth specs; sign-in itself breaks |
+| `tenancy.md` §3 drifts from the seed (VIEWER loses `teams.read`) | 1 fails, naming VIEWER. (Deleting the grant from the database instead was blocked by the guard hook, correctly) |
+
+**For T-077, now a criterion there:** registration runs the trigger before any workspace context exists, so RLS on these tables must let exactly that through.
+
+**Open, noted in `tenancy.md` §3:** as the matrix stands, "Staff" and "Viewer" grant identical permissions.
+
+**Verification:** 1,163 tests, 100% on all four metrics. Lint and typecheck clean. `drizzle-kit generate` reports no drift.
 
 **Validation**
 ```bash
@@ -3117,6 +3148,7 @@ A **generated isolation matrix** runs as `investigator_app` for every scoped tab
 **Acceptance criteria**
 - [ ] Matrix green; a policy recursion check passes (no policy reaches a table whose policy reaches back)
 - [ ] Negative control per class: drop the policy, watch the matrix fail, restore byte-for-byte
+- [ ] **Registration under RLS** (from T-074): the trigger that creates a Personal workspace runs during registration, before any workspace context exists, and inserts into `tenants`, `tenant_memberships` and `membership_roles`. Their policies must let exactly that through — and nothing else — with a test that registers a user as `investigator_app` with RLS on
 - [ ] Every existing test green under RLS; discovery and quoting unchanged for Personal workspaces
 - [ ] `tenancy.md` §7 marked built, with any deviation recorded
 

@@ -9,6 +9,7 @@ export * from './outbox';
 export * from './profiles';
 export * from './service-areas';
 export * from './taxonomy';
+export * from './tenants';
 export * from './staff-scopes';
 export * from './tokens';
 export * from './types';

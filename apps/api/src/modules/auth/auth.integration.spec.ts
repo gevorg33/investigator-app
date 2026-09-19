@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import * as schema from '../../database/schema';
-import { auditLogs, userSessions } from '../../database/schema';
+import { auditLogs, tenants, userSessions } from '../../database/schema';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
@@ -64,6 +64,30 @@ describe('auth end to end', () => {
     const r = await auth.login(e, PASSWORD, ctx);
     expect(r.userId).toBeTruthy();
     expect(r.refreshToken).toBeTruthy();
+  });
+
+  it('opens every session in the Personal workspace registration created, through rotation too', async () => {
+    // T-074. Registration runs as investigator_app, so this also proves the trigger that makes
+    // the workspace works with the runtime role's privileges, not only the owner's.
+    const ctx = newCtx();
+    const e = email();
+    await auth.register(e, PASSWORD, ctx);
+    const first = await auth.login(e, PASSWORD, ctx);
+
+    const [personal] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.personalOwnerId, first.userId));
+    expect(personal).toMatchObject({ kind: 'PERSONAL', status: 'ACTIVE', name: null });
+
+    const sessionFor = (token: string) =>
+      db.query.userSessions.findFirst({
+        where: eq(userSessions.refreshTokenHash, new TokenService().fingerprint(token)),
+      });
+    expect((await sessionFor(first.refreshToken))?.defaultTenantId).toBe(personal!.id);
+
+    const second = await auth.refresh(first.refreshToken, ctx);
+    expect((await sessionFor(second.refreshToken))?.defaultTenantId).toBe(personal!.id);
   });
 
   it('never stores the password in the clear', async () => {

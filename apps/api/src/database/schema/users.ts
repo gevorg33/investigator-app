@@ -1,5 +1,16 @@
 import { relations, sql } from 'drizzle-orm';
-import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  type AnyPgColumn,
+  index,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
+// A lazy reference: tenants.ts imports users too, and drizzle resolves both callbacks later.
+import { tenants } from './tenants';
 import { citext } from './types';
 
 export const accountStatus = pgEnum('account_status', [
@@ -72,6 +83,14 @@ export const userSessions = pgTable(
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    /**
+     * The workspace a request uses when it names none (tenancy.md §6). Set to the Personal
+     * workspace at sign-in and carried through rotation; switching workspace updates it (T-075).
+     * A preference, never an authority: the resolver re-reads memberships on every request.
+     */
+    defaultTenantId: uuid('default_tenant_id').references((): AnyPgColumn => tenants.id, {
+      onDelete: 'set null',
+    }),
   },
   (t) => [
     uniqueIndex('user_sessions_refresh_hash_unique').on(t.refreshTokenHash),

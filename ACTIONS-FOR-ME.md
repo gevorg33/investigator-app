@@ -339,11 +339,11 @@ migrate_probe · migrate_probe2 · migrate_probe3 · ci_probe · ci_probe_t8_178
 ci_probe_t9_1789347652 · ci_probe_t10_1789596168 · ci_probe_t10b_1789596197
 ci_probe_t10c_1789596252 · ci_probe_t10d_1789596273 · ci_probe_t10e_1789596294
 ci_probe_t11_1789674197 · ci_probe_t12_1789679229 · ci_probe_t13_1789760505
-ci_probe_t73_1789820244
+ci_probe_t73_1789820244 · t074_backfill_probe_1789825455 · t074_backfill_probe2_1789837264
 ```
 
 ```bash
-psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%'"
+psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%' OR datname LIKE 't074\_%'"
 ```
 
 **Status:** ⬜ Pending — cosmetic
