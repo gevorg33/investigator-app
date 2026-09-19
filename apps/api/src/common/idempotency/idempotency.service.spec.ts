@@ -5,6 +5,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from '../../database/schema';
 import { IdempotencyService } from './idempotency.service';
 import { testPool } from '../../../test/db';
+import { agency, member } from '../../../test/workspace-fixtures';
+import { runInContext, type ExecutionContext } from '../context/execution-context';
+import { scopedClient } from '../../database/scoped-client';
 
 
 describe('idempotency keys', () => {
@@ -132,5 +135,59 @@ describe('idempotency keys', () => {
     const results = await Promise.allSettled([attempt(), attempt()]);
     const claimed = results.filter((r) => r.status === 'fulfilled' && r.value === 'CLAIMED');
     expect(claimed).toHaveLength(1);
+  });
+});
+
+/**
+ * Keys are per workspace (T-076). The same person using the same key in two workspaces makes two
+ * independent claims, and each replays its own response — a lookup or completion by actor,
+ * endpoint and key alone would have reached the other workspace's row.
+ */
+describe('idempotency keys across workspaces', () => {
+  let app: postgres.Sql;
+  let ownerPool: postgres.Sql;
+  let db: ReturnType<typeof drizzle<typeof schema>>;
+  const service = new IdempotencyService();
+
+  beforeAll(() => {
+    app = testPool();
+    ownerPool = testPool({ role: 'owner' });
+    db = drizzle(scopedClient(app), { schema });
+  });
+
+  afterAll(async () => {
+    await app.end();
+    await ownerPool.end();
+  });
+
+  const contextFor = (userId: string, tenantId: string, membershipId: string): ExecutionContext => ({
+    tenantId,
+    tenantKind: 'AGENCY',
+    userId,
+    membershipId,
+    permissions: [],
+  });
+
+  it('claims, completes and replays separately in each workspace', async () => {
+    const me = await member(ownerPool);
+    const a = await agency(ownerPool, [{ userId: me.actor.userId }]);
+    const b = await agency(ownerPool, [{ userId: me.actor.userId }]);
+    const scope = { actorId: me.actor.userId, endpoint: 'probe.cross', key: 'same-key', request: { x: 1 } };
+
+    const run = (ctx: ExecutionContext, body: unknown) =>
+      runInContext(ctx, () =>
+        db.transaction(async (tx) => {
+          const claim = await service.claim(tx, scope);
+          if (claim.status === 'CLAIMED') await service.complete(tx, scope, { status: 200, body });
+          return claim;
+        }),
+      );
+
+    const inA = contextFor(me.actor.userId, a.tenantId, a.memberships[0]!);
+    const inB = contextFor(me.actor.userId, b.tenantId, b.memberships[0]!);
+    expect(await run(inA, 'from A')).toEqual({ status: 'CLAIMED' });
+    expect(await run(inB, 'from B')).toEqual({ status: 'CLAIMED' });
+    expect(await run(inA, 'ignored')).toEqual({ status: 'REPLAY', responseStatus: 200, responseBody: 'from A' });
+    expect(await run(inB, 'ignored')).toEqual({ status: 'REPLAY', responseStatus: 200, responseBody: 'from B' });
   });
 });

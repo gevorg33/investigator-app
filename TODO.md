@@ -3123,11 +3123,11 @@ pnpm --filter api test context tenants authz
 ---
 
 ### T-076 — Tenant and party columns on existing tables (expand and backfill)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-19
 - **Priority:** P0
 - **Depends on:** T-075
 - **Risk:** HIGH — touches quotes and assignments
-- **Human approval required:** Yes
+- **Human approval required:** Yes. **Approved 2026-09-19:** values from the context, else from the row's own data (party columns always from the parent); consistency by composite foreign keys, and no row ever changes workspace
 - **Owner agent:** database
 - **Affected:** apps/api/src/database/**, migrations, docs/compliance/retention.md
 
@@ -3150,10 +3150,51 @@ or party column. Two constraints change:
 - `idempotency_keys` includes the tenant in its unique key
 
 **Acceptance criteria**
-- [ ] Zero NULLs after backfill, asserted by the migration itself
-- [ ] The classification registry covers every table; a spec fails on an unclassified table
-- [ ] Every existing test passes unchanged; the migration is reversible; applies from empty
-- [ ] Discovery's `EXPLAIN` spec (T-011) still uses its indexes
+- [x] Zero NULLs after backfill, asserted by the migration itself
+- [x] The classification registry covers every table; a spec fails on an unclassified table
+- [x] Every existing test passes unchanged; the migration is reversible; applies from empty
+- [x] Discovery's `EXPLAIN` spec (T-011) still uses its indexes
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Zero NULLs, asserted by the migration | The migration ends its backfill with a `DO` block that raises on any row without a workspace. **On a copy of the dev data it caught a real bug** (below). After the fix, on that copy: 15,847 profiles all in their user's Personal workspace; 8,205 missions all with the customer's; 2,760 quotes all with their lead profile's supplier; 779 assignments all with their quote's parties. Adding the 19 composite keys validated every backfilled row against its parent. 1 second |
+| Registry covers every table | `table-classes.ts` classifies all 33 tables. The spec fails on an unclassified or vanished table, a missing or wrongly nullable column, a table without the move-guard, or a missing leading index |
+| Tests pass; reversible; from empty | 1,236 tests pass. **Two tests changed, deliberately:** the two query-plan specs seeded users, profiles and service areas in *one* chained statement, and a statement cannot see the rows it inserted itself, from which each row's workspace is derived. They now seed in three statements, as the application does. Four schema-shape specs updated to the new keys. Down path written. Applies from empty on a fresh database (13 migrations, 35 triggers); `drizzle-kit generate` reports no drift |
+| Discovery `EXPLAIN` | Both plan specs pass against the new schema |
+
+**Found by the migration's own assertion.** Assignment creation (the payment-confirmation path)
+claims its idempotency key as a **system actor that is not a user**. Under the fill rule, that key
+would have had no workspace and violated `NOT NULL`, so creating an assignment would have failed
+once payments are live. A system action now belongs to **no** workspace: `tenant_id` is NULL,
+`NULLS NOT DISTINCT` keeps duplicate system claims colliding, and the migration asserts that NULL
+occurs only for actors who are not users. The replay lookup and the completion also match actor,
+endpoint and key only, which would reach the same key claimed in another workspace. Both now match
+the workspace through the same database function the insert uses. **Negative control: without
+that, one workspace replayed the other's stored response.**
+
+**Behaviour tests** (`tenancy-columns.spec.ts`, as the owner, rolled back):
+- owner columns take the context, else Personal
+- copied parties come from the parent even when a *different* context is set
+- a quote gets its mission's customer and its profile's supplier
+- an assignment created with **no context**, as a payment would, gets exactly its quote's parties
+- the composite key refuses a mismatch with the fill trigger disabled
+- rows cannot move between workspaces
+- idempotency keys are separated per workspace, and `null` for the system
+
+**Negative controls** — each rule broken on purpose, tests watched fail, restored:
+
+| Control | Result |
+|---|---|
+| Idempotency lookups without the workspace match | 1 fails: a workspace replays another's response |
+| The quote's copy-from-mission trigger disabled | the schema test and 3 quote service tests fail |
+| A table removed from the registry | "classifies every table" names it |
+| A profile's move-guard disabled | "refuses to move a profile" fails |
+
+**For later tasks, now criteria there.**
+- **T-077:** the fill triggers read parent rows with the writer's privileges, so each copy path must still work under RLS.
+- **T-078:** owner columns take the active workspace, so customer actions must be refused outside a Personal workspace.
 
 **Validation**
 ```bash
@@ -3187,6 +3228,7 @@ A **generated isolation matrix** runs as `investigator_app` for every scoped tab
 **Acceptance criteria**
 - [ ] Matrix green; a policy recursion check passes (no policy reaches a table whose policy reaches back)
 - [ ] Negative control per class: drop the policy, watch the matrix fail, restore byte-for-byte
+- [ ] **Fill triggers under RLS** (from T-076): `fill_party_from_parent` reads the parent row to copy its parties. It runs with the writer's privileges, so the parent must be visible to the writer: a supplier quoting reads a QUOTED mission, and the system creating an assignment reads the quote. Test each copy path as `investigator_app` with RLS on
 - [ ] **Workspace resolution under RLS** (from T-075): `WorkspaceResolver` reads the caller's memberships, tenants and role permissions *before* any workspace context exists — that is how it chooses one. The membership and tenant policies must let a user read their own rows (for example keyed on `app.user_id`, which the resolver would then set on its own queries), and nothing else, with an end-to-end test resolving a workspace as `investigator_app` with RLS on
 - [ ] **Registration under RLS** (from T-074): the trigger that creates a Personal workspace runs during registration, before any workspace context exists, and inserts into `tenants`, `tenant_memberships` and `membership_roles`. Their policies must let exactly that through — and nothing else — with a test that registers a user as `investigator_app` with RLS on
 - [ ] Every existing test green under RLS; discovery and quoting unchanged for Personal workspaces
@@ -3214,6 +3256,7 @@ membership on every request, never carried. Existing endpoints behave identicall
 workspaces. Agency endpoints check permissions, never tenant role names.
 
 **Acceptance criteria**
+- [ ] **Customer actions require a Personal workspace context** (from T-076): owner columns take the context's workspace, so a customer creating a mission while an agency workspace is active would put it in the agency. Refuse customer actions outside a Personal workspace — agencies are supplier-only in v1 (tenancy.md §3) — with a test
 - [ ] Every role × permission pair from the seeded catalog is tested (generated), not sampled
 - [ ] A revoked permission or removed role takes effect on the next request
 - [ ] A static spec forbids checking a tenant role name where a permission exists

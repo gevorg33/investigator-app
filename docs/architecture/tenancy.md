@@ -379,6 +379,27 @@ CREATE POLICY parties ON assignments
 
 ### Classification of every existing table
 
+> **Built in T-076** (migration 0012). The registry is `apps/api/src/database/table-classes.ts`;
+> `table-classes.spec.ts` fails on an unclassified or vanished table, a missing or wrongly nullable
+> column, a table without the move-guard, or a missing leading index.
+>
+> - **Owner columns** (a profile, a customer profile, a media file, an idempotency key, a mission's
+>   customer) take the context's workspace, else the owning user's Personal workspace. The trigger
+>   is `fill_owner_tenant`, backed by `app_tenant_for_user()`.
+> - **Copied parties** are always taken from the parent row, even when a different context is set.
+>   The trigger is `fill_party_from_parent`. **Composite foreign keys** hold each equal to its
+>   parent, for example `quotes (mission_id, customer_tenant_id) → missions (id, customer_tenant_id)`.
+> - **Nothing moves between workspaces:** `forbid_tenant_change` guards all 20 columns on all 17
+>   tables.
+> - **One exception:** an idempotency key's workspace is NULL for a system action. Assignment
+>   creation from a payment runs as a system actor with no workspace, so its key belongs to none
+>   (`NULLS NOT DISTINCT` keeps two system claims colliding). The replay lookup and the completion
+>   match the workspace through the same database function the insert used; without that, one
+>   workspace replayed another's response (negative control).
+> - **A caveat:** a row's workspace is derived from rows inserted *before* it. A single statement
+>   (chained `WITH` inserts) cannot see what it has itself inserted, so one that creates a user and
+>   their profile together fails. Create them in separate statements, as the application does.
+
 | Table | Class | Isolation |
 |---|---|---|
 | `users`, `user_roles`, `user_identities`, `user_tokens`, `user_staff_scopes` | Identity | No tenant. Authentication must read them before any context exists. Guarded by grants and the six checks. RLS keyed on `app.user_id` is reviewed in the isolation pass (T-098) |

@@ -1,6 +1,8 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -8,8 +10,10 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
 import { riskBand, taxonomyNodes } from './taxonomy';
 import { geographyPoint } from './types';
 import { users } from './users';
@@ -127,12 +131,22 @@ export const missions = pgTable(
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The customer's workspace (T-076). Filled from the execution context, else from the
+     * owning user's Personal workspace (trigger `fill_owner_tenant`); never changes after insert.
+     */
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
   },
   (t) => [
     index('missions_customer_idx').on(t.customerId, t.createdAt),
     // The moderation queue lists by status, oldest submission first (T-051).
     index('missions_status_idx').on(t.status, t.submittedAt),
     index('missions_taxonomy_node_idx').on(t.taxonomyNodeId),
+    unique('missions_id_customer_tenant_unique').on(t.id, t.customerTenantId),
+    index('missions_customer_tenant_idx').on(t.customerTenantId, t.status),
   ],
 );
 
@@ -158,8 +172,21 @@ export const missionStatusHistory = pgTable(
     staffScope: text('staff_scope'),
     reason: text('reason'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the mission by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
   },
-  (t) => [index('mission_status_history_mission_idx').on(t.missionId, t.occurredAt)],
+  (t) => [
+    index('mission_status_history_mission_idx').on(t.missionId, t.occurredAt),
+    foreignKey({
+      name: 'mission_status_history_mission_tenant_fk',
+      columns: [t.missionId, t.customerTenantId],
+      foreignColumns: [missions.id, missions.customerTenantId],
+    }).onDelete('restrict'),
+  ],
 );
 
 /**
@@ -200,6 +227,19 @@ export const missionScreenings = pgTable(
      */
     aiClassification: jsonb('ai_classification'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the mission by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
   },
-  (t) => [index('mission_screenings_mission_idx').on(t.missionId, t.createdAt)],
+  (t) => [
+    index('mission_screenings_mission_idx').on(t.missionId, t.createdAt),
+    foreignKey({
+      name: 'mission_screenings_mission_tenant_fk',
+      columns: [t.missionId, t.customerTenantId],
+      foreignColumns: [missions.id, missions.customerTenantId],
+    }).onDelete('restrict'),
+  ],
 );

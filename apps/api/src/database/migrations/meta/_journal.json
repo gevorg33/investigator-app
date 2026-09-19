@@ -85,6 +85,13 @@
       "when": 1789821718673,
       "tag": "0011_add_workspaces",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789843986256,
+      "tag": "0012_add_tenant_and_party_columns",
+      "breakpoints": true
     }
   ]
 }

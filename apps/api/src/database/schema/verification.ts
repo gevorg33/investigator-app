@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -7,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -71,6 +73,12 @@ export const verificationRequests = pgTable(
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the profile by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     // The queue: open requests, oldest first. An unreviewed application is an investigator
@@ -82,6 +90,12 @@ export const verificationRequests = pgTable(
     uniqueIndex('verification_requests_one_open_per_profile')
       .on(t.profileId)
       .where(sql`${t.status} = 'SUBMITTED'`),
+    foreignKey({
+      name: 'verification_requests_profile_tenant_fk',
+      columns: [t.profileId, t.tenantId],
+      foreignColumns: [investigatorProfiles.id, investigatorProfiles.tenantId],
+    }).onDelete('restrict'),
+    unique('verification_requests_id_tenant_unique').on(t.id, t.tenantId),
   ],
 );
 
@@ -100,10 +114,26 @@ export const verificationRequestDocuments = pgTable(
       .notNull()
       .references(() => mediaAssets.id, { onDelete: 'restrict' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the request by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('verification_request_documents_unique').on(t.requestId, t.mediaAssetId),
     index('verification_request_documents_asset_idx').on(t.mediaAssetId),
+    foreignKey({
+      name: 'verification_documents_request_tenant_fk',
+      columns: [t.requestId, t.tenantId],
+      foreignColumns: [verificationRequests.id, verificationRequests.tenantId],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'verification_documents_asset_tenant_fk',
+      columns: [t.mediaAssetId, t.tenantId],
+      foreignColumns: [mediaAssets.id, mediaAssets.tenantId],
+    }).onDelete('restrict'),
   ],
 );
 
@@ -129,10 +159,21 @@ export const verificationDecisions = pgTable(
     reason: text('reason').notNull(),
     decidedBy: uuid('decided_by').notNull(),
     decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Copied from the request by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
   },
   (t) => [
     // A request is decided once. Two reviewers acting at the same instant produce one decision
     // and one conflict, never two verdicts on the same evidence.
     uniqueIndex('verification_decisions_one_per_request').on(t.requestId),
+    foreignKey({
+      name: 'verification_decisions_request_tenant_fk',
+      columns: [t.requestId, t.tenantId],
+      foreignColumns: [verificationRequests.id, verificationRequests.tenantId],
+    }).onDelete('restrict'),
   ],
 );

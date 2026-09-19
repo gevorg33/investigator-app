@@ -27,9 +27,11 @@ describe('profile table shape', () => {
     expect(indexNames(customerProfiles)).toContain('customer_profiles_user_unique');
   });
 
-  it('allows one investigator profile per user', () => {
-    // The account holds both roles; it does not hold two investigator profiles.
-    expect(indexNames(investigatorProfiles)).toContain('investigator_profiles_user_unique');
+  it('allows one investigator profile per person per workspace (T-076)', () => {
+    // Was one per person. An agency runs profiles for its members, and the same person may hold
+    // one in their Personal workspace and another in an agency — never two in one workspace.
+    expect(indexNames(investigatorProfiles)).toContain('investigator_profiles_tenant_user_unique');
+    expect(indexNames(investigatorProfiles)).not.toContain('investigator_profiles_user_unique');
   });
 
   it('indexes what discovery filters on', () => {

@@ -1,4 +1,16 @@
-import { index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { tenants } from './tenants';
 import { users } from './users';
 
 /**
@@ -71,11 +83,21 @@ export const mediaAssets = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The workspace that owns this row (T-076). Filled from the execution context, else from the
+     * owning user's Personal workspace (trigger `fill_owner_tenant`); never changes after insert.
+     */
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
   },
   (t) => [
     uniqueIndex('media_assets_public_id_unique').on(t.publicId),
     index('media_assets_owner_idx').on(t.ownerId),
     // Staff review queues list by category and state.
     index('media_assets_category_status_idx').on(t.category, t.uploadStatus),
+    unique('media_assets_id_tenant_unique').on(t.id, t.tenantId),
+    index('media_assets_tenant_idx').on(t.tenantId),
   ],
 );

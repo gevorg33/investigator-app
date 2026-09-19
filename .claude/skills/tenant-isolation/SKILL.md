@@ -26,9 +26,14 @@ command, stop. The context already has it.
 
 ## Adding a table
 
-1. **Classify it** in the registry. The classes are identity, platform-global, tenant-owned
-   (optionally with a public projection), two-party marketplace, and system. The generated spec
-   fails when a table is unclassified.
+1. **Classify it** in `apps/api/src/database/table-classes.ts`. The classes are identity,
+   platform, tenancy, tenant-owned, two-party, system and platform record.
+   `table-classes.spec.ts` fails when a table is unclassified, when a column does not match its
+   class, or when the table lacks the move-guard.
+2. **Fill it with a trigger, never from a service.** An owner column gets `fill_owner_tenant`
+   (the context, else the owning user's Personal workspace). A column copied from a parent gets
+   `fill_party_from_parent`, plus a composite foreign key to the parent's `(id, party)` unique.
+   Every tenant or party column gets `forbid_tenant_change`. See migration 0012 for the pattern.
 2. **Columns.** Tenant-owned: `tenant_id uuid NOT NULL DEFAULT app_current_tenant()`. Two-party:
    `customer_tenant_id` and `supplier_tenant_id`, **denormalised** onto the row and never joined
    in a policy.

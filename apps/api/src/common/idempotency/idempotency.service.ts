@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql, type SQL } from 'drizzle-orm';
 import { AppError } from '../errors/app-error';
 import { ErrorCode } from '../errors/error-codes';
 import type { Tx } from '../../database/database.module';
@@ -37,6 +37,15 @@ export interface Replay {
  * The key row and the effect commit in the **same transaction**, so a key recorded for work
  * that rolled back cannot block a legitimate retry, and an effect cannot exist without its key.
  */
+/**
+ * The key's workspace, computed by the same database function the insert trigger uses (T-076):
+ * the execution context's, else the actor's Personal workspace, else none (a system actor). A
+ * lookup or completion by actor, endpoint and key alone would reach the same key claimed in a
+ * different workspace.
+ */
+const sameWorkspace = (actorId: string): SQL =>
+  sql`${idempotencyKeys.tenantId} IS NOT DISTINCT FROM app_tenant_for_user(${actorId})`;
+
 @Injectable()
 export class IdempotencyService {
   /**
@@ -66,6 +75,7 @@ export class IdempotencyService {
       .from(idempotencyKeys)
       .where(
         and(
+          sameWorkspace(scope.actorId),
           eq(idempotencyKeys.actorId, scope.actorId),
           eq(idempotencyKeys.endpoint, scope.endpoint),
           eq(idempotencyKeys.key, scope.key),
@@ -105,6 +115,7 @@ export class IdempotencyService {
       })
       .where(
         and(
+          sameWorkspace(scope.actorId),
           eq(idempotencyKeys.actorId, scope.actorId),
           eq(idempotencyKeys.endpoint, scope.endpoint),
           eq(idempotencyKeys.key, scope.key),
