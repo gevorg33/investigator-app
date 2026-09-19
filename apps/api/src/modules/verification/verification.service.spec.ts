@@ -37,6 +37,9 @@ import { testPool } from '../../../test/db';
 describe('verification', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let storage: FakeStorage;
   let service: VerificationService;
   const req = () => ({ ip: '198.51.100.30', userAgent: 'vitest', correlationId: randomUUID() });
@@ -44,6 +47,8 @@ describe('verification', () => {
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
@@ -70,6 +75,7 @@ describe('verification', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   const profileOf = async (profileId: string) => {
@@ -88,8 +94,8 @@ describe('verification', () => {
 
   /** An applicant with one clean document, applied. */
   const applied = async (opts: Parameters<typeof applicant>[1] = {}) => {
-    const who = await applicant(db, opts);
-    const doc = await document(db, who.userId);
+    const who = await applicant(ownerDb, opts);
+    const doc = await document(ownerDb, who.userId);
     const request = await service.submit(who.actor, { documentIds: [doc] }, req());
     return { ...who, doc, request };
   };
@@ -103,10 +109,10 @@ describe('verification', () => {
 
   describe('applying', () => {
     it('opens a request, freezes the declaration and makes the profile PENDING', async () => {
-      const who = await applicant(db);
-      const node = await specialty(db, who.profileId);
-      const areaId = await area(db, who.profileId, 'Yerevan city');
-      const doc = await document(db, who.userId);
+      const who = await applicant(ownerDb);
+      const node = await specialty(ownerDb, who.profileId);
+      const areaId = await area(ownerDb, who.profileId, 'Yerevan city');
+      const doc = await document(ownerDb, who.userId);
 
       const request = await service.submit(who.actor, { documentIds: [doc] }, req());
 
@@ -134,15 +140,15 @@ describe('verification', () => {
     });
 
     it('does not move the declaration a reviewer checks against when the profile changes', async () => {
-      const who = await applicant(db);
-      const areaId = await area(db, who.profileId, 'Before');
-      const doc = await document(db, who.userId);
+      const who = await applicant(ownerDb);
+      const areaId = await area(ownerDb, who.profileId, 'Before');
+      const doc = await document(ownerDb, who.userId);
       const request = await service.submit(who.actor, { documentIds: [doc] }, req());
 
       await db.update(serviceAreas).set({ label: 'After' }).where(eq(serviceAreas.id, areaId));
-      await area(db, who.profileId, 'Added later');
+      await area(ownerDb, who.profileId, 'Added later');
 
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       const review = await service.getForReview(staff, request.id, req());
       expect(review.declaredScope.serviceAreas).toEqual([
         expect.objectContaining({ id: areaId, label: 'Before' }),
@@ -150,8 +156,8 @@ describe('verification', () => {
     });
 
     it('records each document once when the same id is sent twice', async () => {
-      const who = await applicant(db);
-      const doc = await document(db, who.userId);
+      const who = await applicant(ownerDb);
+      const doc = await document(ownerDb, who.userId);
       const request = await service.submit(who.actor, { documentIds: [doc, doc] }, req());
       expect(request.documentIds).toEqual([doc]);
     });
@@ -169,8 +175,8 @@ describe('verification', () => {
     });
 
     it('accepts a document whose scan is still running', async () => {
-      const who = await applicant(db);
-      const doc = await document(db, who.userId, { scanStatus: 'PENDING' });
+      const who = await applicant(ownerDb);
+      const doc = await document(ownerDb, who.userId, { scanStatus: 'PENDING' });
       await expect(service.submit(who.actor, { documentIds: [doc] }, req())).resolves.toMatchObject(
         {
           status: 'SUBMITTED',
@@ -180,7 +186,7 @@ describe('verification', () => {
 
     it('refuses a second open application', async () => {
       const { actor, userId, request } = await applied();
-      const doc = await document(db, userId);
+      const doc = await document(ownerDb, userId);
       await expect(service.submit(actor, { documentIds: [doc] }, req())).rejects.toMatchObject({
         code: 'STATE_CONFLICT',
       });
@@ -194,8 +200,8 @@ describe('verification', () => {
 
     it('accepts a new application once the last one was decided', async () => {
       const { actor, userId, request } = await applied();
-      await decide(await reviewer(db), request.id, 'REJECTED', 'The licence number is illegible.');
-      const doc = await document(db, userId);
+      await decide(await reviewer(ownerDb), request.id, 'REJECTED', 'The licence number is illegible.');
+      const doc = await document(ownerDb, userId);
       await expect(service.submit(actor, { documentIds: [doc] }, req())).resolves.toMatchObject({
         status: 'SUBMITTED',
       });
@@ -207,15 +213,15 @@ describe('verification', () => {
       ['a deleted document', 'deleted'],
       ['an id that does not exist', 'missing'],
     ] as const)('refuses %s as not found', async (_label, kind) => {
-      const who = await applicant(db);
-      const other = await applicant(db);
+      const who = await applicant(ownerDb);
+      const other = await applicant(ownerDb);
       const doc =
         kind === 'foreign'
-          ? await document(db, other.userId)
+          ? await document(ownerDb, other.userId)
           : kind === 'image'
-            ? await document(db, who.userId, { category: 'PROFILE_IMAGE' })
+            ? await document(ownerDb, who.userId, { category: 'PROFILE_IMAGE' })
             : kind === 'deleted'
-              ? await document(db, who.userId, { deleted: true })
+              ? await document(ownerDb, who.userId, { deleted: true })
               : randomUUID();
       await expect(service.submit(who.actor, { documentIds: [doc] }, req())).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
@@ -229,9 +235,9 @@ describe('verification', () => {
       ['an infected file', { scanStatus: 'INFECTED' as const }],
       ['a file the scanner failed on', { scanStatus: 'FAILED' as const }],
     ])('refuses %s as not ready', async (_label, opts) => {
-      const who = await applicant(db);
-      const good = await document(db, who.userId);
-      const bad = await document(db, who.userId, opts);
+      const who = await applicant(ownerDb);
+      const good = await document(ownerDb, who.userId);
+      const bad = await document(ownerDb, who.userId, opts);
       await expect(
         service.submit(who.actor, { documentIds: [good, bad] }, req()),
       ).rejects.toMatchObject({
@@ -241,22 +247,22 @@ describe('verification', () => {
     });
 
     it('refuses someone who is not an investigator', async () => {
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       await expect(
         service.submit(staff, { documentIds: [randomUUID()] }, req()),
       ).rejects.toMatchObject({ status: 403 });
     });
 
     it('answers an investigator with no profile as not found', async () => {
-      const staff = await reviewer(db, { roles: ['INVESTIGATOR'], staffScopes: [] });
+      const staff = await reviewer(ownerDb, { roles: ['INVESTIGATOR'], staffScopes: [] });
       await expect(
         service.submit(staff, { documentIds: [randomUUID()] }, req()),
       ).rejects.toMatchObject({ status: 404 });
     });
 
     it('refuses a suspended account', async () => {
-      const who = await applicant(db);
-      const doc = await document(db, who.userId);
+      const who = await applicant(ownerDb);
+      const doc = await document(ownerDb, who.userId);
       await expect(
         service.submit({ ...who.actor, status: 'SUSPENDED' }, { documentIds: [doc] }, req()),
       ).rejects.toMatchObject({ status: 403 });
@@ -265,14 +271,14 @@ describe('verification', () => {
 
   describe('the applicant’s own list', () => {
     it('is empty before anything is submitted', async () => {
-      const who = await applicant(db);
+      const who = await applicant(ownerDb);
       expect(await service.listMine(who.actor, req())).toEqual([]);
     });
 
     it('shows each decision’s reason, newest first, and never who made it', async () => {
       const { actor, userId, request: first } = await applied();
-      await decide(await reviewer(db), first.id, 'REJECTED', '  The ID has expired.  ');
-      const doc = await document(db, userId);
+      await decide(await reviewer(ownerDb), first.id, 'REJECTED', '  The ID has expired.  ');
+      const doc = await document(ownerDb, userId);
       const second = await service.submit(actor, { documentIds: [doc] }, req());
 
       const list = await service.listMine(actor, req());
@@ -288,7 +294,7 @@ describe('verification', () => {
 
     it('does not include anyone else’s applications', async () => {
       await applied();
-      const who = await applicant(db);
+      const who = await applicant(ownerDb);
       expect(await service.listMine(who.actor, req())).toEqual([]);
     });
   });
@@ -303,7 +309,7 @@ describe('verification', () => {
       ],
     ])('refuses %s everywhere', async (_label, opts) => {
       const { request, doc } = await applied();
-      const actor = await reviewer(db, opts);
+      const actor = await reviewer(ownerDb, opts);
       for (const attempt of [
         () => service.queue(actor, {}, req()),
         () => service.getForReview(actor, request.id, req()),
@@ -322,12 +328,12 @@ describe('verification', () => {
       const b = await applied();
       const c = await applied();
       // b and c share an instant, so the id decides between them.
-      await submittedAt(db, a.request.id, at);
-      await submittedAt(db, b.request.id, new Date(at.getTime() + 1000));
-      await submittedAt(db, c.request.id, new Date(at.getTime() + 1000));
+      await submittedAt(ownerDb, a.request.id, at);
+      await submittedAt(ownerDb, b.request.id, new Date(at.getTime() + 1000));
+      await submittedAt(ownerDb, c.request.id, new Date(at.getTime() + 1000));
       const tied = [b.request.id, c.request.id].sort();
 
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       const first = await service.queue(staff, { limit: 2, cursor: cursorBefore(at) }, req());
       expect(first.items.map((i) => i.id)).toEqual([a.request.id, tied[0]]);
       expect(first.items[0]).toMatchObject({ profileId: a.profileId, documentCount: 1 });
@@ -344,8 +350,8 @@ describe('verification', () => {
     it('drops an application once it is decided', async () => {
       const at = longAgo();
       const { request } = await applied();
-      await submittedAt(db, request.id, at);
-      const staff = await reviewer(db);
+      await submittedAt(ownerDb, request.id, at);
+      const staff = await reviewer(ownerDb);
       await decide(staff, request.id, 'APPROVED');
 
       const page = await service.queue(staff, { limit: 1, cursor: cursorBefore(at) }, req());
@@ -353,7 +359,7 @@ describe('verification', () => {
     });
 
     it('ends the sequence with no cursor', async () => {
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       // Past every submission there can be.
       const page = await service.queue(
         staff,
@@ -365,14 +371,14 @@ describe('verification', () => {
 
     it('starts from the oldest open application without a cursor, and clamps the limit', async () => {
       await applied();
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       const page = await service.queue(staff, { limit: 0 }, req());
       expect(page.items).toHaveLength(1);
       expect(page.pageInfo.hasNextPage).toBe(true);
     });
 
     it('refuses a cursor it did not issue', async () => {
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       await expect(service.queue(staff, { cursor: 'not-a-cursor' }, req())).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
       });
@@ -381,11 +387,11 @@ describe('verification', () => {
 
   describe('reviewing one application', () => {
     it('shows the documents, the profile and every earlier decision', async () => {
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       const { actor, userId, profileId, request: first } = await applied();
       await decide(staff, first.id, 'REJECTED', 'The document is cropped.');
-      const docA = await document(db, userId);
-      const docB = await document(db, userId, { scanStatus: 'PENDING' });
+      const docA = await document(ownerDb, userId);
+      const docB = await document(ownerDb, userId, { scanStatus: 'PENDING' });
       const second = await service.submit(actor, { documentIds: [docA, docB] }, req());
 
       const review = await service.getForReview(staff, second.id, req());
@@ -433,7 +439,7 @@ describe('verification', () => {
     });
 
     it('answers an unknown application as not found', async () => {
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       await expect(service.getForReview(staff, randomUUID(), req())).rejects.toMatchObject({
         status: 404,
       });
@@ -443,7 +449,7 @@ describe('verification', () => {
   describe('deciding', () => {
     it('approving verifies the profile and records who decided, and why', async () => {
       const { profileId, request } = await applied();
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
 
       const decided = await decide(
         staff,
@@ -477,7 +483,7 @@ describe('verification', () => {
 
     it('rejecting marks the profile REJECTED', async () => {
       const { profileId, request } = await applied();
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       await decide(staff, request.id, 'REJECTED', 'The name does not match the licence.');
 
       expect((await profileOf(profileId)).verificationStatus).toBe('REJECTED');
@@ -486,7 +492,7 @@ describe('verification', () => {
 
     it('rejecting an addition leaves an existing verification standing', async () => {
       const { profileId, verifiedAt, request } = await applied({ verificationStatus: 'VERIFIED' });
-      await decide(await reviewer(db), request.id, 'REJECTED', 'No licence for the new region.');
+      await decide(await reviewer(ownerDb), request.id, 'REJECTED', 'No licence for the new region.');
 
       const profile = await profileOf(profileId);
       expect(profile.verificationStatus).toBe('VERIFIED');
@@ -495,7 +501,7 @@ describe('verification', () => {
 
     it('approving an addition keeps the original verification date', async () => {
       const { profileId, verifiedAt, request } = await applied({ verificationStatus: 'VERIFIED' });
-      await decide(await reviewer(db), request.id, 'APPROVED');
+      await decide(await reviewer(ownerDb), request.id, 'APPROVED');
       expect((await profileOf(profileId)).verifiedAt).toEqual(verifiedAt);
     });
 
@@ -505,16 +511,16 @@ describe('verification', () => {
       // of the deciding transaction's now() reproduces that on demand.
       const { request } = await applied();
       const ahead = new Date(Date.now() + 60 * 60_000);
-      await submittedAt(db, request.id, ahead);
+      await submittedAt(ownerDb, request.id, ahead);
 
-      const decided = await decide(await reviewer(db), request.id, 'APPROVED');
+      const decided = await decide(await reviewer(ownerDb), request.id, 'APPROVED');
 
       expect(decided.decision?.decidedAt).toEqual(ahead);
     });
 
     it('decides a request once', async () => {
       const { request } = await applied();
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
       await decide(staff, request.id, 'APPROVED');
       await expect(decide(staff, request.id, 'REJECTED')).rejects.toMatchObject({ status: 403 });
       const decisions = await db
@@ -526,7 +532,7 @@ describe('verification', () => {
 
     it('produces one decision when two reviewers act at once', async () => {
       const { request } = await applied();
-      const [one, two] = [await reviewer(db), await reviewer(db)];
+      const [one, two] = [await reviewer(ownerDb), await reviewer(ownerDb)];
       const results = await Promise.allSettled([
         decide(one, request.id, 'APPROVED'),
         decide(two, request.id, 'REJECTED'),
@@ -543,11 +549,11 @@ describe('verification', () => {
     });
 
     it('refuses a reviewer deciding their own application', async () => {
-      const self = await applicant(db, {
+      const self = await applicant(ownerDb, {
         roles: ['INVESTIGATOR', 'STAFF'],
         staffScopes: ['VERIFICATION'],
       });
-      const doc = await document(db, self.userId);
+      const doc = await document(ownerDb, self.userId);
       const request = await service.submit(
         { ...self.actor, activeRole: 'INVESTIGATOR' },
         { documentIds: [doc] },
@@ -561,7 +567,7 @@ describe('verification', () => {
     });
 
     it('answers an unknown application as not found', async () => {
-      await expect(decide(await reviewer(db), randomUUID(), 'APPROVED')).rejects.toMatchObject({
+      await expect(decide(await reviewer(ownerDb), randomUUID(), 'APPROVED')).rejects.toMatchObject({
         status: 404,
       });
     });
@@ -570,7 +576,7 @@ describe('verification', () => {
   describe('opening a document', () => {
     it('issues a short-lived link and records which application it was opened for', async () => {
       const { request, doc } = await applied();
-      const staff = await reviewer(db);
+      const staff = await reviewer(ownerDb);
 
       const link = await service.openDocument(staff, request.id, doc, req());
 
@@ -583,12 +589,12 @@ describe('verification', () => {
     });
 
     it('refuses a document not yet scanned clean, and records no opening', async () => {
-      const who = await applicant(db);
-      const doc = await document(db, who.userId, { scanStatus: 'PENDING' });
+      const who = await applicant(ownerDb);
+      const doc = await document(ownerDb, who.userId, { scanStatus: 'PENDING' });
       const request = await service.submit(who.actor, { documentIds: [doc] }, req());
 
       await expect(
-        service.openDocument(await reviewer(db), request.id, doc, req()),
+        service.openDocument(await reviewer(ownerDb), request.id, doc, req()),
       ).rejects.toMatchObject({ status: 403 });
       expect(await auditFor(request.id, 'verification.document_opened')).toEqual([]);
     });
@@ -597,7 +603,7 @@ describe('verification', () => {
       const mine = await applied();
       const theirs = await applied();
       await expect(
-        service.openDocument(await reviewer(db), mine.request.id, theirs.doc, req()),
+        service.openDocument(await reviewer(ownerDb), mine.request.id, theirs.doc, req()),
       ).rejects.toMatchObject({ status: 404 });
       expect(storage.signedDownloadUrl).not.toHaveBeenCalled();
     });

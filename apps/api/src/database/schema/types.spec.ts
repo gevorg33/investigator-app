@@ -60,7 +60,7 @@ describe('geography point', () => {
   );
 
   it('is accepted by PostGIS, and puts Yerevan where Yerevan is', async () => {
-    sql = testPool({ max: 1 });
+    sql = testPool({ max: 1, role: 'owner' });
     const text = place.mapToDriverValue(YEREVAN) as string;
     const [row] = await sql`
       select ST_X(${text}::geography::geometry) as lon, ST_Y(${text}::geography::geometry) as lat`;
@@ -92,7 +92,7 @@ describe('reading geography back through drizzle', () => {
 
   beforeAll(async () => {
     // One connection, so the temporary table is visible to every query below.
-    sql = testPool({ max: 1 });
+    sql = testPool({ max: 1, role: 'owner' });
     await sql`CREATE TEMP TABLE geo_point_roundtrip_probe (id integer primary key, place geography(Point, 4326))`;
   });
 
@@ -220,7 +220,7 @@ describe('geography polygon', () => {
     });
 
     beforeAll(async () => {
-      sql = testPool({ max: 1 });
+      sql = testPool({ max: 1, role: 'owner' });
       await sql`CREATE TEMP TABLE geo_polygon_roundtrip_probe (id integer primary key, area geography(Polygon, 4326))`;
     });
 

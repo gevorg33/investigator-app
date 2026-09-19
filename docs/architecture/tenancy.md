@@ -240,8 +240,29 @@ the tenant.
 | owner (`postgres` locally; a dedicated owner in production) | migrations, test fixtures | Bypasses (owner or superuser) |
 | `investigator_app` | the API and workers at runtime | **Enforced**: `NOBYPASSRLS`, owns nothing, `FORCE ROW LEVEL SECURITY` on every scoped table |
 
-Today the API connects as `postgres`. **That changes first (T-073)**, because until it does,
-every policy is decorative, and its tests pass for the wrong reason.
+**Built in T-073.** Until then the API connected as `postgres`, and every policy would have been
+decorative, with its tests passing for the wrong reason. Now:
+
+- **`DATABASE_URL` is `investigator_app`, and the API refuses to boot otherwise.**
+  `RuntimeRoleCheck` (`src/database/runtime-role.ts`) refuses a superuser, a role with
+  `BYPASSRLS`, a role that owns any table in `public`, and a role that can `SET ROLE` into one
+  of those. It fails closed in every environment, local development included.
+- **`MIGRATION_DATABASE_URL` is the owner.** drizzle-kit uses it and never falls back to
+  `DATABASE_URL`. It must never be given to the API process outside local development.
+- **The runtime role's password comes from `APP_DB_PASSWORD`,** set by
+  `scripts/set-app-role-password.sh` after migrations. It travels via psql's `\getenv`, so it
+  never appears on a command line, and psql quotes it as a literal. CI generates a new one every
+  run; the production deploy (T-041) calls the same script. Local development keeps the
+  migration's default. **Roles are cluster-wide:** on a shared server, every database there
+  shares one `investigator_app` password.
+- **Tests use two pools.** Code under test runs as `investigator_app` (`testPool()`). Fixtures
+  and schema-rule tests run as the owner (`testPool({ role: 'owner' })`). A spec asserts each
+  pool's `current_user`, so a silent fallback to the owner cannot pass unnoticed.
+
+Measured before the split: with everything run as `investigator_app`, **no grant was missing from
+any real application path**. All 94 failures were fixtures writing what the application
+deliberately may not (93 taxonomy inserts), plus one schema test that a revoked privilege reached
+before the constraint it tests.
 
 ### Context settings
 

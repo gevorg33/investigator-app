@@ -65,6 +65,35 @@ else
   ok "$ENVFILE created, SESSION_SECRET generated"
 fi
 
+# T-073: the API connects as the runtime role and migrations as the owner. An .env.local made
+# before that has one DATABASE_URL holding the owner — with which the API now refuses to boot.
+# Move it to MIGRATION_DATABASE_URL and point DATABASE_URL at investigator_app on the same
+# database. Idempotent; prints no values from the file.
+node - "$ENVFILE" <<'NODE'
+const fs = require('node:fs');
+const file = process.argv[2];
+const text = fs.readFileSync(file, 'utf8');
+const get = (k) => (text.match(new RegExp(`^${k}=(.*)$`, 'm')) || [])[1];
+if (get('MIGRATION_DATABASE_URL') !== undefined) {
+  console.log('  [32m✓[0m database roles already split');
+  process.exit(0);
+}
+const current = get('DATABASE_URL');
+if (!current) {
+  console.log('  [33m![0m no DATABASE_URL in ' + file + ' — add both from .env.example');
+  process.exit(0);
+}
+const url = new URL(current);
+const runtime = new URL(current);
+runtime.username = 'investigator_app';
+runtime.password = 'investigator_app';
+const out = text
+  .replace(/^DATABASE_URL=.*$/m, `DATABASE_URL=${runtime.toString()}`)
+  .concat(text.endsWith('\n') ? '' : '\n', `MIGRATION_DATABASE_URL=${url.toString()}\n`);
+fs.writeFileSync(file, out);
+console.log('  [32m✓[0m split database roles: DATABASE_URL → investigator_app, owner → MIGRATION_DATABASE_URL');
+NODE
+
 # ── Services ────────────────────────────────────────────────────────────────────
 echo
 echo "Services"

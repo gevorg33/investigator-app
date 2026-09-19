@@ -22,7 +22,7 @@ describe('verification tables', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = testPool({ max: 2 });
+    sql = testPool({ max: 2, role: 'owner' });
   });
 
   afterAll(async () => {

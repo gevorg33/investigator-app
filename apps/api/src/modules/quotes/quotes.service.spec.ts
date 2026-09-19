@@ -25,12 +25,17 @@ import { testPool } from '../../../test/db';
 describe('quotes', () => {
   let sql: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let service: QuotesService;
   const req = () => ({ ip: '198.51.100.20', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
     sql = testPool();
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
@@ -48,6 +53,7 @@ describe('quotes', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   const offer = (over: Record<string, unknown> = {}) => ({
@@ -63,8 +69,8 @@ describe('quotes', () => {
 
   describe('submitting', () => {
     it('accepts an offer from an eligible investigator', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       const quote = await service.submit(inv.actor, mission.missionId, offer() as never, req());
       expect(quote).toMatchObject({
         missionId: mission.missionId,
@@ -82,8 +88,8 @@ describe('quotes', () => {
     ])('refuses an investigator who is %s', async (_label, opts) => {
       // The same conditions discovery applies. Someone who cannot be found should not arrive
       // through the back door of a quote.
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db, opts);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb, opts);
       await expect(
         service.submit(inv.actor, mission.missionId, offer() as never, req()),
       ).rejects.toMatchObject({ status: 403 });
@@ -92,16 +98,16 @@ describe('quotes', () => {
     it('refuses a mission no moderator has published', async () => {
       // A draft mission is not visible to investigators at all, so absence and "not yet
       // published" are answered the same way.
-      const mission = await quotableMission(db, { status: 'DRAFT' });
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb, { status: 'DRAFT' });
+      const inv = await eligibleInvestigator(ownerDb);
       await expect(
         service.submit(inv.actor, mission.missionId, offer() as never, req()),
       ).rejects.toMatchObject({ status: 404 });
     });
 
     it('allows one live offer per investigator per mission', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       await service.submit(inv.actor, mission.missionId, offer() as never, req());
       await expect(
         service.submit(inv.actor, mission.missionId, offer() as never, req()),
@@ -110,8 +116,8 @@ describe('quotes', () => {
 
     it('allows a replacement once the first is withdrawn', async () => {
       // "Before acceptance, withdraw it and submit a replacement."
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       const first = await service.submit(inv.actor, mission.missionId, offer() as never, req());
       await service.withdraw(inv.actor, first.id, req());
       const second = await service.submit(
@@ -128,8 +134,8 @@ describe('quotes', () => {
       ['minutes away', new Date(Date.now() + 60_000).toISOString()],
       ['a year out', inDays(365).toISOString()],
     ])('refuses an expiry that is %s', async (_label, expiresAt) => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       await expect(
         service.submit(inv.actor, mission.missionId, offer({ expiresAt }) as never, req()),
       ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
@@ -137,9 +143,9 @@ describe('quotes', () => {
 
     it('lets two investigators quote the same mission', async () => {
       // "You can receive several quotes for one mission and compare them."
-      const mission = await quotableMission(db);
-      const a = await eligibleInvestigator(db);
-      const b = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const a = await eligibleInvestigator(ownerDb);
+      const b = await eligibleInvestigator(ownerDb);
       await service.submit(a.actor, mission.missionId, offer() as never, req());
       await service.submit(b.actor, mission.missionId, offer() as never, req());
       expect(await service.listForMission(mission.actor, mission.missionId, req())).toHaveLength(2);
@@ -148,16 +154,16 @@ describe('quotes', () => {
 
   describe('withdrawing', () => {
     it('withdraws a live offer', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       const quote = await service.submit(inv.actor, mission.missionId, offer() as never, req());
       expect((await service.withdraw(inv.actor, quote.id, req())).status).toBe('WITHDRAWN');
     });
 
     it('refuses to withdraw somebody else’s offer', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const other = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const other = await eligibleInvestigator(ownerDb);
       const quote = await service.submit(inv.actor, mission.missionId, offer() as never, req());
       // 404, not 403: a 403 confirms the id is real to somebody who should not know.
       await expect(service.withdraw(other.actor, quote.id, req())).rejects.toMatchObject({
@@ -166,9 +172,9 @@ describe('quotes', () => {
     });
 
     it('refuses to withdraw once accepted — that is the agreement', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
         status: 'ACCEPTED',
@@ -187,14 +193,14 @@ describe('quotes', () => {
     ) => service.accept(mission.actor as never, quoteId, key, req());
 
     it('confirms the scope and price, and closes the other offers', async () => {
-      const mission = await quotableMission(db);
-      const a = await eligibleInvestigator(db);
-      const b = await eligibleInvestigator(db);
-      const chosen = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const a = await eligibleInvestigator(ownerDb);
+      const b = await eligibleInvestigator(ownerDb);
+      const chosen = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: a.profileId,
       });
-      const other = await submittedQuote(db, {
+      const other = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: b.profileId,
       });
@@ -216,11 +222,11 @@ describe('quotes', () => {
     });
 
     it('refuses an expired offer', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       // Aged after insertion, because the database refuses a quote born already expired —
       // which is how a real one lapses anyway.
-      const quote = await submittedQuote(db, {
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
         expiredFor: 1000,
@@ -229,9 +235,9 @@ describe('quotes', () => {
     });
 
     it('refuses a withdrawn offer', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
         status: 'WITHDRAWN',
@@ -240,9 +246,9 @@ describe('quotes', () => {
     });
 
     it('refuses another customer, and the investigator', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
@@ -256,9 +262,9 @@ describe('quotes', () => {
     });
 
     it('replays the first answer when the same key arrives twice', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
@@ -277,9 +283,9 @@ describe('quotes', () => {
     });
 
     it('refuses a second acceptance under a different key', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      const quote = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
@@ -291,14 +297,14 @@ describe('quotes', () => {
       // Two quotes on one mission, accepted at the same instant. "Accepting a quote creates a
       // single assignment for that mission" — so one wins and the other finds the mission
       // already confirmed.
-      const mission = await quotableMission(db);
-      const a = await eligibleInvestigator(db);
-      const b = await eligibleInvestigator(db);
-      const first = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const a = await eligibleInvestigator(ownerDb);
+      const b = await eligibleInvestigator(ownerDb);
+      const first = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: a.profileId,
       });
-      const second = await submittedQuote(db, {
+      const second = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: b.profileId,
       });
@@ -320,14 +326,14 @@ describe('quotes', () => {
       // dropped — a negative control proved exactly that. The constraint is what holds the rule
       // against every other writer: a job, a migration, a console, a future endpoint that
       // forgets to lock.
-      const mission = await quotableMission(db);
-      const a = await eligibleInvestigator(db);
-      const b = await eligibleInvestigator(db);
-      const first = await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const a = await eligibleInvestigator(ownerDb);
+      const b = await eligibleInvestigator(ownerDb);
+      const first = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: a.profileId,
       });
-      const second = await submittedQuote(db, {
+      const second = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: b.profileId,
       });
@@ -346,23 +352,23 @@ describe('quotes', () => {
     });
 
     it('refuses a second live quote from one investigator on one mission', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
       await expect(
-        submittedQuote(db, { missionId: mission.missionId, investigatorProfileId: inv.profileId }),
+        submittedQuote(ownerDb, { missionId: mission.missionId, investigatorProfileId: inv.profileId }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'quotes_one_live_per_investigator' } });
     });
   });
 
   describe('reading', () => {
     it('shows the customer every offer on their own mission', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
-      await submittedQuote(db, {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
       });
@@ -370,7 +376,7 @@ describe('quotes', () => {
     });
 
     it('refuses another customer’s mission', async () => {
-      const mission = await quotableMission(db);
+      const mission = await quotableMission(ownerDb);
       const stranger = testActor({ userId: randomUUID(), roles: ['CUSTOMER'] });
       await expect(
         service.listForMission(stranger, mission.missionId, req()),
@@ -378,8 +384,8 @@ describe('quotes', () => {
     });
 
     it('shows an investigator their own offers', async () => {
-      const mission = await quotableMission(db);
-      const inv = await eligibleInvestigator(db);
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
       await service.submit(inv.actor, mission.missionId, offer() as never, req());
       const mine = await service.listMine(inv.actor, req());
       expect(mine.map((q) => q.missionId)).toContain(mission.missionId);

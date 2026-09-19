@@ -13,7 +13,7 @@ describe('service_areas', () => {
   let profileId: string;
 
   beforeAll(async () => {
-    sql = testPool({ max: 2 });
+    sql = testPool({ max: 2, role: 'owner' });
     const [u] = await sql`insert into users (email) values (${`sa-schema-${randomUUID()}@example.test`}) returning id`;
     const [p] = await sql`insert into investigator_profiles (user_id) values (${u?.['id']}) returning id`;
     profileId = String(p?.['id']);

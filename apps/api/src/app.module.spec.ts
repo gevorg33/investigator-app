@@ -1,8 +1,10 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { TEST_DATABASE_URL } from '../test/db';
 
-const LOCAL = 'postgres://postgres:postgres@localhost:5433/investigator_dev';
+// The runtime role: the app must boot as investigator_app, never as the owner (T-073).
+const LOCAL = TEST_DATABASE_URL;
 
 /**
  * The real module graph, booted. Every other suite assembles a slice by hand; this is the

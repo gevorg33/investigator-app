@@ -16,7 +16,9 @@ permissions:
   pull-requests: read # gitleaks-action reads the PR's commits; read-only, since its comments are off
 
 env:
-  DATABASE_URL: postgres://postgres:postgres@localhost:5432/investigator_test
+  # The owner: migrations and test fixtures only (T-073). DATABASE_URL — the runtime role the
+  # API and the code under test connect as — is set after migrations, with a per-run password.
+  MIGRATION_DATABASE_URL: postgres://postgres:postgres@localhost:5432/investigator_test
   REDIS_URL: redis://localhost:6379
   # No production secret is reachable here. Fork PRs receive no secrets at all.
 
@@ -74,6 +76,17 @@ jobs:
       # Proves migrations apply to an EMPTY database, in sequence, with no manual state.
       - name: Migrate from empty
         run: pnpm --filter api migration:run
+
+      # T-073: everything after this connects as investigator_app — not a superuser, no
+      # BYPASSRLS, owns nothing — so row-level security applies, as it will in production.
+      # The password is generated for this run, masked in logs, and set by the same script the
+      # production deploy uses. If it failed, every database test below would fail to connect.
+      - name: Runtime role with a per-run password
+        run: |
+          pw="$(openssl rand -hex 24)"
+          echo "::add-mask::$pw"
+          APP_DB_PASSWORD="$pw" ./scripts/set-app-role-password.sh
+          echo "DATABASE_URL=postgres://investigator_app:${pw}@localhost:5432/investigator_test" >> "$GITHUB_ENV"
 
       # `--if-present` because fixtures are T-042's to build and no package defines the
       # script yet; this step referenced it before it existed and failed the first run CI

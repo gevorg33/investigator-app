@@ -14,7 +14,7 @@ describe('audit_logs is append-only for the application role', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = testPool({ max: 1 });
+    sql = testPool({ max: 1, role: 'owner' });
   });
 
   afterAll(async () => {
@@ -79,7 +79,7 @@ describe('users.email uniqueness is case-insensitive', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = testPool({ max: 1 });
+    sql = testPool({ max: 1, role: 'owner' });
   });
 
   afterAll(async () => {
@@ -112,7 +112,7 @@ describe('the mission tables hold only the privileges they were meant to', () =>
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = testPool({ max: 1 });
+    sql = testPool({ max: 1, role: 'owner' });
   });
 
   afterAll(async () => {

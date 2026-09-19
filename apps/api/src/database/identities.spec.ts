@@ -38,7 +38,7 @@ describe('external identity linking', () => {
   };
 
   beforeAll(() => {
-    sql = testPool();
+    sql = testPool({ role: 'owner' });
     db = drizzle(sql, { schema });
   });
 

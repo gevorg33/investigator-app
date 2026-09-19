@@ -25,6 +25,9 @@ import { testPool } from '../../../test/db';
 describe('investigator discovery', () => {
   let sqlClient: postgres.Sql;
   let db: TestDb;
+  // Fixtures run as the owner: they write what the application may not (T-073).
+  let ownerSql: postgres.Sql;
+  let ownerDb: TestDb;
   let service: SearchService;
   let customer: Actor;
   /**
@@ -43,7 +46,9 @@ describe('investigator discovery', () => {
   beforeAll(async () => {
     sqlClient = testPool();
     db = drizzle(sqlClient, { schema });
-    customer = await searcher(db);
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
+    customer = await searcher(ownerDb);
   });
 
   beforeEach(() => {
@@ -54,10 +59,11 @@ describe('investigator discovery', () => {
 
   afterAll(async () => {
     await sqlClient.end();
+    await ownerSql.end();
   });
 
   /** An investigator belonging to this test. */
-  const mine = async (opts: DiscoverableOptions = {}) => discoverable(db, { city: tag, ...opts });
+  const mine = async (opts: DiscoverableOptions = {}) => discoverable(ownerDb, { city: tag, ...opts });
 
   /** A search this test owns: at a point, tightly, and only over this test's investigators. */
   const near = async (centre: { lon: number; lat: number }, over: Record<string, unknown> = {}) =>
@@ -92,7 +98,7 @@ describe('investigator discovery', () => {
     it('cannot be brought back by matching every other filter perfectly', async () => {
       // The point of the pipeline: no stage adds. A profile that matches on language, category,
       // availability, price and distance is still ineligible if it is not verified.
-      const category = await node(db);
+      const category = await node(ownerDb);
       const hidden = await mine({
         verificationStatus: 'UNVERIFIED',
         languages: ['hy', 'en'],
@@ -181,8 +187,8 @@ describe('investigator discovery', () => {
 
   describe('the taxonomy walks the tree in both directions (ADR-0007)', () => {
     it('finds an investigator who declared a child when the customer asked for the parent', async () => {
-      const parent = await node(db);
-      const child = await node(db, { parentId: parent });
+      const parent = await node(ownerDb);
+      const child = await node(ownerDb, { parentId: parent });
       const found = await mine({ specialtyNodeIds: [child] });
       expect(ids(await near(found.centre, { taxonomyNodeIds: [parent] }))).toEqual([
         found.profileId,
@@ -190,8 +196,8 @@ describe('investigator discovery', () => {
     });
 
     it('finds an investigator who declared a parent when the customer asked for the child', async () => {
-      const parent = await node(db);
-      const child = await node(db, { parentId: parent });
+      const parent = await node(ownerDb);
+      const child = await node(ownerDb, { parentId: parent });
       const found = await mine({ specialtyNodeIds: [parent] });
       expect(ids(await near(found.centre, { taxonomyNodeIds: [child] }))).toEqual([
         found.profileId,
@@ -199,27 +205,27 @@ describe('investigator discovery', () => {
     });
 
     it('reaches a grandchild', async () => {
-      const root = await node(db);
-      const mid = await node(db, { parentId: root });
-      const leaf = await node(db, { parentId: mid });
+      const root = await node(ownerDb);
+      const mid = await node(ownerDb, { parentId: root });
+      const leaf = await node(ownerDb, { parentId: mid });
       const found = await mine({ specialtyNodeIds: [leaf] });
       expect(ids(await near(found.centre, { taxonomyNodeIds: [root] }))).toEqual([found.profileId]);
     });
 
     it('does not match an unrelated branch', async () => {
-      const found = await mine({ specialtyNodeIds: [await node(db)] });
-      expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(db)] }))).toEqual([]);
+      const found = await mine({ specialtyNodeIds: [await node(ownerDb)] });
+      expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(ownerDb)] }))).toEqual([]);
     });
 
     it('returns nothing for a node that does not exist, rather than everything', async () => {
-      const found = await mine({ specialtyNodeIds: [await node(db)] });
+      const found = await mine({ specialtyNodeIds: [await node(ownerDb)] });
       expect(ids(await near(found.centre, { taxonomyNodeIds: [randomUUID()] }))).toEqual([]);
     });
 
     it('matches any of several requested nodes', async () => {
-      const wanted = await node(db);
+      const wanted = await node(ownerDb);
       const found = await mine({ specialtyNodeIds: [wanted] });
-      expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(db), wanted] }))).toEqual([
+      expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(ownerDb), wanted] }))).toEqual([
         found.profileId,
       ]);
     });
@@ -278,7 +284,7 @@ describe('investigator discovery', () => {
       // Nowhere to work is not a reason to be invisible in a list that is not about location.
       // No area means no city either, so this one cannot be isolated by tag — it is found by the
       // experience ordering instead, which puts it ahead of the fixtures that declare none.
-      const found = await discoverable(db, { withoutArea: true, yearsExperience: 30 });
+      const found = await discoverable(ownerDb, { withoutArea: true, yearsExperience: 30 });
       expect(ids(await near(somewhere()))).not.toContain(found.profileId);
       const page = await search({ limit: 100 });
       expect(ids(page)).toContain(found.profileId);
@@ -358,7 +364,7 @@ describe('investigator discovery', () => {
     });
 
     it('explains the match from the criteria that actually matched', async () => {
-      const category = await node(db);
+      const category = await node(ownerDb);
       const centre = somewhere();
       await mine({
         centre,
@@ -426,7 +432,7 @@ describe('investigator discovery', () => {
 
   describe('authorization', () => {
     it('refuses a suspended account', async () => {
-      const suspended = await searcher(db, { status: 'SUSPENDED' });
+      const suspended = await searcher(ownerDb, { status: 'SUSPENDED' });
       await expect(service.searchInvestigators(suspended, {}, req())).rejects.toMatchObject({
         status: 403,
       });
