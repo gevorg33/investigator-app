@@ -26,9 +26,8 @@ import { MissionPolicyService } from '../mission-policy/mission-policy.service';
 import { MissionTransitionService } from './mission-transition.service';
 import { OwnMissionRepository } from './missions.repository';
 import { MissionsService } from './missions.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('missions', () => {
   let sql: postgres.Sql;
@@ -37,7 +36,7 @@ describe('missions', () => {
   const req = () => ({ ip: '198.51.100.70', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 8, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

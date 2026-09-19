@@ -31,9 +31,8 @@ import { OwnMediaRepository, ViewableMediaRepository } from '../media/media.repo
 import { MediaService } from '../media/media.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { VerificationService } from './verification.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('verification', () => {
   let sql: postgres.Sql;
@@ -43,7 +42,7 @@ describe('verification', () => {
   const req = () => ({ ip: '198.51.100.30', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 8, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

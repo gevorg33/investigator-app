@@ -8,6 +8,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { AssignmentsController } from './assignments.controller';
 import { AssignmentsService } from './assignments.service';
+import { closeApp, listenOnce } from '../../../test/http';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -37,11 +38,11 @@ describe('assignments controller', () => {
     // As bootstrap.ts does, so a domain error from a handler arrives as its own status rather
     // than as a 500.
     app.useGlobalFilters(new AppExceptionFilter());
-    await app.init();
+    await listenOnce(app);
   });
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
   });
 
   const http = () => request(app.getHttpServer());

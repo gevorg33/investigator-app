@@ -4,9 +4,8 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from '../../database/schema';
 import { IdempotencyService } from './idempotency.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('idempotency keys', () => {
   let sql: postgres.Sql;
@@ -15,7 +14,7 @@ describe('idempotency keys', () => {
   const actorId = '00000000-0000-4000-8000-00000000aaaa';
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 6, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

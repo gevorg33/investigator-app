@@ -14,9 +14,8 @@ import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('profile persistence', () => {
   let sql: postgres.Sql;
@@ -25,7 +24,7 @@ describe('profile persistence', () => {
   const req = { ip: '198.51.100.11', userAgent: 'vitest', correlationId: 'persist-test' };
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     profiles = new ProfilesService(
       db,

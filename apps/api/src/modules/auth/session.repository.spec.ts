@@ -12,9 +12,8 @@ import { expectAuthorized, testActor } from '../../../test/authz-cases';
 import { SessionRepository } from './session.repository';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('actor-scoped reads', () => {
   let sql: postgres.Sql;
@@ -24,7 +23,7 @@ describe('actor-scoped reads', () => {
   let sessions: SessionService;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     repo = new SessionRepository(db);
     authz = new AuthzService(new AuditService(db));

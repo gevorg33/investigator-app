@@ -8,9 +8,8 @@ import * as schema from '../../database/schema';
 import { missions, missionScreenings } from '../../database/schema';
 import { MissionPolicyService, type MissionClassification } from './mission-policy.service';
 import type { ScreenableMission } from './mission-policy.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('recording a screening', () => {
   let sql: postgres.Sql;
@@ -18,7 +17,7 @@ describe('recording a screening', () => {
   const policy = new MissionPolicyService();
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 
@@ -153,7 +152,7 @@ describe('an AI classification is input, not a decision', () => {
   const policy = new MissionPolicyService();
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

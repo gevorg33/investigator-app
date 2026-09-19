@@ -4,9 +4,8 @@ import { getTableConfig, integer, pgTable } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { citext, geographyPoint, geographyPolygon } from './types';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 const probe = pgTable('type_probe', { place: geographyPoint('place'), email: citext('email') });
 const column = (name: string) => {
@@ -61,7 +60,7 @@ describe('geography point', () => {
   );
 
   it('is accepted by PostGIS, and puts Yerevan where Yerevan is', async () => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
     const text = place.mapToDriverValue(YEREVAN) as string;
     const [row] = await sql`
       select ST_X(${text}::geography::geometry) as lon, ST_Y(${text}::geography::geometry) as lat`;
@@ -93,7 +92,7 @@ describe('reading geography back through drizzle', () => {
 
   beforeAll(async () => {
     // One connection, so the temporary table is visible to every query below.
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
     await sql`CREATE TEMP TABLE geo_point_roundtrip_probe (id integer primary key, place geography(Point, 4326))`;
   });
 
@@ -221,7 +220,7 @@ describe('geography polygon', () => {
     });
 
     beforeAll(async () => {
-      sql = postgres(URL, { max: 1, onnotice: () => {} });
+      sql = testPool({ max: 1 });
       await sql`CREATE TEMP TABLE geo_polygon_roundtrip_probe (id integer primary key, area geography(Polygon, 4326))`;
     });
 

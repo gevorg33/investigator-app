@@ -8,9 +8,8 @@ import { userRoles, users, userSessions, userStaffScopes } from '../../database/
 import { SessionService } from '../../modules/auth/session.service';
 import { TokenService } from '../../modules/auth/token.service';
 import { ActorService } from './actor.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('resolving the actor', () => {
   let sql: postgres.Sql;
@@ -20,7 +19,7 @@ describe('resolving the actor', () => {
   let sessions: SessionService;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     tokens = new TokenService();
     sessions = new SessionService(tokens);

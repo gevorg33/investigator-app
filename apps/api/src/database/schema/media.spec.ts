@@ -7,16 +7,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from './index';
 import { mediaAssets } from './media';
 import { users } from './users';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('media_assets', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 2, onnotice: () => {} });
+    sql = testPool({ max: 2 });
     db = drizzle(sql, { schema });
   });
 
@@ -99,8 +98,7 @@ describe('media_assets', () => {
 
   it('gives the application role no way to hard-delete a row', async () => {
     const id = await seed();
-    const appUrl = URL.replace(/\/\/[^@]+@/, '//investigator_app:investigator_app@');
-    const app = postgres(appUrl, { max: 1, onnotice: () => {} });
+    const app = testPool({ max: 1, role: 'app' });
     try {
       const err = await app`delete from media_assets where id = ${id}`.then(() => null).catch((e: { code?: string }) => e);
       // 42501: insufficient_privilege.

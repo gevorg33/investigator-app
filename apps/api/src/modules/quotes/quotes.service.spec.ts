@@ -19,9 +19,8 @@ import { missions, quotes } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { QuotesService } from './quotes.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('quotes', () => {
   let sql: postgres.Sql;
@@ -30,7 +29,7 @@ describe('quotes', () => {
   const req = () => ({ ip: '198.51.100.20', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 8, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

@@ -19,9 +19,8 @@ import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
 import { serviceAreas } from '../../database/schema';
 import { SearchService } from './search.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('investigator discovery', () => {
   let sqlClient: postgres.Sql;
@@ -42,7 +41,7 @@ describe('investigator discovery', () => {
   const req = () => ({ ip: '198.51.100.90', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(async () => {
-    sqlClient = postgres(URL, { max: 8, onnotice: () => {} });
+    sqlClient = testPool();
     db = drizzle(sqlClient, { schema });
     customer = await searcher(db);
   });

@@ -4,9 +4,8 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { investigatorSearchQuery } from './search.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 /**
  * The plan for the query discovery actually runs, on a seeded dataset.
@@ -22,7 +21,7 @@ describe('discovery query plan', () => {
   const at = { lon: 44.52, lat: 40.19 };
 
   beforeAll(async () => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
     const run = randomUUID();
     const rollback = new Error('rollback');
     await sql

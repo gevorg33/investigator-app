@@ -2720,13 +2720,13 @@ pnpm --filter api test mission-policy
 ---
 
 ### T-069 — The suite is flaky under its own parallelism
-- **Status:** TODO
+- **Status:** DONE — 2026-09-19
 - **Priority:** P0 — gates Phase 4b (tenancy adds many database-heavy tests to a suite that is already flaky); it was P1 because it makes CI untrustworthy
 - **Depends on:** —
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain + infra-devops
-- **Affected:** apps/api/vitest.config.mts, apps/api/src/modules/auth/password.service.spec.ts
+- **Affected:** apps/api/vitest.config.mts, apps/api/test/{db,db-budget,http,setup-http}.ts, 28 database specs, 13 HTTP specs, apps/api/src/modules/auth/password.service.spec.ts
 
 **Description**
 Three consecutive full-suite runs during T-010 failed three **different, unrelated** tests, each
@@ -2742,13 +2742,49 @@ A suite that fails a different test each run teaches people to re-run rather tha
 failure, and that habit is what lets a real regression through.
 
 **Acceptance criteria**
-- [ ] The timing-oracle test is made robust without weakening what it asserts — it exists to
+- [x] The timing-oracle test is made robust without weakening what it asserts — it exists to
       prove the decoy hash closes an account-enumeration oracle, and that property must still
       be tested. Median of several samples, or a comparison that is not a raw wall-clock ratio
-- [ ] Database-backed specs do not exhaust connections or serialise unpredictably — decide
+- [x] Database-backed specs do not exhaust connections or serialise unpredictably — decide
       deliberately between a connection cap, a shared pool, and limited file parallelism
-- [ ] Ten consecutive full-suite runs, green, recorded as the evidence
-- [ ] CI runs the same configuration as a developer machine, so a flake is reproducible
+- [x] Ten consecutive full-suite runs, green, recorded as the evidence
+- [x] CI runs the same configuration as a developer machine, so a flake is reproducible
+
+**How each was verified**
+
+| Criterion | Evidence |
+|---|---|
+| Timing oracle, not weakened | The old test timed the decoy's **first** call, which also computes the decoy hash, so it sat at ~2x before any noise: measured median 2.01x, **worst 4.55x under load** (5.58x once in T-010). It now warms the decoy up and compares medians of 7 interleaved pairs: median 1.01x, worst 2.16x under the same load. The `< 5` bound is unchanged. **A structural test was added**, with no clock: the decoy is verified against a hash with the same argon2 algorithm and cost parameters as a real one |
+| Connections, decided | **Fixed at 4 workers** (CI's runner has 4 vCPUs), taken from `test/db-budget.ts`. Every spec opens pools through `testPool()`, capped at 4. The worst case is 4 × 18 = 72 against 77 usable (100 minus 3 reserved minus 20 headroom). `connection-budget.spec.ts` checks it against the live server, statically forbids a spec opening its own pool, and checks each file stays within budget. Before: machine-derived workers (10 on a laptop), pools of up to 8, worst case 92 of 97 — and T-073's second pool would have exceeded it |
+| Ten consecutive runs | **10/10** with coverage on the final code, 1,118 tests at 100% on all four metrics, 25–26 s each (up from ~16 s on 10 workers: the price of reproducibility). Plus **8/8** full runs under 12 CPU burners |
+| Same configuration as CI | CI runs `pnpm test:coverage`, the same config: the worker count and the HTTP setup file live in `vitest.config.mts`, not the command line |
+
+**A bug the task did not know about.** Under load, a test's HTTP request could be **answered by the previous test's app**. Supertest, handed an app that is not listening, listens and closes a server around every request. Node's global agent keeps sockets alive, so a socket to a closing server can survive and be reused when the next test's server gets the same ephemeral port. Measured before and after, with 60 loaded runs of the controller specs each:
+
+| | Failures | What failed |
+|---|---|---|
+| Before | **4 / 60** | Four different specs: three got another app's **404**, one hung for 15 s |
+| After | **0 / 60** | — (if the rate were unchanged, 60 clean runs would have a 1.6% chance) |
+
+Reproduced deterministically first, 20/20 with plain Node servers. `http-harness.spec.ts` carries it as a regression test, **seen to fail** ("expected 'old' to be 'next'") before the fix. The fix has two parts:
+
+- every HTTP spec uses `listenOnce` and `closeApp` (`test/http.ts`)
+- test clients run with keep-alive off (`test/setup-http.ts`)
+
+A static spec keeps both in place.
+
+**Negative controls** — each rule broken on purpose, tests watched fail, files restored byte-for-byte:
+
+| Control | Result |
+|---|---|
+| A no-op decoy | 2 fail — the structural and the timing test |
+| A decoy at about a fifth of the memory cost | **1 fails — only the structural test.** The timing bound let a cheaper decoy through; this is why the structural test exists |
+| `MAX_WORKERS = 10` | 1 fails — "expected 180 to be less than or equal to 77" |
+| A spec opening its own pool of 20 | 1 fails — the file is named |
+
+**Found and filed, not fixed:** the decoy's first call per process costs about twice a real verification (T-129). Fixing it changes authentication code, which needs approval.
+
+**Documentation:** the `testing` skill gains "Databases, HTTP and timing". Every helper explains the failure it exists to prevent.
 
 **Validation**
 ```bash
@@ -4583,6 +4619,34 @@ optional.
 **Validation**
 ```bash
 pnpm --filter app-web test i18n && pnpm --filter app-web build
+```
+
+---
+
+### T-129 — Compute the login decoy at startup, not on first use
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** Yes — authentication logic (AGENTS.md)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/auth/password.service.ts
+
+**Description**
+Found in T-069. `verifyDecoy` computes its decoy hash lazily, so the **first** sign-in attempt
+for an unregistered address in each API process pays for a hash **and** a verification: about
+twice a real one. That is one response per process start whose timing says the address is not
+registered, the oracle the decoy exists to close. Computing the decoy when the module
+initialises removes it.
+
+**Acceptance criteria**
+- [ ] The decoy hash exists before the first request is served (the app refuses to become ready without it)
+- [ ] A test proves the first `verifyDecoy` call costs one verification, not two, using the structural check T-069 added and not only a clock
+- [ ] Startup time impact measured and recorded
+
+**Validation**
+```bash
+pnpm --filter api test password
 ```
 
 ---

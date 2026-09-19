@@ -8,6 +8,7 @@ import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { DB } from '../../database/database.module';
 import { DATABASE_CHECK_TIMEOUT_MS, HealthController } from './health.controller';
 import { HealthModule } from './health.module';
+import { closeApp, listenOnce } from '../../../test/http';
 
 /** A stand-in database whose one query behaves as told. Decorators as calls (T-064). */
 const databaseThat = (execute: () => Promise<unknown>) => {
@@ -21,7 +22,7 @@ describe('GET /api/v1/health', () => {
   let app: INestApplication | undefined;
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
     app = undefined;
     vi.useRealTimers();
   });
@@ -34,7 +35,7 @@ describe('GET /api/v1/health', () => {
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
     app.useGlobalFilters(new AppExceptionFilter());
-    await app.init();
+    await listenOnce(app);
     return app;
   };
 

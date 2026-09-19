@@ -135,6 +135,26 @@ const assignment = await assignmentFactory({ status: 'IN_PROGRESS' });
   (`ci-cd`); tests must not assume seeded data they did not create.
 - **Never real personal data** in a fixture, including data that merely looks anonymised.
 
+### Databases, HTTP and timing (T-069)
+
+These three are how this suite used to flake. Each is now enforced by a spec:
+
+- **Open database pools only through `testPool()`** (`apps/api/test/db.ts`). It caps every pool
+  at `TEST_POOL_MAX`, and the suite runs on a fixed `MAX_WORKERS`
+  (`apps/api/test/db-budget.ts`). `connection-budget.spec.ts` fails if a spec opens its own pool,
+  exceeds the per-file budget, or the worst case stops fitting in `max_connections`. A pool must
+  hold at least as many connections as the transactions a test runs concurrently, plus any query
+  issued outside them while they are open. Otherwise the test deadlocks on itself.
+- **Start every HTTP test app with `listenOnce(app)` and stop it with `closeApp(app)`**
+  (`apps/api/test/http.ts`), never with a bare `app.init()` / `app.close()`. HTTP clients run
+  with keep-alive off (`test/setup-http.ts`). Together these stop a request from being answered
+  by a *previous* test's app on a reused port, which is how tests failed with another app's 404.
+  `http-harness.spec.ts` enforces it and reproduces the failure deterministically.
+- **Timing assertions compare medians of interleaved samples, after a warm-up, and are paired
+  with a structural assertion that needs no clock.** A single wall-clock ratio measures how
+  busy the machine is. See `password.service.spec.ts`: the structural check caught a regression
+  that the timing bound let through.
+
 ## A regression test for every fixed bug
 
 Every bug fix ships with a test that **fails against the old code and passes against the new**.

@@ -9,13 +9,12 @@ import {
   verificationRequestDocuments,
   verificationRequests,
 } from './verification';
+import { testPool } from '../../../test/db';
 
 /**
  * The verification tables' own rules, proved against the applied schema rather than read off
  * the migration. Every probe runs in a transaction that is rolled back.
  */
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 class RollbackSignal extends Error {}
 
@@ -23,7 +22,7 @@ describe('verification tables', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 2, onnotice: () => {} });
+    sql = testPool({ max: 2 });
   });
 
   afterAll(async () => {

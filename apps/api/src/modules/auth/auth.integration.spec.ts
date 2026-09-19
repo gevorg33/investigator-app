@@ -12,9 +12,8 @@ import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('auth end to end', () => {
   let sql: postgres.Sql;
@@ -36,7 +35,7 @@ describe('auth end to end', () => {
   });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     const tokens = new TokenService();
     auth = new AuthService(

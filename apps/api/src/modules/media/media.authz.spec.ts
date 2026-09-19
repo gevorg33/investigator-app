@@ -14,9 +14,8 @@ import { MemoryRateLimitStore, RateLimitService } from '../auth/rate-limit.servi
 import { DELIVERY_URL_TTL_SECONDS } from './media.policy';
 import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
 import { MediaService } from './media.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('who can obtain a delivery link', () => {
   let sql: postgres.Sql;
@@ -26,7 +25,7 @@ describe('who can obtain a delivery link', () => {
   const req = () => ({ ip: '198.51.100.41', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

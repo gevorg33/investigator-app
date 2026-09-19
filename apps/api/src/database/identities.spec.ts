@@ -4,9 +4,8 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from './schema';
 import { userIdentities, users } from './schema';
+import { testPool } from '../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 /**
  * The shape of identity linking is the thing that is expensive to change once accounts
@@ -39,7 +38,7 @@ describe('external identity linking', () => {
   };
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

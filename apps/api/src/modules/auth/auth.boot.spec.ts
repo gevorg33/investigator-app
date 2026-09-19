@@ -11,6 +11,7 @@ import { AuthModule } from './auth.module';
 import { AuthzModule } from '../../common/authz/authz.module';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
+import { closeApp, listenOnce } from '../../../test/http';
 
 /**
  * DatabaseModule and AuditModule are @Global() in the running app. This stands in for
@@ -63,13 +64,13 @@ describe('auth wiring survives the container', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
-    await app.init();
+    await listenOnce(app);
   });
 
   afterAll(async () => {
     // Optional-chained: if the container failed to build, that is the failure worth
     // reading — not a secondary TypeError on top of it.
-    await app?.close();
+    await closeApp(app);
   });
 
   it('resolves every injected dependency', () => {
