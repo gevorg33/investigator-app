@@ -62,6 +62,11 @@ function excludeDecoratorMetadataGuards() {
 
 export default defineConfig({
   plugins: [excludeDecoratorMetadataGuards()],
+  // Legacy decorators with metadata for every file, specs included — what tsconfig.json declares
+  // for src. tsconfig excludes *.spec.ts from the build, so without this a spec that declares its
+  // own decorated class (context.e2e.spec.ts's probe controller) failed to parse its parameter
+  // decorators.
+  oxc: { decorator: { legacy: true, emitDecoratorMetadata: true } },
   test: {
     environment: 'node',
     // test/ holds helpers that import vitest and so must not be compiled into dist;

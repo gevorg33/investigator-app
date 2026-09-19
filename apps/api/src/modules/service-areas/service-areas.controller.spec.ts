@@ -8,6 +8,7 @@ import { testActor } from '../../../test/authz-cases';
 import { ServiceAreasController } from './service-areas.controller';
 import { ServiceAreasService } from './service-areas.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -27,6 +28,7 @@ describe('service areas controller', () => {
       providers: [
         { provide: ServiceAreasService, useValue: areas },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
     app = mod.createNestApplication();

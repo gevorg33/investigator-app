@@ -15,7 +15,8 @@ export type DenialReason =
   | 'staff_scope_not_held'
   | 'not_staff'
   | 'resource_not_visible'
-  | 'state_forbids_action';
+  | 'state_forbids_action'
+  | 'workspace_not_available';
 
 export interface AuthzContext {
   /** What is being attempted, e.g. 'mission.publish'. Audited on denial. */
@@ -100,6 +101,15 @@ export class AuthzService {
    */
   async stateAllows(actor: Actor, allowed: boolean, ctx: AuthzContext): Promise<void> {
     if (!allowed) await this.deny(actor, ctx, 'state_forbids_action');
+  }
+
+  /**
+   * Check 0 — the workspace (ADR-0011). The actor must hold an ACTIVE membership in a workspace
+   * that is neither suspended, archived nor deleted. 403, not 404: the caller named the
+   * workspace, and "you may not use it" reveals nothing a membership list would not.
+   */
+  async requireWorkspace(actor: Actor, allowed: boolean, ctx: AuthzContext): Promise<void> {
+    if (!allowed) await this.deny(actor, ctx, 'workspace_not_available');
   }
 
   /**

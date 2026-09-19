@@ -9,6 +9,7 @@ import {
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { assertRuntimeRole } from './runtime-role';
+import { scopedClient } from './scoped-client';
 import * as schema from './schema';
 
 export const DB = Symbol('DB');
@@ -71,7 +72,12 @@ export class RuntimeRoleCheck implements OnApplicationBootstrap {
 @Module({
   providers: [
     { provide: SQL, useFactory: (): Sql => createPool(process.env['DATABASE_URL']) },
-    { provide: DB, inject: [SQL], useFactory: (sql: Sql): Db => drizzle(sql, { schema }) },
+    // Every query carries the execution context, when there is one (T-075).
+    {
+      provide: DB,
+      inject: [SQL],
+      useFactory: (sql: Sql): Db => drizzle(scopedClient(sql), { schema }),
+    },
     PoolLifecycle,
     RuntimeRoleCheck,
   ],

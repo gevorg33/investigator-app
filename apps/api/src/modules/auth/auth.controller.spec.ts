@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { testActor } from '../../../test/authz-cases';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const CREDENTIALS = { email: 'probe@example.test', password: 'a-sufficiently-long-password' };
 const COOKIE = 'investigator_session';
@@ -46,6 +47,7 @@ describe('auth controller', () => {
         // The guard's own behaviour is covered in actor.service.spec.ts; here it stands
         // in so the session routes can be exercised at the HTTP layer.
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
 

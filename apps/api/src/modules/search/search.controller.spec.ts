@@ -8,6 +8,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const EMPTY = { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };
@@ -23,6 +24,7 @@ describe('search controller', () => {
       providers: [
         { provide: SearchService, useValue: search },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
     app = mod.createNestApplication();

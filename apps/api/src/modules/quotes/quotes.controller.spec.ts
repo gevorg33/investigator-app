@@ -9,6 +9,7 @@ import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { QuotesController } from './quotes.controller';
 import { QuotesService } from './quotes.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -35,6 +36,7 @@ describe('quotes controller', () => {
       providers: [
         { provide: QuotesService, useValue: quotes },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
     app = mod.createNestApplication();

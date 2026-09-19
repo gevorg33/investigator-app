@@ -8,6 +8,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { MissionsController } from './missions.controller';
 import { MissionsService } from './missions.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { workspaceResolverStub } from '../../../test/context';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -30,6 +31,7 @@ describe('missions controller', () => {
       providers: [
         { provide: MissionsService, useValue: missions },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
+        workspaceResolverStub(ACTOR),
       ],
     }).compile();
     app = mod.createNestApplication();
