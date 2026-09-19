@@ -16,10 +16,13 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 export const SQL = Symbol('SQL');
 export type Sql = postgres.Sql;
 
+/** Exported so the test suite's connection budget uses the real number, not a copy of it. */
+export const POOL_MAX = 10;
+
 export function createPool(url: string | undefined): Sql {
   if (!url) throw new Error('DATABASE_URL is required');
   return postgres(url, {
-    max: 10,
+    max: POOL_MAX,
     // Query text can contain personal data; never let the driver log it.
     onnotice: () => {},
   });

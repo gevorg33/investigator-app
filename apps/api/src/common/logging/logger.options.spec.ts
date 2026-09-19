@@ -6,6 +6,7 @@ import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CORRELATION_HEADER } from '../correlation/correlation';
 import { loggerOptions, REDACT_PATHS } from './logger.options';
+import { closeApp, listenOnce } from '../../../test/http';
 
 describe('log redaction', () => {
   // audit-logging forbids these in logs. The logger must be incapable of emitting them.
@@ -39,7 +40,7 @@ describe('the logger, as configured', () => {
   let app: INestApplication | undefined;
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
     app = undefined;
   });
 
@@ -57,7 +58,7 @@ describe('the logger, as configured', () => {
     }).compile();
     app = mod.createNestApplication({ bufferLogs: true });
     app.useLogger(app.get(Logger));
-    await app.init();
+    await listenOnce(app);
     return { app, output: () => lines.join('') };
   };
 

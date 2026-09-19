@@ -16,9 +16,8 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { ActorService } from '../../common/authz/actor.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 /** Captures what would have been mailed, so the link can be followed in a test. */
 class CapturingMailer {
@@ -48,11 +47,11 @@ describe('verification and password reset', () => {
   /** The token as the recipient would get it: out of the link, not out of the database. */
   const linkToken = (n = -1): string => {
     const msg = mailer.sent.at(n);
-    return new globalThis.URL(msg?.variables['url'] ?? '').searchParams.get('token') ?? '';
+    return new URL(msg?.variables['url'] ?? '').searchParams.get('token') ?? '';
   };
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     const tokens = new TokenService();
     mailer = new CapturingMailer();

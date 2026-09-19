@@ -12,9 +12,8 @@ import { investigator, somewhere, square, type TestDb } from '../../../test/serv
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { MAX_AREAS_PER_PROFILE } from './service-areas.policy';
 import { ServiceAreasService } from './service-areas.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('service areas', () => {
   let sql: postgres.Sql;
@@ -23,7 +22,7 @@ describe('service areas', () => {
   const req = () => ({ ip: '198.51.100.50', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

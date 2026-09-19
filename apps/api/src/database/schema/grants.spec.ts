@@ -1,5 +1,6 @@
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { testPool } from '../../../test/db';
 
 /**
  * Proves the append-only grant on audit_logs actually holds.
@@ -8,14 +9,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * the application role cannot rewrite history, so this connects AS that role and
  * attempts the forbidden statements.
  */
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('audit_logs is append-only for the application role', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
   });
 
   afterAll(async () => {
@@ -80,7 +79,7 @@ describe('users.email uniqueness is case-insensitive', () => {
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
   });
 
   afterAll(async () => {
@@ -113,7 +112,7 @@ describe('the mission tables hold only the privileges they were meant to', () =>
   let sql: postgres.Sql;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
   });
 
   afterAll(async () => {

@@ -4,9 +4,8 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { coverageQuery } from './service-areas.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 /**
  * The query plan, on a seeded dataset, for the query production actually runs.
@@ -20,7 +19,7 @@ describe('coverage query plan', () => {
   let distanceFilterPlan = '';
 
   beforeAll(async () => {
-    sql = postgres(URL, { max: 1, onnotice: () => {} });
+    sql = testPool({ max: 1 });
     const run = randomUUID();
     const rollback = new Error('rollback');
     await sql

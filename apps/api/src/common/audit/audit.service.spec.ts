@@ -6,9 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from '../../database/schema';
 import { auditLogs, users } from '../../database/schema';
 import { AuditService } from './audit.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('audit records', () => {
   let sql: postgres.Sql;
@@ -16,7 +15,7 @@ describe('audit records', () => {
   let audit: AuditService;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 2, onnotice: () => {} });
+    sql = testPool({ max: 2 });
     db = drizzle(sql, { schema });
     audit = new AuditService(db);
   });

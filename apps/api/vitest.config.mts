@@ -1,5 +1,6 @@
 import MagicString from 'magic-string';
 import { defineConfig } from 'vitest/config';
+import { MAX_WORKERS } from './test/db-budget';
 
 /**
  * The one registered coverage exclusion — docs/operations/coverage-exclusions.md, approved
@@ -67,6 +68,8 @@ export default defineConfig({
     // their own specs live alongside them. coverage.include stays src-only, so nothing
     // under test/ is counted as source.
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
+    // Keep-alive off for test HTTP clients — see the file (T-069).
+    setupFiles: ['./test/setup-http.ts'],
     globals: false,
     // Vitest's default is 5s, which is not a statement about behaviour — it is a cap that a
     // database-backed test can exceed purely because 60-odd spec files are running against one
@@ -76,6 +79,12 @@ export default defineConfig({
     // genuinely hangs still fails, just later.
     testTimeout: 15_000,
     hookTimeout: 15_000,
+    // Fixed, not derived from the machine (T-069). The default is the number of CPUs: 10 on a
+    // developer's laptop, 4 on CI's runner. That meant CI ran a different concurrency than
+    // anyone could reproduce locally, and the worst-case connection count scaled with the
+    // laptop. MAX_WORKERS × PER_FILE_BUDGET must fit in PostgreSQL's max_connections, which
+    // `test/connection-budget.spec.ts` checks against the live server.
+    maxWorkers: MAX_WORKERS,
     coverage: {
       provider: 'v8',
       // `all` is what makes the gate honest: without it a source file with no spec is

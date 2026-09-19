@@ -16,9 +16,8 @@ import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('one account, both roles', () => {
   let sql: postgres.Sql;
@@ -29,7 +28,7 @@ describe('one account, both roles', () => {
   const req = { ip: '198.51.100.9', userAgent: 'vitest', correlationId: 'roles-test' };
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
     const tokens = new TokenService();
     sessions = new SessionService(tokens);

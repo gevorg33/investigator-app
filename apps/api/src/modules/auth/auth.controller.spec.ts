@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { testActor } from '../../../test/authz-cases';
+import { closeApp, listenOnce } from '../../../test/http';
 
 const CREDENTIALS = { email: 'probe@example.test', password: 'a-sufficiently-long-password' };
 const COOKIE = 'investigator_session';
@@ -57,11 +58,11 @@ describe('auth controller', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
-    await app.init();
+    await listenOnce(app);
   });
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
   });
 
   const post = (path: string) => request(app.getHttpServer()).post(`/auth/${path}`);

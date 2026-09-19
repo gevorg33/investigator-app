@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { configureApp } from './bootstrap';
 import { DB } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
+import { closeApp, listenOnce } from '../test/http';
 
 // configureApp never touches AppModule, and importing the real one validates the
 // environment at import time. Stand it in so this file tests configuration only.
@@ -24,7 +25,7 @@ describe('global application configuration', () => {
   let app: INestApplication | undefined;
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
     app = undefined;
     if (originalEnv === undefined) delete process.env['NODE_ENV'];
     else process.env['NODE_ENV'] = originalEnv;
@@ -41,7 +42,7 @@ describe('global application configuration', () => {
     app = mod.createNestApplication();
     beforeConfigure?.(app);
     configureApp(app);
-    await app.init();
+    await listenOnce(app);
     return app;
   };
 

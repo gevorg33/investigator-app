@@ -10,9 +10,8 @@ import { ActorScopedRepository } from './actor-scoped.repository';
 import { ActorGuard } from './actor.guard';
 import { ACTOR_KEY, actorFromRequest } from './actor.decorator';
 import type { Actor } from './contract';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 type UserRow = typeof users.$inferSelect;
 
@@ -47,7 +46,7 @@ describe('an unscoped repository exposes everything, by design', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>;
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 2, onnotice: () => {} });
+    sql = testPool({ max: 2 });
     db = drizzle(sql, { schema });
   });
   afterAll(async () => {

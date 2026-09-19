@@ -19,9 +19,8 @@ import { assignments, missions } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { AssignmentTransitionService } from './assignment-transition.service';
 import { AssignmentsService } from './assignments.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('assignments', () => {
   let sql: postgres.Sql;
@@ -30,7 +29,7 @@ describe('assignments', () => {
   const req = () => ({ ip: '198.51.100.30', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 8, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

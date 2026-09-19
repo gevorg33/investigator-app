@@ -14,9 +14,8 @@ import { LIMITS } from '../auth/rate-limit.service';
 import { MEDIA_POLICY, UPLOAD_AUTHORIZATION_TTL_SECONDS } from './media.policy';
 import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
 import { MediaService } from './media.service';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('media upload flow', () => {
   let sql: postgres.Sql;
@@ -27,7 +26,7 @@ describe('media upload flow', () => {
   const savedFolder = process.env['CLOUDINARY_FOLDER'];
 
   beforeAll(() => {
-    sql = postgres(URL, { max: 4, onnotice: () => {} });
+    sql = testPool();
     db = drizzle(sql, { schema });
   });
 

@@ -5,16 +5,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { customerProfiles, investigatorProfiles } from './profiles';
 import { serviceAreas } from './service-areas';
 import { users } from './users';
+import { testPool } from '../../../test/db';
 
-const URL =
-  process.env['DATABASE_URL'] ?? 'postgres://postgres:postgres@localhost:5433/investigator_dev';
 
 describe('service_areas', () => {
   let sql: postgres.Sql;
   let profileId: string;
 
   beforeAll(async () => {
-    sql = postgres(URL, { max: 2, onnotice: () => {} });
+    sql = testPool({ max: 2 });
     const [u] = await sql`insert into users (email) values (${`sa-schema-${randomUUID()}@example.test`}) returning id`;
     const [p] = await sql`insert into investigator_profiles (user_id) values (${u?.['id']}) returning id`;
     profileId = String(p?.['id']);

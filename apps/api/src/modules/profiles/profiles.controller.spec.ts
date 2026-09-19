@@ -7,6 +7,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { testActor } from '../../../test/authz-cases';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
+import { closeApp, listenOnce } from '../../../test/http';
 
 const ACTOR = testActor({ userId: 'u1', sessionId: 's1', roles: ['CUSTOMER', 'INVESTIGATOR'] });
 const UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -38,11 +39,11 @@ describe('profiles controller', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
-    await app.init();
+    await listenOnce(app);
   });
 
   afterEach(async () => {
-    await app?.close();
+    await closeApp(app);
   });
 
   const http = () => request(app.getHttpServer());
