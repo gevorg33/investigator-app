@@ -167,3 +167,27 @@ owner, never inferred by code.
 23. **Which locale is authoritative** where the three translations differ?
 24. Notice period for material changes.
 25. Minimum age, and any capacity requirements.
+
+### Agencies (ADR-0011, added 2026-09-19)
+
+The platform will register investigation agencies as organisations: an agency employs members,
+runs several investigator profiles, and quotes and delivers work as the agency. Individual
+investigators continue alongside them.
+
+26. **Contracting party.** When an agency's investigator does the work, is the customer's
+    contract with the agency, the individual, or both? Who is the supplier for consumer-law and
+    tax purposes?
+27. **Agency terms.** Does the agency need its own terms, separate from the investigator terms?
+    What must an agency owner accept on behalf of the agency, and what must each employee accept
+    individually when they join?
+28. **Employee personal data.** For the data an agency holds about its own employees on the
+    platform (roles, teams, activity, audit trail), is the agency the controller and the platform
+    a processor? Is a processing agreement required, and in which launch jurisdictions?
+29. **Responsibility for conduct.** How far does an agency answer for its members' conduct on the
+    platform, and can enforcement against an individual (§19a–19d) extend to the agency that
+    employed them? Conversely, can an agency's suspension affect employees who did nothing wrong?
+30. **Agency licensing.** Which launch jurisdictions license agencies as well as individuals, and
+    for surveillance specifically (ADR-0009)? Must the platform verify the agency licence, the
+    individual licence, or both, before the agency may quote?
+31. **Principals and ban evasion.** Is verifying the identity of an agency's principals, and
+    refusing an agency whose principal is permanently banned, lawful on the same basis as §19a?

@@ -28,7 +28,7 @@ time regardless of engineering pace.
 experience.
 
 **What to give them:** [`docs/compliance/counsel-brief.md`](docs/compliance/counsel-brief.md) —
-the platform facts and **25 numbered questions**, written so they can start without a discovery
+the platform facts and **31 numbered questions** (26–31 added for agencies, ADR-0011), written so they can start without a discovery
 call. Plus the three drafts in `docs/compliance/`.
 
 **Flag when you brief them:**
@@ -38,6 +38,8 @@ call. Plus the three drafts in `docs/compliance/`.
   adjudicate disputes.
 - §19a — the lawful basis for retaining a ban hash after account deletion.
 - ADR-0009 put surveillance back in scope, which makes several answers harder.
+- Questions 26–31 — agencies (ADR-0011): who the customer contracts with, agency terms, employee
+  data, responsibility for members' conduct, agency licensing, principals and ban evasion.
 
 **Verify:** Retention periods decided, jurisdictions fixed, liability limits drafted,
 authoritative locale designated.
@@ -387,6 +389,23 @@ payout support. An account existing is not the same answer. `plan.md` §12 and t
 skill both say to settle that before building against a provider.
 
 **Status:** ⬜ Pending — confirm the boundary is where you want it, and answer #1 before Phase 5
+
+---
+
+### 17. Agency pricing — decide before T-099
+
+Agencies are now planned (ADR-0011). You chose to **plan billing but decide later**, so nothing
+is built. Before T-099 can start, decide:
+
+1. **Do agencies pay a subscription** on top of marketplace fees, or only marketplace fees?
+2. **If subscriptions:** per agency, per seat (member) or per investigator profile, and whether
+   there is a free tier (a small agency should not pay to try the product).
+3. **Usage-based charges** — AI usage, storage, anything else — or none.
+
+This is genuinely manual: it is a pricing decision, not an engineering one. The permission
+catalog already reserves `billing.read` and `billing.manage`, so no migration waits on it.
+
+**Status:** ⬜ Pending — nothing blocks on it until Phase 5
 
 ---
 

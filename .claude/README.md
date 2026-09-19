@@ -11,8 +11,8 @@ TODO.md            The work queue. One task at a time.
 
 .claude/
 ├── settings.json  Permissions and hook wiring. Checked in, shared.
-├── agents/        12 specialists. Loaded when delegated to.
-├── skills/        18 procedures. Loaded on demand by name or description match.
+├── agents/        14 specialists. Loaded when delegated to.
+├── skills/        37 procedures. Loaded on demand by name or description match.
 ├── commands/      9 slash commands. Explicit entry points.
 └── hooks/         4 scripts. Deterministic enforcement — these do not rely on the model.
 ```

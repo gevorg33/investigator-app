@@ -73,6 +73,15 @@ Without it, reconstructing a multi-step flow from a dispute is guesswork.
 
 Do not conflate them. A debug line is not an audit entry.
 
+## Workspace fields (ADR-0011, ADR-0012)
+
+`tenant_id`, `user_id`, `membership_id`, `session_id` and `correlation_id` come from the execution
+context, so callers do not pass them.
+
+- **AI events** add normalised intent, classification, command and version, plan id and hash,
+  confirmation, result and affected resources.
+- **`PlatformContext` access** adds the staff scope and the stated reason.
+
 ## Checklist
 
 - [ ] Written in the same transaction as the change

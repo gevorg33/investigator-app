@@ -84,6 +84,15 @@ Write these before the endpoint is considered done:
 
 A test suite that only exercises the owner proves the happy path and nothing else.
 
+## Workspaces (ADR-0011)
+
+There is a **check 0**: an ACTIVE membership in an ACTIVE workspace, resolved from `X-Workspace`
+intersected with memberships read per request. Inside a workspace, check 3 checks tenant
+**permissions** (`requirePermission`), never role names. Underneath all of it, row-level security
+enforces the workspace boundary. That does not replace checks 4 and 5: RLS stops another agency,
+and only the six checks stop the wrong colleague. Staff act across workspaces only inside
+`PlatformContext`. Procedure: `tenant-isolation`.
+
 ## Review checklist
 
 - [ ] Check lives in the service, not only the guard

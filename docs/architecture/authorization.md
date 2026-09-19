@@ -6,6 +6,11 @@ shaped the way it is.
 
 Built in T-006.
 
+> **Specified change (ADR-0011).** Workspaces add a **check 0** (an ACTIVE membership in the
+> active workspace) and tenant **permissions** to check 3. PostgreSQL row-level security enforces
+> the workspace boundary underneath all six. Design: `tenancy.md` §8. Built in T-075, T-077 and
+> T-078; this document is updated as each one lands.
+
 ## The shape of it
 
 ```

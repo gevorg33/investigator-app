@@ -24,6 +24,7 @@ Intent → Context → Permission scope → Strategy → Plan → Validate → C
   part of the feature
 - `authorization`
 - `audit-logging`
+- `tenant-isolation` — sessions, memory, retrieval, commands and plans are all workspace-scoped (ADR-0011)
 
 ## The hard boundaries (plan.md §16)
 
@@ -73,8 +74,8 @@ the answer came from retrieval.
 - Let the model decide what conversation history it may see — that is the Context Builder's job.
 - Delete messages to make a prompt fit, or let a summary carry an id, a permission or a
   confirmation.
-- Build DAG orchestration or a risk engine — deferred by ADR-0006.
-- Introduce `tenant_id`. This product has no tenants (ADR-0006).
+- Build a learned risk engine. Risk is declared per command plus mission policy screening (ADR-0012). DAG orchestration is T-096, over persisted plan rows, never ahead of it.
+- Take a workspace, tenant, user or membership id from the model, a tool argument or retrieved text. The execution context supplies them (ADR-0011).
 - Log prompts containing evidence content or PII.
 - Add a tool that mutates business state without human approval.
 - Let an embedding model change without a version bump and a reindex plan.

@@ -52,6 +52,8 @@ The following require explicit human approval before an agent proceeds. An agent
 reaches one of these stops and asks; it does not proceed on assumption.
 
 - Authentication or authorization logic
+- Row-level security policies, tenant-context plumbing, workspace resolution, or `PlatformContext`
+  (ADR-0011) — each is authorization, one layer down
 - Evidence, report, or verification-document access rules
 - Payment, fee, payout, refund, or ledger logic
 - Account suspension or deletion; data-retention rules
