@@ -109,9 +109,10 @@ describe('row-level security', () => {
     const marked = await owner<{ name: string }[]>`
       SELECT oid::regprocedure::text AS name FROM pg_proc
        WHERE proname IN ('st_dwithin', '_st_dwithin', 'geography_overlaps', 'overlaps_geog')
-         AND proleakproof
-       ORDER BY 1`;
-    expect(marked.map((r) => r.name)).toEqual([
+         AND proleakproof`;
+    // Sorted here rather than in SQL: the database's collation orders the leading underscore
+    // differently from one server to the next, and the set is what matters.
+    expect(marked.map((r) => r.name).sort()).toEqual([
       '_st_dwithin(geography,geography,double precision,boolean)',
       'geography_overlaps(geography,geography)',
       'overlaps_geog(geography,gidx)',
@@ -125,8 +126,8 @@ describe('row-level security', () => {
     // the database may do that; in the application, only PlatformContext can (tenant-plumbing).
     const elevated = await owner<{ name: string }[]>`
       SELECT proname AS name FROM pg_proc
-       WHERE proconfig::text LIKE '%app.platform_access%' ORDER BY 1`;
-    expect(elevated.map((r) => r.name)).toEqual([
+       WHERE proconfig::text LIKE '%app.platform_access%'`;
+    expect(elevated.map((r) => r.name).sort()).toEqual([
       'assert_personal_member_is_owner',
       'assert_tenant_has_owner',
     ]);
