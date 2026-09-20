@@ -70,10 +70,15 @@ command, stop. The context already has it.
   sweeps), use the **unscoped path**, and add the caller to its allowlist spec with a comment
   saying why no context can exist there.
 - Cross-workspace reads by platform staff go through
-  `PlatformContext.asStaff(actor, scope, purpose, fn)`; an operation with no user at all goes
-  through `PlatformContext.asSystem(purpose, fn)`. These are the only code that may turn on
-  `app.platform_access`, and `tenant-plumbing.spec.ts` lists every caller of each — adding one is
-  editing that list on purpose. (T-079 adds the audit row and typed ad-hoc reasons.)
+  `platform.asStaff(actor, { scope, purpose }, req, fn)` — the injected `PlatformContext` — and an
+  operation with no user at all through `platform.asSystem(purpose, req, fn)`. These are the only
+  code that may turn on `app.platform_access`, and `tenant-plumbing.spec.ts` lists every caller of
+  each: adding one is editing that list on purpose.
+  - A **route** purpose is a new member of `RoutePurpose` and takes no reason. **Ad-hoc** access
+    (a support lookup) is an `AdHocPurpose` and does not compile without typed reason text, which
+    must say something — entry refuses anything under 12 characters.
+  - Every entry writes its own audit row before the work runs. Do not add one by hand; do not
+    remove the action's own audit row either, because they answer different questions.
 - A read that has to happen **before a workspace is chosen** — the resolver, and the Personal
   workspace a new session opens in — uses `runAsUser(userId, fn)`. It sets `app.user_id` and no
   workspace, so the policies show that user their own memberships, the workspaces they are in and

@@ -78,6 +78,8 @@ const build = (
     { claim: vi.fn().mockResolvedValue({ status: 'CLAIMED' }), complete: vi.fn() } as never,
     { apply: vi.fn() } as never,
     { apply: vi.fn().mockResolvedValue({ id: 'm1', status: 'PAID', version: 3 }) } as never,
+    // The crossing itself is PlatformContext's own spec; here it just runs the work.
+    { asSystem: (_purpose: string, _req: unknown, fn: () => unknown) => fn() } as never,
   );
   return { service, audit };
 };

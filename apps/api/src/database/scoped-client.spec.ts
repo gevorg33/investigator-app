@@ -9,6 +9,7 @@ import {
   runInContext,
   type ExecutionContext,
 } from '../common/context/execution-context';
+import { AuditService } from '../common/audit/audit.service';
 import { PlatformContext } from '../common/context/platform-context';
 import { databaseSettings, scopedClient } from './scoped-client';
 import * as schema from './schema';
@@ -214,8 +215,13 @@ describe('the scoped client', () => {
     });
 
     it('sends platform access on its own for a system operation', async () => {
+      // Entered through the real PlatformContext, which audits the crossing first: what the
+      // scoped client reads is what that entry left behind.
       const db = drizzle(scopedClient(one), { schema });
-      const seen = await PlatformContext.asSystem('probe', () => settings(db));
+      const platform = new PlatformContext(new AuditService(db));
+      const seen = await platform.asSystem('assignment.create_from_payment', {}, () =>
+        settings(db),
+      );
       expect(seen).toEqual({ tenant: '', user: '', membership: '', platform: 'on' });
     });
 

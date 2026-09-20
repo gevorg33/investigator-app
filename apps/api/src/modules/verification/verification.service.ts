@@ -114,6 +114,7 @@ export class VerificationService {
     private readonly audit: AuditService,
     private readonly media: MediaService,
     private readonly profiles: OwnInvestigatorProfileRepository,
+    private readonly platform: PlatformContext,
   ) {}
 
   // ── The applicant's side ──────────────────────────────────────────────────────
@@ -229,7 +230,11 @@ export class VerificationService {
     const c = this.ctx('verification.queue', req);
     await this.requireReviewer(actor, c);
 
-    return PlatformContext.asStaff(actor, 'VERIFICATION', c.action, async () => {
+    return this.platform.asStaff(
+      actor,
+      { scope: 'VERIFICATION', purpose: 'verification.queue' },
+      req,
+      async () => {
       const limit = clampLimit(query.limit);
       const after = query.cursor === undefined ? undefined : decodeQueueCursor(query.cursor);
 
@@ -283,7 +288,11 @@ export class VerificationService {
     const c = this.ctx('verification.review', req, requestId);
     await this.requireReviewer(actor, c);
 
-    return PlatformContext.asStaff(actor, 'VERIFICATION', c.action, async () => {
+    return this.platform.asStaff(
+      actor,
+      { scope: 'VERIFICATION', purpose: 'verification.review' },
+      req,
+      async () => {
       const [request] = await this.db
         .select()
         .from(verificationRequests)
@@ -363,7 +372,11 @@ export class VerificationService {
     const c = this.ctx('verification.decide', req, requestId);
     await this.requireReviewer(actor, c);
 
-    return PlatformContext.asStaff(actor, 'VERIFICATION', c.action, async () => {
+    return this.platform.asStaff(
+      actor,
+      { scope: 'VERIFICATION', purpose: 'verification.decide' },
+      req,
+      async () => {
       return this.db.transaction(async (tx) => {
         const [request] = await tx
           .select()
@@ -483,7 +496,11 @@ export class VerificationService {
     const c = this.ctx('verification.open_document', req, requestId);
     await this.requireReviewer(actor, c);
 
-    return PlatformContext.asStaff(actor, 'VERIFICATION', c.action, async () => {
+    return this.platform.asStaff(
+      actor,
+      { scope: 'VERIFICATION', purpose: 'verification.open_document' },
+      req,
+      async () => {
       const [membership] = await this.db
         .select({ requestId: verificationRequestDocuments.requestId })
         .from(verificationRequestDocuments)

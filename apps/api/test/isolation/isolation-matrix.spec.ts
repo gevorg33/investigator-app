@@ -6,7 +6,10 @@ import {
   runInContext,
   type ExecutionContext,
 } from '../../src/common/context/execution-context';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { AuditService } from '../../src/common/audit/audit.service';
 import { PlatformContext } from '../../src/common/context/platform-context';
+import * as schema from '../../src/database/schema';
 import { scopedClient } from '../../src/database/scoped-client';
 import { TABLE_CLASSES } from '../../src/database/table-classes';
 import { testPool } from '../db';
@@ -50,6 +53,7 @@ describe('the isolation matrix', () => {
   let app: postgres.Sql;
   let scoped: postgres.Sql;
   let owner: postgres.Sql;
+  let platform: PlatformContext;
   let graph: SeededGraph;
   /** A workspace with no part in any of it. */
   let outsider: ExecutionContext;
@@ -59,6 +63,7 @@ describe('the isolation matrix', () => {
     app = testPool({ max: 2 });
     scoped = scopedClient(app);
     owner = testPool({ max: 2, role: 'owner' });
+    platform = new PlatformContext(new AuditService(drizzle(scoped, { schema })));
     graph = await seedGraph(owner);
     outsider = await personalContext(owner, (await member(owner)).actor.userId);
     privileges = new Map();
@@ -277,7 +282,7 @@ describe('the isolation matrix', () => {
       };
       expect(await rowsSeen(outsider, 'verification_requests')).toBe(0);
       const seen = await runInContext(outsider, () =>
-        PlatformContext.asStaff(staff as never, 'VERIFICATION', 'verification.review', async () => {
+        platform.asStaff(staff as never, { scope: 'VERIFICATION', purpose: 'verification.review' }, {}, async () => {
           // Through `begin`, like every query the application makes: a bare tagged template on
           // the pool is the unscoped path, and carries no context at all.
           const rows = await scoped.begin(

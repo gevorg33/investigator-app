@@ -140,4 +140,21 @@ describe('row-level security', () => {
       SELECT prosrc AS src FROM pg_proc WHERE proname = 'assert_tenant_has_owner'`;
     expect(row!.src).toContain('FOR UPDATE');
   });
+
+  it('has no role that bypasses policies without being a superuser', async () => {
+    // A BYPASSRLS role is the one thing that would undo every policy at once, quietly, for
+    // whoever holds it. A superuser bypasses inherently — that is what a superuser is, and the
+    // runtime role refuses to be one (T-073). Anything else with the flag is a bypass built on
+    // purpose, and there is no such role.
+    const bypassers = await owner<{ name: string }[]>`
+      SELECT rolname AS name FROM pg_roles WHERE rolbypassrls AND NOT rolsuper ORDER BY 1`;
+    expect(bypassers).toEqual([]);
+  });
+
+  it('runs the application as a role that is neither a superuser nor a bypasser', async () => {
+    const [row] = await owner<{ superuser: boolean; bypass: boolean }[]>`
+      SELECT rolsuper AS superuser, rolbypassrls AS bypass
+        FROM pg_roles WHERE rolname = 'investigator_app'`;
+    expect(row).toEqual({ superuser: false, bypass: false });
+  });
 });

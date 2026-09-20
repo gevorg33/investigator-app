@@ -93,23 +93,34 @@ describe('tenant isolation is not business-domain plumbing', () => {
   });
 
   it('raises platform access in one module, and writes the setting in one other', () => {
-    // `app.platform_access` is what the policies read to allow a cross-workspace query. Only
-    // PlatformContext may turn it on, and only the scoped client writes it to the database.
+    // `app.platform_access` is what the policies read to allow a cross-workspace query. The
+    // access is held in one module, entered from exactly one other — the one that checks who is
+    // asking and audits it — and written to the database by the scoped client alone.
+    const allowed = [
+      'common/context/platform-access.ts',
+      'common/context/platform-context.ts',
+      'database/scoped-client.ts',
+    ];
     const offenders = sources
       .filter(({ source }) => /platform_access|platformAccess/.test(source.getFullText()))
       .map(({ path }) => path)
-      .filter(
-        (path) =>
-          path !== 'common/context/platform-context.ts' && path !== 'database/scoped-client.ts',
-      );
+      .filter((path) => !allowed.includes(path));
     expect(offenders).toEqual([]);
+
+    // The holder exports the way in; exactly one module calls it, and that module is the one
+    // that checks who is asking and writes the audit row first.
+    const entered = sources
+      .filter(({ source }) => /enterPlatformAccess\(access/.test(source.getFullText()))
+      .map(({ path }) => path);
+    expect(entered).toEqual(['common/context/platform-context.ts']);
   });
 
   it('lists every place that crosses workspaces, so a new one is a decision and not a habit', () => {
     // Staff review and system operations are the two reasons to be in PlatformContext at all
     // (T-079 adds the audit and the typed reasons). A path added here has to be added here.
     const callers = sources
-      .filter(({ source }) => /PlatformContext\.(asStaff|asSystem)\(/.test(source.getFullText()))
+      .filter(({ source }) => /\.(asStaff|asSystem)\(/.test(source.getFullText()))
+      .filter(({ path }) => path !== 'common/context/platform-context.ts')
       .map(({ path }) => path)
       .sort();
     expect(callers).toEqual([

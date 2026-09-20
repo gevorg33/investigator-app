@@ -1,22 +1,51 @@
-import { describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import type { drizzle } from 'drizzle-orm/postgres-js';
+import type postgres from 'postgres';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testActor } from '../../../test/authz-cases';
 import { testContext } from '../../../test/context';
+import { testPool } from '../../../test/db';
+import { scopedDb } from '../../../test/workspace-context';
+import type * as schema from '../../database/schema';
+import { auditLogs } from '../../database/schema';
 import { databaseSettings } from '../../database/scoped-client';
+import { AuditService } from '../audit/audit.service';
 import { runInContext } from './execution-context';
 import { currentPlatformAccess, PlatformContext } from './platform-context';
 
 /**
- * Who may cross workspaces, and what the database is told when they do (T-077).
+ * Who may cross workspaces, what the database is told when they do, and what the audit log keeps
+ * of it (T-077, T-079).
  *
  * The entry check is deliberately a second one: the services here have already asked
- * `AuthzService` and audited the refusal. This one exists so that a path that forgets to ask
+ * `AuthzService` and audited a refusal. This one exists so that a path which forgets to ask
  * cannot widen what the database shows.
  */
 describe('platform access', () => {
+  let app: postgres.Sql;
+  let db: ReturnType<typeof drizzle<typeof schema>>;
+  let platform: PlatformContext;
+
   const reviewer = testActor({
-    userId: 'staff-1',
+    userId: '00000000-0000-4000-8000-0000000000aa',
     roles: ['STAFF'],
     staffScopes: ['VERIFICATION'],
+  });
+
+  const req = () => ({ ip: '198.51.100.90', userAgent: 'vitest', correlationId: randomUUID() });
+
+  const entries = (correlationId: string) =>
+    db.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
+
+  beforeAll(() => {
+    app = testPool({ max: 2 });
+    db = scopedDb(app);
+    platform = new PlatformContext(new AuditService(db));
+  });
+
+  afterAll(async () => {
+    await app.end();
   });
 
   it('is absent until it is entered', () => {
@@ -24,93 +53,181 @@ describe('platform access', () => {
     expect(databaseSettings()).toBeUndefined();
   });
 
-  it('lets a reviewer holding the scope in, and says so to the database', async () => {
-    const seen = await PlatformContext.asStaff(
-      reviewer,
-      'VERIFICATION',
-      'verification.review',
-      () => Promise.resolve({ access: currentPlatformAccess(), settings: databaseSettings() }),
-    );
-    expect(seen.access).toEqual({
-      scope: 'VERIFICATION',
-      purpose: 'verification.review',
-      actorId: 'staff-1',
+  describe('a staff member with the scope', () => {
+    it('gets in, and the database is told', async () => {
+      const r = req();
+      const seen = await platform.asStaff(
+        reviewer,
+        { scope: 'VERIFICATION', purpose: 'verification.review' },
+        r,
+        () => Promise.resolve({ access: currentPlatformAccess(), settings: databaseSettings() }),
+      );
+      expect(seen.access).toEqual({
+        scope: 'VERIFICATION',
+        purpose: 'verification.review',
+        reason: null,
+        actorId: reviewer.userId,
+      });
+      expect(seen.settings).toMatchObject({ platformAccess: 'on', userId: '' });
+      expect(currentPlatformAccess()).toBeUndefined();
     });
-    expect(seen.settings).toMatchObject({ platformAccess: 'on', userId: '' });
-    expect(currentPlatformAccess()).toBeUndefined();
-  });
 
-  it('keeps the workspace the request is in, and adds access to it', async () => {
-    const context = testContext({ userId: 'staff-1' });
-    const settings = await runInContext(context, () =>
-      PlatformContext.asStaff(reviewer, 'VERIFICATION', 'verification.review', () =>
-        Promise.resolve(databaseSettings()),
-      ),
-    );
-    expect(settings).toEqual({
-      tenantId: context.tenantId,
-      userId: 'staff-1',
-      membershipId: context.membershipId,
-      platformAccess: 'on',
+    it('leaves one audit row per crossing: who, which scope, what for', async () => {
+      const r = req();
+      await platform.asStaff(
+        reviewer,
+        { scope: 'VERIFICATION', purpose: 'verification.queue' },
+        r,
+        () => Promise.resolve('read the queue'),
+      );
+      const [row] = await entries(r.correlationId!);
+      expect(row).toMatchObject({
+        actorId: reviewer.userId,
+        actorRole: 'STAFF',
+        staffScope: 'VERIFICATION',
+        action: 'platform.access',
+        resourceType: 'workspace',
+        resourceId: 'verification.queue',
+        reason: null,
+        ipAddress: r.ip,
+      });
+    });
+
+    it('records the crossing even when the work then fails', async () => {
+      // The row goes in before `fn` runs, through its own statement — a crossing that happened
+      // is recorded whether or not what followed survived.
+      const r = req();
+      await expect(
+        platform.asStaff(
+          reviewer,
+          { scope: 'VERIFICATION', purpose: 'verification.decide' },
+          r,
+          () => Promise.reject(new Error('the decision failed')),
+        ),
+      ).rejects.toThrow('the decision failed');
+      expect(await entries(r.correlationId!)).toHaveLength(1);
+    });
+
+    it('keeps the workspace the request is in, and adds access to it', async () => {
+      const context = testContext({ userId: reviewer.userId });
+      const settings = await runInContext(context, () =>
+        platform.asStaff(
+          reviewer,
+          { scope: 'VERIFICATION', purpose: 'verification.review' },
+          req(),
+          () => Promise.resolve(databaseSettings()),
+        ),
+      );
+      expect(settings).toEqual({
+        tenantId: context.tenantId,
+        userId: reviewer.userId,
+        membershipId: context.membershipId,
+        platformAccess: 'on',
+      });
     });
   });
 
-  it('refuses someone who is not staff', async () => {
-    const customer = testActor({ userId: 'c-1', roles: ['CUSTOMER'] });
-    await expect(
-      PlatformContext.asStaff(customer, 'VERIFICATION', 'verification.review', () =>
-        Promise.resolve('reached'),
-      ),
-    ).rejects.toMatchObject({ status: 403 });
-  });
-
-  it('refuses staff who do not hold that scope', async () => {
-    const other = testActor({ userId: 'staff-2', roles: ['STAFF'], staffScopes: ['SUPPORT'] });
-    await expect(
-      PlatformContext.asStaff(other, 'VERIFICATION', 'verification.review', () =>
-        Promise.resolve('reached'),
-      ),
-    ).rejects.toMatchObject({ status: 403 });
-  });
-
-  it('refuses staff who are working as something else right now', async () => {
-    // Someone who is both staff and an investigator does not carry review access into the
-    // investigator side of their account.
-    const narrowed = testActor({
-      userId: 'staff-3',
-      roles: ['STAFF', 'INVESTIGATOR'],
-      staffScopes: ['VERIFICATION'],
-      activeRole: 'INVESTIGATOR',
+  describe('everyone else', () => {
+    it.each([
+      ['is not staff at all', testActor({ userId: 'c-1', roles: ['CUSTOMER'] })],
+      [
+        'holds another scope',
+        testActor({ userId: 's-2', roles: ['STAFF'], staffScopes: ['SUPPORT'] }),
+      ],
+      [
+        'is staff but working as an investigator right now',
+        testActor({
+          userId: 's-3',
+          roles: ['STAFF', 'INVESTIGATOR'],
+          staffScopes: ['VERIFICATION'],
+          activeRole: 'INVESTIGATOR',
+        }),
+      ],
+    ])('is refused when they %s', async (_label, actor) => {
+      const r = req();
+      await expect(
+        platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'verification.review' }, r, () =>
+          Promise.resolve('reached'),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+      // Refused before entering, so there is no crossing to record: AuthzService audited the
+      // denial the caller's own check produced.
+      expect(await entries(r.correlationId!)).toEqual([]);
     });
-    await expect(
-      PlatformContext.asStaff(narrowed, 'VERIFICATION', 'verification.review', () =>
-        Promise.resolve('reached'),
-      ),
-    ).rejects.toMatchObject({ status: 403 });
   });
 
-  it('runs a system operation with no user and no workspace', async () => {
-    const seen = await PlatformContext.asSystem('assignment.create_from_payment', () =>
-      Promise.resolve({ access: currentPlatformAccess(), settings: databaseSettings() }),
-    );
-    expect(seen.access).toEqual({
-      scope: 'SYSTEM',
-      purpose: 'assignment.create_from_payment',
-      actorId: null,
+  describe('access no route defines', () => {
+    it('is recorded with the reason the person typed', async () => {
+      const r = req();
+      const reason = 'Customer 4821 asked why their mission was rejected.';
+      await platform.asStaff(
+        reviewer,
+        { scope: 'VERIFICATION', purpose: 'support.lookup', reason },
+        r,
+        () => Promise.resolve('looked'),
+      );
+      const [row] = await entries(r.correlationId!);
+      expect(row).toMatchObject({ resourceId: 'support.lookup', reason });
     });
-    expect(seen.settings).toEqual({
-      tenantId: '',
-      userId: '',
-      membershipId: '',
-      platformAccess: 'on',
+
+    it('refuses a reason too short to mean anything', async () => {
+      const r = req();
+      await expect(
+        platform.asStaff(
+          reviewer,
+          { scope: 'VERIFICATION', purpose: 'support.lookup', reason: 'asked' },
+          r,
+          () => Promise.resolve('looked'),
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(await entries(r.correlationId!)).toEqual([]);
+    });
+
+    it('refuses whitespace dressed up as a reason', async () => {
+      await expect(
+        platform.asStaff(
+          reviewer,
+          { scope: 'VERIFICATION', purpose: 'support.lookup', reason: '               ' },
+          req(),
+          () => Promise.resolve('looked'),
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    });
+  });
+
+  describe('the system', () => {
+    it('runs with no user and no workspace, and is audited as itself', async () => {
+      const r = req();
+      const seen = await platform.asSystem('assignment.create_from_payment', r, () =>
+        Promise.resolve({ access: currentPlatformAccess(), settings: databaseSettings() }),
+      );
+      expect(seen.access).toEqual({
+        scope: 'SYSTEM',
+        purpose: 'assignment.create_from_payment',
+        reason: null,
+        actorId: null,
+      });
+      expect(seen.settings).toEqual({
+        tenantId: '',
+        userId: '',
+        membershipId: '',
+        platformAccess: 'on',
+      });
+      const [row] = await entries(r.correlationId!);
+      expect(row).toMatchObject({
+        actorId: null,
+        actorRole: 'SYSTEM',
+        staffScope: 'SYSTEM',
+        resourceId: 'assignment.create_from_payment',
+      });
     });
   });
 
   it('hands out a frozen record, so nothing downstream can rewrite why it is here', async () => {
-    await PlatformContext.asSystem('probe', async () => {
+    await platform.asSystem('assignment.create_from_payment', req(), async () => {
       const access = currentPlatformAccess()!;
       expect(Object.isFrozen(access)).toBe(true);
-      expect(() => Object.assign(access, { purpose: 'something else' })).toThrow();
+      expect(() => Object.assign(access, { reason: 'something else' })).toThrow();
     });
   });
 });

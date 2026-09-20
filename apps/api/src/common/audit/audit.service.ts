@@ -6,6 +6,8 @@ export interface AuditEvent {
   correlationId?: string | undefined;
   actorId?: string | undefined;
   actorRole?: string | undefined;
+  /** For a staff action, the one area it belongs to — a moderator is not a payments reviewer. */
+  staffScope?: string | undefined;
   action: string;
   resourceType: string;
   resourceId?: string | undefined;
@@ -35,6 +37,7 @@ export class AuditService {
       correlationId: e.correlationId ?? null,
       actorId: e.actorId ?? null,
       actorRole: e.actorRole ?? null,
+      staffScope: e.staffScope ?? null,
       action: e.action,
       resourceType: e.resourceType,
       resourceId: e.resourceId ?? null,

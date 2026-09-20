@@ -512,18 +512,36 @@ enforced one layer down.
 
 ### Platform administration across workspaces
 
-> **Partly built in T-077.** `PlatformContext.asStaff(actor, scope, purpose, fn)` and
-> `PlatformContext.asSystem(purpose, fn)` exist, are the only code that sets
-> `app.platform_access`, and carry the verification queue, review, decision and
-> document-delivery paths plus assignment creation from a payment. Entry re-checks the `STAFF`
-> role, the scope and that the caller is acting as staff right now. **T-079 adds** the audit row
-> for every entry, typed reasons for ad-hoc access, and mission moderation.
+> **Built in T-077 and T-079.** `PlatformContext` is an injected service with two ways in and no
+> third:
+>
+> ```ts
+> platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'verification.review' }, req, fn)
+> platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'support.lookup', reason }, req, fn)
+> platform.asSystem('assignment.create_from_payment', req, fn)
+> ```
+>
+> A `RoutePurpose` takes no reason — the route is the reason. An `AdHocPurpose` does not compile
+> without one, and entry refuses text under 12 characters. **Every entry writes one audit row
+> before the work runs** (`platform.access`: actor, scope, purpose, reason, correlation id),
+> through its own statement, so a crossing whose work then fails is still recorded. Entry
+> re-checks the `STAFF` role, the scope, and that the caller is acting as staff right now; a
+> refusal records nothing, because nothing was crossed.
+>
+> The access is **held** in `platform-access.ts` and **entered** from `platform-context.ts`. That
+> split is not taste: the scoped client reads the access on every query and the audit service
+> reaches the database through that client, so one module doing both closes a circle whose
+> classes then resolve as `undefined`.
+>
+> **Mission moderation is not here yet.** The transition map allows `STAFF:MODERATION`, but no
+> moderation endpoint exists; T-051 carries the criterion that its queue enters through
+> `PlatformContext` from the first line.
 
 Platform staff (moderation, verification, disputes, payments) must see across workspaces. They
 do so **only inside `PlatformContext`**:
 
-- the scope is checked (`requireStaffScope`)
-- the reason is required text and audited with every access
+- the scope is checked at entry, on top of the caller's own `requireStaffScope`
+- ad-hoc access requires typed reason text; a route's purpose stands in for it otherwise
 - `app.platform_access` is set for that unit of work only
 
 Normal agency members can never enter it, because entry checks the platform `STAFF` role, not a
