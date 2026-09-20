@@ -16,6 +16,7 @@ import {
   type TestDb,
 } from '../../../test/verification-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
+import { PlatformContext } from '../../common/context/platform-context';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
@@ -64,6 +65,7 @@ describe('verification', () => {
       new OwnMediaRepository(db),
       new ViewableMediaRepository(db),
       storage,
+      new PlatformContext(audit),
     );
     service = asRequests(
       new VerificationService(
@@ -72,6 +74,7 @@ describe('verification', () => {
         audit,
         media,
         new OwnInvestigatorProfileRepository(db),
+        new PlatformContext(audit),
       ),
       ownerSql,
     );
@@ -326,6 +329,25 @@ describe('verification', () => {
   });
 
   describe('the queue', () => {
+    it('records the crossing: a reviewer reads other workspaces, and the log says so', async () => {
+      // The queue spans every applicant's workspace, so reading it is a crossing (T-079). The
+      // row goes in whatever the queue then returns — here, before any application exists.
+      const staff = await reviewer(ownerDb);
+      const r = req();
+      await service.queue(staff, {}, r);
+      const [crossing] = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(and(eq(auditLogs.correlationId, r.correlationId), eq(auditLogs.action, 'platform.access')));
+      expect(crossing).toMatchObject({
+        actorId: staff.userId,
+        actorRole: 'STAFF',
+        staffScope: 'VERIFICATION',
+        resourceId: 'verification.queue',
+        reason: null,
+      });
+    });
+
     it('lists open applications oldest first, a page at a time', async () => {
       const at = longAgo();
       const a = await applied();

@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runInContext, type ExecutionContext } from '../../src/common/context/execution-context';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { AuditService } from '../../src/common/audit/audit.service';
 import { PlatformContext } from '../../src/common/context/platform-context';
+import * as schema from '../../src/database/schema';
 import { scopedClient } from '../../src/database/scoped-client';
 import { testPool } from '../db';
 import { personalContext } from '../workspace-context';
@@ -26,6 +29,7 @@ describe('filling a row’s workspace under row-level security', () => {
   let app: postgres.Sql;
   let scoped: postgres.Sql;
   let owner: postgres.Sql;
+  let platform: PlatformContext;
   let graph: SeededGraph;
   let supplier: ExecutionContext;
   let customer: ExecutionContext;
@@ -35,6 +39,7 @@ describe('filling a row’s workspace under row-level security', () => {
     app = testPool({ max: 2 });
     scoped = scopedClient(app);
     owner = testPool({ max: 2, role: 'owner' });
+    platform = new PlatformContext(new AuditService(drizzle(scoped, { schema })));
     graph = await seedGraph(owner);
     supplier = await personalContext(owner, graph.supplier.userId);
     customer = await personalContext(owner, graph.customer.userId);
@@ -99,7 +104,7 @@ describe('filling a row’s workspace under row-level security', () => {
     const theirs = await openMission();
     const [quote] = await quoteOn(theirs.missionId, 3000);
 
-    const [assignment] = await PlatformContext.asSystem('assignment.create_from_payment', () =>
+    const [assignment] = await platform.asSystem('assignment.create_from_payment', {}, () =>
       scoped.begin(
         (tx) => tx<{ id: string }[]>`
           INSERT INTO assignments (mission_id, quote_id, customer_id, investigator_profile_id,
@@ -169,7 +174,7 @@ describe('filling a row’s workspace under row-level security', () => {
       activeRole: undefined,
     };
     const [decision] = await runInContext(outsider, () =>
-      PlatformContext.asStaff(staff as never, 'VERIFICATION', 'verification.decide', () =>
+      platform.asStaff(staff as never, { scope: 'VERIFICATION', purpose: 'verification.decide' }, {}, () =>
         scoped.begin(
           (tx) => tx<{ id: string }[]>`
             INSERT INTO verification_decisions (request_id, outcome, reason, decided_by)

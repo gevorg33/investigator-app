@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { PlatformContext } from '../../common/context/platform-context';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
@@ -46,6 +47,7 @@ describe('who can obtain a delivery link', () => {
         new OwnMediaRepository(db),
         new ViewableMediaRepository(db),
         storage,
+        new PlatformContext(new AuditService(db)),
       ),
       ownerSql,
     );

@@ -283,12 +283,16 @@ describe('investigator discovery', () => {
 
     it('finds an investigator with no service area only when no location is asked for', async () => {
       // Nowhere to work is not a reason to be invisible in a list that is not about location.
-      // No area means no city either, so this one cannot be isolated by tag — it is found by the
-      // experience ordering instead, which puts it ahead of the fixtures that declare none.
-      const found = await discoverable(ownerDb, { withoutArea: true, yearsExperience: 30 });
+      // No area means no city either, so this one is isolated by a specialty of its own rather
+      // than by the city tag — asking for a page of 100 and hoping it is on it depends on how
+      // many profiles the shared database happens to hold.
+      const specialty = await node(ownerDb);
+      const found = await discoverable(ownerDb, {
+        withoutArea: true,
+        specialtyNodeIds: [specialty],
+      });
       expect(ids(await near(somewhere()))).not.toContain(found.profileId);
-      const page = await search({ limit: 100 });
-      expect(ids(page)).toContain(found.profileId);
+      expect(ids(await search({ taxonomyNodeIds: [specialty] }))).toEqual([found.profileId]);
     });
   });
 

@@ -1,6 +1,6 @@
 import type postgres from 'postgres';
 import { currentContext, currentUserOnly } from '../common/context/execution-context';
-import { currentPlatformAccess } from '../common/context/platform-context';
+import { currentPlatformAccess } from '../common/context/platform-access';
 
 /**
  * The execution context, carried into every query (T-075, ADR-0011 §4).

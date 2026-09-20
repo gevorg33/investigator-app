@@ -58,6 +58,7 @@ export class MediaService {
     private readonly own: OwnMediaRepository,
     private readonly viewable: ViewableMediaRepository,
     @Inject(MEDIA_STORAGE) private readonly storage: MediaStorage,
+    private readonly platform: PlatformContext,
   ) {}
 
   /**
@@ -196,7 +197,7 @@ export class MediaService {
   async getDeliveryUrl(actor: Actor, assetId: string, req: RequestContext): Promise<DeliveryUrl> {
     const c = this.ctx('media.deliver', req, assetId);
     await this.authz.requireActive(actor, c);
-    const row = await this.authz.visible(actor, await this.findViewable(actor, assetId), c);
+    const row = await this.authz.visible(actor, await this.findViewable(actor, assetId, req), c);
     await this.authz.stateAllows(actor, row.uploadStatus === 'READY', c);
     await this.authz.stateAllows(actor, row.scanStatus === 'CLEAN', c);
 
@@ -219,13 +220,17 @@ export class MediaService {
    * across workspaces (T-077). The repository's rules still decide which rows count: platform
    * access widens where the database looks, never what the reviewer may see.
    */
-  private async findViewable(actor: Actor, assetId: string): Promise<MediaAssetRow | undefined> {
+  private async findViewable(
+    actor: Actor,
+    assetId: string,
+    req: RequestContext,
+  ): Promise<MediaAssetRow | undefined> {
     const find = async () => {
       const row = await this.viewable.findOneForActor(actor, assetId);
       return row;
     };
     return reviewsVerification(actor)
-      ? PlatformContext.asStaff(actor, 'VERIFICATION', 'media.deliver', find)
+      ? this.platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'media.deliver' }, req, find)
       : find();
   }
 

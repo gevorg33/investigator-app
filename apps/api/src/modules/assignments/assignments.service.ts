@@ -63,6 +63,7 @@ export class AssignmentsService {
     private readonly idempotency: IdempotencyService,
     private readonly transitions: AssignmentTransitionService,
     private readonly missionTransitions: MissionTransitionService,
+    private readonly platform: PlatformContext,
   ) {}
 
   /**
@@ -83,7 +84,7 @@ export class AssignmentsService {
     // No user, no workspace: the quote, the mission and the new assignment belong to the two
     // parties, and neither of them declared that money moved. The system reaches all three
     // through PlatformContext (T-077) — the only way past row-level security.
-    return PlatformContext.asSystem('assignment.create_from_payment', async () => {
+    return this.platform.asSystem('assignment.create_from_payment', req, async () => {
       return this.db.transaction(async (tx) => {
         const claim = await this.idempotency.claim(tx, {
           // A system actor has no user, and the provider's reference is what scopes the key.

@@ -2011,7 +2011,14 @@ and prioritises the queue; it never publishes. Per plan.md §10 and
 
 **Tenancy (ADR-0011).** The moderation queue reads across workspaces **only inside `PlatformContext`** (T-079).
 
+> **From T-079:** there was nothing to move — the transition map allows `STAFF:MODERATION`, but no
+> moderation endpoint exists yet, so this is where mission moderation first crosses a workspace.
+> `PlatformContext.asStaff(actor, { scope: 'MODERATION', purpose: … }, req, fn)` from the first
+> line, with a `RoutePurpose` added for each route. Every entry is audited on its own; the
+> attachment-access criterion below is about what the moderator then opens.
+
 **Acceptance criteria**
+- [ ] **Every queue read and decision enters through `PlatformContext`** (deferred from T-079), with its purpose added to `RoutePurpose` — not written cross-workspace and retrofitted
 - [ ] Queue of `UNDER_REVIEW` missions, ordered by risk band then age
 - [ ] Three outcomes: **publish** (`→ QUOTED`), **reject** (`→ REJECTED`), **request changes**
       (`→ DRAFT`) — each requiring a typed reason before the control enables
@@ -3370,31 +3377,76 @@ pnpm --filter api test authz
 ---
 
 ### T-079 — PlatformContext: staff across workspaces, scoped, reasoned and audited
-- **Status:** TODO
+- **Status:** DONE (2026-09-21)
 - **Priority:** P1
 - **Depends on:** T-077
 - **Risk:** HIGH
-- **Human approval required:** Yes, plus a `security-privacy` review
+- **Human approval required:** Yes, plus a `security-privacy` review — design approved 2026-09-20
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/common/context/**, apps/api/src/modules/{verification,missions,media}/**
+- **Affected:** apps/api/src/common/context/**, apps/api/src/common/audit/**, apps/api/src/modules/{verification,media,assignments}/**
 
-**Description**
-`PlatformContext.run({ scope, reason }, fn)` is the **only** setter of `app.platform_access`.
-The existing cross-workspace staff paths move into it:
+**What shipped**
 
-- verification review (T-013)
-- mission moderation (T-010)
-- verification-document delivery
+`PlatformContext` is now an injected service rather than a module-level object, because every
+entry writes an audit row and that needs `AuditService`. Two ways in, and no third:
 
-Fixed-purpose staff routes carry a route-defined purpose. Ad-hoc cross-workspace access, such
-as a support lookup, requires typed reason text.
+```ts
+platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'verification.review' }, req, fn)
+platform.asStaff(actor, { scope: 'VERIFICATION', purpose: 'support.lookup', reason }, req, fn)
+platform.asSystem('assignment.create_from_payment', req, fn)
+```
 
-**Acceptance criteria**
-- [ ] **The core landed in T-077**: `PlatformContext.asStaff` / `.asSystem` exist, are the only setters of `app.platform_access`, and carry verification review, document delivery and assignment creation. What is left here is the audit row per entry, typed ad-hoc reasons, mission moderation, and folding `purpose` and `reason` into one shape
-- [ ] Staff without the scope refused; agency owners and admins can never enter (entry checks the platform `STAFF` role)
-- [ ] Every platform access audited with scope and purpose or reason
-- [ ] A static spec holds that nothing else sets `app.platform_access`; there is no `BYPASSRLS` role
-- [ ] T-013 and T-010 staff tests pass through the new path
+- **The two shapes are a type, not a convention.** A `RoutePurpose` takes no reason — the route
+  *is* the reason. An `AdHocPurpose` does not compile without one, and entry refuses text under
+  12 characters or nothing but whitespace. A new ad-hoc purpose cannot be added without a reason
+  field.
+- **Every crossing is audited, before the work runs.** One row per entry: who, which scope, what
+  for, the typed reason where there is one, and the request's correlation id — which is what ties
+  it to whatever the action writes afterwards. It goes in through its own statement, outside any
+  transaction `fn` may open and roll back, so a crossing that happened is recorded whether or not
+  the work survived. `AuditEvent` gained `staffScope`, which the table already had a column for.
+- **Entry re-checks the staff role, the scope and that they are acting as staff right now.** A
+  refusal leaves no crossing row, because there was no crossing.
+
+**A circular import, and what it forced.** `PlatformContext` → `AuditService` → the scoped client
+→ `PlatformContext` resolved as `undefined` at runtime, and Nest could not build the graph. The
+access is now *held* in `platform-access.ts`, which imports nothing but a type, and *entered* from
+`platform-context.ts`, which checks and audits. The static spec was tightened to match: one module
+holds it, exactly one calls `enterPlatformAccess`, and the scoped client alone writes the setting.
+
+**Mission moderation had nothing to move** (owner decision, 2026-09-21). The transition map allows
+`STAFF:MODERATION`, but no moderation endpoint exists — the queue is T-051, which now carries the
+criterion that it enters through `PlatformContext` from its first line rather than being written
+cross-workspace and retrofitted.
+
+**No role bypasses the policies.** `rls.spec.ts` now asserts that every role with `rolbypassrls`
+is a superuser — a bypass role built on purpose is the one thing that would undo every policy at
+once — and that the runtime role is neither.
+
+**Tests** — 1433 passing, 100% coverage.
+- `platform-context.spec.ts`: the entry and the audit row, the three refusals (not staff, wrong
+  scope, narrowed to another role) with nothing recorded, the reason rules, the system entry, and
+  a crossing recorded when the work then throws.
+- `verification.service.spec.ts`: the real staff route writes its own crossing row — scope,
+  purpose and actor — which is what proves the audit is on the path and not only in its own spec.
+- `rls.spec.ts`: the BYPASSRLS assertions.
+- `tenant-plumbing.spec.ts`: the holder, the single caller of `enterPlatformAccess`, and the list
+  of modules that cross workspaces at all.
+
+**One flaky test fixed on the way past.** `search.service.spec.ts` asserted that a profile with no
+service area appears in a page of 100, ordered by experience — which depends on how many profiles
+the shared development database happens to hold. It now isolates the profile by a specialty of its
+own. It failed once in a full run and passed alone, which is the signature of shared state rather
+than a bug in the code under test.
+
+**Negative controls** — each broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| The crossing is no longer audited | 5 fail, including the verification route's own row |
+| Entry stops checking the staff scope | "is refused when they hold another scope" fails |
+| A reason of any length is accepted | both reason tests fail |
+| The runtime role is given `BYPASSRLS` | **79 fail** — both new assertions and the whole isolation matrix |
 
 **Validation**
 ```bash

@@ -12,6 +12,7 @@ import {
   type TestDb,
 } from '../../../test/quote-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
+import { PlatformContext } from '../../common/context/platform-context';
 import { AuthzService } from '../../common/authz/authz.service';
 import { IdempotencyService } from '../../common/idempotency/idempotency.service';
 import * as schema from '../../database/schema';
@@ -50,6 +51,7 @@ describe('assignments', () => {
         new IdempotencyService(),
         new AssignmentTransitionService(authz, audit),
         new MissionTransitionService(authz, audit),
+        new PlatformContext(audit),
       ),
       ownerSql,
     );
