@@ -15,6 +15,7 @@ import { DELIVERY_URL_TTL_SECONDS } from './media.policy';
 import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('who can obtain a delivery link', () => {
@@ -29,21 +30,24 @@ describe('who can obtain a delivery link', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
     storage = new FakeStorage();
-    media = new MediaService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new RateLimitService(new MemoryRateLimitStore()),
-      new OwnMediaRepository(db),
-      new ViewableMediaRepository(db),
-      storage,
+    media = asRequests(
+      new MediaService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new RateLimitService(new MemoryRateLimitStore()),
+        new OwnMediaRepository(db),
+        new ViewableMediaRepository(db),
+        storage,
+      ),
+      ownerSql,
     );
   });
 
@@ -170,7 +174,7 @@ describe('who can obtain a delivery link', () => {
 
     it('refuses a soft-deleted asset as if it did not exist', async () => {
       const { owner, assetId } = await asset();
-      await db.update(mediaAssets).set({ deletedAt: new Date() }).where(eq(mediaAssets.id, assetId));
+      await ownerDb.update(mediaAssets).set({ deletedAt: new Date() }).where(eq(mediaAssets.id, assetId));
       await expect(deliver(owner, assetId)).rejects.toMatchObject({ status: 404 });
     });
 
@@ -189,7 +193,7 @@ describe('who can obtain a delivery link', () => {
       const r = req();
       const { signedUrl } = await media.getDeliveryUrl(reviewer, assetId, r);
 
-      const rows = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows).toContainEqual(
         expect.objectContaining({
           action: 'media.delivered',
@@ -206,7 +210,7 @@ describe('who can obtain a delivery link', () => {
       const { assetId } = await asset();
       const r = req();
       await media.getDeliveryUrl(await person(ownerDb), assetId, r).catch(() => undefined);
-      const rows = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows.map((x) => x.action)).toContain('authz.denied.media.deliver');
     });
   });
@@ -223,7 +227,7 @@ describe('who can obtain a delivery link', () => {
       wrongState: {
         actor: owner,
         setup: async () => {
-          await db.update(mediaAssets).set({ scanStatus: 'PENDING' }).where(eq(mediaAssets.id, assetId));
+          await ownerDb.update(mediaAssets).set({ scanStatus: 'PENDING' }).where(eq(mediaAssets.id, assetId));
         },
       },
     });

@@ -45,8 +45,16 @@ command, stop. The context already has it.
 4. **Index** with the tenant or party column first.
 5. **Retention row** in `docs/compliance/retention.md`, stating what happens when the workspace
    is deleted.
-6. **Tests.** The isolation matrix picks the table up from the registry. Add a direct test for
-   anything class-specific, such as the public projection or the QUOTED-mission read.
+6. **Tests.** The isolation matrix (`apps/api/test/isolation/`) picks the table up from the
+   registry — add one seeded row for it in `graph.ts`, in a state no projection publishes. Add a
+   direct test for anything class-specific, such as the public projection or the QUOTED-mission
+   read, and one for each fill trigger the table has (`fill-triggers.spec.ts`): the trigger reads
+   the parent with the writer's privileges, so a parent the writer cannot see must refuse the
+   insert rather than fill in the writer's own workspace.
+7. **Geography or full text in a query against it?** Check the plan. Once a table has policies,
+   a predicate that is not `LEAKPROOF` cannot be an index condition — that is what cost discovery
+   its GIST index (tenancy.md §7, rule 6). If a new operator class is involved, EXPLAIN it
+   against a seeded table before assuming the index is still used.
 
 ## Adding a query path
 
@@ -61,8 +69,16 @@ command, stop. The context already has it.
 - Outside any context (authentication before a session exists, the outbox dispatcher, retention
   sweeps), use the **unscoped path**, and add the caller to its allowlist spec with a comment
   saying why no context can exist there.
-- Cross-workspace reads by platform staff go through `PlatformContext.run({ scope, reason }, fn)`.
-  The reason is audited with every access.
+- Cross-workspace reads by platform staff go through
+  `PlatformContext.asStaff(actor, scope, purpose, fn)`; an operation with no user at all goes
+  through `PlatformContext.asSystem(purpose, fn)`. These are the only code that may turn on
+  `app.platform_access`, and `tenant-plumbing.spec.ts` lists every caller of each — adding one is
+  editing that list on purpose. (T-079 adds the audit row and typed ad-hoc reasons.)
+- A read that has to happen **before a workspace is chosen** — the resolver, and the Personal
+  workspace a new session opens in — uses `runAsUser(userId, fn)`. It sets `app.user_id` and no
+  workspace, so the policies show that user their own memberships, the workspaces they are in and
+  their own role assignments, and nothing else. It is not a way to read around a workspace: it
+  sets the current workspace aside, and its callers are listed in the same static spec.
 
 ## Adding an endpoint
 
@@ -96,7 +112,15 @@ The workspace is already resolved when your handler runs. Then:
 - **Two pools in integration tests:** fixtures are inserted by the owner pool; the code under test
   runs on the `investigator_app` pool inside a context. A test that runs the code under test as
   the owner proves nothing about isolation.
-- **Negative control:** drop the policy, watch the matrix fail, restore it.
+- **Enter the workspace the way a request does.** Build the client with `scopedDb(sql)` and wrap
+  the service in `asRequests(service, ownerSql)` (`test/workspace-context.ts`), which runs each
+  call in that actor's Personal workspace. A call with no actor argument — or a raw query — uses
+  `inWorkspaceOf(ownerSql, userId, fn)`. A service called with no context at all sees nothing,
+  and is testing a situation production does not have.
+- **Assertions read as the owner.** What the application can see is the matrix's subject; a
+  spec's own `SELECT` is a fixture.
+- **Negative control:** open the policy (`ALTER POLICY … USING (true)`), watch the matrix fail on
+  exactly that table, restore it byte-for-byte and diff `pg_policies` to prove it.
 
 ## Checklist
 

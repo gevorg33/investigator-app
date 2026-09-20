@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
+import { runAsUser } from '../../common/context/execution-context';
 import { MAILER, type Mailer } from '../../common/mail/mailer';
 import { DB, type Db } from '../../database/database.module';
 import { tenants, userSessions, userTokens, users } from '../../database/schema';
@@ -160,10 +161,16 @@ export class AuthService {
     // A new session opens in the Personal workspace (tenancy.md §6). The trigger that created
     // the user created it in the same statement, and the unique index allows only one, so it
     // exists exactly once; switching workspace moves this (T-075).
-    const [personal] = await this.db
-      .select({ id: tenants.id })
-      .from(tenants)
-      .where(eq(tenants.personalOwnerId, user.id));
+    // Read as the user alone (T-077): before a session there is no workspace, and row-level
+    // security shows a user only their own.
+    // Awaited inside: a Drizzle query is lazy, and runs in whatever context awaits it.
+    const [personal] = await runAsUser(user.id, async () => {
+      const rows = await this.db
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(eq(tenants.personalOwnerId, user.id));
+      return rows;
+    });
     await this.db.insert(userSessions).values({
       id: issued.sessionId,
       userId: user.id,

@@ -19,6 +19,7 @@ export interface ExecutionContext {
 }
 
 const storage = new AsyncLocalStorage<ExecutionContext>();
+const userOnly = new AsyncLocalStorage<string>();
 
 /** The context the current code is running in, or undefined outside any (sign-in, bootstrap). */
 export function currentContext(): ExecutionContext | undefined {
@@ -30,7 +31,24 @@ export function currentContext(): ExecutionContext | undefined {
  * request interceptor calls it around a handler, and a job worker (T-082) around a job.
  */
 export function runInContext<T>(context: ExecutionContext, fn: () => T): T {
-  return storage.run(freeze(context), fn);
+  return userOnly.exit(() => storage.run(freeze(context), fn));
+}
+
+/**
+ * Runs `fn` as `userId` with no workspace — the pre-workspace context (T-077). The database then
+ * shows the user their own memberships, the workspaces they belong to and their role
+ * assignments, and nothing scoped to any workspace. It exists for exactly the reads that choose a
+ * workspace: the resolver, and the Personal workspace a new session opens in. Inside a request it
+ * narrows, never widens — the workspace is set aside for `fn` and comes back afterwards — so a
+ * pre-workspace read is the same read wherever it is made from.
+ */
+export function runAsUser<T>(userId: string, fn: () => T): T {
+  return storage.exit(() => userOnly.run(userId, fn));
+}
+
+/** The user of the pre-workspace context, when the current code runs in one. */
+export function currentUserOnly(): string | undefined {
+  return userOnly.getStore();
 }
 
 /** Frozen all the way down, the permission list included. */

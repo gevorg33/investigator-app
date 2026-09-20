@@ -11,6 +11,7 @@ import { userRoles, users, userSessions } from '../../database/schema';
 import { SessionService } from '../auth/session.service';
 import { TokenService } from '../auth/token.service';
 import { testActor } from '../../../test/authz-cases';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { ProfilesService } from './profiles.service';
 import {
   OwnCustomerProfileRepository,
@@ -21,6 +22,9 @@ import { testPool } from '../../../test/db';
 
 describe('one account, both roles', () => {
   let sql: postgres.Sql;
+  let ownerSql: postgres.Sql;
+  // Assertions read as the owner: what the application may see is the subject of rls.spec.ts.
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let db: ReturnType<typeof drizzle<typeof schema>>;
   let profiles: ProfilesService;
   let actors: ActorService;
@@ -29,32 +33,38 @@ describe('one account, both roles', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
+    db = scopedDb(sql);
     const tokens = new TokenService();
     sessions = new SessionService(tokens);
     actors = new ActorService(db, tokens, sessions);
-    profiles = new ProfilesService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new OwnInvestigatorProfileRepository(db),
-      new OwnCustomerProfileRepository(db),
+    profiles = asRequests(
+      new ProfilesService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new OwnInvestigatorProfileRepository(db),
+        new OwnCustomerProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   /** A live account with a session, so the real Actor resolution can be exercised. */
   const account = async (): Promise<{ userId: string; token: string }> => {
-    const [user] = await db
+    const [user] = await ownerDb
       .insert(users)
       .values({ email: `roles-${randomUUID()}@example.test`, status: 'ACTIVE' })
       .returning();
     const userId = user?.id ?? '';
     const issued = sessions.create(userId);
-    await db.insert(userSessions).values({
+    await ownerDb.insert(userSessions).values({
       id: issued.sessionId,
       userId,
       familyId: issued.familyId,
@@ -96,7 +106,7 @@ describe('one account, both roles', () => {
     const second = await profiles.activateRole(bare, 'INVESTIGATOR', req);
 
     expect(second.profileId).toBe(first.profileId);
-    const roles = await db
+    const roles = await ownerDb
       .select()
       .from(userRoles)
       .where(and(eq(userRoles.userId, userId), eq(userRoles.role, 'INVESTIGATOR')));
@@ -107,7 +117,7 @@ describe('one account, both roles', () => {
     const { userId, token } = await account();
     const bare = testActor({ userId, roles: [] });
     await profiles.activateRole(bare, 'INVESTIGATOR', req);
-    await db
+    await ownerDb
       .update(userRoles)
       .set({ revokedAt: new Date() })
       .where(eq(userRoles.userId, userId));
@@ -115,7 +125,7 @@ describe('one account, both roles', () => {
 
     await profiles.activateRole(bare, 'INVESTIGATOR', req);
     expect((await actors.fromRefreshToken(token)).roles).toEqual(['INVESTIGATOR']);
-    const rows = await db.select().from(userRoles).where(eq(userRoles.userId, userId));
+    const rows = await ownerDb.select().from(userRoles).where(eq(userRoles.userId, userId));
     expect(rows).toHaveLength(1);
   });
 
@@ -145,7 +155,7 @@ describe('one account, both roles', () => {
     const { userId } = await account();
     const bare = testActor({ userId, roles: [] });
     await profiles.activateRole(bare, 'CUSTOMER', req);
-    const roles = await db.select().from(userRoles).where(eq(userRoles.userId, userId));
+    const roles = await ownerDb.select().from(userRoles).where(eq(userRoles.userId, userId));
     expect(roles.map((r) => r.role)).not.toContain('STAFF');
   });
 
@@ -163,7 +173,7 @@ describe('one account, both roles', () => {
     const correlationId = randomUUID();
     await profiles.activateRole(bare, 'INVESTIGATOR', { ...req, correlationId });
 
-    const rows = await db
+    const rows = await ownerDb
       .select()
       .from(schema.auditLogs)
       .where(eq(schema.auditLogs.correlationId, correlationId));
@@ -178,7 +188,7 @@ describe('one account, both roles', () => {
     const second = await profiles.activateRole(bare, 'CUSTOMER', req);
 
     expect(second.profileId).toBe(first.profileId);
-    const rows = await db
+    const rows = await ownerDb
       .select()
       .from(schema.customerProfiles)
       .where(eq(schema.customerProfiles.userId, userId));

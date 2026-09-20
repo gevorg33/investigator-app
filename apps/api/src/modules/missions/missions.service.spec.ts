@@ -27,6 +27,7 @@ import { MissionTransitionService } from './mission-transition.service';
 import { OwnMissionRepository } from './missions.repository';
 import { MissionsService } from './missions.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('missions', () => {
@@ -40,22 +41,25 @@ describe('missions', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
     const audit = new AuditService(db);
-    service = new MissionsService(
-      db,
-      new AuthzService(audit),
-      audit,
-      new OwnMissionRepository(db),
-      new MissionTransitionService(new AuthzService(audit), audit),
-      new MissionPolicyService(),
-      // A fresh limiter per test: the submission limit is not what these tests are about.
-      new RateLimitService(new MemoryRateLimitStore()),
+    service = asRequests(
+      new MissionsService(
+        db,
+        new AuthzService(audit),
+        audit,
+        new OwnMissionRepository(db),
+        new MissionTransitionService(new AuthzService(audit), audit),
+        new MissionPolicyService(),
+        // A fresh limiter per test: the submission limit is not what these tests are about.
+        new RateLimitService(new MemoryRateLimitStore()),
+      ),
+      ownerSql,
     );
   });
 
@@ -73,7 +77,7 @@ describe('missions', () => {
   };
 
   const historyOf = (missionId: string) =>
-    db
+    ownerDb
       .select()
       .from(missionStatusHistory)
       .where(eq(missionStatusHistory.missionId, missionId))
@@ -197,7 +201,7 @@ describe('missions', () => {
         req(),
       );
 
-      const events = await db
+      const events = await ownerDb
         .select()
         .from(outboxEvents)
         .where(
@@ -213,11 +217,11 @@ describe('missions', () => {
       // Unpublished: the relay arrives with BullMQ (T-036).
       expect(events.every((e) => e.publishedAt === null)).toBe(true);
 
-      const audits = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, draft.id));
+      const audits = await ownerDb.select().from(auditLogs).where(eq(auditLogs.resourceId, draft.id));
       expect(audits.map((a) => a.action)).toContain('mission.status_changed');
       expect(audits.map((a) => a.action)).toContain('mission.submitted');
 
-      const [screening] = await db
+      const [screening] = await ownerDb
         .select()
         .from(missionScreenings)
         .where(eq(missionScreenings.missionId, draft.id));
@@ -291,14 +295,14 @@ describe('missions', () => {
         ),
       ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
 
-      const [row] = await db.select().from(missions).where(eq(missions.id, draft.id));
+      const [row] = await ownerDb.select().from(missions).where(eq(missions.id, draft.id));
       expect(row).toMatchObject({
         status: 'DRAFT',
         version: draft.version,
         lawfulPurposeConfirmedAt: null,
       });
       expect(
-        await db.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
+        await ownerDb.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
       ).toEqual([]);
     });
 
@@ -352,7 +356,7 @@ describe('missions', () => {
 
       // Flagged and prioritised — and in exactly the same place as a clean mission.
       expect(submitted.status).toBe('UNDER_REVIEW');
-      const [screening] = await db
+      const [screening] = await ownerDb
         .select()
         .from(missionScreenings)
         .where(eq(missionScreenings.missionId, draft.id));
@@ -397,12 +401,12 @@ describe('missions', () => {
       // The service is not the only thing that could ever write this table.
       const { userId } = await customer(ownerDb);
       const nodeId = await category(ownerDb);
-      const [row] = await db
+      const [row] = await ownerDb
         .insert(missions)
         .values({ customerId: userId, ...completeDraft(nodeId) })
         .returning();
       await expect(
-        db
+        ownerDb
           .update(missions)
           .set({ status: 'UNDER_REVIEW', submittedAt: new Date() })
           .where(eq(missions.id, row!.id)),
@@ -411,12 +415,12 @@ describe('missions', () => {
 
     it('refuses a submitted mission that is missing a required field', async () => {
       const { userId } = await customer(ownerDb);
-      const [row] = await db
+      const [row] = await ownerDb
         .insert(missions)
         .values({ customerId: userId, title: 'Only a title' })
         .returning();
       await expect(
-        db
+        ownerDb
           .update(missions)
           .set({
             status: 'UNDER_REVIEW',
@@ -430,7 +434,7 @@ describe('missions', () => {
     it('refuses a budget whose minimum exceeds its maximum', async () => {
       const { userId } = await customer(ownerDb);
       await expect(
-        db
+        ownerDb
           .insert(missions)
           .values({ customerId: userId, budgetMinMinor: 900, budgetMaxMinor: 100 }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'missions_budget_range' } });
@@ -439,7 +443,7 @@ describe('missions', () => {
     it('refuses a location more precise than about a kilometre', async () => {
       const { userId } = await customer(ownerDb);
       await expect(
-        db
+        ownerDb
           .insert(missions)
           .values({ customerId: userId, location: { lon: 44.51523, lat: 40.18724 } }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'missions_location_coarsened' } });
@@ -448,7 +452,7 @@ describe('missions', () => {
     it('refuses a language code that is not ISO 639-1', async () => {
       const { userId } = await customer(ownerDb);
       await expect(
-        db.insert(missions).values({ customerId: userId, languages: ['en', 'English'] }),
+        ownerDb.insert(missions).values({ customerId: userId, languages: ['en', 'English'] }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'missions_languages_valid' } });
     });
   });
@@ -471,7 +475,7 @@ describe('missions', () => {
       );
       expect(submitted.status).toBe('UNDER_REVIEW');
 
-      const [screening] = await db
+      const [screening] = await ownerDb
         .select()
         .from(missionScreenings)
         .where(eq(missionScreenings.missionId, draft.id));
@@ -495,7 +499,7 @@ describe('missions', () => {
         { version: updated.version, lawfulPurposeConfirmed: true },
         req(),
       );
-      const [screening] = await db
+      const [screening] = await ownerDb
         .select()
         .from(missionScreenings)
         .where(eq(missionScreenings.missionId, draft.id));
@@ -649,7 +653,7 @@ describe('missions', () => {
 
       // And the losing one left nothing behind: one screening, one submission in the history.
       expect(
-        await db.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
+        await ownerDb.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
       ).toHaveLength(1);
       const history = await historyOf(draft.id);
       expect(history.filter((h) => h.toStatus === 'SUBMITTED')).toHaveLength(1);
@@ -669,7 +673,7 @@ describe('missions', () => {
       ]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
 
-      const [row] = await db.select().from(missions).where(eq(missions.id, draft.id));
+      const [row] = await ownerDb.select().from(missions).where(eq(missions.id, draft.id));
       expect(['UNDER_REVIEW', 'CANCELLED']).toContain(row?.status);
       // Whichever won, the row's version moved exactly as far as its transitions.
       expect(row?.version).toBe(

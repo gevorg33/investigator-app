@@ -340,11 +340,12 @@ ci_probe_t9_1789347652 · ci_probe_t10_1789596168 · ci_probe_t10b_1789596197
 ci_probe_t10c_1789596252 · ci_probe_t10d_1789596273 · ci_probe_t10e_1789596294
 ci_probe_t11_1789674197 · ci_probe_t12_1789679229 · ci_probe_t13_1789760505
 ci_probe_t73_1789820244 · t074_backfill_probe_1789825455 · t074_backfill_probe2_1789837264
-t076_backfill_probe_1789843576 · ci_probe_t76_1789844659
+t076_backfill_probe_1789843576 · ci_probe_t76_1789844659 · t077_probe_1789911432
+t077_probe2_1789911612 · t077_probe3_1789912288
 ```
 
 ```bash
-psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%' OR datname LIKE 't0__\_backfill%'"
+psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%' OR datname LIKE 't0__\_backfill%' OR datname LIKE 't077\_probe%'"
 ```
 
 **Status:** ⬜ Pending — cosmetic
@@ -430,6 +431,31 @@ good match fast. That market decides:
 and licensable there on the terms ADR-0009 requires.
 
 **Status:** ⬜ Pending — the most leveraged decision on this list
+
+---
+
+### 19. Mark four PostGIS functions leakproof in production — for the T-077 deploy
+
+**Why:** a table with row-level security evaluates its security quals before any predicate that
+is not `LEAKPROOF`, so such a predicate can no longer be an index condition. PostGIS does not
+mark `ST_DWithin` leakproof, and discovery stopped reaching its GIST index: measured on 10,000
+published profiles, **392 ms instead of 5 ms**. Marked leakproof it is 3 ms.
+
+Migration 0013 does it automatically **where the migration role is a superuser** — locally and in
+CI it is, so nothing is needed there. Where the production owner is not a superuser the migration
+warns and carries on, and `apps/api/src/database/rls.spec.ts` fails against that database until
+someone with the right to do it runs:
+
+```bash
+psql "$PRODUCTION_SUPERUSER_URL" -c "ALTER FUNCTION st_dwithin(geography, geography, double precision, boolean) LEAKPROOF; ALTER FUNCTION _st_dwithin(geography, geography, double precision, boolean) LEAKPROOF; ALTER FUNCTION geography_overlaps(geography, geography) LEAKPROOF; ALTER FUNCTION overlaps_geog(geography, gidx) LEAKPROOF;"
+```
+
+**What it costs:** an error raised inside one of those functions, or the time it takes, could in
+principle say something about a row a policy hides — here, the coordinates of an **unpublished**
+profile's service area. A published one's are public by design. Approved 2026-09-20.
+
+**Status:** ⬜ Pending — only when the production database exists (#9), and only if its owner is
+not a superuser
 
 ---
 

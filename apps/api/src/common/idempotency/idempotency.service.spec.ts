@@ -5,25 +5,38 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from '../../database/schema';
 import { IdempotencyService } from './idempotency.service';
 import { testPool } from '../../../test/db';
+import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
 import { runInContext, type ExecutionContext } from '../context/execution-context';
+import type { Tx } from '../../database/database.module';
 import { scopedClient } from '../../database/scoped-client';
 
 
 describe('idempotency keys', () => {
   let sql: postgres.Sql;
+  let ownerSql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  let context: ExecutionContext;
   const service = new IdempotencyService();
   const actorId = '00000000-0000-4000-8000-00000000aaaa';
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    ownerSql = testPool({ role: 'owner' });
+    db = scopedDb(sql);
+    // A key belongs to the workspace the request was made in, so every claim here is made in
+    // one (T-077). Which workspace is the subject of the suite below.
+    context = await personalContext(ownerSql, (await member(ownerSql)).actor.userId);
   });
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
+
+  /** A claim runs in a request's transaction, inside that request's workspace. */
+  const inTransaction = <T>(fn: (tx: Tx) => Promise<T>): Promise<T> =>
+    runInContext(context, () => db.transaction(fn));
 
   const scope = (over: { key?: string; request?: unknown; actorId?: string } = {}) => ({
     actorId: over.actorId ?? actorId,
@@ -34,18 +47,18 @@ describe('idempotency keys', () => {
 
   it('claims a key nobody has used', async () => {
     const s = scope();
-    const claim = await db.transaction(async (tx) => service.claim(tx, s));
+    const claim = await inTransaction(async (tx) => service.claim(tx, s));
     expect(claim.status).toBe('CLAIMED');
   });
 
   it('replays the first call’s response rather than doing the work again', async () => {
     const s = scope();
-    await db.transaction(async (tx) => {
+    await inTransaction(async (tx) => {
       await service.claim(tx, s);
       await service.complete(tx, s, { status: 200, body: { id: 'q1', status: 'ACCEPTED' } });
     });
 
-    const replay = await db.transaction(async (tx) => service.claim(tx, s));
+    const replay = await inTransaction(async (tx) => service.claim(tx, s));
     expect(replay).toEqual({
       status: 'REPLAY',
       responseStatus: 200,
@@ -56,13 +69,13 @@ describe('idempotency keys', () => {
   it('refuses a key reused for a different request', async () => {
     // "A key bound to one request must never execute a different one."
     const s = scope();
-    await db.transaction(async (tx) => {
+    await inTransaction(async (tx) => {
       await service.claim(tx, s);
       await service.complete(tx, s, { status: 200, body: {} });
     });
 
     await expect(
-      db.transaction(async (tx) =>
+      inTransaction(async (tx) =>
         service.claim(tx, { ...s, request: { quoteId: 'a different quote' } }),
       ),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
@@ -70,11 +83,11 @@ describe('idempotency keys', () => {
 
   it('ignores key order in the request when deciding whether it is the same one', async () => {
     const s = scope({ request: { a: 1, b: 2 } });
-    await db.transaction(async (tx) => {
+    await inTransaction(async (tx) => {
       await service.claim(tx, s);
       await service.complete(tx, s, { status: 200, body: { ok: true } });
     });
-    const replay = await db.transaction(async (tx) =>
+    const replay = await inTransaction(async (tx) =>
       service.claim(tx, { ...s, request: { b: 2, a: 1 } }),
     );
     expect(replay.status).toBe('REPLAY');
@@ -83,10 +96,10 @@ describe('idempotency keys', () => {
   it('refuses a replay while the first call is still running', async () => {
     // Not queued behind it and not executed alongside it: refused as retryable.
     const s = scope();
-    await db.transaction(async (tx) => {
+    await inTransaction(async (tx) => {
       await service.claim(tx, s);
     });
-    await expect(db.transaction(async (tx) => service.claim(tx, s))).rejects.toMatchObject({
+    await expect(inTransaction(async (tx) => service.claim(tx, s))).rejects.toMatchObject({
       code: 'STATE_CONFLICT',
     });
   });
@@ -95,8 +108,8 @@ describe('idempotency keys', () => {
     // "Scope is per actor, per endpoint."
     const key = randomUUID();
     const other = '00000000-0000-4000-8000-00000000bbbb';
-    const first = await db.transaction(async (tx) => service.claim(tx, scope({ key })));
-    const second = await db.transaction(async (tx) =>
+    const first = await inTransaction(async (tx) => service.claim(tx, scope({ key })));
+    const second = await inTransaction(async (tx) =>
       service.claim(tx, scope({ key, actorId: other })),
     );
     expect(first.status).toBe('CLAIMED');
@@ -109,13 +122,13 @@ describe('idempotency keys', () => {
     const s = scope();
     const boom = new Error('the work failed');
     await expect(
-      db.transaction(async (tx) => {
+      inTransaction(async (tx) => {
         await service.claim(tx, s);
         throw boom;
       }),
     ).rejects.toBe(boom);
 
-    const retry = await db.transaction(async (tx) => service.claim(tx, s));
+    const retry = await inTransaction(async (tx) => service.claim(tx, s));
     expect(retry.status).toBe('CLAIMED');
   });
 
@@ -124,7 +137,7 @@ describe('idempotency keys', () => {
     // finds a finished row to replay or an unfinished one to refuse — never a second claim.
     const s = scope();
     const attempt = () =>
-      db.transaction(async (tx) => {
+      inTransaction(async (tx) => {
         const claim = await service.claim(tx, s);
         if (claim.status === 'CLAIMED') {
           await service.complete(tx, s, { status: 200, body: { winner: true } });

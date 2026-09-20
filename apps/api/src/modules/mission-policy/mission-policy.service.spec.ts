@@ -9,6 +9,8 @@ import { missions, missionScreenings } from '../../database/schema';
 import { MissionPolicyService, type MissionClassification } from './mission-policy.service';
 import type { ScreenableMission } from './mission-policy.service';
 import { testPool } from '../../../test/db';
+import { inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
+import type { Tx } from '../../database/database.module';
 
 
 describe('recording a screening', () => {
@@ -21,7 +23,7 @@ describe('recording a screening', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
@@ -31,6 +33,14 @@ describe('recording a screening', () => {
     await ownerSql.end();
   });
 
+
+  /**
+   * Screening happens inside the customer's submission — in the customer's workspace, which is
+   * where the mission and its screening row both live (T-077).
+   */
+  const screenInWorkspace = <T>(row: { customerId: string }, fn: (tx: Tx) => Promise<T>): Promise<T> =>
+    inWorkspaceOf(ownerSql, row.customerId, () => db.transaction(fn));
+
   /** A real mission row, because screening reads its category's band from the database. */
   const mission = async (
     opts: { riskBand?: 'STANDARD' | 'HIGH' | null; description?: string } = {},
@@ -39,7 +49,7 @@ describe('recording a screening', () => {
     const taxonomyNodeId = await category(ownerDb, {
       riskBand: opts.riskBand === undefined ? 'STANDARD' : opts.riskBand,
     });
-    const [row] = await db
+    const [row] = await ownerDb
       .insert(missions)
       .values({
         customerId: userId,
@@ -65,11 +75,11 @@ describe('recording a screening', () => {
   });
 
   const stored = async (missionId: string) =>
-    db.select().from(missionScreenings).where(eq(missionScreenings.missionId, missionId));
+    ownerDb.select().from(missionScreenings).where(eq(missionScreenings.missionId, missionId));
 
   it('stores the decision, its reasons and the ruleset that produced them', async () => {
     const row = await mission();
-    await db.transaction(async (tx) => {
+    await screenInWorkspace(row, async (tx) => {
       await policy.screenSubmission(tx, screenable(row), row.version);
     });
 
@@ -87,7 +97,7 @@ describe('recording a screening', () => {
 
   it('reads the band from the mission’s category', async () => {
     const row = await mission({ riskBand: 'HIGH' });
-    await db.transaction(async (tx) => {
+    await screenInWorkspace(row, async (tx) => {
       await policy.screenSubmission(tx, screenable(row), row.version);
     });
     expect((await stored(row.id))[0]).toMatchObject({
@@ -100,7 +110,7 @@ describe('recording a screening', () => {
     // A draft can be saved without a category. Submission requires one, but screening does not
     // get to assume that — it fails closed on what it is given.
     const row = await mission();
-    await db.transaction(async (tx) => {
+    await screenInWorkspace(row, async (tx) => {
       await policy.screenSubmission(tx, { ...screenable(row), taxonomyNodeId: null }, row.version);
     });
     expect((await stored(row.id))[0]).toMatchObject({
@@ -112,7 +122,7 @@ describe('recording a screening', () => {
   it('treats a category it cannot resolve as unbanded, not as safe', async () => {
     // Failing closed on a lookup that returns nothing, the same way an unbanded node does.
     const row = await mission();
-    await db.transaction(async (tx) => {
+    await screenInWorkspace(row, async (tx) => {
       await policy.screenSubmission(
         tx,
         { ...screenable(row), taxonomyNodeId: randomUUID() },
@@ -127,7 +137,7 @@ describe('recording a screening', () => {
 
   it('treats an unbanded category as HIGH rather than as low', async () => {
     const row = await mission({ riskBand: null });
-    await db.transaction(async (tx) => {
+    await screenInWorkspace(row, async (tx) => {
       await policy.screenSubmission(tx, screenable(row), row.version);
     });
     expect((await stored(row.id))[0]).toMatchObject({
@@ -139,7 +149,7 @@ describe('recording a screening', () => {
   it('rolls back with the transaction, so a screening never records a submission that failed', async () => {
     const row = await mission();
     await expect(
-      db.transaction(async (tx) => {
+      screenInWorkspace(row, async (tx) => {
         await policy.screenSubmission(tx, screenable(row), row.version);
         throw new Error('submission failed after screening');
       }),
@@ -162,7 +172,7 @@ describe('an AI classification is input, not a decision', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
@@ -175,7 +185,7 @@ describe('an AI classification is input, not a decision', () => {
   const screenWith = async (classification: MissionClassification | null) => {
     const { userId } = await customer(ownerDb);
     const taxonomyNodeId = await category(ownerDb, { riskBand: 'STANDARD' });
-    const [row] = await db
+    const [row] = await ownerDb
       .insert(missions)
       .values({
         customerId: userId,
@@ -186,7 +196,8 @@ describe('an AI classification is input, not a decision', () => {
         subjectRelationship: 'BUSINESS_RELATIONSHIP',
       })
       .returning();
-    const result = await db.transaction(async (tx) =>
+    const result = await inWorkspaceOf(ownerSql, userId, () =>
+      db.transaction(async (tx) =>
       policy.screenSubmission(
         tx,
         {
@@ -202,8 +213,9 @@ describe('an AI classification is input, not a decision', () => {
         row!.version,
         classification,
       ),
+      ),
     );
-    const [screening] = await db
+    const [screening] = await ownerDb
       .select()
       .from(missionScreenings)
       .where(eq(missionScreenings.missionId, row!.id));

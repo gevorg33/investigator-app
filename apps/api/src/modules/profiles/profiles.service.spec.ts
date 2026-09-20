@@ -15,6 +15,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('profile persistence', () => {
@@ -28,15 +29,18 @@ describe('profile persistence', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
-    profiles = new ProfilesService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new OwnInvestigatorProfileRepository(db),
-      new OwnCustomerProfileRepository(db),
+    profiles = asRequests(
+      new ProfilesService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new OwnInvestigatorProfileRepository(db),
+        new OwnCustomerProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
@@ -46,7 +50,7 @@ describe('profile persistence', () => {
   });
 
   const investigator = async (): Promise<Actor> => {
-    const [user] = await db
+    const [user] = await ownerDb
       .insert(users)
       .values({ email: `persist-${randomUUID()}@example.test`, displayName: 'Nairi' })
       .returning();
@@ -160,11 +164,11 @@ describe('profile persistence', () => {
     );
     await profiles.updateMyInvestigatorProfile(actor, { languages: [], availability: [] }, req);
 
-    const langs = await db
+    const langs = await ownerDb
       .select()
       .from(investigatorLanguages)
       .where(eq(investigatorLanguages.profileId, own.id));
-    const avail = await db
+    const avail = await ownerDb
       .select()
       .from(investigatorAvailability)
       .where(eq(investigatorAvailability.profileId, own.id));
@@ -190,7 +194,7 @@ describe('profile persistence', () => {
 
   describe('customer profile', () => {
     const customer = async (): Promise<Actor> => {
-      const [user] = await db
+      const [user] = await ownerDb
         .insert(users)
         .values({ email: `cust-${randomUUID()}@example.test`, displayName: 'Ani' })
         .returning();

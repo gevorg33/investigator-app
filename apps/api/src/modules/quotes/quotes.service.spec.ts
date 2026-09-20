@@ -20,6 +20,7 @@ import { MissionTransitionService } from '../missions/mission-transition.service
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { QuotesService } from './quotes.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('quotes', () => {
@@ -33,7 +34,7 @@ describe('quotes', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
@@ -41,13 +42,16 @@ describe('quotes', () => {
   beforeEach(() => {
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
-    service = new QuotesService(
-      db,
-      authz,
-      audit,
-      new IdempotencyService(),
-      new MissionTransitionService(authz, audit),
-      new OwnInvestigatorProfileRepository(db),
+    service = asRequests(
+      new QuotesService(
+        db,
+        authz,
+        audit,
+        new IdempotencyService(),
+        new MissionTransitionService(authz, audit),
+        new OwnInvestigatorProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
@@ -210,13 +214,13 @@ describe('quotes', () => {
       expect(accepted.acceptedAt).toBeInstanceOf(Date);
 
       // "Once an assignment exists, the other quotes for that mission are closed."
-      const [sibling] = await db.select().from(quotes).where(eq(quotes.id, other.id));
+      const [sibling] = await ownerDb.select().from(quotes).where(eq(quotes.id, other.id));
       expect(sibling?.status).toBe('CLOSED');
 
       // The mission moves, and no assignment exists yet — payment has not been authorized.
-      const [row] = await db.select().from(missions).where(eq(missions.id, mission.missionId));
+      const [row] = await ownerDb.select().from(missions).where(eq(missions.id, mission.missionId));
       expect(row?.status).toBe('CUSTOMER_CONFIRMED');
-      expect(await db.select().from(schema.assignments)).toEqual(
+      expect(await ownerDb.select().from(schema.assignments)).toEqual(
         expect.not.arrayContaining([expect.objectContaining({ missionId: mission.missionId })]),
       );
     });
@@ -275,7 +279,7 @@ describe('quotes', () => {
       expect(replay.id).toBe(first.id);
 
       // One acceptance, not two: the mission moved once.
-      const history = await db
+      const history = await ownerDb
         .select()
         .from(schema.missionStatusHistory)
         .where(eq(schema.missionStatusHistory.missionId, mission.missionId));
@@ -315,7 +319,7 @@ describe('quotes', () => {
       ]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
 
-      const rows = await db.select().from(quotes).where(eq(quotes.missionId, mission.missionId));
+      const rows = await ownerDb.select().from(quotes).where(eq(quotes.missionId, mission.missionId));
       expect(rows.filter((q) => q.status === 'ACCEPTED')).toHaveLength(1);
     });
   });
@@ -338,13 +342,13 @@ describe('quotes', () => {
         investigatorProfileId: b.profileId,
       });
 
-      await db
+      await ownerDb
         .update(quotes)
         .set({ status: 'ACCEPTED', acceptedAt: new Date() })
         .where(eq(quotes.id, first.id));
 
       await expect(
-        db
+        ownerDb
           .update(quotes)
           .set({ status: 'ACCEPTED', acceptedAt: new Date() })
           .where(eq(quotes.id, second.id)),

@@ -20,6 +20,7 @@ import { MissionTransitionService } from '../missions/mission-transition.service
 import { AssignmentTransitionService } from './assignment-transition.service';
 import { AssignmentsService } from './assignments.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('assignments', () => {
@@ -33,7 +34,7 @@ describe('assignments', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
@@ -41,13 +42,16 @@ describe('assignments', () => {
   beforeEach(() => {
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
-    service = new AssignmentsService(
-      db,
-      authz,
-      audit,
-      new IdempotencyService(),
-      new AssignmentTransitionService(authz, audit),
-      new MissionTransitionService(authz, audit),
+    service = asRequests(
+      new AssignmentsService(
+        db,
+        authz,
+        audit,
+        new IdempotencyService(),
+        new AssignmentTransitionService(authz, audit),
+        new MissionTransitionService(authz, audit),
+      ),
+      ownerSql,
     );
   });
 
@@ -91,12 +95,12 @@ describe('assignments', () => {
         acceptedScope: quote.scope,
       });
 
-      const [row] = await db.select().from(missions).where(eq(missions.id, mission.missionId));
+      const [row] = await ownerDb.select().from(missions).where(eq(missions.id, mission.missionId));
       expect(row?.status).toBe('ASSIGNED');
 
       // Both moves recorded, not collapsed into one: a dispute needs to tell "paid" from
       // "assigned" apart.
-      const history = await db
+      const history = await ownerDb
         .select()
         .from(schema.missionStatusHistory)
         .where(eq(schema.missionStatusHistory.missionId, mission.missionId));
@@ -110,7 +114,7 @@ describe('assignments', () => {
         { quoteId: quote.id, authorization: auth, idempotencyKey: randomUUID() },
         req(),
       );
-      const [row] = await db.select().from(assignments).where(eq(assignments.id, created.id));
+      const [row] = await ownerDb.select().from(assignments).where(eq(assignments.id, created.id));
       expect(row?.paymentReference).toBe(auth.reference);
       expect(row?.paymentAuthorizedAt).toEqual(auth.authorizedAt);
     });
@@ -128,7 +132,7 @@ describe('assignments', () => {
           req(),
         ),
       ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
-      expect(await db.select().from(assignments).where(eq(assignments.quoteId, quote.id))).toEqual(
+      expect(await ownerDb.select().from(assignments).where(eq(assignments.quoteId, quote.id))).toEqual(
         [],
       );
     });
@@ -163,7 +167,7 @@ describe('assignments', () => {
       );
       expect(replay.id).toBe(first.id);
       expect(
-        await db.select().from(assignments).where(eq(assignments.quoteId, quote.id)),
+        await ownerDb.select().from(assignments).where(eq(assignments.quoteId, quote.id)),
       ).toHaveLength(1);
     });
 
@@ -180,7 +184,7 @@ describe('assignments', () => {
       const results = await Promise.allSettled([attempt(), attempt()]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
       expect(
-        await db.select().from(assignments).where(eq(assignments.quoteId, quote.id)),
+        await ownerDb.select().from(assignments).where(eq(assignments.quoteId, quote.id)),
       ).toHaveLength(1);
     });
   });
@@ -196,7 +200,7 @@ describe('assignments', () => {
       );
 
       await expect(
-        db.insert(assignments).values({
+        ownerDb.insert(assignments).values({
           missionId: mission.missionId,
           // A different quote, so only the mission uniqueness can refuse this.
           quoteId: (
@@ -245,7 +249,7 @@ describe('assignments', () => {
       // "Failing to accept it releases the customer." Enforced against the clock, not against
       // a status somebody has to remember to write.
       const { inv, assignment } = await created();
-      await db
+      await ownerDb
         .update(assignments)
         .set({ acceptanceDueAt: new Date(Date.now() - 1000) })
         .where(eq(assignments.id, assignment.id));
@@ -259,7 +263,7 @@ describe('assignments', () => {
       const declined = await service.decline(inv.actor, assignment.id, 'POLICY_CONCERN', req());
       expect(declined.status).toBe('CANCELLED');
 
-      const history = await db
+      const history = await ownerDb
         .select()
         .from(schema.assignmentStatusHistory)
         .where(eq(schema.assignmentStatusHistory.assignmentId, assignment.id));

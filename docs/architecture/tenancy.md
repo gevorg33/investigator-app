@@ -344,6 +344,12 @@ roll back `AuthzService`'s denial audit row whenever the request fails (ADR-0011
 
 ### Policy templates by class
 
+> **Built in T-077** (migration 0013): 34 policies over 20 tables, every one `ENABLE`d and
+> `FORCE`d. The isolation matrix (`apps/api/test/isolation/`) is generated from
+> `table-classes.ts` and runs as `investigator_app`, so a table added to the registry is in the
+> matrix the same day. `src/database/rls.spec.ts` fails when a table's row-level security state
+> does not match its class.
+
 ```sql
 -- Tenant-owned
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
@@ -376,6 +382,41 @@ CREATE POLICY parties ON assignments
    migration-run fixture "proves" isolation that does not exist.
 5. **Policies are authorization.** Adding or changing one needs approval (AGENTS.md) and a test
    in the isolation matrix.
+6. **A predicate that is not `LEAKPROOF` cannot be an index condition** once a table has
+   policies: PostgreSQL evaluates the security quals first. PostGIS does not mark `ST_DWithin`
+   leakproof, so discovery stopped reaching `service_areas_area_gist` — 392 ms instead of 5 ms on
+   10,000 published profiles. Migration 0013 marks four PostGIS predicates leakproof
+   (`st_dwithin`, `_st_dwithin`, `geography_overlaps`, `overlaps_geog`), which restores the index
+   at 3 ms (owner decision, 2026-09-20). What is accepted is that an error inside one of them, or
+   the time it takes, could in principle say something about a row the policy hides — here, the
+   coordinates of an **unpublished** profile's service area. Only a superuser may mark a function
+   leakproof: where the migration cannot, it warns and carries on, and `rls.spec.ts` fails rather
+   than let discovery run 80× slower unnoticed (ACTIONS-FOR-ME #19).
+
+### What runs before a workspace exists, and what crosses workspaces
+
+Three things do not have a workspace of their own, and each has exactly one way through:
+
+- **Choosing a workspace.** `WorkspaceResolver` reads the caller's memberships before any
+  workspace is chosen. It runs in the **pre-workspace context** — `runAsUser(userId, fn)`, which
+  sets `app.user_id` and no workspace — and the tenancy policies key on `app_current_user()`: a
+  user sees their own memberships, the workspaces those memberships are in, and their own role
+  assignments. Nothing else. Login opens a session in the Personal workspace the same way. A
+  static spec lists every caller (`tenant-plumbing.spec.ts`).
+- **Registration.** The trigger that creates a Personal workspace runs during the insert of the
+  user, before any context exists. It sets `app.user_id` to the person it is creating for its own
+  three inserts and restores what was there; the policies allow exactly a Personal workspace for
+  that user, its owner membership and that membership's `OWNER` role, and nothing else.
+- **Crossing workspaces on purpose.** `PlatformContext.asStaff` (a staff member holding the
+  scope, acting as staff) and `PlatformContext.asSystem` (an operation with no user, such as the
+  assignment created when a payment is authorized) are the only code that turns on
+  `app.platform_access`. T-079 adds the audit row for every entry and typed ad-hoc reasons.
+
+**One exception inside the database.** The two tenancy integrity checks — `assert_tenant_has_owner`
+and `assert_personal_member_is_owner` — read with platform access, declared as a `SET` clause on
+the function so it lasts only for the call. An invariant evaluated under the writer's own
+visibility fails *open*: the owner check returns early when it cannot see the workspace row.
+`rls.spec.ts` asserts that these two functions, and no others, raise access.
 
 ### Classification of every existing table
 
@@ -406,7 +447,7 @@ CREATE POLICY parties ON assignments
 | `user_sessions` | Identity | Gains `default_tenant_id` (the last workspace used) |
 | `taxonomy_nodes` | Platform-global | Readable by all; written only by platform staff |
 | `spatial_ref_sys` | PostGIS system | Untouched |
-| `customer_profiles` | Tenant-owned (Personal) | `tenant_rw` |
+| `customer_profiles` | Tenant-owned (Personal) | `tenant_rw` + `public_read` for any workspace — the application already served a customer's card to any signed-in caller, and the service projects the fields; narrowing it to the parties who share a mission is T-098's to weigh (owner decision, 2026-09-20) |
 | `investigator_profiles` | Tenant-owned + public projection | `tenant_rw` + `public_read` (published) |
 | `investigator_languages`, `investigator_specialties`, `investigator_availability`, `service_areas` | Tenant-owned + public projection | `tenant_id` denormalised; public read where the parent profile is published (`EXISTS` on the profile, whose policy does not reach back) |
 | `media_assets` | Tenant-owned | `tenant_rw`; verification staff and the delivery path go through `PlatformContext` |
@@ -416,8 +457,8 @@ CREATE POLICY parties ON assignments
 | `quotes` | Two-party | `parties` (`customer_tenant_id` denormalised from the mission) |
 | `assignments`, `assignment_status_history` | Two-party | `parties` |
 | `idempotency_keys` | Tenant-owned | **`tenant_id` joins the unique key.** A replay in another workspace must never return this workspace's response |
-| `outbox_events` | System | Written in the producer's context (`tenant_id` recorded for the worker); read only by the dispatcher's system context |
-| `audit_logs` | Platform record | `tenant_id` nullable (platform events have none). Insert always allowed for the current tenant or NULL. `SELECT` for `audit.read` holders on their workspace's rows; everything else via `PlatformContext`. Append-only grants unchanged |
+| `outbox_events` | System | Written in the producer's context (`tenant_id` recorded for the worker); read only by the dispatcher's system context. **No policies yet:** the column arrives with T-082 |
+| `audit_logs` | Platform record | **No policies yet:** the column arrives with T-080, which adds them. `tenant_id` nullable (platform events have none). Insert always allowed for the current tenant or NULL. `SELECT` for `audit.read` holders on their workspace's rows; everything else via `PlatformContext`. Append-only grants unchanged |
 
 New tables are all tenant-owned unless they appear in this table:
 
@@ -456,8 +497,15 @@ enforced one layer down.
 
 ### Platform administration across workspaces
 
+> **Partly built in T-077.** `PlatformContext.asStaff(actor, scope, purpose, fn)` and
+> `PlatformContext.asSystem(purpose, fn)` exist, are the only code that sets
+> `app.platform_access`, and carry the verification queue, review, decision and
+> document-delivery paths plus assignment creation from a payment. Entry re-checks the `STAFF`
+> role, the scope and that the caller is acting as staff right now. **T-079 adds** the audit row
+> for every entry, typed reasons for ad-hoc access, and mission moderation.
+
 Platform staff (moderation, verification, disputes, payments) must see across workspaces. They
-do so **only inside `PlatformContext.run({ scope, reason }, fn)`**:
+do so **only inside `PlatformContext`**:
 
 - the scope is checked (`requireStaffScope`)
 - the reason is required text and audited with every access
@@ -595,6 +643,14 @@ Alongside it:
 
 Coverage stays at 100% per package. The isolation paths carry negative controls: drop a policy,
 watch the matrix fail.
+
+> **Built in T-077.** `apps/api/test/isolation/` holds the matrix (127 cases over 20 tables) and
+> the fill-trigger paths; `src/database/rls.spec.ts` holds the database's own state. A service
+> spec now runs the way a request runs — `scopedDb()` for the client and `asRequests(service,
+> ownerSql)` to enter the caller's Personal workspace — because a service called with no context
+> is testing something production cannot do. Fixtures and assertions read as the owner.
+> Negative controls run for T-077: each class's policy opened to `USING (true)`, the matrix
+> watched to fail on exactly that table, then restored byte-for-byte.
 
 ---
 

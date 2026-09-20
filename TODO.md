@@ -3204,35 +3204,90 @@ pnpm --filter api test && pnpm --filter api migration:run
 ---
 
 ### T-077 — Row-level security policies and the isolation matrix
-- **Status:** TODO
+- **Status:** DONE (2026-09-20)
 - **Priority:** P0
 - **Depends on:** T-076
 - **Risk:** HIGH
-- **Human approval required:** Yes, plus a `security-privacy` review before merge
+- **Human approval required:** Yes, plus a `security-privacy` review before merge — design approved 2026-09-19/20
 - **Owner agent:** database; review by security-privacy
-- **Affected:** migrations, apps/api/src/database/**, apps/api/test/isolation/**
+- **Affected:** migration 0013, apps/api/src/database/**, apps/api/src/common/context/**, apps/api/test/isolation/**
 
-**Description**
-The policies:
+**What shipped**
 
-- `app_current_tenant()` and `app_platform_access()`
-- `ENABLE` and `FORCE` RLS by class, with the policy templates in `tenancy.md` §7
-- the special cases: the public projection of published profiles, QUOTED missions readable by
-  any workspace, two-party rows, and `audit_logs`
+Migration `0013_add_row_level_security`: **34 policies over 20 tables**, every one `ENABLE`d and
+`FORCE`d, plus `app_current_user()` and `app_platform_access()`.
 
-A **generated isolation matrix** runs as `investigator_app` for every scoped table:
+| Class | Policy |
+|---|---|
+| Tenant-owned (11 tables) | `tenant_rw` — the workspace, or platform access |
+| Public projections | `investigator_profiles` when PUBLISHED; its languages, specialties, availability and service areas through an `EXISTS` on the published profile; `customer_profiles` to any workspace (today's behaviour, kept — owner decision) |
+| Two-party (6 tables) | `parties` — either side, or platform access. `missions` adds `quoted_read` (any workspace while QUOTED) and `supplier_read` (a workspace that quoted on it) |
+| Tenancy (3 tables) | a user's own memberships and the workspaces they are in; a Personal workspace, its owner membership and that membership's OWNER role may be created by the person themselves and by no one else |
 
-- cross-workspace SELECT, INSERT, UPDATE and DELETE are refused
-- no context returns nothing, and an insert without context fails
+**Three things have no workspace of their own, and each got exactly one way through**
+- **Choosing one.** `runAsUser(userId, fn)` sets `app.user_id` and no workspace: the resolver and
+  login read the caller's own memberships and nothing else. It sets aside any workspace it is
+  called inside, so the read is the same wherever it is made.
+- **Registration.** `create_personal_workspace` acts as the person it is creating for its own
+  three inserts and restores what was there.
+- **Crossing on purpose.** `PlatformContext.asStaff` / `.asSystem` — the only setters of
+  `app.platform_access`. Verification queue, review, decision and document delivery, and
+  assignment creation from a payment, now run inside it.
 
-**Acceptance criteria**
-- [ ] Matrix green; a policy recursion check passes (no policy reaches a table whose policy reaches back)
-- [ ] Negative control per class: drop the policy, watch the matrix fail, restore byte-for-byte
-- [ ] **Fill triggers under RLS** (from T-076): `fill_party_from_parent` reads the parent row to copy its parties. It runs with the writer's privileges, so the parent must be visible to the writer: a supplier quoting reads a QUOTED mission, and the system creating an assignment reads the quote. Test each copy path as `investigator_app` with RLS on
-- [ ] **Workspace resolution under RLS** (from T-075): `WorkspaceResolver` reads the caller's memberships, tenants and role permissions *before* any workspace context exists — that is how it chooses one. The membership and tenant policies must let a user read their own rows (for example keyed on `app.user_id`, which the resolver would then set on its own queries), and nothing else, with an end-to-end test resolving a workspace as `investigator_app` with RLS on
-- [ ] **Registration under RLS** (from T-074): the trigger that creates a Personal workspace runs during registration, before any workspace context exists, and inserts into `tenants`, `tenant_memberships` and `membership_roles`. Their policies must let exactly that through — and nothing else — with a test that registers a user as `investigator_app` with RLS on
-- [ ] Every existing test green under RLS; discovery and quoting unchanged for Personal workspaces
-- [ ] `tenancy.md` §7 marked built, with any deviation recorded
+**Two real defects the work surfaced**
+- **Login read the Personal workspace with no context at all** — it would have returned nothing
+  the moment policies existed. Now inside `runAsUser`.
+- **The tenancy owner check failed *open*.** `assert_tenant_has_owner` returns early when it
+  cannot see the workspace row, so under the writer's own visibility it would skip itself. It and
+  `assert_personal_member_is_owner` now read with platform access, declared as a `SET` clause on
+  the function; `rls.spec.ts` asserts those two functions and no others raise it.
+
+**Discovery lost its GIST index, and got it back** (owner decision, 2026-09-20). A table with
+policies evaluates its security quals before any user qual that is not `LEAKPROOF`, and PostGIS
+does not mark `ST_DWithin` leakproof — so `service_areas_area_gist` stopped being reachable.
+Measured on 10,000 published profiles: **392 ms**, against 5 ms before. The migration marks four
+PostGIS predicates leakproof (3 ms), warns instead of failing where it is not superuser, and
+`rls.spec.ts` fails rather than let a database serve discovery 80× slower unnoticed
+(ACTIONS-FOR-ME #19). Accepted residual: an error or timing inside those functions could say
+something about an **unpublished** profile's coordinates.
+
+**Tests** — 1397 passing, 100% coverage.
+- `test/isolation/isolation-matrix.spec.ts`: **127 cases generated from the registry**. Per scoped
+  table, from another workspace and from no context: read, change, delete and write-into are all
+  refused, and a write that names another workspace is checked not to have landed there. Plus the
+  recursion check, the projections' positive cases, platform access, pre-workspace reads and
+  registration.
+- `test/isolation/fill-triggers.spec.ts`: every copy path as `investigator_app` — a supplier
+  quoting a QUOTED mission, the system creating an assignment, a child from its profile, a
+  reviewer's decision, an owner column from the context — and the two refusals: a mission the
+  supplier cannot see, and a child written onto someone else's published profile.
+- `src/database/rls.spec.ts`: RLS state per class, the deferrals with their reasons, the platform
+  tables read-only, `NULLIF` semantics, the leakproof marking, the two elevated functions.
+- `platform-context.spec.ts`, `tenant-plumbing.spec.ts` (only PlatformContext raises access; the
+  callers of it and of `runAsUser` are listed), `execution-context.spec.ts`, `scoped-client.spec.ts`.
+- The existing suite runs the way a request runs: `scopedDb()` plus `asRequests(service, ownerSql)`
+  (`test/workspace-context.ts`). 21 spec files migrated.
+
+**Negative controls** — each opened on purpose, the matrix watched fail, restored and diffed:
+
+| Control | Result |
+|---|---|
+| `tenant_rw` on `investigator_profiles` → `USING (true)` | 4 fail, all on that table |
+| `parties` on `quotes` → `USING (true)` | 4 fail, including "each party its own side" |
+| `own_or_workspace_read` on `tenant_memberships` → `USING (true)` | 5 fail — `membership_roles` too, which proves it delegates |
+| `st_dwithin` marked `NOT LEAKPROOF` | `rls.spec.ts` and the discovery plan test fail |
+
+Migration verified from scratch on a probe database and reversed: down leaves 0 policies, 0
+functions and the original trigger body; re-applying gives back 34.
+
+**Deviations recorded in `tenancy.md` §7**
+- `audit_logs` has no policies until **T-080** adds its workspace column; `outbox_events` until **T-082**.
+- Identity tables stay without policies pending **T-098**.
+- `customer_profiles` is readable from any workspace, as it was before.
+
+**For later tasks, now criteria there.** T-079 (audit every entry, typed reasons, moderation),
+T-080 (`audit_logs` policies), T-082 (`outbox_events` policies), T-098 (identity tables,
+narrowing the customer card).
 
 **Validation**
 ```bash
@@ -3290,6 +3345,7 @@ Fixed-purpose staff routes carry a route-defined purpose. Ad-hoc cross-workspace
 as a support lookup, requires typed reason text.
 
 **Acceptance criteria**
+- [ ] **The core landed in T-077**: `PlatformContext.asStaff` / `.asSystem` exist, are the only setters of `app.platform_access`, and carry verification review, document delivery and assignment creation. What is left here is the audit row per entry, typed ad-hoc reasons, mission moderation, and folding `purpose` and `reason` into one shape
 - [ ] Staff without the scope refused; agency owners and admins can never enter (entry checks the platform `STAFF` role)
 - [ ] Every platform access audited with scope and purpose or reason
 - [ ] A static spec holds that nothing else sets `app.platform_access`; there is no `BYPASSRLS` role
@@ -3320,6 +3376,7 @@ The storage layer derives `tenant/{tenantId}/{category}/{uuid}` for new uploads.
 keep their stored `public_id`.
 
 **Acceptance criteria**
+- [ ] **`audit_logs` gets its policies here** (deferred from T-077, which left it without any): insert allowed for the current workspace or none; `SELECT` for `audit.read` holders on their own workspace's rows; everything else through `PlatformContext`. Append-only grants unchanged, and the table joins the isolation matrix
 - [ ] Every audited action in the codebase writes the workspace; a caller cannot supply or override it
 - [ ] New uploads carry the derived prefix; no business code builds a path (static spec)
 - [ ] `audit-logging` and `cloudinary-media` skills already describe this — confirm, do not duplicate
@@ -3379,6 +3436,7 @@ Outbox rows record the producer's tenant. The dispatcher runs in a system contex
 work per tenant.
 
 **Acceptance criteria**
+- [ ] **`outbox_events` gets its workspace column and its policies here** (deferred from T-077, which left it without any): written in the producer's context, read by the dispatcher's system context, and the table joins the isolation matrix
 - [ ] Tests: context restored; a removed member's job refused; retries and duplicates idempotent per workspace; failed jobs dead-lettered with their context
 - [ ] No worker path touches a scoped table outside a restored context (static spec over worker entry points)
 
@@ -3855,6 +3913,8 @@ The whole-system check:
 It also decides whether identity tables get RLS keyed on `app.user_id`.
 
 **Acceptance criteria**
+- [ ] **Identity tables** (deferred from T-077): decide whether `users`, `user_roles`, `user_identities`, `user_tokens`, `user_sessions` and `user_staff_scopes` get policies keyed on `app.user_id`, and say why either way
+- [ ] **The customer card** (deferred from T-077): `customer_profiles` is readable from any workspace, as it was before the policies. Weigh narrowing it to the parties who share a mission or a quote
 - [ ] Every probe refused; every negative control seen to fail first
 - [ ] All pre-existing functionality verified in the browser, not only by tests
 - [ ] `tenancy.md` updated from "specified" to what shipped, with any deviation explained

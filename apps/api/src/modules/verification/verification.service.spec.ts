@@ -32,6 +32,7 @@ import { MediaService } from '../media/media.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { VerificationService } from './verification.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('verification', () => {
@@ -46,7 +47,7 @@ describe('verification', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
@@ -64,12 +65,15 @@ describe('verification', () => {
       new ViewableMediaRepository(db),
       storage,
     );
-    service = new VerificationService(
-      db,
-      authz,
-      audit,
-      media,
-      new OwnInvestigatorProfileRepository(db),
+    service = asRequests(
+      new VerificationService(
+        db,
+        authz,
+        audit,
+        media,
+        new OwnInvestigatorProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
@@ -79,7 +83,7 @@ describe('verification', () => {
   });
 
   const profileOf = async (profileId: string) => {
-    const [row] = await db
+    const [row] = await ownerDb
       .select()
       .from(investigatorProfiles)
       .where(eq(investigatorProfiles.id, profileId));
@@ -87,7 +91,7 @@ describe('verification', () => {
   };
 
   const auditFor = (resourceId: string, action: string) =>
-    db
+    ownerDb
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.resourceId, resourceId), eq(auditLogs.action, action)));
@@ -145,7 +149,7 @@ describe('verification', () => {
       const doc = await document(ownerDb, who.userId);
       const request = await service.submit(who.actor, { documentIds: [doc] }, req());
 
-      await db.update(serviceAreas).set({ label: 'After' }).where(eq(serviceAreas.id, areaId));
+      await ownerDb.update(serviceAreas).set({ label: 'After' }).where(eq(serviceAreas.id, areaId));
       await area(ownerDb, who.profileId, 'Added later');
 
       const staff = await reviewer(ownerDb);
@@ -191,7 +195,7 @@ describe('verification', () => {
         code: 'STATE_CONFLICT',
       });
       // The first is untouched.
-      const [row] = await db
+      const [row] = await ownerDb
         .select()
         .from(verificationRequests)
         .where(eq(verificationRequests.id, request.id));
@@ -471,7 +475,7 @@ describe('verification', () => {
       expect(profile.verificationStatus).toBe('VERIFIED');
       expect(profile.verifiedAt).toEqual(decided.decision?.decidedAt);
 
-      const [row] = await db
+      const [row] = await ownerDb
         .select()
         .from(verificationRequests)
         .where(eq(verificationRequests.id, request.id));
@@ -523,7 +527,7 @@ describe('verification', () => {
       const staff = await reviewer(ownerDb);
       await decide(staff, request.id, 'APPROVED');
       await expect(decide(staff, request.id, 'REJECTED')).rejects.toMatchObject({ status: 403 });
-      const decisions = await db
+      const decisions = await ownerDb
         .select()
         .from(verificationDecisions)
         .where(eq(verificationDecisions.requestId, request.id));
@@ -541,7 +545,7 @@ describe('verification', () => {
       expect(results.find((r) => r.status === 'rejected')).toMatchObject({
         reason: expect.objectContaining({ status: 403 }),
       });
-      const decisions = await db
+      const decisions = await ownerDb
         .select()
         .from(verificationDecisions)
         .where(eq(verificationDecisions.requestId, request.id));

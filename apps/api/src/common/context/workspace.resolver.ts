@@ -10,7 +10,7 @@ import {
 } from '../../database/schema';
 import { AuthzService, type AuthzContext } from '../authz/authz.service';
 import type { Actor } from '../authz/contract';
-import type { ExecutionContext } from './execution-context';
+import { runAsUser, type ExecutionContext } from './execution-context';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -32,6 +32,11 @@ const USABLE_STATUSES = ['ACTIVE', 'CREATING'] as const;
  *
  * Memberships and permissions are read on every request, never carried in a token: a removed
  * member is refused on their very next request.
+ *
+ * Every read runs in the pre-workspace context (`runAsUser`, T-077): row-level security shows the
+ * caller their own memberships, the workspaces they belong to and their role assignments, and
+ * nothing else — so the resolver cannot see a workspace it was not already a member of, even by
+ * mistake.
  */
 @Injectable()
 export class WorkspaceResolver {
@@ -40,13 +45,31 @@ export class WorkspaceResolver {
     private readonly authz: AuthzService,
   ) {}
 
-  async resolve(
+  resolve(
     actor: Actor,
     requested: string | undefined,
     audit: Pick<AuthzContext, 'correlationId' | 'ipAddress'> = {},
   ): Promise<ExecutionContext> {
+    return runAsUser(actor.userId, () => this.resolveAsUser(actor, requested, audit));
+  }
+
+  /**
+   * The context for a requested workspace, if the caller may work in it right now; otherwise
+   * undefined. `requested` is a candidate to check against memberships, never one to act in.
+   */
+  usable(userId: string, requested: string): Promise<ExecutionContext | undefined> {
+    return runAsUser(userId, () => this.usableAsUser(userId, requested));
+  }
+
+  private async resolveAsUser(
+    actor: Actor,
+    requested: string | undefined,
+    audit: Pick<AuthzContext, 'correlationId' | 'ipAddress'>,
+  ): Promise<ExecutionContext> {
     if (requested !== undefined && requested !== '') {
-      const found = UUID.test(requested) ? await this.usable(actor.userId, requested) : undefined;
+      const found = UUID.test(requested)
+        ? await this.usableAsUser(actor.userId, requested)
+        : undefined;
       await this.authz.requireWorkspace(actor, found !== undefined, {
         action: 'workspace.use',
         resourceType: 'tenant',
@@ -62,7 +85,7 @@ export class WorkspaceResolver {
       .where(eq(userSessions.id, actor.sessionId));
     const preferred = session?.defaultTenantId ?? null;
     if (preferred !== null) {
-      const found = await this.usable(actor.userId, preferred);
+      const found = await this.usableAsUser(actor.userId, preferred);
       if (found !== undefined) return found;
     }
 
@@ -74,11 +97,10 @@ export class WorkspaceResolver {
     return personal;
   }
 
-  /**
-   * The context for a requested workspace, if the caller may work in it right now; otherwise
-   * undefined. `requested` is a candidate to check against memberships, never one to act in.
-   */
-  async usable(userId: string, requested: string): Promise<ExecutionContext | undefined> {
+  private async usableAsUser(
+    userId: string,
+    requested: string,
+  ): Promise<ExecutionContext | undefined> {
     const [row] = await this.db
       .select({
         tenantId: tenants.id,
@@ -108,7 +130,7 @@ export class WorkspaceResolver {
       .select({ id: tenants.id })
       .from(tenants)
       .where(eq(tenants.personalOwnerId, userId));
-    const found = await this.usable(userId, row!.id);
+    const found = await this.usableAsUser(userId, row!.id);
     return found!;
   }
 

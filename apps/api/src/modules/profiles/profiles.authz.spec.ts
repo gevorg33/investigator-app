@@ -15,6 +15,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('profile authorization', () => {
@@ -28,15 +29,18 @@ describe('profile authorization', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
-    profiles = new ProfilesService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new OwnInvestigatorProfileRepository(db),
-      new OwnCustomerProfileRepository(db),
+    profiles = asRequests(
+      new ProfilesService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new OwnInvestigatorProfileRepository(db),
+        new OwnCustomerProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
@@ -50,7 +54,7 @@ describe('profile authorization', () => {
     roles: Array<'CUSTOMER' | 'INVESTIGATOR'>,
     status: 'ACTIVE' | 'SUSPENDED' = 'ACTIVE',
   ): Promise<Actor> => {
-    const [user] = await db
+    const [user] = await ownerDb
       .insert(users)
       .values({ email: `prof-${randomUUID()}@example.test`, displayName: 'Test Person', status })
       .returning();
@@ -84,7 +88,7 @@ describe('profile authorization', () => {
     it('someone with no investigator profile gets 404, not somebody else’s', async () => {
       const customer = await person(['CUSTOMER', 'INVESTIGATOR']);
       // Holds the role but has no row of their own; must not fall through to any other row.
-      await db.delete(investigatorProfiles).where(eq(investigatorProfiles.userId, customer.userId));
+      await ownerDb.delete(investigatorProfiles).where(eq(investigatorProfiles.userId, customer.userId));
       await expect(profiles.getMyInvestigatorProfile(customer, req)).rejects.toMatchObject({
         status: 404,
       });

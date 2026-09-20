@@ -40,10 +40,15 @@ export class ViewableMediaRepository extends ActorScopedRepository<MediaAssetRow
 
   protected scopeFor(actor: Actor): SQL | undefined {
     const rules: SQL[] = [eq(mediaAssets.ownerId, actor.userId)];
-    const actingAsStaff = actor.activeRole === undefined || actor.activeRole === 'STAFF';
-    if (actingAsStaff && actor.roles.includes('STAFF') && actor.staffScopes.includes('VERIFICATION')) {
+    if (reviewsVerification(actor)) {
       rules.push(eq(mediaAssets.category, 'VERIFICATION_DOCUMENT'));
     }
     return and(isNull(mediaAssets.deletedAt), or(...rules));
   }
+}
+
+/** Staff holding the VERIFICATION scope, acting as staff right now. */
+export function reviewsVerification(actor: Actor): boolean {
+  const actingAsStaff = actor.activeRole === undefined || actor.activeRole === 'STAFF';
+  return actingAsStaff && actor.roles.includes('STAFF') && actor.staffScopes.includes('VERIFICATION');
 }

@@ -15,6 +15,7 @@ import { MEDIA_POLICY, UPLOAD_AUTHORIZATION_TTL_SECONDS } from './media.policy';
 import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('media upload flow', () => {
@@ -30,21 +31,24 @@ describe('media upload flow', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
   });
 
   beforeEach(() => {
     storage = new FakeStorage();
-    media = new MediaService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new RateLimitService(new MemoryRateLimitStore()),
-      new OwnMediaRepository(db),
-      new ViewableMediaRepository(db),
-      storage,
+    media = asRequests(
+      new MediaService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new RateLimitService(new MemoryRateLimitStore()),
+        new OwnMediaRepository(db),
+        new ViewableMediaRepository(db),
+        storage,
+      ),
+      ownerSql,
     );
   });
 
@@ -59,7 +63,7 @@ describe('media upload flow', () => {
   });
 
   const rowOf = async (id: string) =>
-    (await db.select().from(mediaAssets).where(eq(mediaAssets.id, id)))[0];
+    (await ownerDb.select().from(mediaAssets).where(eq(mediaAssets.id, id)))[0];
   const pdf = { category: 'VERIFICATION_DOCUMENT' as const, mimeType: 'application/pdf', bytes: 2048 };
 
   describe('authorizing an upload', () => {
@@ -111,7 +115,7 @@ describe('media upload flow', () => {
     it('audits the authorization', async () => {
       const r = req();
       const out = await media.authorizeUpload(await person(ownerDb), pdf, r);
-      const rows = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows).toContainEqual(
         expect.objectContaining({ action: 'media.upload.authorized', resourceId: out.assetId }),
       );
@@ -163,7 +167,7 @@ describe('media upload flow', () => {
         throw new Error('not configured');
       });
       await expect(media.authorizeUpload(actor, pdf, req())).rejects.toThrow('not configured');
-      const rows = await db.select().from(mediaAssets).where(eq(mediaAssets.ownerId, actor.userId));
+      const rows = await ownerDb.select().from(mediaAssets).where(eq(mediaAssets.ownerId, actor.userId));
       expect(rows).toHaveLength(0);
     });
   });
@@ -217,7 +221,7 @@ describe('media upload flow', () => {
     it('refuses completion after the authorization window, and destroys the file', async () => {
       const { owner, assetId, publicId } = await authorized();
       storage.put(publicId);
-      await db
+      await ownerDb
         .update(mediaAssets)
         .set({ authorizationExpiresAt: new Date(Date.now() - 1000) })
         .where(eq(mediaAssets.id, assetId));
@@ -242,7 +246,7 @@ describe('media upload flow', () => {
       });
       expect((await rowOf(assetId))?.uploadStatus).toBe('REJECTED');
       expect(storage.destroyed).toContain(publicId);
-      const audit = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const audit = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(audit).toContainEqual(expect.objectContaining({ action: 'media.upload.rejected', reason }));
     });
 

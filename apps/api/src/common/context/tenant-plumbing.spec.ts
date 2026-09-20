@@ -91,4 +91,44 @@ describe('tenant isolation is not business-domain plumbing', () => {
       .source.getFullText();
     expect(module).toMatch(/drizzle\(scopedClient\(sql\)/);
   });
+
+  it('raises platform access in one module, and writes the setting in one other', () => {
+    // `app.platform_access` is what the policies read to allow a cross-workspace query. Only
+    // PlatformContext may turn it on, and only the scoped client writes it to the database.
+    const offenders = sources
+      .filter(({ source }) => /platform_access|platformAccess/.test(source.getFullText()))
+      .map(({ path }) => path)
+      .filter(
+        (path) =>
+          path !== 'common/context/platform-context.ts' && path !== 'database/scoped-client.ts',
+      );
+    expect(offenders).toEqual([]);
+  });
+
+  it('lists every place that crosses workspaces, so a new one is a decision and not a habit', () => {
+    // Staff review and system operations are the two reasons to be in PlatformContext at all
+    // (T-079 adds the audit and the typed reasons). A path added here has to be added here.
+    const callers = sources
+      .filter(({ source }) => /PlatformContext\.(asStaff|asSystem)\(/.test(source.getFullText()))
+      .map(({ path }) => path)
+      .sort();
+    expect(callers).toEqual([
+      'modules/assignments/assignments.service.ts',
+      'modules/media/media.service.ts',
+      'modules/verification/verification.service.ts',
+    ]);
+  });
+
+  it('reads the user’s own workspaces only where a workspace is being chosen', () => {
+    // The pre-workspace context is for picking a workspace and for the session that opens in
+    // one. Anywhere else it would be a way to read outside the workspace the request is in.
+    const callers = sources
+      .filter(({ source }) => /\brunAsUser\(/.test(source.getFullText()))
+      .map(({ path }) => path)
+      .sort();
+    expect(callers).toEqual([
+      'common/context/workspace.resolver.ts',
+      'modules/auth/auth.service.ts',
+    ]);
+  });
 });

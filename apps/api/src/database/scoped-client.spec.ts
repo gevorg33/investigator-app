@@ -5,10 +5,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testPool } from '../../test/db';
 import {
   currentContext,
+  runAsUser,
   runInContext,
   type ExecutionContext,
 } from '../common/context/execution-context';
-import { scopedClient } from './scoped-client';
+import { PlatformContext } from '../common/context/platform-context';
+import { databaseSettings, scopedClient } from './scoped-client';
 import * as schema from './schema';
 
 const context = (n: number): ExecutionContext => ({
@@ -22,7 +24,8 @@ const context = (n: number): ExecutionContext => ({
 /** What the database thinks the context is, as the current query sees it. */
 const SETTINGS = sql`SELECT current_setting('app.tenant_id', true) AS tenant,
                             current_setting('app.user_id', true) AS "user",
-                            current_setting('app.membership_id', true) AS membership`;
+                            current_setting('app.membership_id', true) AS membership,
+                            current_setting('app.platform_access', true) AS platform`;
 
 describe('the scoped client', () => {
   let one: postgres.Sql; // a single connection: every query reuses it
@@ -43,6 +46,7 @@ describe('the scoped client', () => {
       tenant: string | null;
       user: string | null;
       membership: string | null;
+      platform: string | null;
     };
 
   it('sets the tenant, the user and the membership on a query run in a context', async () => {
@@ -52,17 +56,20 @@ describe('the scoped client', () => {
       tenant: c.tenantId,
       user: c.userId,
       membership: c.membershipId,
+      platform: '',
     });
   });
 
   it('sets it for queries drizzle reads as arrays (.values()) too', async () => {
     const db = drizzle(scopedClient(one), { schema });
     const c = context(2);
-    const rows = await runInContext(c, async () =>
-      await db
-        .select({ tenant: sql<string>`current_setting('app.tenant_id', true)` })
-        .from(schema.roles)
-        .limit(1),
+    const rows = await runInContext(
+      c,
+      async () =>
+        await db
+          .select({ tenant: sql<string>`current_setting('app.tenant_id', true)` })
+          .from(schema.roles)
+          .limit(1),
     );
     expect(rows).toEqual([{ tenant: c.tenantId }]);
   });
@@ -155,7 +162,9 @@ describe('the scoped client', () => {
 
   it('starts a transaction outside any context without setting one', async () => {
     const db = drizzle(scopedClient(one), { schema });
-    const seen = await db.transaction(async (tx) => (await tx.execute(SETTINGS))[0] as { tenant: string | null });
+    const seen = await db.transaction(
+      async (tx) => (await tx.execute(SETTINGS))[0] as { tenant: string | null },
+    );
     expect(seen.tenant === null || seen.tenant === '').toBe(true);
   });
 
@@ -164,7 +173,9 @@ describe('the scoped client', () => {
     // be a double insert. Both awaits see the same transaction id.
     const client = scopedClient(one);
     const ids = await runInContext(context(12), async () => {
-      const q = client.unsafe('SELECT txid_current()::text AS id') as unknown as Promise<Array<{ id: string }>>;
+      const q = client.unsafe('SELECT txid_current()::text AS id') as unknown as Promise<
+        Array<{ id: string }>
+      >;
       const [first, second] = await Promise.all([q, q]);
       return [first[0]!.id, second[0]!.id];
     });
@@ -181,5 +192,35 @@ describe('the scoped client', () => {
       expect(currentContext()?.tenantId).toBe(context(10).tenantId);
     });
     expect(currentContext()).toBeUndefined();
+  });
+
+  describe('the three ways a query gets a context', () => {
+    it('sends a request’s workspace, user and membership', async () => {
+      const db = drizzle(scopedClient(one), { schema });
+      const c = context(20);
+      const seen = await runInContext(c, () => settings(db));
+      expect(seen).toEqual({
+        tenant: c.tenantId,
+        user: c.userId,
+        membership: c.membershipId,
+        platform: '',
+      });
+    });
+
+    it('sends the user alone before a workspace is chosen', async () => {
+      const db = drizzle(scopedClient(one), { schema });
+      const seen = await runAsUser('u-21', () => settings(db));
+      expect(seen).toEqual({ tenant: '', user: 'u-21', membership: '', platform: '' });
+    });
+
+    it('sends platform access on its own for a system operation', async () => {
+      const db = drizzle(scopedClient(one), { schema });
+      const seen = await PlatformContext.asSystem('probe', () => settings(db));
+      expect(seen).toEqual({ tenant: '', user: '', membership: '', platform: 'on' });
+    });
+
+    it('sends nothing at all outside all three', () => {
+      expect(databaseSettings()).toBeUndefined();
+    });
   });
 });

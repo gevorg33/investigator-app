@@ -3,6 +3,7 @@ import { and, eq, or } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
+import { PlatformContext } from '../../common/context/platform-context';
 import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { IdempotencyService } from '../../common/idempotency/idempotency.service';
@@ -79,122 +80,127 @@ export class AssignmentsService {
     input: { quoteId: string; authorization: PaymentAuthorization; idempotencyKey: string },
     req: RequestContext = {},
   ): Promise<AssignmentView> {
-    return this.db.transaction(async (tx) => {
-      const claim = await this.idempotency.claim(tx, {
-        // A system actor has no user, and the provider's reference is what scopes the key.
-        actorId: SYSTEM_ACTOR_ID,
-        endpoint: 'assignment.create',
-        key: input.idempotencyKey,
-        request: { quoteId: input.quoteId, reference: input.authorization.reference },
+    // No user, no workspace: the quote, the mission and the new assignment belong to the two
+    // parties, and neither of them declared that money moved. The system reaches all three
+    // through PlatformContext (T-077) — the only way past row-level security.
+    return PlatformContext.asSystem('assignment.create_from_payment', async () => {
+      return this.db.transaction(async (tx) => {
+        const claim = await this.idempotency.claim(tx, {
+          // A system actor has no user, and the provider's reference is what scopes the key.
+          actorId: SYSTEM_ACTOR_ID,
+          endpoint: 'assignment.create',
+          key: input.idempotencyKey,
+          request: { quoteId: input.quoteId, reference: input.authorization.reference },
+        });
+        if (claim.status === 'REPLAY') return claim.responseBody as AssignmentView;
+
+        const [quote] = await tx
+          .select()
+          .from(quotes)
+          .where(eq(quotes.id, input.quoteId))
+          .for('update');
+        if (quote === undefined) throw AppError.notFound();
+        // Only an accepted quote becomes an assignment. An expired or withdrawn one never does,
+        // whatever a payment says — money arriving for something nobody accepted is a payments
+        // problem, not a reason to commit an investigator.
+        if (quote.status !== 'ACCEPTED') throw AppError.stateConflict();
+
+        // The amount authorized must be the amount agreed. A mismatch is never resolved in
+        // favour of proceeding: it means the two systems disagree about what was bought.
+        if (
+          input.authorization.amountMinor !== quote.priceMinor ||
+          input.authorization.currency !== quote.currency
+        ) {
+          throw AppError.stateConflict();
+        }
+
+        const [mission] = await tx
+          .select()
+          .from(missions)
+          .where(eq(missions.id, quote.missionId))
+          .for('update');
+        if (mission === undefined) throw AppError.notFound();
+
+        // CUSTOMER_CONFIRMED → PAID → ASSIGNED. Two moves rather than one: the mission machine
+        // records that payment landed separately from the assignment existing, and a dispute
+        // later needs to tell those apart.
+        const paid = await this.missionTransitions.apply(
+          tx,
+          { id: mission.id, status: mission.status, version: mission.version },
+          'PAID',
+          { kind: 'SYSTEM' },
+          { correlationId: req.correlationId, reason: input.authorization.reference },
+        );
+
+        const now = input.authorization.authorizedAt;
+        let created: AssignmentRow | undefined;
+        try {
+          [created] = await tx
+            .insert(assignments)
+            .values({
+              missionId: mission.id,
+              quoteId: quote.id,
+              customerId: mission.customerId,
+              investigatorProfileId: quote.investigatorProfileId,
+              // Snapshotted, not joined: the agreement is the quote as it stood at acceptance.
+              acceptedScope: quote.scope,
+              deliverables: quote.deliverables,
+              assumptions: quote.assumptions,
+              exclusions: quote.exclusions,
+              cancellationTerms: quote.cancellationTerms,
+              priceMinor: quote.priceMinor,
+              currency: quote.currency,
+              estimatedDurationDays: quote.estimatedDurationDays,
+              dueAt: new Date(now.getTime() + quote.estimatedDurationDays * 24 * 60 * 60 * 1000),
+              paymentReference: input.authorization.reference,
+              paymentAuthorizedAt: now,
+              acceptanceDueAt: acceptanceDeadline(now),
+            })
+            .returning();
+        } catch (e) {
+          // One assignment per mission and per quote, held by unique indexes. A concurrent
+          // create loses here rather than producing a second commitment.
+          if (uniqueViolation(e)) throw AppError.stateConflict();
+          throw e;
+        }
+        if (!created) throw new AppError('INTERNAL_ERROR');
+
+        // The one history row not written by a transition: an assignment's first status is not a
+        // move from anywhere, and `from_status` is null exactly here.
+        await tx.insert(assignmentStatusHistory).values({
+          assignmentId: created.id,
+          toStatus: created.status,
+          actorKind: 'SYSTEM',
+        });
+
+        await this.missionTransitions.apply(
+          tx,
+          { id: mission.id, status: paid.status, version: paid.version },
+          'ASSIGNED',
+          { kind: 'SYSTEM' },
+          { correlationId: req.correlationId, reason: created.id },
+        );
+
+        await this.audit.record(
+          {
+            correlationId: req.correlationId,
+            actorRole: 'SYSTEM',
+            action: 'assignment.created',
+            resourceType: 'assignment',
+            resourceId: created.id,
+            reason: input.authorization.reference,
+          },
+          tx,
+        );
+
+        const response = view(created);
+        await this.idempotency.complete(
+          tx,
+          { actorId: SYSTEM_ACTOR_ID, endpoint: 'assignment.create', key: input.idempotencyKey },
+          { status: 201, body: response },
+        );
+        return response;
       });
-      if (claim.status === 'REPLAY') return claim.responseBody as AssignmentView;
-
-      const [quote] = await tx
-        .select()
-        .from(quotes)
-        .where(eq(quotes.id, input.quoteId))
-        .for('update');
-      if (quote === undefined) throw AppError.notFound();
-      // Only an accepted quote becomes an assignment. An expired or withdrawn one never does,
-      // whatever a payment says — money arriving for something nobody accepted is a payments
-      // problem, not a reason to commit an investigator.
-      if (quote.status !== 'ACCEPTED') throw AppError.stateConflict();
-
-      // The amount authorized must be the amount agreed. A mismatch is never resolved in
-      // favour of proceeding: it means the two systems disagree about what was bought.
-      if (
-        input.authorization.amountMinor !== quote.priceMinor ||
-        input.authorization.currency !== quote.currency
-      ) {
-        throw AppError.stateConflict();
-      }
-
-      const [mission] = await tx
-        .select()
-        .from(missions)
-        .where(eq(missions.id, quote.missionId))
-        .for('update');
-      if (mission === undefined) throw AppError.notFound();
-
-      // CUSTOMER_CONFIRMED → PAID → ASSIGNED. Two moves rather than one: the mission machine
-      // records that payment landed separately from the assignment existing, and a dispute
-      // later needs to tell those apart.
-      const paid = await this.missionTransitions.apply(
-        tx,
-        { id: mission.id, status: mission.status, version: mission.version },
-        'PAID',
-        { kind: 'SYSTEM' },
-        { correlationId: req.correlationId, reason: input.authorization.reference },
-      );
-
-      const now = input.authorization.authorizedAt;
-      let created: AssignmentRow | undefined;
-      try {
-        [created] = await tx
-          .insert(assignments)
-          .values({
-            missionId: mission.id,
-            quoteId: quote.id,
-            customerId: mission.customerId,
-            investigatorProfileId: quote.investigatorProfileId,
-            // Snapshotted, not joined: the agreement is the quote as it stood at acceptance.
-            acceptedScope: quote.scope,
-            deliverables: quote.deliverables,
-            assumptions: quote.assumptions,
-            exclusions: quote.exclusions,
-            cancellationTerms: quote.cancellationTerms,
-            priceMinor: quote.priceMinor,
-            currency: quote.currency,
-            estimatedDurationDays: quote.estimatedDurationDays,
-            dueAt: new Date(now.getTime() + quote.estimatedDurationDays * 24 * 60 * 60 * 1000),
-            paymentReference: input.authorization.reference,
-            paymentAuthorizedAt: now,
-            acceptanceDueAt: acceptanceDeadline(now),
-          })
-          .returning();
-      } catch (e) {
-        // One assignment per mission and per quote, held by unique indexes. A concurrent
-        // create loses here rather than producing a second commitment.
-        if (uniqueViolation(e)) throw AppError.stateConflict();
-        throw e;
-      }
-      if (!created) throw new AppError('INTERNAL_ERROR');
-
-      // The one history row not written by a transition: an assignment's first status is not a
-      // move from anywhere, and `from_status` is null exactly here.
-      await tx.insert(assignmentStatusHistory).values({
-        assignmentId: created.id,
-        toStatus: created.status,
-        actorKind: 'SYSTEM',
-      });
-
-      await this.missionTransitions.apply(
-        tx,
-        { id: mission.id, status: paid.status, version: paid.version },
-        'ASSIGNED',
-        { kind: 'SYSTEM' },
-        { correlationId: req.correlationId, reason: created.id },
-      );
-
-      await this.audit.record(
-        {
-          correlationId: req.correlationId,
-          actorRole: 'SYSTEM',
-          action: 'assignment.created',
-          resourceType: 'assignment',
-          resourceId: created.id,
-          reason: input.authorization.reference,
-        },
-        tx,
-      );
-
-      const response = view(created);
-      await this.idempotency.complete(
-        tx,
-        { actorId: SYSTEM_ACTOR_ID, endpoint: 'assignment.create', key: input.idempotencyKey },
-        { status: 201, body: response },
-      );
-      return response;
     });
   }
 
