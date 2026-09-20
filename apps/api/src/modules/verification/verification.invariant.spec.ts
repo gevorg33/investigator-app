@@ -37,6 +37,8 @@ const build = (over: { insert?: () => Promise<unknown[]> } = {}) => {
   const db = { transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(tx) };
   const authz = {
     requireActive: vi.fn().mockResolvedValue(undefined),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    requirePersonalWorkspace: vi.fn().mockResolvedValue(undefined),
     requireRole: vi.fn().mockResolvedValue(undefined),
     requireStaffScope: vi.fn().mockResolvedValue(undefined),
     stateAllows: vi.fn().mockResolvedValue(undefined),

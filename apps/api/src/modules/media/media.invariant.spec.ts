@@ -12,6 +12,8 @@ describe('upload authorization invariant', () => {
     const db = { insert: () => ({ values: () => ({ returning: async () => [] }) }) };
     const authz = {
       requireActive: vi.fn().mockResolvedValue(undefined),
+      requirePermission: vi.fn().mockResolvedValue(undefined),
+      requirePersonalWorkspace: vi.fn().mockResolvedValue(undefined),
       requireRole: vi.fn().mockResolvedValue(undefined),
     };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };

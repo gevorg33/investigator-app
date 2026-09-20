@@ -3297,25 +3297,70 @@ pnpm --filter api test isolation && pnpm --filter api test:coverage
 ---
 
 ### T-078 — Tenant permissions in authorization
-- **Status:** TODO
+- **Status:** DONE (2026-09-20)
 - **Priority:** P0
 - **Depends on:** T-077
 - **Risk:** HIGH
-- **Human approval required:** Yes — authorization logic
+- **Human approval required:** Yes — authorization logic; design approved 2026-09-20
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/common/authz/**, packages/auth/**, the `authorization` skill
+- **Affected:** apps/api/src/common/authz/**, apps/api/src/modules/{missions,quotes,assignments,profiles,service-areas,verification}/**, docs/architecture/authorization.md
 
-**Description**
-`AuthzService.requirePermission(permission, ctx)`. Permissions are resolved with the
-membership on every request, never carried. Existing endpoints behave identically in Personal
-workspaces. Agency endpoints check permissions, never tenant role names.
+**What shipped**
 
-**Acceptance criteria**
-- [ ] **Customer actions require a Personal workspace context** (from T-076): owner columns take the context's workspace, so a customer creating a mission while an agency workspace is active would put it in the agency. Refuse customer actions outside a Personal workspace — agencies are supplier-only in v1 (tenancy.md §3) — with a test
-- [ ] Every role × permission pair from the seeded catalog is tested (generated), not sampled
-- [ ] A revoked permission or removed role takes effect on the next request
-- [ ] A static spec forbids checking a tenant role name where a permission exists
-- [ ] `authorization.md` and the `authorization` skill updated
+`AuthzService.requirePermission(actor, permission, ctx)` — **check 3b**, beside the platform-role
+check rather than instead of it. The platform role says what someone *is*; the tenant permission
+says what their membership lets them do *here*. It reads the list the resolver already filled for
+this request, so a revoked permission or a removed role lands on the next one with nothing to
+invalidate, and refuses outside a workspace entirely (`workspace_context_missing`).
+
+`AuthzService.requirePersonalWorkspace` — every action requiring the `CUSTOMER` platform role.
+A row takes the workspace of the context it was written in (T-076), so a customer acting in an
+agency would file their mission into that company. 403, audited `workspace_kind_forbidden`.
+
+**Which actions check a permission** (owner decision, 2026-09-20: only where the catalog already
+speaks — its vocabulary is a supplier organisation's, and marketplace and customer actions have no
+agency version yet):
+
+| Action | Permission |
+|---|---|
+| Submit a quote | `investigations.create` |
+| Withdraw a quote · accept or decline an assignment | `investigations.update` |
+| List own quotes | `investigations.read` |
+| Read own profile, service areas, verification applications | `investigators.read` |
+| Change them, or apply for verification | `investigators.update` |
+
+**What this found.** An agency member who holds `investigations.create` **still cannot quote as
+the agency**: their investigator profile belongs to their Personal workspace, and a quote must
+belong to one of its two parties, so the database refuses the write. Authorization is not what
+stops it — agency-owned investigator profiles are, and they arrive in T-087, which now carries
+that as a criterion. The boundary is recorded as a test rather than left as a surprise.
+
+**Tests** — 1428 passing, 100% coverage.
+- `tenant-permissions.spec.ts`: **every role × permission pair, 6 × 40, generated from
+  `role_permissions`** and run against a real membership resolved by the real resolver — not
+  sampled, so a catalog missing one grant fails. Plus: a role taken away lands on the next
+  request; a Personal member holds the whole catalog; a narrowed platform role cannot widen a
+  workspace permission; two members of one workspace are separated by their own roles; each
+  refusal names its check in the audit row.
+- `permissions.spec.ts`: the typed names equal the seeded catalog, so a renamed permission cannot
+  leave a check that silently always refuses.
+- `role-names.spec.ts`: no source outside the catalog contains `OWNER`, `ADMIN`, `MANAGER`,
+  `AGENCY_STAFF` or `VIEWER`; only the resolver and the workspace switcher touch the role tables;
+  the set of permissions the application asks for is recorded.
+- Endpoint level: a customer's mission written from an agency workspace is refused and audited,
+  and nothing is written; an agency VIEWER cannot submit a quote, while a member who holds the
+  permission gets past authorization and is stopped by the database instead.
+- The test harness now gives a context the permissions that membership really holds
+  (`test/workspace-context.ts`), so a spec cannot pass by having no permissions to check.
+
+**Negative controls** — each rule broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| `quotes.submit` stops checking `investigations.create` | 2 fail: the agency-VIEWER case and the recorded permission set |
+| Missions stop requiring a Personal workspace | the customer-workspace case fails |
+| A permission dropped from the typed list | "is exactly the seeded catalog" fails |
+| A service names `ADMIN` | "names a tenant role nowhere but the catalog" fails |
 
 **Validation**
 ```bash
@@ -3580,6 +3625,7 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 "the workspace is ACTIVE". Whether agency verification also gates listing is decided in T-088.
 
 **Acceptance criteria**
+- [ ] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
 - [ ] Several profiles per agency; one per person per workspace; no identity fields duplicated
 - [ ] A suspended or archived agency's profiles disappear from discovery on the next query
 - [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here

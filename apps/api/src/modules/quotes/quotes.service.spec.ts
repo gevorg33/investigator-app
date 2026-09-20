@@ -15,12 +15,14 @@ import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import { IdempotencyService } from '../../common/idempotency/idempotency.service';
 import * as schema from '../../database/schema';
-import { missions, quotes } from '../../database/schema';
+import { auditLogs, missions, quotes } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { QuotesService } from './quotes.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
+import { agency, member } from '../../../test/workspace-fixtures';
+import { runInContext } from '../../common/context/execution-context';
 
 
 describe('quotes', () => {
@@ -30,6 +32,7 @@ describe('quotes', () => {
   let ownerSql: postgres.Sql;
   let ownerDb: TestDb;
   let service: QuotesService;
+  let raw: QuotesService;
   const req = () => ({ ip: '198.51.100.20', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
@@ -42,17 +45,17 @@ describe('quotes', () => {
   beforeEach(() => {
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
-    service = asRequests(
-      new QuotesService(
-        db,
-        authz,
-        audit,
-        new IdempotencyService(),
-        new MissionTransitionService(authz, audit),
-        new OwnInvestigatorProfileRepository(db),
-      ),
-      ownerSql,
+    // `raw` is the same service without the harness that enters the caller's Personal
+    // workspace: the agency cases below are about which workspace the call is made in.
+    raw = new QuotesService(
+      db,
+      authz,
+      audit,
+      new IdempotencyService(),
+      new MissionTransitionService(authz, audit),
+      new OwnInvestigatorProfileRepository(db),
     );
+    service = asRequests(raw, ownerSql);
   });
 
   afterAll(async () => {
@@ -393,6 +396,79 @@ describe('quotes', () => {
       await service.submit(inv.actor, mission.missionId, offer() as never, req());
       const mine = await service.listMine(inv.actor, req());
       expect(mine.map((q) => q.missionId)).toContain(mission.missionId);
+    });
+  });
+
+  describe('quoting from an agency workspace', () => {
+    /** The context a request in `tenantId` would get, with the roles that membership holds. */
+    const contextIn = async (userId: string, tenantId: string) => {
+      const [row] = await ownerSql<{ membership: string; permissions: string[] }[]>`
+        SELECT m.id AS membership,
+               coalesce(array_agg(DISTINCT rp.permission_key)
+                          FILTER (WHERE rp.permission_key IS NOT NULL), '{}') AS permissions
+          FROM tenant_memberships m
+          LEFT JOIN membership_roles mr ON mr.membership_id = m.id
+          LEFT JOIN role_permissions rp ON rp.role_id = mr.role_id
+         WHERE m.tenant_id = ${tenantId} AND m.user_id = ${userId}
+         GROUP BY m.id`;
+      return {
+        tenantId,
+        tenantKind: 'AGENCY' as const,
+        userId,
+        membershipId: row!.membership,
+        permissions: row!.permissions,
+      };
+    };
+
+    it('refuses a member whose role does not grant investigations.create', async () => {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const boss = await member(ownerSql);
+      const { tenantId } = await agency(ownerSql, [
+        { userId: boss.actor.userId },
+        { userId: inv.actor.userId, role: 'VIEWER' },
+      ]);
+      const correlationId = randomUUID();
+
+      await expect(
+        runInContext(await contextIn(inv.actor.userId, tenantId), () =>
+          raw.submit(inv.actor, mission.missionId, offer() as never, { ...req(), correlationId }),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+
+      const [denial] = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, correlationId));
+      expect(denial).toMatchObject({ reason: 'permission_not_held' });
+    });
+
+    it('gets a member who holds it past authorization — and stops at the database', async () => {
+      // The permission is held, so nothing refuses the call. The write still fails, because the
+      // investigator's profile belongs to their Personal workspace and a quote must belong to one
+      // of its two parties (T-076, T-077). Quoting *as* an agency needs agency-owned investigator
+      // profiles, which do not exist in v1 — this is where that boundary actually is.
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const boss = await member(ownerSql);
+      const { tenantId } = await agency(ownerSql, [
+        { userId: boss.actor.userId },
+        { userId: inv.actor.userId, role: 'INVESTIGATOR' },
+      ]);
+      const correlationId = randomUUID();
+
+      await expect(
+        runInContext(await contextIn(inv.actor.userId, tenantId), () =>
+          raw.submit(inv.actor, mission.missionId, offer() as never, { ...req(), correlationId }),
+        ),
+        // Drizzle wraps the driver's error; the database's own words are on `cause`.
+      ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/row-level security/) } });
+
+      const denials = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, correlationId));
+      expect(denials).toEqual([]);
     });
   });
 });

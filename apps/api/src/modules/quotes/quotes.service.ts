@@ -72,6 +72,7 @@ export class QuotesService {
     const c = this.ctx('quote.submit', req, missionId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigations.create', c);
 
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
     // Eligibility is a state check on the actor's own profile, so it is a 403 rather than a 404.
@@ -132,6 +133,7 @@ export class QuotesService {
     const c = this.ctx('quote.withdraw', req, quoteId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigations.update', c);
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
 
     return this.db.transaction(async (tx) => {
@@ -163,6 +165,7 @@ export class QuotesService {
     const c = this.ctx('quote.list_own', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigations.read', c);
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
 
     const rows = await this.db
@@ -180,6 +183,7 @@ export class QuotesService {
     const c = this.ctx('quote.list_for_mission', req, missionId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'CUSTOMER', c);
+    await this.authz.requirePersonalWorkspace(actor, c);
     await this.ownMission(this.db, missionId, actor, c);
 
     const rows = await this.db
@@ -210,6 +214,7 @@ export class QuotesService {
     const c = this.ctx('quote.accept', req, quoteId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'CUSTOMER', c);
+    await this.authz.requirePersonalWorkspace(actor, c);
 
     return this.db.transaction(async (tx) => {
       const claim = await this.idempotency.claim(tx, {

@@ -28,6 +28,8 @@ import { OwnMissionRepository } from './missions.repository';
 import { MissionsService } from './missions.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
+import { agency } from '../../../test/workspace-fixtures';
+import { runInContext } from '../../common/context/execution-context';
 
 
 describe('missions', () => {
@@ -37,6 +39,7 @@ describe('missions', () => {
   let ownerSql: postgres.Sql;
   let ownerDb: TestDb;
   let service: MissionsService;
+  let raw: MissionsService;
   const req = () => ({ ip: '198.51.100.70', userAgent: 'vitest', correlationId: randomUUID() });
 
   beforeAll(() => {
@@ -48,19 +51,19 @@ describe('missions', () => {
 
   beforeEach(() => {
     const audit = new AuditService(db);
-    service = asRequests(
-      new MissionsService(
-        db,
-        new AuthzService(audit),
-        audit,
-        new OwnMissionRepository(db),
-        new MissionTransitionService(new AuthzService(audit), audit),
-        new MissionPolicyService(),
-        // A fresh limiter per test: the submission limit is not what these tests are about.
-        new RateLimitService(new MemoryRateLimitStore()),
-      ),
-      ownerSql,
+    // `raw` is the same service without the harness that enters the caller's Personal workspace:
+    // the one test below is about which workspace a customer may act in at all.
+    raw = new MissionsService(
+      db,
+      new AuthzService(audit),
+      audit,
+      new OwnMissionRepository(db),
+      new MissionTransitionService(new AuthzService(audit), audit),
+      new MissionPolicyService(),
+      // A fresh limiter per test: the submission limit is not what these tests are about.
+      new RateLimitService(new MemoryRateLimitStore()),
     );
+    service = asRequests(raw, ownerSql);
   });
 
   afterAll(async () => {
@@ -679,6 +682,48 @@ describe('missions', () => {
       expect(row?.version).toBe(
         row?.status === 'CANCELLED' ? draft.version + 1 : draft.version + 2,
       );
+    });
+  });
+
+  describe('the workspace a customer may act in', () => {
+    it('refuses a mission written while an agency workspace is active, and audits why', async () => {
+      // Owner columns take the context's workspace (T-076), so this would file the customer's
+      // mission into a company. Agencies are supplier-only in v1 (tenancy.md §3).
+      const { actor } = await customer(ownerDb);
+      const { tenantId, memberships } = await agency(ownerSql, [{ userId: actor.userId }]);
+      const correlationId = randomUUID();
+      const context = {
+        tenantId,
+        tenantKind: 'AGENCY' as const,
+        userId: actor.userId,
+        membershipId: memberships[0]!,
+        permissions: [],
+      };
+
+      await expect(
+        runInContext(context, () =>
+          raw.createDraft(actor, { title: 'In the wrong place' }, { ...req(), correlationId }),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+
+      const [denial] = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, correlationId));
+      expect(denial).toMatchObject({ reason: 'workspace_kind_forbidden' });
+
+      const [written] = await ownerDb
+        .select()
+        .from(missions)
+        .where(eq(missions.customerTenantId, tenantId));
+      expect(written).toBeUndefined();
+    });
+
+    it('allows the same mission in the caller’s Personal workspace', async () => {
+      const { actor } = await customer(ownerDb);
+      await expect(
+        service.createDraft(actor, { title: 'In the right place' }, req()),
+      ).resolves.toMatchObject({ status: 'DRAFT' });
     });
   });
 
