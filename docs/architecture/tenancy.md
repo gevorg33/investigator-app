@@ -172,6 +172,21 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 - **Customer actions happen in the Personal workspace in v1.** Agencies are supplier-only until
   a customer-organisation kind exists.
 
+> **Built in T-078.** `AuthzService.requirePermission(actor, permission, ctx)` reads the list the
+> resolver filled for this request; `requirePersonalWorkspace` refuses a customer action outside a
+> Personal workspace (403, audited `workspace_kind_forbidden`). The names code may ask for are
+> typed in `common/authz/permissions.ts` and held equal to the seeded catalog by a spec, and every
+> role × permission pair — 6 × 40 — is exercised against a real membership. `role-names.spec.ts`
+> keeps a tenant role name out of every source but the catalog, and the role tables out of every
+> module but the resolver and the workspace switcher. Which action needs which permission is in
+> `authorization.md`; marketplace and customer actions keep their platform-role checks, because
+> this catalog is a supplier organisation's vocabulary (owner decision, 2026-09-20).
+>
+> **Where v1 stops:** an agency member who holds `investigations.create` still cannot quote as the
+> agency — their investigator profile belongs to their Personal workspace, and a quote must belong
+> to one of its two parties, so the database refuses the write. Agency-owned investigator profiles
+> are what would make it work.
+
 ---
 
 ## 4. Teams

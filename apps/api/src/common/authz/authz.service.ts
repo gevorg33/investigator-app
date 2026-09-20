@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AppError } from '../errors/app-error';
 import { AuditService } from '../audit/audit.service';
+import { currentContext } from '../context/execution-context';
 import type { Actor, Role, StaffScope } from './contract';
+import type { TenantPermission } from './permissions';
 
 /**
  * Why a denial happened. Recorded in the audit log; never sent to the caller, because the
@@ -16,7 +18,10 @@ export type DenialReason =
   | 'not_staff'
   | 'resource_not_visible'
   | 'state_forbids_action'
-  | 'workspace_not_available';
+  | 'workspace_not_available'
+  | 'workspace_context_missing'
+  | 'workspace_kind_forbidden'
+  | 'permission_not_held';
 
 export interface AuthzContext {
   /** What is being attempted, e.g. 'mission.publish'. Audited on denial. */
@@ -110,6 +115,46 @@ export class AuthzService {
    */
   async requireWorkspace(actor: Actor, allowed: boolean, ctx: AuthzContext): Promise<void> {
     if (!allowed) await this.deny(actor, ctx, 'workspace_not_available');
+  }
+
+  /**
+   * Check 3b — the permission this action needs, in the workspace the request is acting in
+   * (T-078, docs/architecture/tenancy.md §3).
+   *
+   * A **permission**, never a tenant role name: what a role grants is data the catalog owns, and
+   * a service that checked for `ADMIN` would be a second, silent copy of that catalog. The list
+   * comes from the execution context, which the resolver filled from this request's membership —
+   * so a revoked permission, a changed role or a removed member is refused on the next request
+   * without anything being invalidated.
+   *
+   * Outside a workspace context there is no membership to hold anything, so the answer is no.
+   */
+  async requirePermission(
+    actor: Actor,
+    permission: TenantPermission,
+    ctx: AuthzContext,
+  ): Promise<void> {
+    const context = currentContext();
+    if (context === undefined) await this.deny(actor, ctx, 'workspace_context_missing');
+    else if (!context.permissions.includes(permission)) {
+      await this.deny(actor, ctx, 'permission_not_held');
+    }
+  }
+
+  /**
+   * Customer work happens in a Personal workspace, and only there (tenancy.md §3).
+   *
+   * Agencies are supplier-only in v1, and a row takes the workspace of the context it was
+   * written in (T-076) — so a customer acting while an agency workspace is active would file
+   * their mission into the agency. Refusing is the difference between a loud 403 and a mission
+   * quietly belonging to a company.
+   */
+  async requirePersonalWorkspace(actor: Actor, ctx: AuthzContext): Promise<void> {
+    const context = currentContext();
+    if (context === undefined) await this.deny(actor, ctx, 'workspace_context_missing');
+    else if (context.tenantKind !== 'PERSONAL') {
+      await this.deny(actor, ctx, 'workspace_kind_forbidden');
+    }
   }
 
   /**

@@ -68,6 +68,8 @@ const build = (
     db as never,
     {
       requireActive: vi.fn(),
+      requirePermission: vi.fn(),
+      requirePersonalWorkspace: vi.fn(),
       requireRole: vi.fn(),
       stateAllows: vi.fn(),
       visible: vi.fn(),

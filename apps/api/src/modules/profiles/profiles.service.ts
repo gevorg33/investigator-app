@@ -145,6 +145,7 @@ export class ProfilesService {
     // this relies on.
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigators.read', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
     return toOwnInvestigatorProfile(row, await this.relationsFor(row.id, actor.userId));
   }
@@ -175,6 +176,7 @@ export class ProfilesService {
     const c = ctxFor('profile.read_own', 'customer_profile', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'CUSTOMER', c);
+    await this.authz.requirePersonalWorkspace(actor, c);
     const row = await this.authz.visible(actor, await this.ownCustomer.findMine(actor), c);
     return toOwnCustomerProfile(row, await this.displayNameOf(row.userId));
   }
@@ -208,6 +210,7 @@ export class ProfilesService {
     const c = ctxFor('profile.update_own', 'investigator_profile', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigators.update', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
 
     if (dto.specialtyNodeIds) await this.assertNodesExist(dto.specialtyNodeIds);
@@ -281,6 +284,7 @@ export class ProfilesService {
     const c = ctxFor('profile.update_own', 'customer_profile', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'CUSTOMER', c);
+    await this.authz.requirePersonalWorkspace(actor, c);
     const row = await this.authz.visible(actor, await this.ownCustomer.findMine(actor), c);
 
     await this.db

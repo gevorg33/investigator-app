@@ -357,6 +357,9 @@ export class MissionsService {
   private async requireCustomer(actor: Actor, c: AuthzContext): Promise<void> {
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'CUSTOMER', c);
+    // A mission belongs to the workspace it was written in (T-076), and agencies are
+    // supplier-only in v1: a customer acts in their Personal workspace or not at all.
+    await this.authz.requirePersonalWorkspace(actor, c);
   }
 
   private async record(

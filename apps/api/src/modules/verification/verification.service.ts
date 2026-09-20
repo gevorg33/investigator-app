@@ -132,6 +132,7 @@ export class VerificationService {
     const c = this.ctx('verification.submit', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigators.update', c);
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
 
     const documentIds = [...new Set(dto.documentIds)];
@@ -187,6 +188,7 @@ export class VerificationService {
     const c = this.ctx('verification.list_own', req);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigators.read', c);
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
 
     const requests = await this.db

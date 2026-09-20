@@ -3,7 +3,7 @@ import type postgres from 'postgres';
 import { runInContext, type ExecutionContext } from '../src/common/context/execution-context';
 import * as schema from '../src/database/schema';
 import { scopedClient } from '../src/database/scoped-client';
-import { agency, member } from './workspace-fixtures';
+import { member } from './workspace-fixtures';
 
 /**
  * Running a service in a spec the way a request runs it (T-077).
@@ -45,25 +45,47 @@ export async function personalContext(
     tenantKind: 'PERSONAL',
     userId,
     membershipId: row.membership,
-    permissions: [],
+    permissions: await permissionsOf(owner, row.membership),
   };
 }
 
-/** One empty workspace per pool, for actors the harness invented rather than registered. */
+/**
+ * What the membership's roles grant, read from the catalog — the same query the resolver makes
+ * (T-078). A context with an empty permission list would refuse everything the way no other
+ * caller does, so a spec would be testing the harness rather than the service.
+ */
+async function permissionsOf(owner: postgres.Sql, membershipId: string): Promise<string[]> {
+  const rows = await owner<{ key: string }[]>`
+    SELECT DISTINCT rp.permission_key AS key
+      FROM membership_roles mr
+      JOIN role_permissions rp ON rp.role_id = mr.role_id
+     WHERE mr.membership_id = ${membershipId}
+     ORDER BY 1`;
+  return rows.map((r) => r.key);
+}
+
+/**
+ * One empty workspace per pool, for actors the harness invented rather than registered.
+ *
+ * Personal, like the workspace such a caller would really be in: a customer's action is refused
+ * outside a Personal workspace (T-078), and an invented actor exists to exercise the check after
+ * that one, not this one. It is empty, so it still shows them nothing.
+ */
 const empties = new Map<postgres.Sql, Promise<ExecutionContext>>();
 
 async function nowhere(owner: postgres.Sql): Promise<ExecutionContext> {
   let pending = empties.get(owner);
   if (pending === undefined) {
     pending = (async () => {
-      const { actor } = await member(owner);
-      const { tenantId, memberships } = await agency(owner, [{ userId: actor.userId }]);
+      const { actor, personalId } = await member(owner);
+      const [row] = await owner<{ id: string }[]>`
+        SELECT id FROM tenant_memberships WHERE tenant_id = ${personalId}`;
       return {
-        tenantId,
-        tenantKind: 'AGENCY' as const,
+        tenantId: personalId,
+        tenantKind: 'PERSONAL' as const,
         userId: actor.userId,
-        membershipId: memberships[0]!,
-        permissions: [],
+        membershipId: row!.id,
+        permissions: await permissionsOf(owner, row!.id),
       };
     })();
     empties.set(owner, pending);

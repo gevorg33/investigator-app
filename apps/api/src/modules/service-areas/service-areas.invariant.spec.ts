@@ -13,6 +13,8 @@ const build = (insert: () => unknown) => {
   };
   const authz = {
     requireActive: vi.fn().mockResolvedValue(undefined),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    requirePersonalWorkspace: vi.fn().mockResolvedValue(undefined),
     requireRole: vi.fn().mockResolvedValue(undefined),
     visible: vi.fn(async (_a: unknown, row: unknown) => row),
   };

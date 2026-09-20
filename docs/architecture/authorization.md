@@ -6,9 +6,9 @@ shaped the way it is.
 
 Built in T-006.
 
-> **Workspaces (ADR-0011).** Check 0 is **built** (T-075, below). Tenant permissions in check 3
-> (T-078) and row-level security underneath all six (T-077) are specified in `tenancy.md` §8, and
-> this document is updated as each lands.
+> **Workspaces (ADR-0011).** Check 0 is **built** (T-075), row-level security underneath all six
+> is **built** (T-077, `tenancy.md` §7), and tenant permissions in check 3 are **built** (T-078,
+> below).
 
 ## The shape of it
 
@@ -78,12 +78,18 @@ that asked for it.
 | 0 | Workspace — an ACTIVE membership in a workspace that is neither suspended, archived nor deleted | `WorkspaceResolver`, via `ActorGuard` (T-075) |
 | 1 | Identity — live, unrevoked session | `ActorService`, via `ActorGuard` |
 | 2 | Account status | `ActorService` (session-ending) and `AuthzService.requireActive` (per action) |
-| 3 | Role permission | `AuthzService.requireRole` |
+| 3 | Platform role — may this person do this at all | `AuthzService.requireRole` |
+| 3b | Tenant permission — may they do it **in this workspace** | `AuthzService.requirePermission` (T-078) |
 | 4 | Resource relationship | `ActorScopedRepository` + `AuthzService.visible` |
 | 5 | Resource state | `AuthzService.stateAllows` |
 | 6 | Staff scope | `AuthzService.requireStaffScope` |
 
 Checks 4 and 5 are where the real bugs live. 1–3 are usually already handled by the guard.
+
+Checks 3 and 3b answer different questions and are not interchangeable. The platform role says
+what someone *is* — a customer, an investigator, staff. The tenant permission says what their
+membership lets them do *here*. Someone can be an investigator on the platform and hold nothing
+but read access in the agency whose workspace they are currently in.
 
 ### Check 2 has two strengths, deliberately
 
@@ -220,3 +226,55 @@ query (`database/scoped-client.ts`).
 - **Denials outlive the transaction around them.** Context is set per unit of work, not per
   request. `AuthzService.deny` records through its own short transaction, so a denial inside a
   transaction that rolls back still leaves its audit row (end-to-end test).
+
+---
+
+## Check 3b — the tenant permission (T-078)
+
+```ts
+await this.authz.requireRole(actor, 'INVESTIGATOR', c);        // what they are
+await this.authz.requirePermission(actor, 'investigations.create', c);  // what they may do here
+```
+
+- **A permission, never a role name.** What a role grants is the catalog — 40 permissions, 6
+  system roles, 134 grants, seeded from `tenancy.md` §3 and read with the membership on every
+  request. A service that tested for `ADMIN` would be a second copy of that catalog, updated by
+  hand. `role-names.spec.ts` holds that no source outside the catalog contains a tenant role
+  name, and that only the resolver and the workspace switcher touch the role tables at all.
+- **From the context, not from a query.** `requirePermission` reads the list the resolver already
+  resolved for this request. A revoked permission, a changed role or a removed member therefore
+  lands on the next request, with nothing to invalidate.
+- **Outside a workspace there is nothing to hold a permission,** so the answer is no —
+  `workspace_context_missing`, audited like any other refusal.
+- **The names are typed.** `TenantPermission` comes from `common/authz/permissions.ts`, which
+  `permissions.spec.ts` holds equal to the seeded catalog. A permission that does not exist fails
+  to compile instead of producing a check that can never pass.
+
+### Which permission each action needs
+
+Only where the catalog already speaks. Its vocabulary is a supplier organisation's, so marketplace
+and customer actions keep their platform-role checks until an agency version of them exists
+(owner decision, 2026-09-20).
+
+| Action | Permission |
+|---|---|
+| Submit a quote | `investigations.create` |
+| Withdraw a quote · accept or decline an assignment | `investigations.update` |
+| List own quotes | `investigations.read` |
+| Read own investigator profile, service areas, verification applications | `investigators.read` |
+| Change them, or apply for verification | `investigators.update` |
+
+### Customer work happens in a Personal workspace
+
+`AuthzService.requirePersonalWorkspace` guards every action that requires the `CUSTOMER` platform
+role: missions, the customer side of quotes, and the customer profile. A row takes the workspace
+of the context it was written in (T-076), so a customer acting while an agency workspace was
+active would file their mission into that company. Agencies are supplier-only in v1
+(`tenancy.md` §3), and the refusal is a **403** audited as `workspace_kind_forbidden`.
+
+### Where v1 actually stops
+
+A member of an agency who holds `investigations.create` still cannot quote *as* the agency: their
+investigator profile belongs to their Personal workspace, and a quote must belong to one of its
+two parties, so the database refuses the write (T-077). Authorization is not what stops it —
+agency-owned investigator profiles are what would make it work, and they do not exist yet.

@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, count, eq, sql, type SQL } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
+import type { TenantPermission } from '../../common/authz/permissions';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
@@ -85,7 +86,11 @@ export class ServiceAreasService {
   ) {}
 
   async listMine(actor: Actor, req: RequestContext): Promise<OwnServiceArea[]> {
-    const profileId = await this.myProfileId(actor, this.ctx('service_area.list', req));
+    const profileId = await this.myProfileId(
+      actor,
+      this.ctx('service_area.list', req),
+      'investigators.read',
+    );
     const rows = await this.db
       .select()
       .from(serviceAreas)
@@ -115,7 +120,7 @@ export class ServiceAreasService {
     req: RequestContext,
   ): Promise<OwnServiceArea> {
     const c = this.ctx('service_area.create', req);
-    const profileId = await this.myProfileId(actor, c);
+    const profileId = await this.myProfileId(actor, c, 'investigators.update');
 
     // COUNT with no GROUP BY always returns exactly one row.
     const [existing] = await this.db
@@ -170,7 +175,7 @@ export class ServiceAreasService {
 
   async deleteMine(actor: Actor, id: string, req: RequestContext): Promise<void> {
     const c = this.ctx('service_area.delete', req, id);
-    const profileId = await this.myProfileId(actor, c);
+    const profileId = await this.myProfileId(actor, c, 'investigators.update');
     // The profile id in the predicate is the ownership check: another investigator's area id
     // matches nothing, and the answer is the same 404 as an id that never existed.
     const [deleted] = await this.db
@@ -246,9 +251,18 @@ export class ServiceAreasService {
     return { rings: [ring] };
   }
 
-  private async myProfileId(actor: Actor, c: AuthzContext): Promise<string> {
+  /**
+   * The caller's own investigator profile. `permission` is what this particular action needs in
+   * the workspace it is running in — reading an area and changing one are not the same right.
+   */
+  private async myProfileId(
+    actor: Actor,
+    c: AuthzContext,
+    permission: TenantPermission,
+  ): Promise<string> {
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, permission, c);
     const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
     return profile.id;
   }

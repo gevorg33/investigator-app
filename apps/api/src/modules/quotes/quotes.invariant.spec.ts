@@ -53,6 +53,8 @@ const build = (
   const db = { transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(tx) };
   const authz = {
     requireActive: vi.fn().mockResolvedValue(undefined),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    requirePersonalWorkspace: vi.fn().mockResolvedValue(undefined),
     requireRole: vi.fn().mockResolvedValue(undefined),
     stateAllows: vi.fn().mockResolvedValue(undefined),
     visible: vi.fn(async (_a: unknown, row: unknown) => row),

@@ -209,6 +209,7 @@ export class AssignmentsService {
     const c = this.ctx('assignment.accept', req, assignmentId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigations.update', c);
 
     return this.db.transaction(async (tx) => {
       const assignment = await this.lockAsInvestigator(tx, actor, assignmentId, c);
@@ -242,6 +243,7 @@ export class AssignmentsService {
     const c = this.ctx('assignment.decline', req, assignmentId);
     await this.authz.requireActive(actor, c);
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigations.update', c);
 
     return this.db.transaction(async (tx) => {
       const assignment = await this.lockAsInvestigator(tx, actor, assignmentId, c);

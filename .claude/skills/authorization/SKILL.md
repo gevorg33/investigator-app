@@ -15,7 +15,10 @@ Every protected resource verifies, in order:
 1. **Identity** — valid, unexpired, non-revoked token; the session still exists.
 2. **Account status** — active. Not suspended, deleted, or pending verification where
    that gate applies.
-3. **Role permission** — the actor's role may perform this action *in principle*.
+3. **Platform role** — the actor's role may perform this action *in principle*
+   (`requireRole`: CUSTOMER, INVESTIGATOR, STAFF).
+   **3b. Tenant permission** — their membership lets them do it *in this workspace*
+   (`requirePermission('investigations.create', c)`). A permission, never a role name.
 4. **Resource relationship** — the actor owns this row, or is a participant in the
    assignment/conversation/mission it belongs to. This is the check that gets forgotten.
 5. **State** — the mission/assignment state permits this action. You cannot upload
@@ -87,15 +90,21 @@ A test suite that only exercises the owner proves the happy path and nothing els
 ## Workspaces (ADR-0011)
 
 There is a **check 0**: an ACTIVE membership in an ACTIVE workspace, resolved from `X-Workspace`
-intersected with memberships read per request. Inside a workspace, check 3 checks tenant
-**permissions** (`requirePermission`), never role names. Underneath all of it, row-level security
-enforces the workspace boundary. That does not replace checks 4 and 5: RLS stops another agency,
+intersected with memberships read per request. Inside a workspace, check 3b asks for a tenant
+**permission** (`requirePermission`), never a role name — the catalog says what a role grants, and
+`role-names.spec.ts` refuses any source outside it that contains one. The list comes from the
+execution context the resolver filled this request, so a revoked role lands on the next one.
+Customer actions additionally require a Personal workspace (`requirePersonalWorkspace`): agencies
+are supplier-only in v1, and a row takes the workspace it was written in. Underneath all of it,
+row-level security enforces the workspace boundary. That does not replace checks 4 and 5: RLS stops another agency,
 and only the six checks stop the wrong colleague. Staff act across workspaces only inside
 `PlatformContext`. Procedure: `tenant-isolation`.
 
 ## Review checklist
 
 - [ ] Check lives in the service, not only the guard
+- [ ] The action names a permission the catalog holds, not a role name — and a customer action
+      requires a Personal workspace
 - [ ] Query is actor-scoped, not fetch-then-compare
 - [ ] State is validated, not just ownership
 - [ ] Staff scope is specific, not `isStaff`
