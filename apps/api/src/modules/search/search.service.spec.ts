@@ -20,6 +20,7 @@ import * as schema from '../../database/schema';
 import { serviceAreas } from '../../database/schema';
 import { SearchService } from './search.service';
 import { testPool } from '../../../test/db';
+import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
 describe('investigator discovery', () => {
@@ -45,7 +46,7 @@ describe('investigator discovery', () => {
 
   beforeAll(async () => {
     sqlClient = testPool();
-    db = drizzle(sqlClient, { schema });
+    db = scopedDb(sqlClient);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
     customer = await searcher(ownerDb);
@@ -53,7 +54,7 @@ describe('investigator discovery', () => {
 
   beforeEach(() => {
     const audit = new AuditService(db);
-    service = new SearchService(db, new AuthzService(audit));
+    service = asRequests(new SearchService(db, new AuthzService(audit)), ownerSql);
     tag = isolate();
   });
 
@@ -260,7 +261,7 @@ describe('investigator discovery', () => {
       const centre = somewhere();
       const found = await mine({ centre, radiusKm: 10 });
       // A second, overlapping area — the classic duplicate.
-      await db.insert(serviceAreas).values({
+      await ownerDb.insert(serviceAreas).values({
         profileId: found.profileId,
         kind: 'RADIUS',
         label: 'Second area',
@@ -342,7 +343,7 @@ describe('investigator discovery', () => {
     it('carries the public projection and nothing private', async () => {
       const centre = somewhere();
       const found = await mine({ centre, displayName: 'Anahit', languages: ['hy'] });
-      await db
+      await ownerDb
         .update(schema.investigatorProfiles)
         .set({ contactPhone: '+37400000000' })
         .where(sql`${schema.investigatorProfiles.id} = ${found.profileId}`);

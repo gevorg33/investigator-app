@@ -1,5 +1,6 @@
 import type postgres from 'postgres';
-import { currentContext, type ExecutionContext } from '../common/context/execution-context';
+import { currentContext, currentUserOnly } from '../common/context/execution-context';
+import { currentPlatformAccess } from '../common/context/platform-context';
 
 /**
  * The execution context, carried into every query (T-075, ADR-0011 §4).
@@ -18,19 +19,55 @@ import { currentContext, type ExecutionContext } from '../common/context/executi
  * Deliberately NOT one transaction per request: it would hold a connection across external calls,
  * and roll back AuthzService's denial audit row whenever the request failed.
  *
- * Outside any context (sign-in, token redemption, bootstrap) a query passes through untouched.
- * Once RLS is on, such a query can read the identity tables and nothing scoped to a workspace:
- * failing closed is the database's job, not this wrapper's.
+ * Three things set it (T-077), combined by `databaseSettings()`:
+ *
+ * - the execution context: the workspace, the user and the membership;
+ * - the pre-workspace context (`runAsUser`): the user alone, and it drops any workspace;
+ * - `PlatformContext`: `app.platform_access`, on top of whatever else is set. This file writes
+ *   the setting; only `platform-context.ts` can make it 'on'.
+ *
+ * Outside all three (sign-in, token redemption, bootstrap) a query passes through untouched, and
+ * row-level security shows it the identity tables and nothing scoped to a workspace: failing
+ * closed is the database's job, not this wrapper's.
  */
 const SET_CONTEXT = `SELECT set_config('app.tenant_id', $1, true),
        set_config('app.user_id', $2, true),
-       set_config('app.membership_id', $3, true)`;
+       set_config('app.membership_id', $3, true),
+       set_config('app.platform_access', $4, true)`;
+
+export interface DatabaseSettings {
+  readonly tenantId: string;
+  readonly userId: string;
+  readonly membershipId: string;
+  readonly platformAccess: 'on' | '';
+}
+
+/** What the database is told about the current code, or undefined when it runs in no context. */
+export function databaseSettings(): DatabaseSettings | undefined {
+  const context = currentContext();
+  const user = currentUserOnly();
+  const platform = currentPlatformAccess();
+  if (context === undefined && user === undefined && platform === undefined) return undefined;
+  // A pre-workspace context sets aside the workspace one (`runAsUser`), so the two never both
+  // apply: the user is whichever of them is here.
+  return {
+    tenantId: context?.tenantId ?? '',
+    userId: user ?? context?.userId ?? '',
+    membershipId: context?.membershipId ?? '',
+    platformAccess: platform === undefined ? '' : 'on',
+  };
+}
 
 export async function applyContext(
   tx: postgres.TransactionSql,
-  context: ExecutionContext,
+  settings: DatabaseSettings,
 ): Promise<void> {
-  await tx.unsafe(SET_CONTEXT, [context.tenantId, context.userId, context.membershipId]);
+  await tx.unsafe(SET_CONTEXT, [
+    settings.tenantId,
+    settings.userId,
+    settings.membershipId,
+    settings.platformAccess,
+  ]);
 }
 
 type Begin = postgres.Sql['begin'];
@@ -38,7 +75,7 @@ type Unsafe = postgres.Sql['unsafe'];
 
 export function scopedClient(base: postgres.Sql): postgres.Sql {
   const begin = ((...args: unknown[]) => {
-    const context = currentContext();
+    const context = databaseSettings();
     const callback = args[args.length - 1] as (tx: postgres.TransactionSql) => unknown;
     const wrapped = async (tx: postgres.TransactionSql) => {
       if (context !== undefined) await applyContext(tx, context);
@@ -49,7 +86,7 @@ export function scopedClient(base: postgres.Sql): postgres.Sql {
   }) as Begin;
 
   const unsafe = ((query: string, params?: unknown[], options?: unknown) => {
-    const context = currentContext();
+    const context = databaseSettings();
     if (context === undefined) {
       return base.unsafe(query, params as never, options as never);
     }

@@ -24,6 +24,11 @@ describe('coverage query plan', () => {
     const rollback = new Error('rollback');
     await sql
       .begin(async (tx) => {
+        // Seeding is a fixture, and fixtures are not a workspace's work: it runs with platform
+        // access so each profile lands in its own owner's Personal workspace (T-077). The plans
+        // below are then taken as a request takes them — in a workspace, with the policies on.
+        await tx`SELECT set_config('app.platform_access', 'on', true)`;
+
         // Three statements, not one (T-076): a row's workspace is derived from rows inserted before
         // it — the user's Personal workspace, the profile's workspace — and a single statement
         // cannot see what it has itself inserted.
@@ -50,6 +55,15 @@ describe('coverage query plan', () => {
           ) seeded`;
         await tx`ANALYZE service_areas`;
         await tx`ANALYZE investigator_profiles`;
+
+        // A searcher's workspace: every plan below carries the policy predicates production has.
+        await tx`SELECT set_config('app.platform_access', '', true)`;
+        const [searcher] = await tx`
+          INSERT INTO users (email) VALUES (${`plan-searcher-${run}@example.test`}) RETURNING id`;
+        await tx`SELECT set_config('app.user_id', ${searcher!['id'] as string}, true)`;
+        const [workspace] = await tx`
+          SELECT id FROM tenants WHERE personal_owner_id = ${searcher!['id'] as string}`;
+        await tx`SELECT set_config('app.tenant_id', ${workspace!['id'] as string}, true)`;
 
         // A transaction handle is not a full drizzle client, so the query production builds is
         // compiled to text and parameters and explained directly. Same SQL, same parameters.

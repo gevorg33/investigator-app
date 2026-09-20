@@ -13,6 +13,8 @@ import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repositor
 import { MAX_AREAS_PER_PROFILE } from './service-areas.policy';
 import { ServiceAreasService } from './service-areas.service';
 import { testPool } from '../../../test/db';
+import { member } from '../../../test/workspace-fixtures';
+import { asRequests, inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
 
 
 describe('service areas', () => {
@@ -22,21 +24,27 @@ describe('service areas', () => {
   let ownerSql: postgres.Sql;
   let ownerDb: TestDb;
   let areas: ServiceAreasService;
+  /** Someone in another workspace, doing the searching. */
+  let searcher: { userId: string };
   const req = () => ({ ip: '198.51.100.50', userAgent: 'vitest', correlationId: randomUUID() });
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
+    searcher = (await member(ownerSql)).actor;
   });
 
   beforeEach(() => {
-    areas = new ServiceAreasService(
-      db,
-      new AuthzService(new AuditService(db)),
-      new AuditService(db),
-      new OwnInvestigatorProfileRepository(db),
+    areas = asRequests(
+      new ServiceAreasService(
+        db,
+        new AuthzService(new AuditService(db)),
+        new AuditService(db),
+        new OwnInvestigatorProfileRepository(db),
+      ),
+      ownerSql,
     );
   });
 
@@ -62,7 +70,7 @@ describe('service areas', () => {
         radiusKm: 10,
         boundary: null,
       });
-      const [row] = await db.select().from(serviceAreas).where(eq(serviceAreas.id, created.id));
+      const [row] = await ownerDb.select().from(serviceAreas).where(eq(serviceAreas.id, created.id));
       expect(row?.radiusM).toBe(10_000);
       // Only the coarsened point exists anywhere.
       expect(row?.centre).toEqual({ lon: 44.52, lat: 40.19 });
@@ -102,7 +110,7 @@ describe('service areas', () => {
       const { actor } = await investigator(ownerDb);
       const r = req();
       const created = await areas.createMine(actor, radius(somewhere()), r);
-      const rows = await db.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows).toContainEqual(expect.objectContaining({ action: 'service_area.created', resourceId: created.id, reason: 'RADIUS' }));
     });
 
@@ -190,11 +198,15 @@ describe('service areas', () => {
   });
 
   describe('coverage', () => {
+    // Coverage is read by whoever is searching: another workspace entirely, seeing published
+    // profiles and their areas through the public projection (T-077).
+    const coverage = async (...args: Parameters<ServiceAreasService['findCoverage']>) =>
+      inWorkspaceOf(ownerSql, searcher.userId, () => areas.findCoverage(...args));
     it('finds an investigator whose area contains the point, at distance 0', async () => {
       const at = somewhere();
       const { actor, profileId } = await investigator(ownerDb);
       await areas.createMine(actor, radius(at, 10), req());
-      expect(await areas.findCoverage(at)).toContainEqual({ profileId, distanceKm: 0 });
+      expect(await coverage(at)).toContainEqual({ profileId, distanceKm: 0 });
     });
 
     it('excludes an area the point falls outside, unless the search reaches it', async () => {
@@ -203,8 +215,8 @@ describe('service areas', () => {
       await areas.createMine(actor, radius(at, 5), req());
       // About 20 km north of the centre: outside a 5 km area by roughly 15 km.
       const away = { lon: at.lon, lat: at.lat + 0.18 };
-      expect((await areas.findCoverage(away)).map((c) => c.profileId)).not.toContain(profileId);
-      const reached = (await areas.findCoverage(away, { searchRadiusM: 30_000 })).find((c) => c.profileId === profileId);
+      expect((await coverage(away)).map((c) => c.profileId)).not.toContain(profileId);
+      const reached = (await coverage(away, { searchRadiusM: 30_000 })).find((c) => c.profileId === profileId);
       expect(reached?.distanceKm).toBeGreaterThanOrEqual(15);
       expect(reached?.distanceKm).toBeLessThanOrEqual(16);
     });
@@ -215,7 +227,7 @@ describe('service areas', () => {
       await areas.createMine(actor, radius(at, 10, 'a'), req());
       await areas.createMine(actor, radius(at, 20, 'b'), req());
       await areas.createMine(actor, { kind: 'POLYGON', label: 'c', boundary: square({ lon: at.lon - 0.3, lat: at.lat - 0.3 }, 0.6) }, req());
-      const mine = (await areas.findCoverage(at)).filter((c) => c.profileId === profileId);
+      const mine = (await coverage(at)).filter((c) => c.profileId === profileId);
       expect(mine).toEqual([{ profileId, distanceKm: 0 }]);
     });
 
@@ -225,7 +237,7 @@ describe('service areas', () => {
       const nearby = await investigator(ownerDb);
       await areas.createMine(inside.actor, radius(at, 10), req());
       await areas.createMine(nearby.actor, radius({ lon: at.lon, lat: at.lat + 0.18 }, 5), req());
-      const ids = (await areas.findCoverage(at, { searchRadiusM: 30_000 }))
+      const ids = (await coverage(at, { searchRadiusM: 30_000 }))
         .map((c) => c.profileId)
         .filter((id) => id === inside.profileId || id === nearby.profileId);
       expect(ids).toEqual([inside.profileId, nearby.profileId]);
@@ -237,7 +249,7 @@ describe('service areas', () => {
       const busy = await investigator(ownerDb, { acceptingWork: false });
       await areas.createMine(draft.actor, radius(at, 10), req());
       await areas.createMine(busy.actor, radius(at, 10), req());
-      const ids = (await areas.findCoverage(at)).map((c) => c.profileId);
+      const ids = (await coverage(at)).map((c) => c.profileId);
       expect(ids).not.toContain(draft.profileId);
       expect(ids).not.toContain(busy.profileId);
     });
@@ -246,7 +258,7 @@ describe('service areas', () => {
       const at = somewhere();
       const { actor } = await investigator(ownerDb);
       await areas.createMine(actor, radius(at, 10), req());
-      for (const result of await areas.findCoverage(at, { searchRadiusM: 50_000 })) {
+      for (const result of await coverage(at, { searchRadiusM: 50_000 })) {
         expect(Object.keys(result).sort()).toEqual(['distanceKm', 'profileId']);
         expect(Number.isInteger(result.distanceKm)).toBe(true);
       }
@@ -258,7 +270,7 @@ describe('service areas', () => {
         const { actor } = await investigator(ownerDb);
         await areas.createMine(actor, radius(at, 10), req());
       }
-      expect(await areas.findCoverage(at, { limit: 2 })).toHaveLength(2);
+      expect(await coverage(at, { limit: 2 })).toHaveLength(2);
     });
 
     it.each([
@@ -271,7 +283,7 @@ describe('service areas', () => {
       ['a fractional limit', { lon: 0, lat: 0 }, { limit: 1.5 }, 'limit'],
       ['a limit over the maximum', { lon: 0, lat: 0 }, { limit: 201 }, 'limit'],
     ] as const)('refuses %s', async (_label, point, options, field) => {
-      await expect(areas.findCoverage(point, options)).rejects.toMatchObject({
+      await expect(coverage(point, options)).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
         details: [expect.objectContaining({ field })],
       });

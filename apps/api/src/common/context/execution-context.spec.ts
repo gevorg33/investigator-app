@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { testContext } from '../../../test/context';
-import { currentContext, freeze, runInContext } from './execution-context';
+import {
+  currentContext,
+  currentUserOnly,
+  freeze,
+  runAsUser,
+  runInContext,
+} from './execution-context';
 
 describe('the execution context', () => {
   const ctx = testContext({ userId: 'u1' }, { permissions: ['teams.read'] });
@@ -39,6 +45,37 @@ describe('the execution context', () => {
     runInContext(ctx, () => {
       runInContext(inner, () => expect(currentContext()?.userId).toBe('u2'));
       expect(currentContext()?.userId).toBe('u1');
+    });
+  });
+
+  describe('before a workspace is chosen', () => {
+    it('carries the user alone, for the reads that pick one', async () => {
+      const seen = await runAsUser('u9', async () => {
+        await new Promise((r) => setTimeout(r, 1));
+        return { user: currentUserOnly(), workspace: currentContext() };
+      });
+      expect(seen).toEqual({ user: 'u9', workspace: undefined });
+      expect(currentUserOnly()).toBeUndefined();
+    });
+
+    it('narrows a request rather than widening it: the workspace is dropped for that call', () => {
+      runInContext(ctx, () => {
+        runAsUser(ctx.userId, () => {
+          expect(currentUserOnly()).toBe(ctx.userId);
+          expect(currentContext()).toBeUndefined();
+        });
+        expect(currentContext()?.tenantId).toBe(ctx.tenantId);
+      });
+    });
+
+    it('is left behind when a workspace context is entered inside it', () => {
+      runAsUser('u9', () => {
+        runInContext(ctx, () => {
+          expect(currentUserOnly()).toBeUndefined();
+          expect(currentContext()?.userId).toBe('u1');
+        });
+        expect(currentUserOnly()).toBe('u9');
+      });
     });
   });
 });

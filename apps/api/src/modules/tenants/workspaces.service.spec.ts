@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
+import { inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService } from '../../common/authz/authz.service';
@@ -24,7 +25,7 @@ describe('workspaces', () => {
   beforeAll(() => {
     app = testPool();
     owner = testPool({ role: 'owner' });
-    db = drizzle(app, { schema });
+    db = scopedDb(app);
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
     resolver = new WorkspaceResolver(db, authz);
@@ -57,7 +58,7 @@ describe('workspaces', () => {
     const stopped = await agency(owner, [{ userId: me.actor.userId }]);
     await owner`UPDATE tenant_memberships SET status = 'REMOVED' WHERE id = ${left.memberships[1]!}`;
     await owner`UPDATE tenants SET status = 'SUSPENDED' WHERE id = ${stopped.tenantId}`;
-    const list = await service.list(me.actor, req());
+    const list = await inWorkspaceOf(owner, me.actor.userId, () => service.list(me.actor, req()));
     expect(list.map((w) => w.id)).toEqual([me.personalId]);
   });
 
@@ -65,7 +66,9 @@ describe('workspaces', () => {
     const me = await member(owner);
     const { tenantId } = await agency(owner, [{ userId: me.actor.userId }]);
     const r = req();
-    await expect(service.activate(me.actor, tenantId, r)).resolves.toEqual({ id: tenantId });
+    await expect(
+      inWorkspaceOf(owner, me.actor.userId, () => service.activate(me.actor, tenantId, r)),
+    ).resolves.toEqual({ id: tenantId });
     const [session] = await db.select().from(userSessions).where(eq(userSessions.id, me.actor.sessionId));
     expect(session?.defaultTenantId).toBe(tenantId);
     const [row] = await db
@@ -78,13 +81,21 @@ describe('workspaces', () => {
   it('refuses to activate a workspace the caller is not in, and changes nothing', async () => {
     const me = await member(owner);
     const other = await member(owner);
-    await expect(service.activate(me.actor, other.personalId, req())).rejects.toMatchObject({ status: 403 });
+    await expect(
+      inWorkspaceOf(owner, me.actor.userId, () =>
+        service.activate(me.actor, other.personalId, req()),
+      ),
+    ).rejects.toMatchObject({ status: 403 });
     const [session] = await db.select().from(userSessions).where(eq(userSessions.id, me.actor.sessionId));
     expect(session?.defaultTenantId).toBeNull();
   });
 
   it('refuses a suspended account', async () => {
     const me = await member(owner);
-    await expect(service.list({ ...me.actor, status: 'SUSPENDED' }, req())).rejects.toMatchObject({ status: 403 });
+    await expect(
+      inWorkspaceOf(owner, me.actor.userId, () =>
+        service.list({ ...me.actor, status: 'SUSPENDED' }, req()),
+      ),
+    ).rejects.toMatchObject({ status: 403 });
   });
 });

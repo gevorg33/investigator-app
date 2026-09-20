@@ -13,6 +13,8 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { testPool } from '../../../test/db';
+import { scopedDb } from '../../../test/workspace-context';
+import { runAsUser } from '../../common/context/execution-context';
 
 
 describe('auth end to end', () => {
@@ -36,7 +38,7 @@ describe('auth end to end', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     const tokens = new TokenService();
     auth = new AuthService(
       db,
@@ -74,10 +76,12 @@ describe('auth end to end', () => {
     await auth.register(e, PASSWORD, ctx);
     const first = await auth.login(e, PASSWORD, ctx);
 
-    const [personal] = await db
-      .select()
-      .from(tenants)
-      .where(eq(tenants.personalOwnerId, first.userId));
+    // Read as the user alone, the way login reads it: before a session names a workspace, that
+    // is all the application may see (T-077).
+    const [personal] = await runAsUser(first.userId, async () => {
+      const rows = await db.select().from(tenants).where(eq(tenants.personalOwnerId, first.userId));
+      return rows;
+    });
     expect(personal).toMatchObject({ kind: 'PERSONAL', status: 'ACTIVE', name: null });
 
     const sessionFor = (token: string) =>

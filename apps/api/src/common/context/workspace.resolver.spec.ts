@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
+import { scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
 import * as schema from '../../database/schema';
 import { auditLogs, userSessions } from '../../database/schema';
@@ -20,7 +21,7 @@ describe('workspace resolution', () => {
   beforeAll(() => {
     app = testPool();
     owner = testPool({ role: 'owner' });
-    db = drizzle(app, { schema });
+    db = scopedDb(app);
     resolver = new WorkspaceResolver(db, new AuthzService(new AuditService(db)));
   });
 

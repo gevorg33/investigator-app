@@ -17,6 +17,7 @@ import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { testPool } from '../../../test/db';
+import { scopedDb } from '../../../test/workspace-context';
 
 
 /** Captures what would have been mailed, so the link can be followed in a test. */
@@ -52,7 +53,7 @@ describe('verification and password reset', () => {
 
   beforeAll(() => {
     sql = testPool();
-    db = drizzle(sql, { schema });
+    db = scopedDb(sql);
     const tokens = new TokenService();
     mailer = new CapturingMailer();
     // The real resolution path, so these exercise the guard's behaviour rather than a

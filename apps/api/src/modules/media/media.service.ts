@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
+import { PlatformContext } from '../../common/context/platform-context';
 import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
@@ -15,7 +16,12 @@ import {
   UPLOAD_AUTHORIZATION_TTL_SECONDS,
   type MediaCategory,
 } from './media.policy';
-import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
+import {
+  OwnMediaRepository,
+  reviewsVerification,
+  ViewableMediaRepository,
+  type MediaAssetRow,
+} from './media.repository';
 import { MEDIA_STORAGE, type MediaStorage, type SignedUpload } from './media.storage';
 
 export interface UploadAuthorization {
@@ -190,7 +196,7 @@ export class MediaService {
   async getDeliveryUrl(actor: Actor, assetId: string, req: RequestContext): Promise<DeliveryUrl> {
     const c = this.ctx('media.deliver', req, assetId);
     await this.authz.requireActive(actor, c);
-    const row = await this.authz.visible(actor, await this.viewable.findOneForActor(actor, assetId), c);
+    const row = await this.authz.visible(actor, await this.findViewable(actor, assetId), c);
     await this.authz.stateAllows(actor, row.uploadStatus === 'READY', c);
     await this.authz.stateAllows(actor, row.scanStatus === 'CLEAN', c);
 
@@ -206,6 +212,21 @@ export class MediaService {
     // Who opened what, and when — never the link itself.
     await this.record(actor, req, 'media.delivered', row.id, row.category);
     return { signedUrl, expiresAt };
+  }
+
+  /**
+   * A verification document belongs to the applicant's workspace, so a reviewer finds it only
+   * across workspaces (T-077). The repository's rules still decide which rows count: platform
+   * access widens where the database looks, never what the reviewer may see.
+   */
+  private async findViewable(actor: Actor, assetId: string): Promise<MediaAssetRow | undefined> {
+    const find = async () => {
+      const row = await this.viewable.findOneForActor(actor, assetId);
+      return row;
+    };
+    return reviewsVerification(actor)
+      ? PlatformContext.asStaff(actor, 'VERIFICATION', 'media.deliver', find)
+      : find();
   }
 
   private async setStatus(id: string, uploadStatus: 'EXPIRED' | 'REJECTED'): Promise<void> {
