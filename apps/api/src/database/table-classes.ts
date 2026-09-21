@@ -44,8 +44,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   user_identities: { class: 'identity' },
   user_tokens: { class: 'identity' },
   user_staff_scopes: { class: 'identity' },
+  user_consents: {
+    class: 'identity',
+    note: 'belongs to a person, not a workspace, and outlives the account (T-021). Its tenant_id records where the consent was given, and is not what scopes the row',
+  },
 
   taxonomy_nodes: { class: 'platform' },
+  legal_documents: {
+    class: 'platform',
+    note: 'published text, the same for everyone; the application reads and never writes (T-021)',
+  },
   permissions: { class: 'platform' },
   roles: {
     class: 'platform',

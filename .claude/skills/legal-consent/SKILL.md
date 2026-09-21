@@ -12,6 +12,21 @@ A boolean `accepted_terms` column answers none of that and is worth nothing in a
 
 ## Data model
 
+> **Built in T-021** (migration 0015). The shape below is what shipped, with three differences
+> worth knowing: the document row holds the **rendered text** as well as its hash, so what
+> someone saw can be produced from one row; `content_hash` is computed **by the database** on
+> write, so a writer cannot choose one that disagrees with the text; and acceptance and
+> withdrawal are one append-only sequence with an `action` column, so "what is true now" is the
+> latest row for a person and a document rather than a reconciliation of two tables. A consent
+> row also records the workspace it was given in (nullable — registration precedes any
+> workspace). The `LegalService` reads the current version and records acceptances;
+> `GET /api/v1/legal/documents/:type` serves the text unauthenticated, because registration
+> cannot complete without it.
+>
+> Publishing is **not** an application capability: the app role holds `SELECT` on
+> `legal_documents` and nothing else. Versions are put in by the compliance owner
+> (ACTIONS-FOR-ME #20).
+
 ```
 legal_documents                    -- immutable once published
   id, type, version, locale
@@ -62,6 +77,10 @@ user_consents                      -- APPEND-ONLY. Never updated, never deleted.
    the optional one is independently withdrawable.
 
 ## The registration gate
+
+> **T-022 builds this**, on the mechanism T-021 shipped: `legal.accept(…, tx)` takes the
+> transaction the account is created in, so an account and its consent rows commit together or
+> not at all — tested by rolling one back and finding no consent row.
 
 Registration cannot complete until the required documents for that role are accepted.
 

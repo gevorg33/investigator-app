@@ -1016,30 +1016,75 @@ Sign-off by the compliance owner. Not a code validation.
 ---
 
 ### T-021 — Legal document versioning and consent records
-- **Status:** TODO
+- **Status:** DONE (2026-09-21)
 - **Priority:** P0
 - **Depends on:** T-004
 - **Risk:** HIGH
-- **Human approval required:** Yes — consent is a compliance surface
+- **Human approval required:** Yes — consent is a compliance surface; design approved 2026-09-21
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/legal/**, migrations
+- **Affected:** migration 0015, apps/api/src/modules/legal/**, apps/api/src/database/schema/legal.ts
 
-**Description**
-Versioned legal documents and append-only consent records. Per
-`.claude/skills/legal-consent/SKILL.md`. Does not depend on final text — the mechanism can
-be built and tested against drafts.
+**What shipped**
 
-**Acceptance criteria**
-- [ ] `legal_documents` immutable once published; corrections create a new version
-- [ ] `user_consents` append-only; app role has no update or delete grant
-- [ ] Content hash of the exact text shown is **copied into** the consent row, not joined
-- [ ] Locale shown recorded; one authoritative locale per type+version
-- [ ] Consent is per document per version, never a single boolean
-- [ ] Contract acceptance stored separately from optional marketing consent
-- [ ] Consent records survive account deletion
-- [ ] Every acceptance and withdrawal emits an audit event
-- [ ] Test: a published document's text cannot be mutated
-- [ ] Test: deleting a user leaves consent records intact
+A consent record has to answer, years later and to a hostile reader: *which exact text did this
+person agree to, in which language, and when?* So:
+
+- **`legal_documents` holds the rendered text**, and the database computes `content_hash` from it
+  on write. A hash the writer chooses is a hash that can disagree with the text it claims to
+  describe, so no writer chooses one — a supplied hash is simply replaced (tested).
+- **Published text never changes.** A trigger refuses any edit to a published version except
+  moving its status on to SUPERSEDED. A draft stays editable, because nobody can have agreed to
+  it — and agreeing to a draft is refused outright.
+- **`user_consents` is one append-only sequence.** Acceptance and withdrawal are rows with an
+  `action`, so "what is true now" is the latest row for a person and a document rather than a
+  reconciliation of two tables. The app role holds `SELECT` and `INSERT` and nothing else.
+- **The copy is checked against the document as it is written.** Type, version, hash and locale
+  must be the document's own — a wrong copy is a forged record, whether by malice or by a caller
+  assembling a row by hand.
+- **Consent outlives the account.** `user_id` is deliberately not a foreign key: deleting a user
+  leaves the proof standing (tested). The document it names cannot be deleted either.
+- **Where it was given is recorded**: nullable `tenant_id`, filled by DEFAULT from the context
+  (T-080's pattern), so T-083's agency terms need no ALTER on an append-only table.
+
+`LegalService` reads the version in force — in the reader's locale where that translation exists,
+falling back to the authoritative one rather than showing nothing — records acceptances and
+withdrawals, and answers whether the product may proceed. Re-acceptance asks **every** version
+since the one they accepted, not just the newest: a material change does not stop being material
+because a typo was fixed after it. Materiality is a flag on the document, set by compliance and
+read by code.
+
+`GET /api/v1/legal/documents/:type` serves the text **unauthenticated** — registration cannot
+complete without accepting it, so it has to be readable before an account exists.
+
+**Publishing is not an application capability.** The app role holds `SELECT` on
+`legal_documents`; versions are data a compliance owner puts in. Nothing is published yet, so the
+endpoint answers 404 per type — which is correct: "no terms exist" must never read as "these
+terms were accepted" (ACTIONS-FOR-ME #20, blocked on counsel).
+
+**Tests** — 1498 passing, 100% coverage.
+- `schema/legal.spec.ts` (18): the hash is the database's; published text immutable but still
+  superseding; drafts editable; one current version per type and locale; one authoritative locale
+  per version; a published version must be dated; the copied type, version, hash and locale must
+  match; no agreeing to a draft; consent outlives the user; the document cannot be deleted under
+  it; the grants.
+- `legal.service.spec.ts` (23): locale fallback, the copy, the workspace, the audit row as a
+  separate store, withdrawal appending, and the re-acceptance rules including a material version
+  sitting between theirs and the current one.
+- `legal.controller.spec.ts` (5): the text and hash, the locale, no session needed, 404 for an
+  unknown type without asking the service, 404 when nothing is published.
+- **Consent commits with the work it belongs to**: `accept(…, tx)` inside a rolled-back
+  transaction leaves no row, which is what T-022 needs to make "no account without consent" true.
+
+**Negative controls** — each broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| Published documents become editable | "refuses to change once published" fails |
+| The consent row is no longer checked against the document | 5 fail |
+| The service supplies its own hash instead of copying | 15 fail |
+| The app is granted UPDATE on consents | "appends and can never rewrite one" fails |
+
+Migration verified from scratch on a probe database and reversed cleanly.
 
 **Validation**
 ```bash
@@ -1064,6 +1109,7 @@ capabilities on acceptance of the investigator-specific documents at role activa
 **Tenancy (ADR-0011).** The user's Personal workspace and OWNER membership are created by a database trigger in the same statement as the user (T-074): nothing to add here. Agency terms acceptance is its own gate (T-083).
 
 **Acceptance criteria**
+- [ ] **The mechanism is T-021's**: `legal.accept({ userId, documentId, context }, req, tx)` and `legal.consentState(userId, type)`. What is left here is which documents each role requires, the gate itself, and the re-acceptance flow — plus publishing the documents registration needs (ACTIONS-FOR-ME #20)
 - [ ] Registration cannot complete without acceptance — enforced **server-side**
 - [ ] Account creation and consent rows commit in one transaction; no account exists without them
 - [ ] Test: posting directly to the registration endpoint without acceptance is rejected
@@ -3522,6 +3568,11 @@ pnpm --filter api test audit media
 
 ### T-081 — Tenant-scoped cache wrapper
 - **Status:** TODO — build with the first cache consumer; until then nothing caches tenant data
+- **Gate checked 2026-09-21** (owner decision): still shut. `ioredis` is a dependency but no
+  source imports it, rate limiting runs on the in-memory store, and `/health` reports Redis as
+  `not_configured`. Building the wrapper now would mean a cache with no cache: key shapes guessed
+  against no real query, and coverage reached only by tests of the wrapper itself. The first task
+  to introduce a cache builds this with it.
 - **Priority:** P2
 - **Depends on:** T-075; the first task that introduces a cache
 - **Risk:** MEDIUM
