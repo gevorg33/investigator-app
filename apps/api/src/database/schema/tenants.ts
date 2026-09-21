@@ -35,6 +35,14 @@ export const tenantStatus = pgEnum('tenant_status', [
 /** "Accepted" is the moment an invitation becomes a membership, not a state (tenancy.md §2). */
 export const membershipStatus = pgEnum('membership_status', ['ACTIVE', 'SUSPENDED', 'REMOVED']);
 
+/**
+ * The system role a workspace's owner holds. Named here, in the catalog, and nowhere else: a
+ * service that wrote the string itself would be a second place deciding what a role means
+ * (T-078, `role-names.spec.ts`). Assigning it when a workspace is created is a write, not a
+ * decision — and the policies allow no other role to be assigned that way (T-083).
+ */
+export const OWNER_ROLE_KEY = 'OWNER';
+
 export const tenants = pgTable(
   'tenants',
   {
@@ -49,6 +57,18 @@ export const tenants = pgTable(
      * Anything the workspace holds restricts that delete, as it should.
      */
     personalOwnerId: uuid('personal_owner_id').references(() => users.id, { onDelete: 'cascade' }),
+    /**
+     * Who brought an agency into being (T-083). Not an ownership record — that is the OWNER role
+     * on a membership — but the only thing that tells "an agency I am setting up" from somebody
+     * else's in the moment before it has any members, which is what its insert policy needs.
+     * No foreign key: the workspace outlives the account that created it.
+     */
+    createdBy: uuid('created_by'),
+    /** The minimum an agency needs to be usable. Null for a Personal workspace, always. */
+    countryCode: text('country_code'),
+    businessEmail: text('business_email'),
+    timezone: text('timezone'),
+    currency: text('currency'),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -60,6 +80,7 @@ export const tenants = pgTable(
     // kind without a join — which is what lets a partial index refuse a second Personal member.
     unique('tenants_id_kind_unique').on(t.id, t.kind),
     index('tenants_status_idx').on(t.kind, t.status),
+    index('tenants_created_by_idx').on(t.createdBy).where(sql`created_by IS NOT NULL`),
   ],
 );
 

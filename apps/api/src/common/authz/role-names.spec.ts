@@ -31,6 +31,9 @@ const MAY_NAME_A_ROLE = ['database/schema/tenants.ts'];
 const MAY_READ_ROLE_TABLES = [
   'common/context/workspace.resolver.ts',
   'modules/tenants/workspaces.service.ts',
+  // Creating a workspace assigns its owner's role. That is a write of the catalog's own role —
+  // constrained by the policy to that one role — not a decision made from a name (T-083).
+  'modules/tenants/agencies.service.ts',
   'database/schema/index.ts',
   'database/schema/tenants.ts',
   'database/table-classes.ts',

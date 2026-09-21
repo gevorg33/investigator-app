@@ -14,7 +14,7 @@ import { scopedClient } from '../../src/database/scoped-client';
 import { TABLE_CLASSES } from '../../src/database/table-classes';
 import { testPool } from '../db';
 import { personalContext } from '../workspace-context';
-import { member } from '../workspace-fixtures';
+import { agency, member } from '../workspace-fixtures';
 import { seedGraph, type SeededGraph } from './graph';
 
 /**
@@ -323,6 +323,67 @@ describe('the isolation matrix', () => {
         return (rows[0] as unknown as { n: number }).n;
       });
       expect(theirs).toBe(0);
+    });
+
+    it('lets a user create an agency for themselves, and never for anybody else', async () => {
+      // T-083 opened exactly one more door in the tenancy policies: an agency whose `created_by`
+      // is the caller, while it is being set up — with its owner membership and OWNER role, which
+      // is the whole path the service takes. Everything either side of that stays shut.
+      const mine = await runInContext(outsider, () =>
+        scoped.begin(async (tx) => {
+          const [created] = await tx<{ id: string }[]>`
+            INSERT INTO tenants (kind, status, name, created_by)
+            VALUES ('AGENCY', 'CREATING', 'Mine', ${outsider.userId}) RETURNING id`;
+          const [membership] = await tx<{ id: string }[]>`
+            INSERT INTO tenant_memberships (tenant_id, tenant_kind, user_id, status)
+            VALUES (${created!.id}, 'AGENCY', ${outsider.userId}, 'ACTIVE') RETURNING id`;
+          await tx`
+            INSERT INTO membership_roles (membership_id, role_id)
+            SELECT ${membership!.id}, id FROM roles WHERE key = 'OWNER' AND tenant_id IS NULL`;
+          return created!.id;
+        }),
+      );
+      const [landed] = await owner<{ created_by: string }[]>`
+        SELECT created_by FROM tenants WHERE id = ${mine as string}`;
+      expect(landed!.created_by).toBe(outsider.userId);
+
+      await expect(
+        runInContext(outsider, () =>
+          scoped.begin(
+            (tx) => tx`
+              INSERT INTO tenants (kind, status, name, created_by)
+              VALUES ('AGENCY', 'CREATING', 'Theirs', ${graph.supplier.userId})`,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+
+      // Nor may it arrive already ACTIVE, skipping the window in which it is being set up.
+      await expect(
+        runInContext(outsider, () =>
+          scoped.begin(
+            (tx) => tx`
+              INSERT INTO tenants (kind, status, name, country_code, business_email, timezone,
+                                   currency, created_by)
+              VALUES ('AGENCY', 'ACTIVE', 'Born active', 'AM', 'a@b.test', 'UTC', 'AMD',
+                      ${outsider.userId})`,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
+    });
+
+    it('lets nobody join an agency they did not create', async () => {
+      // Joining an existing agency is an invitation (T-085) — somebody else's decision, not the
+      // joiner's. The membership policy is what makes that true rather than a convention.
+      const { tenantId } = await agency(owner, [{ userId: graph.supplier.userId }]);
+      await expect(
+        runInContext(outsider, () =>
+          scoped.begin(
+            (tx) => tx`
+              INSERT INTO tenant_memberships (tenant_id, tenant_kind, user_id, status)
+              VALUES (${tenantId}, 'AGENCY', ${outsider.userId}, 'ACTIVE')`,
+          ),
+        ),
+      ).rejects.toThrow(/row-level security/);
     });
 
     it('lets a user create their own Personal workspace by registering, and nothing more', async () => {

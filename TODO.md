@@ -3631,31 +3631,81 @@ pnpm --filter api test jobs outbox
 ---
 
 ### T-083 — Agency registration and progressive onboarding (API)
-- **Status:** TODO
+- **Status:** DONE (2026-09-21)
 - **Priority:** P1
 - **Depends on:** T-078, T-021
 - **Risk:** MEDIUM
-- **Human approval required:** Yes — a new acceptance gate (agency terms, `legal-consent`)
+- **Human approval required:** Yes — a new acceptance gate; design approved 2026-09-21
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/tenants/**, docs/knowledge-base/agency/**, scripts/validate-knowledge-base.py
+- **Affected:** migration 0016, apps/api/src/modules/tenants/**, docs/knowledge-base/agency/**, scripts/validate-knowledge-base.py
 
-**Description**
-`POST /agencies` creates an `AGENCY` workspace in `CREATING` and makes the creator its OWNER,
-in one transaction. It is idempotent.
+**What shipped**
 
-The minimum to become ACTIVE is name, country, business email, time zone and currency. Time
-zone and currency default from the creator. Everything else in plan.md §29 can be completed
-later: legal name, type, size, languages, areas, services, specialties, credentials,
-experience, hours and branding.
+`POST /api/v1/agencies` creates the workspace, its owner membership, the OWNER role and the
+owner's acceptance of the agency terms — in one transaction, idempotent by `Idempotency-Key`.
+An agency that accepted nothing must never exist, and neither must one nobody can administer.
 
-Agency terms are accepted per version (`legal-consent`). The text itself waits on counsel;
-the gate does not.
+- **Onboarding is progressive.** The workspace is real from the first step (`CREATING`) and turns
+  `ACTIVE` when name, country, business email, time zone and currency are all present. The
+  response says what is still missing. Time zone defaults from the creator's account; there is no
+  currency to inherit, so an agency that names none is simply not complete yet rather than being
+  given a guess.
+- **The client decides none of it.** Status, verification and kind have no field on the DTO, and
+  the pipe refuses a body that names one instead of stripping it — a hostile client is told no,
+  not ignored.
+- **Any active account, from any workspace.** An agency owner need not be an investigator, and
+  the new agency belongs to the person rather than to the workspace their tab was showing.
 
-**Acceptance criteria**
-- [ ] Status, verification and tenant kind can never be set by the client
-- [ ] ACTIVE only when the minimum is complete; everything else optional and editable later
-- [ ] The creator is the OWNER; the agency appears in their workspace list at once
-- [ ] Knowledge base: an `agency` audience and folder added to `scripts/validate-knowledge-base.py` (visibility `authenticated`); first article `kb-agency-getting-started`. Agency owners are not necessarily investigators, so the investigator folder is the wrong home
+**The policies gained one more door** (approved 2026-09-21). Until now the tenancy rules allowed
+exactly one thing to be created: your own Personal workspace. `tenants.created_by` makes the
+second expressible — an agency whose creator is the caller, while it is `CREATING`, plus that
+person's membership in it and the OWNER role on that membership. Refused by the database:
+an agency created **for somebody else**, one that arrives **already ACTIVE**, and **joining an
+agency you did not create** — joining is an invitation (T-085), which is somebody else's
+decision. Creating an agency stays a user action; it never needed platform access.
+
+**What the work turned up**
+- **`runAsUser` was the wrong instinct.** Creating an agency "as the person, not the workspace"
+  left the idempotency key with no workspace to belong to, and its policy refused it. The request
+  now stays in whatever workspace it arrived in; what keeps it safe is `created_by`, not the
+  absence of a context.
+- **Existing ACTIVE agencies failed the new completeness rule.** They are development leftovers
+  with no country or currency, so the migration moves them back to `CREATING` — which is what
+  they are — rather than inventing values. In production it matches nothing: this is the task
+  that creates agencies.
+- **A negative control found an untested rule.** Dropping `tenants_active_agency_is_complete`
+  broke nothing, because only the service's own logic was covered. `tenants.spec.ts` now proves
+  the database refuses an incomplete ACTIVE agency whatever wrote it — which is the point of
+  having the constraint at all.
+- **T-078's static rule caught this task's own code.** Assigning the OWNER role named a tenant
+  role in a service. The key now lives once, in the catalog (`OWNER_ROLE_KEY`), and the service
+  assigns it without naming it — the rule is about deciding from a role name, and assigning the
+  catalog's own role is a write the policy already constrains.
+
+**Tests** — 1523 passing, 100% coverage.
+- `agencies.service.spec.ts` (22): what it creates, the owner and their role, the workspace list,
+  the consent row, the audit entry, the defaults, the terms gate (nothing published → refused,
+  wrong version → refused, and nothing written either way), and retrying returning the first.
+- `agencies.controller.spec.ts` (10): the Idempotency-Key requirement, and a body naming status,
+  kind or verification refused outright.
+- `tenants.spec.ts`: the completeness and ISO-code rules at the database.
+- `isolation-matrix.spec.ts`: the full creation path allowed for oneself, and the three refusals.
+- Knowledge base: an `agency` audience and folder in the validator, and
+  `kb-agency-getting-started` — 34 documents, 0 errors, 0 warnings.
+
+**Negative controls** — each broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| Anyone may create an agency for anyone | 2 matrix cases fail |
+| Anyone may add themselves to any agency | "lets nobody join an agency they did not create" fails |
+| An incomplete agency may go ACTIVE | 5 fail — after the gap above was closed |
+| The terms step is skipped | "records the terms the creator accepted" fails |
+
+Migration verified from scratch on a probe database and reversed cleanly.
+
+**Still to come:** the agency terms themselves (ACTIONS-FOR-ME #20) — until a version is
+published, creating an agency is refused, which is the gate doing its job.
 
 **Validation**
 ```bash

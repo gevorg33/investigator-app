@@ -10,7 +10,7 @@ KB = pathlib.Path("docs/knowledge-base")
 REQUIRED = ["id", "title", "audience", "visibility", "locale", "version",
             "status", "updated", "source_of_truth"]
 ENUMS = {
-    "audience":        {"customer", "investigator", "staff", "public"},
+    "audience":        {"customer", "investigator", "agency", "staff", "public"},
     "visibility":      {"public", "authenticated", "participant", "staff"},
     "locale":          {"en", "ru", "hy"},
     "status":          {"current", "superseded", "draft"},
@@ -21,6 +21,8 @@ ENUMS = {
 FOLDER_VIS = {
     "customer":     {"authenticated", "participant"},
     "investigator": {"authenticated", "participant"},
+    # An agency owner need not be an investigator, so their articles are their own (T-083).
+    "agency":       {"authenticated", "participant"},
     "staff":        {"staff"},
     "policies":     {"public"},
 }

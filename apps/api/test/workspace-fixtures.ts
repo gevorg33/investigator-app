@@ -33,8 +33,14 @@ export async function agency(
   members: Array<{ userId: string; role?: string }>,
 ): Promise<{ tenantId: string; memberships: string[] }> {
   return owner.begin(async (tx) => {
+    // The minimum an agency needs to be ACTIVE (T-083): the database refuses a half-filled one,
+    // so a fixture that skipped these would be creating something the product cannot.
     const [t] = await tx<{ id: string }[]>`
-      INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'ACTIVE', ${`Agency ${randomUUID().slice(0, 6)}`})
+      INSERT INTO tenants (kind, status, name, country_code, business_email, timezone, currency,
+                           created_by)
+      VALUES ('AGENCY', 'ACTIVE', ${`Agency ${randomUUID().slice(0, 6)}`}, 'AM',
+              ${`agency-${randomUUID()}@example.test`}, 'Asia/Yerevan', 'AMD',
+              ${members[0]?.userId ?? null})
       RETURNING id`;
     const memberships: string[] = [];
     for (const [i, m] of members.entries()) {

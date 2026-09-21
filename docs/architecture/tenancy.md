@@ -71,6 +71,18 @@ User ─────────────< Membership >───────�
 - **Tenant** — a workspace. `PERSONAL` is created with the user, can never have other members,
   and is where individual customers and independent investigators work. `AGENCY` is registered
   deliberately and has employees. A customer-organisation kind is reserved, not built.
+
+  > **Built in T-083** (migration 0016): `POST /api/v1/agencies` creates an agency, its owner
+  > membership and the owner's acceptance of the agency terms in one transaction, idempotent by
+  > `Idempotency-Key`. Onboarding is progressive — the workspace exists as `CREATING` and turns
+  > `ACTIVE` when name, country, business email, time zone and currency are all present; the
+  > response says what is still missing, and `tenants_active_agency_is_complete` means nothing
+  > else can activate a half-filled one. Time zone defaults from the creator's account; there is
+  > no currency to inherit, so an agency that names none is simply not complete yet. Status,
+  > verification and kind have no field on the DTO, and the pipe refuses a body that names one.
+  > **Any active account may create one, from any workspace** — an agency owner need not be an
+  > investigator, and the new agency belongs to the person rather than to the workspace their tab
+  > was showing.
 - **Membership** — the user's employment in a workspace. Holds status, tenant roles, job title,
   department, team memberships, locale and time zone overrides. Identity fields (name, email,
   avatar) are **not duplicated**; they are read from the user.
@@ -418,6 +430,13 @@ Three things do not have a workspace of their own, and each has exactly one way 
   user sees their own memberships, the workspaces those memberships are in, and their own role
   assignments. Nothing else. Login opens a session in the Personal workspace the same way. A
   static spec lists every caller (`tenant-plumbing.spec.ts`).
+- **Creating an agency.** The second — and, so far, last — thing a person may create for
+  themselves (**T-083**). `tenants.created_by` is what makes it expressible: an agency whose
+  `created_by` is the caller, while its status is `CREATING`, may be inserted, and so may that
+  person's own membership in it and the OWNER role on that membership. An agency created for
+  somebody else, one that arrives already ACTIVE, and joining an agency you did not create are
+  all refused by the database — joining is an invitation (T-085), which is somebody else's
+  decision.
 - **Registration.** The trigger that creates a Personal workspace runs during the insert of the
   user, before any context exists. It sets `app.user_id` to the person it is creating for its own
   three inserts and restores what was there; the policies allow exactly a Personal workspace for
