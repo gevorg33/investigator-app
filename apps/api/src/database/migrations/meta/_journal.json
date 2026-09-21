@@ -113,6 +113,13 @@
       "when": 1789988735746,
       "tag": "0015_add_legal_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789991010424,
+      "tag": "0016_add_agency_registration",
+      "breakpoints": true
     }
   ]
 }

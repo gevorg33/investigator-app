@@ -51,7 +51,9 @@ describe('tenant and party columns', () => {
   /** An agency owned by `userId`, for a workspace that is not anyone's Personal one. */
   const agency = async (tx: postgres.TransactionSql, userId: string) => {
     const [t] = await tx<{ id: string }[]>`
-      INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'ACTIVE', 'Probe') RETURNING id`;
+      INSERT INTO tenants (kind, status, name, country_code, business_email, timezone, currency)
+      VALUES ('AGENCY', 'ACTIVE', 'Probe', 'AM', 'probe@example.test', 'Asia/Yerevan', 'AMD')
+      RETURNING id`;
     const [m] = await tx<{ id: string }[]>`
       INSERT INTO tenant_memberships (tenant_id, tenant_kind, user_id)
       VALUES (${t!.id}, 'AGENCY', ${userId}) RETURNING id`;

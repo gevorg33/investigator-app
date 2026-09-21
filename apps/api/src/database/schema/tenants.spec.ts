@@ -68,7 +68,9 @@ describe('workspaces and memberships', () => {
   const agency = async (members: string[]) => {
     return owner.begin(async (tx) => {
       const [t] = await tx<{ id: string }[]>`
-        INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'ACTIVE', 'Probe Agency') RETURNING id`;
+        INSERT INTO tenants (kind, status, name, country_code, business_email, timezone, currency)
+        VALUES ('AGENCY', 'ACTIVE', 'Probe Agency', 'AM', 'probe@example.test', 'Asia/Yerevan', 'AMD')
+        RETURNING id`;
       const ids: string[] = [];
       for (const userId of members) {
         const [m] = await tx<{ id: string }[]>`
@@ -152,11 +154,67 @@ describe('workspaces and memberships', () => {
     });
   });
 
+  describe('an agency is usable only when it is complete', () => {
+    // The service decides when to activate; this is what stops anything else — a fixture, a
+    // migration, a later endpoint — from activating a workspace nobody can be billed at or
+    // written to (T-083).
+    it.each([
+      ['country', 'country_code'],
+      ['business email', 'business_email'],
+      ['time zone', 'timezone'],
+      ['currency', 'currency'],
+    ])('refuses an ACTIVE agency with no %s', async (_label, column) => {
+      const columns = ['country_code', 'business_email', 'timezone', 'currency'];
+      const values: Record<string, string> = {
+        country_code: 'AM',
+        business_email: 'agency@example.test',
+        timezone: 'Asia/Yerevan',
+        currency: 'AMD',
+      };
+      const present = columns.filter((c) => c !== column);
+      await expect(
+        probe((tx) =>
+          tx.unsafe(
+            `INSERT INTO tenants (kind, status, name, ${present.join(', ')})
+             VALUES ('AGENCY', 'ACTIVE', 'Incomplete', ${present.map((c) => `'${values[c]!}'`).join(', ')})`,
+          ),
+        ),
+      ).rejects.toThrow(/tenants_active_agency_is_complete/);
+    });
+
+    it('refuses activating one that is still missing something', async () => {
+      await expect(
+        probe(async (tx) => {
+          const [row] = await tx<{ id: string }[]>`
+            INSERT INTO tenants (kind, status, name, country_code)
+            VALUES ('AGENCY', 'CREATING', 'Half done', 'AM') RETURNING id`;
+          await tx`UPDATE tenants SET status = 'ACTIVE' WHERE id = ${row!.id}`;
+        }),
+      ).rejects.toThrow(/tenants_active_agency_is_complete/);
+    });
+
+    it.each([
+      ['a country that is not a code', "country_code = 'Armenia'"],
+      ['a currency that is not a code', "currency = 'dram'"],
+    ])('refuses %s', async (_label, assignment) => {
+      await expect(
+        probe((tx) =>
+          tx.unsafe(
+            `INSERT INTO tenants (kind, status, name, ${assignment.split(' = ')[0]})
+             VALUES ('AGENCY', 'CREATING', 'Bad code', ${assignment.split(' = ')[1]})`,
+          ),
+        ),
+      ).rejects.toThrow(/tenants_(country|currency)_is_iso/);
+    });
+  });
+
   describe('every workspace has an active owner', () => {
     it('refuses to commit an agency created without one', async () => {
       await expect(
         owner.begin(async (tx) => {
-          await tx`INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'ACTIVE', 'Ownerless')`;
+          await tx`
+            INSERT INTO tenants (kind, status, name, country_code, business_email, timezone, currency)
+            VALUES ('AGENCY', 'ACTIVE', 'Ownerless', 'AM', 'ownerless@example.test', 'Asia/Yerevan', 'AMD')`;
         }),
       ).rejects.toThrow(/tenant_has_active_owner/);
     });
@@ -279,12 +337,12 @@ describe('workspaces and memberships', () => {
       ],
       [
         'an agency with no name',
-        `INSERT INTO tenants (kind, status) VALUES ('AGENCY', 'ACTIVE')`,
+        `INSERT INTO tenants (kind, status) VALUES ('AGENCY', 'CREATING')`,
         'tenants_name_by_kind',
       ],
       [
         'an agency with a blank name',
-        `INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'ACTIVE', '   ')`,
+        `INSERT INTO tenants (kind, status, name) VALUES ('AGENCY', 'CREATING', '   ')`,
         'tenants_name_by_kind',
       ],
       [
@@ -294,7 +352,7 @@ describe('workspaces and memberships', () => {
       ],
       [
         'an agency with a Personal owner',
-        `INSERT INTO tenants (kind, status, name, personal_owner_id) VALUES ('AGENCY', 'ACTIVE', 'x', $1)`,
+        `INSERT INTO tenants (kind, status, name, personal_owner_id) VALUES ('AGENCY', 'CREATING', 'x', $1)`,
         'tenants_personal_has_owner',
       ],
     ])('refuses %s', async (_label, statement, constraint) => {
