@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
 import { AuthzService } from '../../common/authz/authz.service';
@@ -16,10 +16,9 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { testPool } from '../../../test/db';
-import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
+
 import { scopedDb } from '../../../test/workspace-context';
 import { runAsUser } from '../../common/context/execution-context';
-
 
 describe('auth end to end', () => {
   let sql: postgres.Sql;
@@ -72,15 +71,6 @@ describe('auth end to end', () => {
   afterAll(async () => {
     await sql.end();
     await ownerSql.end();
-  });
-
-  // Published documents are shared between suites (T-022): this one only has to get past the gate.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'shared');
-  });
-
-  afterEach(async () => {
-    await unlockDocuments(ownerSql, 'shared');
   });
 
   it('registers and then logs in', async () => {
@@ -309,7 +299,10 @@ describe('auth end to end', () => {
     // Rotation writes a second session row, so it has to tolerate the bare context too.
     const rotated = await auth.refresh(s.refreshToken, bare);
     const next = await db.query.userSessions.findFirst({
-      where: eq(userSessions.refreshTokenHash, new TokenService().fingerprint(rotated.refreshToken)),
+      where: eq(
+        userSessions.refreshTokenHash,
+        new TokenService().fingerprint(rotated.refreshToken),
+      ),
     });
     expect(next?.ipAddress).toBeNull();
     expect(next?.userAgent).toBeNull();

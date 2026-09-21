@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/postgres-js';
 import type { Actor } from '../src/common/authz/contract';
 import * as schema from '../src/database/schema';
-import { testActor } from './authz-cases';
+import { testActor } from './actor';
 import { category, completeDraft } from './mission-fixtures';
 import { discoverable, type Discoverable } from './search-fixtures';
 

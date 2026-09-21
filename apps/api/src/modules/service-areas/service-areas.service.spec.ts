@@ -7,7 +7,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import * as schema from '../../database/schema';
 import { auditLogs, serviceAreas } from '../../database/schema';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { investigator, somewhere, square, type TestDb } from '../../../test/service-area-fixtures';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { MAX_AREAS_PER_PROFILE } from './service-areas.policy';

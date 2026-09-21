@@ -308,6 +308,9 @@ importers:
       supertest:
         specifier: 7.2.2
         version: 7.2.2(supports-color@7.2.0)
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@24.9.2)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(vite@8.3.0(@types/node@24.9.2)(esbuild@0.28.2)(tsx@4.23.13))
@@ -374,6 +377,13 @@ importers:
       '@investigator/types':
         specifier: workspace:*
         version: link:../types
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 4.1.11
+        version: 4.1.11(vitest@4.1.11)
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@24.9.2)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(vite@8.3.0(@types/node@24.9.2)(esbuild@0.28.2)(tsx@4.23.13))
 
   packages/config: {}
 

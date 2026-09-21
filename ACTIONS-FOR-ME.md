@@ -332,7 +332,13 @@ has all four, because ADR-0009's controls need the distinction.
 
 ### 14. Probe databases to drop
 
-Created while verifying migrations apply to an empty database. Safe to delete whenever:
+Created while verifying migrations apply to an empty database. Safe to delete whenever.
+
+**No more will appear.** T-042 gives each test worker a database of its own, cloned from a
+migrated template, so "does this apply to an empty database?" is answered by the harness on
+every run rather than by hand. The harness's own databases — `investigator_dev_tmpl` and
+`investigator_dev_w1` … `_w4` — are not in this list: they are rebuilt as needed, they hold
+nothing but test data, and dropping them only makes the next run slower.
 
 ```
 migrate_probe · migrate_probe2 · migrate_probe3 · ci_probe · ci_probe_t8_1789346201

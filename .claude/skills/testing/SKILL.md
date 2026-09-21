@@ -50,7 +50,9 @@ sensitive-data leakage in responses and logs.
 3. **Never weaken a test to make it pass.** Do not relax an assertion, widen a type, add a
    skip, or increase a timeout to hide a race. Fix the code or escalate.
 4. **Deterministic.** No real clock, no real network, no random without a seed, no
-   inter-test order dependency. Freeze time; expiry logic needs it.
+   inter-test order dependency. Freeze time; expiry logic needs it. `random()` in seed data
+   counts: two query-plan suites seeded random coordinates, and the planner's choice — which
+   was the assertion — changed with them.
 5. **Name the behaviour, not the function.** `rejects quote acceptance after expiry`, not
    `test acceptQuote 3`.
 6. **Concurrency where it matters.** Quote acceptance, assignment creation, payment
@@ -130,10 +132,69 @@ const assignment = await assignmentFactory({ status: 'IN_PROGRESS' });
 
 - **No shared mutable state between tests.** Each test creates what it needs.
 - **No inter-test ordering dependency.** A suite must pass when run alone, in reverse, and in
-  parallel.
+  parallel — see *Isolation* below for how that is made true and how to check it.
 - **Clean environment every run.** The database is provisioned and migrated from empty in CI
   (`ci-cd`); tests must not assume seeded data they did not create.
 - **Never real personal data** in a fixture, including data that merely looks anonymised.
+  Addresses use a domain RFC 2606 reserves — anything ending `.test`, or `example.com` — and
+  phone numbers are `555-01xx`. `test/fixtures.spec.ts` enforces both across the whole suite.
+
+Every table that holds a workspace's own data has a factory, or a written reason why the thing
+that owns it is what writes it. `test/fixtures.spec.ts` reads the classification registry
+(`table-classes.ts`) and fails when a new domain table has neither, so the next person who
+needs one does not write their own INSERT and let the constraints drift apart.
+
+### Isolation — one database per worker (T-042)
+
+Each worker owns a database of its own, cloned from a migrated template, and every spec file
+starts from it emptied and re-seeded with whatever the migrations put there. **The file is the
+unit of isolation**: what a file sets up in `beforeAll` survives its own tests, and no file can
+reach another's rows.
+
+- `test/global-setup.ts` provisions the template and the worker databases before any worker
+  starts. They are kept between runs; building them is slow, emptying them is fast.
+- `test/setup-database.ts` points `DATABASE_URL` at this worker's copy — before the spec file
+  and everything it imports is loaded, because a spec that boots the application reads that
+  variable exactly as the application does — and empties it.
+- Nothing in a spec needs to know any of this. `testPool()` lands in the right place.
+
+What this bought, and the shape of what it replaces: T-022 needed a PostgreSQL advisory lock so
+that one suite publishing legal documents did not decide another suite's registration, and
+T-077, T-080 and T-083 each created a throwaway probe database. If you find yourself reaching
+for either, the state you are protecting is global and the isolation is already there.
+
+**Check the three orders before claiming them:**
+
+```bash
+pnpm --filter api test                                    # in parallel
+VITEST_SEQUENCE=reverse pnpm --filter api test            # in reverse
+pnpm --filter api test --sequence.shuffle --sequence.seed=7   # and any order at all
+```
+
+Running a file alone is one `vitest run <file>`. A dependency that only appears under load is
+still a dependency: two of them were found this way, and both were tests passing for reasons
+that had nothing to do with what they asserted.
+
+### Time
+
+Expiry logic takes the moment as a parameter with a default — `isExpired(expiresAt, now = new
+Date())`, `isUsable(session, now = new Date())` — and its tests pass the moment they mean. That
+is clearer than a global clock and it survives concurrency, so it is the first choice, and in
+`*.policy.ts` it is a rule that `test/time.spec.ts` enforces.
+
+For code that reads the clock in the middle of doing something else and has no seam to pass a
+date through, `atTime` freezes it:
+
+```ts
+await atTime('2026-03-01T12:00:00Z', async (clock) => {
+  for (let i = 0; i < LIMITS.loginPerAccount.max; i++) await svc.consume('loginPerAccount', 'a');
+  clock.advance((LIMITS.loginPerAccount.windowSeconds + 1) * 1000);
+  await expect(svc.consume('loginPerAccount', 'a')).resolves.toBeUndefined();
+});
+```
+
+It fakes `Date` and nothing else. Faking timers would stop `setTimeout`, and with it the
+connection pool and every HTTP client in the suite — tests would hang rather than fail.
 
 ### Databases, HTTP and timing (T-069)
 
@@ -184,3 +245,4 @@ without reading, which trains people to ignore failures).
 - [ ] Coverage at threshold, per package, with no undeclared exclusion
 - [ ] Every test asserts on an outcome; none pass against a broken implementation
 - [ ] Bug fixes carry a regression test that was seen to fail first
+- [ ] The suite passes alone, in reverse and in parallel — run, not assumed

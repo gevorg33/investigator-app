@@ -5,7 +5,7 @@ import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeApp, listenOnce } from '../../../test/http';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { workspaceResolverStub } from '../../../test/context';
 import { ActorService } from '../../common/authz/actor.service';
 import { LegalController } from './legal.controller';

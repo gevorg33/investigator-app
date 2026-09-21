@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActorService } from '../../common/authz/actor.service';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
 import { closeApp, listenOnce } from '../../../test/http';

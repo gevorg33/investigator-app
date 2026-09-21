@@ -1,6 +1,21 @@
 import MagicString from 'magic-string';
 import { defineConfig } from 'vitest/config';
+import { BaseSequencer } from 'vitest/node';
 import { MAX_WORKERS } from './test/db-budget';
+
+/**
+ * `VITEST_SEQUENCE=reverse pnpm test` — the whole suite, back to front (T-042).
+ *
+ * One of the three orders a spec file has to survive, the others being alone and in parallel.
+ * Vitest's own sorting is by file size, which is stable, so without this the only order anyone
+ * ever runs is the same one; `--sequence.shuffle` covers the general case and this covers the
+ * specific one that is easy to reason about and easy to reproduce.
+ */
+class ReverseSequencer extends BaseSequencer {
+  async sort(files: Parameters<BaseSequencer['sort']>[0]) {
+    return (await super.sort(files)).reverse();
+  }
+}
 
 /**
  * The one registered coverage exclusion — docs/operations/coverage-exclusions.md, approved
@@ -73,8 +88,12 @@ export default defineConfig({
     // their own specs live alongside them. coverage.include stays src-only, so nothing
     // under test/ is counted as source.
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
-    // Keep-alive off for test HTTP clients — see the file (T-069).
-    setupFiles: ['./test/setup-http.ts'],
+    // One database per worker, provisioned before any worker starts (T-042).
+    globalSetup: ['./test/global-setup.ts'],
+    // Order matters: `setup-database.ts` points DATABASE_URL at this worker's own database,
+    // and everything loaded afterwards — including `test/db.ts` and any application module a
+    // spec boots — reads it from there.
+    setupFiles: ['./test/setup-database.ts', './test/setup-http.ts'],
     globals: false,
     // Vitest's default is 5s, which is not a statement about behaviour — it is a cap that a
     // database-backed test can exceed purely because 60-odd spec files are running against one
@@ -90,6 +109,9 @@ export default defineConfig({
     // laptop. MAX_WORKERS × PER_FILE_BUDGET must fit in PostgreSQL's max_connections, which
     // `test/connection-budget.spec.ts` checks against the live server.
     maxWorkers: MAX_WORKERS,
+    ...(process.env['VITEST_SEQUENCE'] === 'reverse'
+      ? { sequence: { sequencer: ReverseSequencer } }
+      : {}),
     coverage: {
       provider: 'v8',
       // `all` is what makes the gate honest: without it a source file with no spec is

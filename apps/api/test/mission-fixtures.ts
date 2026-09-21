@@ -3,7 +3,7 @@ import type { drizzle } from 'drizzle-orm/postgres-js';
 import type { Actor } from '../src/common/authz/contract';
 import * as schema from '../src/database/schema';
 import type { RiskBandValue } from '../src/modules/mission-policy/mission-screening';
-import { testActor } from './authz-cases';
+import { testActor } from './actor';
 
 export type TestDb = ReturnType<typeof drizzle<typeof schema>>;
 

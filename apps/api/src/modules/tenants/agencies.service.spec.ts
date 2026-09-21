@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
-import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
+
 import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { member } from '../../../test/workspace-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
@@ -69,14 +69,8 @@ describe('agency registration', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one changes them.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'exclusive');
-  });
-
   afterEach(async () => {
     await clear();
-    await unlockDocuments(ownerSql, 'exclusive');
   });
 
   const clear = async () => {

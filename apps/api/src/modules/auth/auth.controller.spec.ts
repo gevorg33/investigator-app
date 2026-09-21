@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { ActorService } from '../../common/authz/actor.service';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
 

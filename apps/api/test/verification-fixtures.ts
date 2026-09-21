@@ -5,7 +5,7 @@ import type { Actor, Role, StaffScope } from '../src/common/authz/contract';
 import * as schema from '../src/database/schema';
 import { encodeQueueCursor } from '../src/modules/verification/verification.policy';
 import { makeReady, person } from './media-fixtures';
-import { testActor } from './authz-cases';
+import { testActor } from './actor';
 
 export type TestDb = ReturnType<typeof drizzle<typeof schema>>;
 

@@ -6,7 +6,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { citext, geographyPoint, geographyPolygon } from './types';
 import { testPool } from '../../../test/db';
 
-
 const probe = pgTable('type_probe', { place: geographyPoint('place'), email: citext('email') });
 const column = (name: string) => {
   const c = getTableConfig(probe).columns.find((col) => col.name === name);
@@ -142,11 +141,15 @@ describe('geography point, from the binary the driver actually sends', () => {
   const place = column('place');
 
   it('reads the exact value PostGIS returned for Yerevan', () => {
-    expect(place.mapFromDriverValue('0101000020E61000001973D712F2414640D5E76A2BF6174440')).toEqual(YEREVAN);
+    expect(place.mapFromDriverValue('0101000020E61000001973D712F2414640D5E76A2BF6174440')).toEqual(
+      YEREVAN,
+    );
   });
 
   it('reads big-endian as well as little-endian', () => {
-    expect(place.mapFromDriverValue(ewkb({ littleEndian: false, type: 1, doubles: [44.5, 40.1] }))).toEqual({
+    expect(
+      place.mapFromDriverValue(ewkb({ littleEndian: false, type: 1, doubles: [44.5, 40.1] })),
+    ).toEqual({
       lon: 44.5,
       lat: 40.1,
     });
@@ -231,7 +234,9 @@ describe('geography polygon', () => {
     it('returns the polygon that was written', async () => {
       const db = drizzle(sql);
       await db.insert(probe).values({ id: 1, area: { rings: [square] } });
-      const [row] = await db.select().from(probe);
+      // By id, not the first row: the next test writes a second polygon into the same probe
+      // table, and without this the assertion passes or fails on which test ran first.
+      const [row] = await db.select().from(probe).where(eq(probe.id, 1));
       expect(row?.area).toEqual({ rings: [square] });
     });
 

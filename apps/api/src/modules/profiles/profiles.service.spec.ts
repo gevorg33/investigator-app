@@ -2,23 +2,27 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
-import { investigatorAvailability, investigatorLanguages, taxonomyNodes, users } from '../../database/schema';
-import { testActor } from '../../../test/authz-cases';
+import {
+  investigatorAvailability,
+  investigatorLanguages,
+  taxonomyNodes,
+  users,
+} from '../../database/schema';
+import { testActor } from '../../../test/actor';
 import { ProfilesService } from './profiles.service';
 import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
-import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
+import { roleDocumentIds } from '../../../test/legal-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
-
 
 describe('profile persistence', () => {
   let sql: postgres.Sql;
@@ -52,27 +56,26 @@ describe('profile persistence', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one only has to get past the gate.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'shared');
-  });
-
-  afterEach(async () => {
-    await unlockDocuments(ownerSql, 'shared');
-  });
-
   const investigator = async (): Promise<Actor> => {
     const [user] = await ownerDb
       .insert(users)
       .values({ email: `persist-${randomUUID()}@example.test`, displayName: 'Nairi' })
       .returning();
     const actor = testActor({ userId: user?.id ?? '', roles: ['INVESTIGATOR'] });
-    await profiles.activateRole(actor, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
+    await profiles.activateRole(
+      actor,
+      'INVESTIGATOR',
+      req,
+      await roleDocumentIds(ownerSql, 'INVESTIGATOR'),
+    );
     return actor;
   };
 
   const node = async (): Promise<string> => {
-    const [n] = await ownerDb.insert(taxonomyNodes).values({ slug: `n-${randomUUID()}` }).returning();
+    const [n] = await ownerDb
+      .insert(taxonomyNodes)
+      .values({ slug: `n-${randomUUID()}` })
+      .returning();
     return n?.id ?? '';
   };
 
@@ -91,7 +94,7 @@ describe('profile persistence', () => {
         currency: 'AMD',
         acceptingWork: true,
         visibility: 'PUBLISHED',
-        contactPhone: '+374 10 123456',
+        contactPhone: '555-0102',
         languages: [
           { languageCode: 'hy', proficiency: 'NATIVE' },
           { languageCode: 'ru', proficiency: 'FLUENT' },
@@ -111,7 +114,7 @@ describe('profile persistence', () => {
       currency: 'AMD',
       acceptingWork: true,
       visibility: 'PUBLISHED',
-      contactPhone: '+374 10 123456',
+      contactPhone: '555-0102',
       displayName: 'Nairi',
     });
     expect(saved.languages).toHaveLength(2);
@@ -211,7 +214,12 @@ describe('profile persistence', () => {
         .values({ email: `cust-${randomUUID()}@example.test`, displayName: 'Ani' })
         .returning();
       const actor = testActor({ userId: user?.id ?? '', roles: ['CUSTOMER'] });
-      await profiles.activateRole(actor, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
+      await profiles.activateRole(
+        actor,
+        'CUSTOMER',
+        req,
+        await roleDocumentIds(ownerSql, 'CUSTOMER'),
+      );
       return actor;
     };
 
@@ -219,12 +227,12 @@ describe('profile persistence', () => {
       const actor = await customer();
       const saved = await profiles.updateMyCustomerProfile(
         actor,
-        { organisationName: 'Acme Holdings', contactPhone: '+374 11 222333' },
+        { organisationName: 'Acme Holdings', contactPhone: '555-0103' },
         req,
       );
       expect(saved).toMatchObject({
         organisationName: 'Acme Holdings',
-        contactPhone: '+374 11 222333',
+        contactPhone: '555-0103',
         displayName: 'Ani',
       });
     });
@@ -232,8 +240,8 @@ describe('profile persistence', () => {
     it('updates one field without clearing the other', async () => {
       const actor = await customer();
       await profiles.updateMyCustomerProfile(actor, { organisationName: 'Acme' }, req);
-      const after = await profiles.updateMyCustomerProfile(actor, { contactPhone: '+374 1' }, req);
-      expect(after).toMatchObject({ organisationName: 'Acme', contactPhone: '+374 1' });
+      const after = await profiles.updateMyCustomerProfile(actor, { contactPhone: '555-0105' }, req);
+      expect(after).toMatchObject({ organisationName: 'Acme', contactPhone: '555-0105' });
     });
 
     it('accepts an update that names nothing', async () => {

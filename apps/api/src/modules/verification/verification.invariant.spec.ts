@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { verificationRequests } from '../../database/schema';
 import { VerificationService } from './verification.service';
 

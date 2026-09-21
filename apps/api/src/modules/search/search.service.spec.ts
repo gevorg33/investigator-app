@@ -22,7 +22,6 @@ import { SearchService } from './search.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
-
 describe('investigator discovery', () => {
   let sqlClient: postgres.Sql;
   let db: TestDb;
@@ -64,7 +63,8 @@ describe('investigator discovery', () => {
   });
 
   /** An investigator belonging to this test. */
-  const mine = async (opts: DiscoverableOptions = {}) => discoverable(ownerDb, { city: tag, ...opts });
+  const mine = async (opts: DiscoverableOptions = {}) =>
+    discoverable(ownerDb, { city: tag, ...opts });
 
   /** A search this test owns: at a point, tightly, and only over this test's investigators. */
   const near = async (centre: { lon: number; lat: number }, over: Record<string, unknown> = {}) =>
@@ -226,9 +226,9 @@ describe('investigator discovery', () => {
     it('matches any of several requested nodes', async () => {
       const wanted = await node(ownerDb);
       const found = await mine({ specialtyNodeIds: [wanted] });
-      expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(ownerDb), wanted] }))).toEqual([
-        found.profileId,
-      ]);
+      expect(
+        ids(await near(found.centre, { taxonomyNodeIds: [await node(ownerDb), wanted] })),
+      ).toEqual([found.profileId]);
     });
   });
 
@@ -349,7 +349,7 @@ describe('investigator discovery', () => {
       const found = await mine({ centre, displayName: 'Anahit', languages: ['hy'] });
       await ownerDb
         .update(schema.investigatorProfiles)
-        .set({ contactPhone: '+37400000000' })
+        .set({ contactPhone: '555-0104' })
         .where(sql`${schema.investigatorProfiles.id} = ${found.profileId}`);
 
       const page = await near(centre);
@@ -360,7 +360,7 @@ describe('investigator discovery', () => {
         verificationStatus: 'VERIFIED',
       });
       // No contact details, no coordinates, no geometry, no account id.
-      expect(serialised).not.toContain('+37400000000');
+      expect(serialised).not.toContain('555-0104');
       expect(serialised).not.toContain('contactPhone');
       expect(serialised).not.toContain('userId');
       expect(serialised).not.toContain(String(centre.lon));

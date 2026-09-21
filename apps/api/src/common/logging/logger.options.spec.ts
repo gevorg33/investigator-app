@@ -2,6 +2,7 @@ import { Writable } from 'node:stream';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Logger, LoggerModule } from 'nestjs-pino';
+import pino from 'pino';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CORRELATION_HEADER } from '../correlation/correlation';
@@ -62,9 +63,22 @@ describe('the logger, as configured', () => {
     return { app, output: () => lines.join('') };
   };
 
-  it('redacts credentials and personal data from a logged payload', async () => {
-    const { app: a, output } = await boot();
-    a.get(Logger).log(
+  it('redacts credentials and personal data from a logged payload', () => {
+    // Logged through pino directly, built from the same options the application boots with.
+    // Not through the Nest logger: `nestjs-pino` keeps one root logger for the process, so in
+    // a file that boots several applications a direct `Logger.log` goes to whichever stream
+    // was installed first — which made this assertion read an empty buffer, and pass or fail
+    // on the order the tests happened to run in (T-042).
+    const lines: string[] = [];
+    const stream = new Writable({
+      write(chunk, _encoding, done) {
+        lines.push(String(chunk));
+        done();
+      },
+    });
+    const log = pino(loggerOptions('info', false).pinoHttp as pino.LoggerOptions, stream);
+
+    log.info(
       {
         email: 'person@example.test',
         password: 'top-level-password-value',
@@ -79,7 +93,7 @@ describe('the logger, as configured', () => {
       },
       'probe',
     );
-    const out = output();
+    const out = lines.join('');
 
     for (const leaked of [
       'person@example.test',

@@ -1773,13 +1773,14 @@ A rehearsed deploy and a rehearsed rollback against production, signed off.
 ---
 
 ### T-042 — Test infrastructure: factories, fixtures, coverage config
-- **Status:** TODO
+- **Status:** DONE — 2026-09-21
 - **Priority:** P0
 - **Depends on:** T-002, T-073
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
-- **Affected:** packages/test-utils/**, vitest/jest config, apps/api/test/**
+- **Affected:** apps/api/test/**, apps/api/vitest.config.mts, packages/auth/**, package.json,
+  .github/workflows/pr.yml, .claude/skills/testing/SKILL.md, .claude/skills/ci-cd/SKILL.md
 
 **Description**
 The shared test substrate. Landing it before module work is what makes the 100% gate
@@ -1788,25 +1789,92 @@ achievable rather than punitive.
 **Tenancy (ADR-0011).** Factories create workspaces and memberships. Integration tests use **two pools**: owner fixtures, and the code under test on `investigator_app` inside a context helper (`withContext`), per the `tenant-isolation` skill.
 
 **Acceptance criteria**
-- [ ] Factories with sensible defaults and explicit overrides for every core entity
-- [ ] Database reset between tests; **no shared mutable state, no ordering dependency**
-- [ ] Suites pass run alone, in reverse order, and in parallel — verified, not assumed
-- [ ] Time is freezable; expiry logic is testable deterministically
-- [ ] Reusable authorization-test helper covering the seven cases from `authorization`
-- [ ] Coverage thresholds set to 100% **per package**, wired into `pnpm test:coverage`
-- [ ] `docs/operations/coverage-exclusions.md` referenced by the config, not duplicated
-- [ ] **No real or realistic personal data** in any fixture
-- [ ] `fixtures:load` actually exists and the CI step runs it — it is currently
-      `--if-present` and does nothing, because `pr.yml` referenced the script before
-      anything defined it. Prove the step fails when fixtures fail to load, or it is the
-      coverage gate all over again (T-063)
-- [ ] `test:integration`, `test:api` and `test:e2e` likewise run something — all three are
-      `--if-present` at the root today and match no package script
+- [x] Factories with sensible defaults and explicit overrides for every core entity —
+      `test/fixtures.spec.ts` reads the `table-classes.ts` registry and fails when a
+      `tenant_owned` or `two_party` table has neither a factory nor a written reason why the
+      thing that owns it is what writes it. Added `assignment`, `customerProfile`; gave
+      `acceptCurrent` the override it lacked
+- [x] Database reset between tests; **no shared mutable state, no ordering dependency** —
+      one database per worker, cloned from a migrated template, emptied and re-seeded before
+      every spec file. The file is the unit of isolation
+- [x] Suites pass run alone, in reverse order, and in parallel — verified, not assumed:
+      **123 of 123 files alone**, `VITEST_SEQUENCE=reverse` green, `--no-file-parallelism`
+      green, and **six full `--sequence.shuffle` seeds** green (files *and* tests shuffled)
+- [x] Time is freezable; expiry logic is testable deterministically — `test/time.ts`
+      (`atTime`, faking `Date` only) and a spec that refuses a `*.policy.ts` reading the clock
+      anywhere but a default parameter
+- [x] Reusable authorization-test helper covering the seven cases from `authorization` —
+      existed (`test/authz-cases.ts`); `testActor` split into `test/actor.ts` so a fixture no
+      longer drags vitest into a plain Node process
+- [x] Coverage thresholds set to 100% **per package**, wired into `pnpm test:coverage` —
+      `packages/auth` now carries the gate; the ten T-001 `PACKAGE_NAME` placeholders were
+      deleted, so every other package has no runtime code to measure and a spec fails the
+      moment one gains some
+- [x] `docs/operations/coverage-exclusions.md` referenced by the config, not duplicated
+- [x] **No real or realistic personal data** in any fixture — reserved domains (RFC 2606) and
+      `555-01xx` numbers, enforced across `test/**` and every spec; five Armenian-format
+      numbers replaced
+- [x] `fixtures:load` actually exists and the CI step runs it — `pnpm fixtures:load` builds a
+      customer, profile, mission, investigator, quote, assignment and a two-person agency out
+      of the same factories the tests use, against the database CI migrated from empty
+- [x] `test:integration`, `test:api` and `test:e2e` — **deleted**, with their CI steps. They
+      named a split the suite does not make. `--if-present` is now banned in the workflow and
+      in root scripts, and `test/workspace-scripts.spec.ts` refuses a step naming a script
+      nothing defines
 
 **Validation**
 ```bash
 pnpm test:coverage
 ```
+
+**DONE — 2026-09-21**
+
+Four design decisions, all taken by the owner: a database per worker; delete the three fake
+test steps rather than invent a split for them; `fixtures:load` builds a demo world from the
+factories; formalise the existing injected-`now` convention rather than add a Clock provider.
+
+*One database per worker.* `test/global-setup.ts` migrates a template and clones it into
+`<base>_w1..4`, matching `MAX_WORKERS`; `test/setup-database.ts` points `DATABASE_URL` at this
+worker's copy before the spec file and everything it imports loads, and empties it. Emptying
+means truncating every table in `public` and restoring what a migration seeded — found by
+looking at the pristine template, not by a list, so a later taxonomy seed is picked up without
+being told. `roles.tenant_id` references `tenants`, so truncating tenants cascades into roles:
+the restore is exact or every membership in the next file points at a role id that is gone.
+A spec asserts the truncation list equals the live catalogue, and that the hook *ran* — "the
+database was empty" can be true by luck.
+
+*What it retired.* T-022's advisory lock is gone from `legal-fixtures.ts` and eight specs, and
+the probe-database pattern of T-077/T-080/T-083 has no reason to return. Tests also stopped
+writing into `investigator_dev`.
+
+*What it exposed.* Both query-plan suites had been asserting on a plan chosen with **no
+statistics at all**: `ANALYZE` run by a role that does not own the table is skipped with a
+warning, and `testPool` silences notices. They passed because autovacuum had long since
+analysed the shared development database with thousands of rows in it. Given a database of its
+own the planner had `reltuples = -1` and chose differently about one run in three — never in
+isolation. Fixed by analysing as the owner, committing the seed rather than rolling it back,
+seeding coordinates deterministically instead of with `random()`, and asserting the statistics
+exist. Two more: a polygon round-trip read the first row of a shared probe table rather than
+its own, and the log-redaction test read an empty buffer because `nestjs-pino` keeps one root
+logger per process — it passed only while it was the first test in its file.
+
+*Negative controls* — each break watched to fail the intended test, then restored byte for
+byte: reset hook removed → `was emptied before this file ran`; `ANALYZE` back on the app role →
+`was taken with statistics the planner could actually use`; `--if-present` back in the workflow
+→ `never uses --if-present`; a `@gmail.com` fixture → `address every email to a domain that
+cannot exist`; a `+374` number → `use no number that could be dialled`; a domain table's
+factory removed → `cover every table a test would need to create`; `packages/auth` loses
+`test:coverage` → `gates coverage in every package that ships code that runs`; a policy reading
+the clock → `read the clock only as a default parameter`.
+
+*Evidence.* 1589 tests, 123 files, 100% coverage per package (api 2026/2026 statements,
+918/918 branches, 577/577 functions, 1854/1854 lines; auth 1/1). Lint, typecheck and build
+clean. Suite wall-clock 19s on four workers, 58s on one.
+
+*Filed, not fixed:* T-130 — `pnpm format:check` has been red on 21 files for some time and CI
+never runs it, which is the same shape of problem one layer out. `tsx` 4.23.13 added to
+`apps/api` to run `fixtures:load`, per the pinning policy's "newest usable, not newest
+published": 4.23.15 was a day old.
 
 ---
 
@@ -5121,6 +5189,39 @@ initialises removes it.
 **Validation**
 ```bash
 pnpm --filter api test password
+```
+
+---
+
+### T-130 — `pnpm format:check` fails on 21 files, and nothing notices
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** apps/api/src/database/migrations/meta/**, apps/api/tsconfig.json, eslint.config.js,
+  two spec files, .github/workflows/pr.yml
+
+**Description**
+Found in T-042. `pnpm format:check` has been red for some time: seventeen drizzle-kit `meta/`
+snapshots, `apps/api/tsconfig.json`, `eslint.config.js` and two spec files. CI never runs it, so
+nobody has seen it — the same shape of problem as the four no-op steps T-042 removed, one layer
+out: a check that exists, is not wired to anything, and has quietly been failing.
+
+The snapshots are generated by drizzle-kit and will come back unformatted every time a migration
+is generated, so the answer is probably to exclude `migrations/meta/` in `.prettierignore` rather
+than to reformat them.
+
+**Acceptance criteria**
+- [ ] `pnpm format:check` passes
+- [ ] Generated files are ignored rather than reformatted, or the generator's output is accepted
+- [ ] The check runs in CI, so it cannot go red unnoticed again
+- [ ] No behaviour change: formatting only
+
+**Validation**
+```bash
+pnpm format:check
 ```
 
 ---

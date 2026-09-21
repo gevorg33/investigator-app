@@ -16,8 +16,11 @@ export const MAX_WORKERS = 4;
 /** The cap on any pool a spec opens through `testPool()`. Every concurrency test fans out two transactions. */
 export const TEST_POOL_MAX = 4;
 
-/** Connections one spec file may hold at once: app pool (10) + two helper pools (4 + 4). */
-export const PER_FILE_BUDGET = 18;
+/**
+ * Connections one spec file may hold at once: app pool (10) + two helper pools (4 + 4), plus
+ * the one `setup-database.ts` holds for the whole file to empty the database before it (T-042).
+ */
+export const PER_FILE_BUDGET = 19;
 
 /** Left free for psql, the dev server, and whatever else is connected while tests run. */
 export const HEADROOM = 20;

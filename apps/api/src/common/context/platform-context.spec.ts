@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle as drizzleClient, type drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { testContext } from '../../../test/context';
 import { testPool } from '../../../test/db';
 import { scopedDb } from '../../../test/workspace-context';
