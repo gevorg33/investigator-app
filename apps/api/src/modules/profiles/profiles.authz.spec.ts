@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { LegalService } from '../legal/legal.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
@@ -15,6 +16,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
+import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
@@ -39,6 +41,7 @@ describe('profile authorization', () => {
         new AuditService(db),
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
+        new LegalService(db, new AuditService(db)),
       ),
       ownerSql,
     );
@@ -47,6 +50,15 @@ describe('profile authorization', () => {
   afterAll(async () => {
     await sql.end();
     await ownerSql.end();
+  });
+
+  // Published documents are shared between suites (T-022): this one only has to get past the gate.
+  beforeEach(async () => {
+    await lockDocuments(ownerSql, 'shared');
+  });
+
+  afterEach(async () => {
+    await unlockDocuments(ownerSql, 'shared');
   });
 
   /** An account with the given roles, and the profiles those roles imply. */
@@ -61,7 +73,12 @@ describe('profile authorization', () => {
     const actor = testActor({ userId: user?.id ?? '', roles, status });
     for (const role of roles) {
       // activateRole needs an ACTIVE account, so seed suspended ones already set up.
-      await profiles.activateRole(testActor({ userId: actor.userId, roles }), role, req);
+      await profiles.activateRole(
+        testActor({ userId: actor.userId, roles }),
+        role,
+        req,
+        await roleDocumentIds(ownerSql, role),
+      );
     }
     return actor;
   };

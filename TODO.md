@@ -1094,30 +1094,72 @@ pnpm --filter api test legal
 ---
 
 ### T-022 — Registration and role-activation acceptance gate
-- **Status:** TODO
+- **Status:** DONE (2026-09-21)
 - **Priority:** P0
 - **Depends on:** T-005, T-021
 - **Risk:** HIGH
-- **Human approval required:** Yes — authentication and registration flow
+- **Human approval required:** Yes — authentication and registration flow; approved 2026-09-21
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/auth/**, apps/mobile/**, apps/admin-web/**
+- **Affected:** apps/api/src/modules/{auth,profiles,legal}/**
 
-**Description**
-Block registration until the required documents are accepted, and gate investigator
-capabilities on acceptance of the investigator-specific documents at role activation.
+**What shipped**
 
-**Tenancy (ADR-0011).** The user's Personal workspace and OWNER membership are created by a database trigger in the same statement as the user (T-074): nothing to add here. Agency terms acceptance is its own gate (T-083).
+`legal.requireAcceptance({ userId, types, acceptedDocumentIds, context }, req, tx)` — the gate,
+called **inside** the transaction that creates the account or activates the role. An account that
+agreed to nothing, or a role whose obligations were never accepted, cannot exist: refusing takes
+the account with it, which is the point of one transaction.
 
-**Acceptance criteria**
-- [ ] **The mechanism is T-021's**: `legal.accept({ userId, documentId, context }, req, tx)` and `legal.consentState(userId, type)`. What is left here is which documents each role requires, the gate itself, and the re-acceptance flow — plus publishing the documents registration needs (ACTIONS-FOR-ME #20)
-- [ ] Registration cannot complete without acceptance — enforced **server-side**
-- [ ] Account creation and consent rows commit in one transaction; no account exists without them
-- [ ] Test: posting directly to the registration endpoint without acceptance is rejected
-- [ ] Investigator capabilities gated on role-activation acceptance, tested separately
-- [ ] The text shown is retrievable for any given consent record
-- [ ] Material version change forces re-acceptance; materiality flag is set by compliance, not inferred
-- [ ] Re-acceptance does not block read access to an active assignment's existing obligations
-- [ ] Acceptance UI is localised; the locale shown is what gets recorded
+- **Registration** requires the privacy policy and the terms of service; **role activation**
+  requires what that role is bound by — an investigator agreement and the lawful-use policy for
+  an investigator, the terms and conditions for a customer. A customer who later becomes an
+  investigator was not one when they signed up, which is why it is a second gate rather than a
+  longer first one.
+- **Which documents bind whom is data** (`legal.policy.ts`), not a list at the call site — a
+  compliance decision with counsel still to confirm it (ACTIONS-FOR-ME #20).
+- **What is required is what is in force** (owner decision, 2026-09-21): a type with nothing
+  published requires nothing, so registration works exactly as before until counsel's text lands,
+  and becomes gated the moment it does. A superseded version never satisfies the gate.
+- **Re-acceptance**: a material new version makes a document outstanding again;
+  `GET /api/v1/legal/outstanding` and `POST /api/v1/legal/acceptances` let a client see and clear
+  it. Deliberately **not** enforced on every request — that would block read access to an active
+  assignment's existing obligations, which `legal-consent` forbids. Gating specific later actions
+  belongs with the screens that prompt for it (T-127, criterion added).
+
+**What the work turned up**
+
+**The gate is global, and the test database is shared.** Once a document is published, every
+suite's registration and role activation must satisfy it — so suites that publish documents were
+silently deciding other suites' outcomes, in both directions. Rather than soften the gate for
+tests, the suites take a **PostgreSQL advisory lock**: a publisher holds it exclusively and
+clears what it published before releasing, while suites that merely have to get past the gate
+hold it shared and still run together (`test/legal-fixtures.ts`). Two consequences worth
+knowing: the lock is held on a reserved connection, so those pools need more than one; and a
+suite that leaves a document published is a bug in that suite, not in the gate.
+
+**Tests** — 1551 passing, 100% coverage.
+- `auth-consent.spec.ts` (13): registration refused with nothing accepted and **no account left
+  behind**; the refusal names every document still missing; acceptance recorded with the hash of
+  the exact text; registration unchanged while nothing is published; only published types
+  required; a superseded version refused. Role activation refused without acceptance and **no
+  role written**; activation recorded as `ROLE_ACTIVATION`; no double acceptance; a customer
+  asked only for a customer's documents. Re-acceptance: outstanding again on a material version,
+  not on a non-material one, cleared by accepting, with both acceptances standing on the record.
+- `legal.policy.spec.ts`: which documents each role requires, including that a staff role
+  requires none.
+- `legal.controller.spec.ts`: the outstanding list asks for the caller's roles; re-acceptance
+  records itself; an empty acceptance is refused.
+
+**Negative controls** — each broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| Registration stops checking acceptance | 8 fail |
+| Role activation stops checking | 3 fail |
+| Any accepted id satisfies the gate | 2 fail, including the superseded-version case |
+| A material version no longer forces re-acceptance | 4 fail |
+
+**Still to come:** the documents themselves (ACTIONS-FOR-ME #20). Until then the gate requires
+nothing and registration behaves as it always has.
 
 **Validation**
 ```bash
@@ -5018,6 +5060,7 @@ reset, the session and device list, and role switching between customer and inve
 Google sign-in joins with T-062.
 
 **Acceptance criteria**
+- [ ] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
 - [ ] Every auth error is privacy-preserving, and never reveals whether an email is registered
 - [ ] Session cookie behaviour matches T-025; the flows are tested end to end against the API
 

@@ -3,6 +3,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { runAsUser } from '../../common/context/execution-context';
+import { LegalService } from '../legal/legal.service';
+import { REQUIRED_AT_REGISTRATION } from '../legal/legal.policy';
 import { MAILER, type Mailer } from '../../common/mail/mailer';
 import { DB, type Db } from '../../database/database.module';
 import { tenants, userSessions, userTokens, users } from '../../database/schema';
@@ -69,9 +71,22 @@ export class AuthService {
     @Inject(MAILER) private readonly mailer: Mailer,
     private readonly sessionRepo: SessionRepository,
     private readonly authz: AuthzService,
+    private readonly legal: LegalService,
   ) {}
 
-  async register(email: string, password: string, ctx: RequestContext): Promise<void> {
+  /**
+   * Registering is also the moment the required documents are accepted (T-022).
+   *
+   * The account and its consent rows commit **together**: an account that exists having agreed
+   * to nothing must not be reachable, and the gate is here in the service rather than in the
+   * client, because a hostile client posts straight to the endpoint.
+   */
+  async register(
+    email: string,
+    password: string,
+    ctx: RequestContext,
+    acceptedDocumentIds: readonly string[] = [],
+  ): Promise<void> {
     await this.limits.consume('registerPerIp', ctx.ip ?? 'unknown');
 
     const passwordHash = await this.passwords.hash(password);
@@ -89,18 +104,36 @@ export class AuthService {
       return;
     }
 
-    const [created] = await this.db.insert(users).values({ email, passwordHash }).returning();
-    // RETURNING on a single-row insert always yields the row, so this is an invariant
-    // rather than a case. It throws instead of skipping: carrying on would leave an
-    // account that exists, was never audited, and has no way to verify itself.
-    if (!created) throw new Error('user insert returned no row');
+    const created = await this.db.transaction(async (tx) => {
+      const [row] = await tx.insert(users).values({ email, passwordHash }).returning();
+      // RETURNING on a single-row insert always yields the row, so this is an invariant
+      // rather than a case. It throws instead of skipping: carrying on would leave an
+      // account that exists, was never audited, and has no way to verify itself.
+      if (!row) throw new Error('user insert returned no row');
 
-    await this.audit.record({
-      ...ctx,
-      actorId: created.id,
-      action: 'auth.register',
-      resourceType: 'user',
-      resourceId: created.id,
+      // Refusing here takes the account with it, which is the point of one transaction.
+      await this.legal.requireAcceptance(
+        {
+          userId: row.id,
+          types: REQUIRED_AT_REGISTRATION,
+          acceptedDocumentIds,
+          context: 'REGISTRATION',
+        },
+        ctx,
+        tx,
+      );
+
+      await this.audit.record(
+        {
+          ...ctx,
+          actorId: row.id,
+          action: 'auth.register',
+          resourceType: 'user',
+          resourceId: row.id,
+        },
+        tx,
+      );
+      return row;
     });
 
     await this.issueToken(created.id, 'EMAIL_VERIFICATION', created.email, ctx);

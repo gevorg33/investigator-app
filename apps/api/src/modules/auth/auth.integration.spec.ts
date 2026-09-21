@@ -2,8 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { LegalService } from '../legal/legal.service';
+import { AuthzService } from '../../common/authz/authz.service';
+import { SessionRepository } from './session.repository';
 import * as schema from '../../database/schema';
 import { auditLogs, tenants, userSessions } from '../../database/schema';
 import { AuthService } from './auth.service';
@@ -13,6 +16,7 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { testPool } from '../../../test/db';
+import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
 import { scopedDb } from '../../../test/workspace-context';
 import { runAsUser } from '../../common/context/execution-context';
 
@@ -43,7 +47,8 @@ describe('auth end to end', () => {
   beforeAll(() => {
     sql = testPool();
     db = scopedDb(sql);
-    ownerSql = testPool({ max: 1, role: 'owner' });
+    // max 2: one connection holds the documents lock while fixtures use the other (T-022).
+    ownerSql = testPool({ max: 2, role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
     const tokens = new TokenService();
     auth = new AuthService(
@@ -58,12 +63,24 @@ describe('auth end to end', () => {
       // Registration now mails a verification link; these cases assert on auth, not on
       // delivery. recovery.integration.spec.ts captures the mail and follows the link.
       { send: async () => undefined },
+      new SessionRepository(db),
+      new AuthzService(new AuditService(db)),
+      new LegalService(db, new AuditService(db)),
     );
   });
 
   afterAll(async () => {
     await sql.end();
     await ownerSql.end();
+  });
+
+  // Published documents are shared between suites (T-022): this one only has to get past the gate.
+  beforeEach(async () => {
+    await lockDocuments(ownerSql, 'shared');
+  });
+
+  afterEach(async () => {
+    await unlockDocuments(ownerSql, 'shared');
   });
 
   it('registers and then logs in', async () => {

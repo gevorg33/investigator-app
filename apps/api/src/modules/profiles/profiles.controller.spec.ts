@@ -58,6 +58,8 @@ describe('profiles controller', () => {
         ACTOR,
         'INVESTIGATOR',
         expect.any(Object),
+        // The documents being accepted travel with the activation (T-022); none were sent here.
+        [],
       );
     });
 

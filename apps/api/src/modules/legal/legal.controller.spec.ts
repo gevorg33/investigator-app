@@ -5,6 +5,9 @@ import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeApp, listenOnce } from '../../../test/http';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
+import { testActor } from '../../../test/authz-cases';
+import { workspaceResolverStub } from '../../../test/context';
+import { ActorService } from '../../common/authz/actor.service';
 import { LegalController } from './legal.controller';
 import { LegalService, type PublishedDocument } from './legal.service';
 
@@ -27,6 +30,8 @@ const published = (over: Partial<PublishedDocument> = {}): PublishedDocument => 
   ...over,
 });
 
+const actor = testActor({ userId: '00000000-0000-4000-8000-0000000000d1' });
+
 describe('GET /api/v1/legal/documents/:type', () => {
   let app: INestApplication | undefined;
 
@@ -39,7 +44,13 @@ describe('GET /api/v1/legal/documents/:type', () => {
     class TestModule {}
     Module({
       controllers: [LegalController],
-      providers: [{ provide: LegalService, useValue: service }],
+      providers: [
+        { provide: LegalService, useValue: service },
+        // Two of these routes are behind the guard now (T-022): reading what is outstanding, and
+        // accepting it. The guard's own behaviour is actor.service.spec.ts's subject.
+        { provide: ActorService, useValue: { fromRefreshToken: async () => actor } },
+        workspaceResolverStub(actor),
+      ],
     })(TestModule);
 
     const moduleRef = await Test.createTestingModule({ imports: [TestModule] }).compile();
@@ -108,5 +119,91 @@ describe('GET /api/v1/legal/documents/:type', () => {
     const res = await request(app.getHttpServer()).get('/api/v1/legal/documents/AGENCY_AGREEMENT');
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('what an account still has to accept', () => {
+  let app: INestApplication | undefined;
+
+  afterEach(async () => {
+    await closeApp(app);
+    app = undefined;
+  });
+
+  const withRoles = async (roles: ReadonlyArray<'CUSTOMER' | 'INVESTIGATOR' | 'STAFF'>, legal: Partial<LegalService>) => {
+    const who = testActor({ userId: actor.userId, roles });
+    const moduleRef = await Test.createTestingModule({
+      controllers: [LegalController],
+      providers: [
+        { provide: LegalService, useValue: legal },
+        { provide: ActorService, useValue: { fromRefreshToken: async () => who } },
+        workspaceResolverStub(who),
+      ],
+    }).compile();
+    const instance = moduleRef.createNestApplication();
+    instance.setGlobalPrefix('api/v1');
+    instance.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    );
+    instance.useGlobalFilters(new AppExceptionFilter());
+    await listenOnce(instance);
+    return instance;
+  };
+
+  it('lists what is outstanding, asking for the roles the caller holds', async () => {
+    const outstanding = vi.fn().mockResolvedValue([published({ type: 'LAWFUL_USE_POLICY' })]);
+    app = await withRoles(['INVESTIGATOR'], { outstanding });
+
+    const res = await request(app.getHttpServer()).get('/api/v1/legal/outstanding');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([expect.objectContaining({ type: 'LAWFUL_USE_POLICY' })]);
+    // Registration's documents plus the investigator's, asked for once each.
+    const [, types] = outstanding.mock.calls[0] as [string, string[]];
+    expect(types).toEqual([
+      'PRIVACY_POLICY',
+      'TERMS_OF_SERVICE',
+      'INVESTIGATOR_AGREEMENT',
+      'LAWFUL_USE_POLICY',
+    ]);
+  });
+
+  it('asks only for registration’s documents when the account holds no role', async () => {
+    const outstanding = vi.fn().mockResolvedValue([]);
+    app = await withRoles([], { outstanding });
+
+    const res = await request(app.getHttpServer()).get('/api/v1/legal/outstanding');
+
+    expect(res.body).toEqual([]);
+    const [, types] = outstanding.mock.calls[0] as [string, string[]];
+    expect(types).toEqual(['PRIVACY_POLICY', 'TERMS_OF_SERVICE']);
+  });
+
+  it('records a re-acceptance and answers that nothing is left', async () => {
+    const requireAcceptance = vi.fn().mockResolvedValue(undefined);
+    app = await withRoles(['CUSTOMER'], { requireAcceptance });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/legal/acceptances')
+      .send({ acceptedDocumentIds: ['00000000-0000-4000-8000-0000000000e1'] });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual({ outstanding: [] });
+    expect(requireAcceptance).toHaveBeenCalledWith(
+      expect.objectContaining({ context: 'REACCEPTANCE' }),
+      expect.anything(),
+    );
+  });
+
+  it('refuses an acceptance that names nothing', async () => {
+    const requireAcceptance = vi.fn();
+    app = await withRoles(['CUSTOMER'], { requireAcceptance });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/legal/acceptances')
+      .send({ acceptedDocumentIds: [] });
+
+    expect(res.status).toBe(400);
+    expect(requireAcceptance).not.toHaveBeenCalled();
   });
 });

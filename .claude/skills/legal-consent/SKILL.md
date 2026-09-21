@@ -78,9 +78,18 @@ user_consents                      -- APPEND-ONLY. Never updated, never deleted.
 
 ## The registration gate
 
-> **T-022 builds this**, on the mechanism T-021 shipped: `legal.accept(…, tx)` takes the
-> transaction the account is created in, so an account and its consent rows commit together or
-> not at all — tested by rolling one back and finding no consent row.
+> **Built in T-022.** `legal.requireAcceptance({ userId, types, acceptedDocumentIds, context },
+> req, tx)` is the gate, called inside the transaction that creates the account or activates the
+> role — so an account that agreed to nothing, or a role whose obligations were never accepted,
+> cannot exist. Which documents each context requires is data in `legal.policy.ts`, not a list at
+> the call site.
+>
+> **What is required is what is in force** (owner decision, 2026-09-21). A type with nothing
+> published requires nothing: there is no text to agree to, and refusing everybody until counsel
+> delivers would be a gate on the wrong thing. The moment a version is published it is required,
+> and a material new one makes it outstanding again for those who accepted the old one.
+> `GET /api/v1/legal/outstanding` and `POST /api/v1/legal/acceptances` are how a client sees and
+> clears that.
 
 Registration cannot complete until the required documents for that role are accepted.
 
@@ -106,6 +115,12 @@ When a document publishes a new version:
 |---|---|
 | Material (rights, liability, data use, fees) | Notify, then require acceptance before continued use. Give notice before `effective_from`. |
 | Non-material (typo, clarification, formatting) | Notify; no re-acceptance. Record the version bump. |
+
+> **T-022 note.** Re-acceptance is enforced at the two gates — registration and role activation
+> — and surfaced by `GET /legal/outstanding`. It deliberately does **not** block every other
+> request: that would block read access to an active assignment's existing obligations, which
+> this skill forbids. Gating specific later actions on outstanding acceptance belongs with the
+> screens that prompt for it (T-127).
 
 Whether a change is material is a **compliance decision, not an engineering one.** The flag
 is set by the compliance owner on the document; code reads it. Do not infer materiality from

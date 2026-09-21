@@ -10,11 +10,13 @@ import { ProfilesService } from './profiles.service';
  */
 describe('role activation invariants', () => {
   const build = () => {
-    const db = {
+    const db: Record<string, unknown> = {
       // The role already exists and is live, so activation goes straight to the profile.
       query: { userRoles: { findFirst: vi.fn().mockResolvedValue({ id: 'r1', revokedAt: null }) } },
       insert: () => ({ values: () => ({ returning: async () => [] }) }),
     };
+    // Role activation writes the role and its consent rows in one transaction (T-022).
+    db['transaction'] = async (fn: (tx: unknown) => Promise<unknown>) => fn(db);
     const authz = { requireActive: vi.fn().mockResolvedValue(undefined) };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const noProfile = { findMine: vi.fn().mockResolvedValue(undefined) };
@@ -24,6 +26,7 @@ describe('role activation invariants', () => {
       audit as never,
       noProfile as never,
       noProfile as never,
+      { requireAcceptance: vi.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, audit };
   };

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { LegalService } from '../legal/legal.service';
 import type { MailMessage } from '../../common/mail/mailer';
 import * as schema from '../../database/schema';
 import { auditLogs, userSessions, userTokens } from '../../database/schema';
@@ -17,6 +18,7 @@ import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { testPool } from '../../../test/db';
+import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
 import { scopedDb } from '../../../test/workspace-context';
 
 
@@ -58,7 +60,8 @@ describe('verification and password reset', () => {
   beforeAll(() => {
     sql = testPool();
     db = scopedDb(sql);
-    ownerSql = testPool({ max: 1, role: 'owner' });
+    // max 2: one connection holds the documents lock while fixtures use the other (T-022).
+    ownerSql = testPool({ max: 2, role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
     const tokens = new TokenService();
     mailer = new CapturingMailer();
@@ -76,12 +79,22 @@ describe('verification and password reset', () => {
       mailer,
       new SessionRepository(db),
       new AuthzService(new AuditService(db)),
+      new LegalService(db, new AuditService(db)),
     );
   });
 
   afterAll(async () => {
     await sql.end();
     await ownerSql.end();
+  });
+
+  // Published documents are shared between suites (T-022): this one only has to get past the gate.
+  beforeEach(async () => {
+    await lockDocuments(ownerSql, 'shared');
+  });
+
+  afterEach(async () => {
+    await unlockDocuments(ownerSql, 'shared');
   });
 
   describe('email verification', () => {

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
+import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
 import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { member } from '../../../test/workspace-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
@@ -30,7 +31,7 @@ describe('legal consent', () => {
 
   beforeAll(() => {
     app = testPool({ max: 2 });
-    ownerSql = testPool({ max: 2, role: 'owner' });
+    ownerSql = testPool({ max: 3, role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
     const db = scopedDb(app);
     legal = new LegalService(db, new AuditService(db));
@@ -41,13 +42,25 @@ describe('legal consent', () => {
     await ownerSql.end();
   });
 
+  // Published documents are shared between suites (T-022): this one changes them.
   beforeEach(async () => {
-    // Consents reference documents, so they go first.
+    await lockDocuments(ownerSql, 'exclusive');
+  });
+
+  afterEach(async () => {
+    await clear();
+    await unlockDocuments(ownerSql, 'exclusive');
+  });
+
+  /** Consents reference documents, so they go first. */
+  const clear = async () => {
     await ownerSql`
       DELETE FROM user_consents WHERE legal_document_id IN
         (SELECT id FROM legal_documents WHERE type = ${TYPE})`;
     await ownerSql`DELETE FROM legal_documents WHERE type = ${TYPE}`;
-  });
+  };
+
+  beforeEach(clear);
 
   /** A published version of this suite's document type. */
   const publish = async (
