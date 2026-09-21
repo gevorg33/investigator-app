@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AuthzService } from '../src/common/authz/authz.service';
 import type { Actor } from '../src/common/authz/contract';
-import { expectAuthorized, expectRejectsAnonymous, testActor } from './authz-cases';
+import { expectAuthorized, expectRejectsAnonymous } from './authz-cases';
+import { testActor } from './actor';
 
 /**
  * The helper is a checklist, and a checklist that cannot fail is decoration. These drive

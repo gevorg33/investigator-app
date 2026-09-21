@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type postgres from 'postgres';
 import type { Actor, Role } from '../src/common/authz/contract';
-import { testActor } from './authz-cases';
+import { testActor } from './actor';
 
 /**
  * A signed-in user: the user (whose Personal workspace the trigger makes) and a session row, so

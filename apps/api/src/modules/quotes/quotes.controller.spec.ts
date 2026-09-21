@@ -3,7 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { ActorService } from '../../common/authz/actor.service';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { QuotesController } from './quotes.controller';

@@ -3,7 +3,8 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { expectAuthorized, testActor } from '../../../test/authz-cases';
+import { expectAuthorized } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import {
   category,
   completeDraft,

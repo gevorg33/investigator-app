@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '../../database/schema';
 import { users } from '../../database/schema';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { ActorScopedRepository } from './actor-scoped.repository';
 import { CONTEXT_KEY } from '../context/request-context-key';
 import { testContext } from '../../../test/context';

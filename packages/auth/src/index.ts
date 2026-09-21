@@ -81,5 +81,3 @@ export interface Actor {
    */
   readonly activeRole?: Role | undefined;
 }
-
-export const PACKAGE_NAME = '@investigator/auth' as const;

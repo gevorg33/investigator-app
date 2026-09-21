@@ -6,7 +6,7 @@ import type { Actor, Role, StaffScope } from '../src/common/authz/contract';
 import { currentContext } from '../src/common/context/execution-context';
 import * as schema from '../src/database/schema';
 import type { MediaStorage, StoredAsset } from '../src/modules/media/media.storage';
-import { testActor } from './authz-cases';
+import { testActor } from './actor';
 
 export type TestDb = ReturnType<typeof drizzle<typeof schema>>;
 

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { investigatorSearchQuery, SearchService } from './search.service';
 
 const actor = testActor({ userId: 'u1', roles: ['CUSTOMER'] });

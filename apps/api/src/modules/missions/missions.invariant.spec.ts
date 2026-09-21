@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { MissionsService } from './missions.service';
 
 const actor = testActor({ userId: 'u1', roles: ['CUSTOMER'] });

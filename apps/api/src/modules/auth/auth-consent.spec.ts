@@ -3,9 +3,9 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { testPool } from '../../../test/db';
-import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
+import { roleDocumentIds } from '../../../test/legal-fixtures';
 import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { AuditService } from '../../common/audit/audit.service';
 import { runInContext } from '../../common/context/execution-context';
@@ -100,16 +100,10 @@ describe('the acceptance gate', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one changes them.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'exclusive');
-  });
-
   afterEach(async () => {
     // Cleared before the lock is released: outside this suite's tests nothing is published, so
     // no other suite's registration is decided by what this one was doing.
     await clear();
-    await unlockDocuments(ownerSql, 'exclusive');
   });
 
   const clear = async () => {

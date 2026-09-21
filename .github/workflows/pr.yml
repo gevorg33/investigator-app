@@ -88,12 +88,15 @@ jobs:
           APP_DB_PASSWORD="$pw" ./scripts/set-app-role-password.sh
           echo "DATABASE_URL=postgres://investigator_app:${pw}@localhost:5432/investigator_test" >> "$GITHUB_ENV"
 
-      # `--if-present` because fixtures are T-042's to build and no package defines the
-      # script yet; this step referenced it before it existed and failed the first run CI
-      # ever did. T-042 must assert the step stops being a no-op -- a green step that runs
-      # nothing is how the coverage gate went unnoticed for four tasks (T-063).
+      # Builds a small, coherent world out of the same factories the tests use, against the
+      # database migrated from empty two steps ago (T-042). A factory that has drifted from a
+      # constraint fails here rather than in whichever spec happens to touch it next. No
+      # `--if-present`: `pnpm -r` fails by itself when no package defines the script, and
+      # `test/workspace-scripts.spec.ts` refuses the flag anywhere in this file -- a step that
+      # runs nothing and reports success is how the coverage gate went unnoticed for four
+      # tasks (T-063).
       - name: Load fixtures
-        run: pnpm -r --if-present fixtures:load
+        run: pnpm fixtures:load
 
       - name: Lint
         run: pnpm lint
@@ -101,20 +104,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests
-        run: pnpm test:unit
-
-      - name: Integration tests
-        run: pnpm test:integration
-
-      - name: API tests
-        run: pnpm test:api
-
-      - name: E2E — critical workflows
-        run: pnpm test:e2e
-
+      # One step, because there is one suite. The three that stood here -- integration, api,
+      # e2e -- named a split the suite does not make and matched no package script, so all
+      # three passed without running anything (T-042). Coverage runs the tests too, so running
+      # `pnpm test` first would only run everything twice.
+      #
       # Blocking. Per package, not global. Exclusions: docs/operations/coverage-exclusions.md
-      - name: Coverage gate
+      - name: Tests and coverage gate
         run: pnpm test:coverage
 
       - uses: actions/upload-artifact@v4

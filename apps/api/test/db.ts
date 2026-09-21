@@ -1,14 +1,13 @@
 import postgres from 'postgres';
 import { TEST_POOL_MAX } from './db-budget';
+import { DEFAULT_APP_URL, DEFAULT_OWNER_URL, databaseName } from './worker-database';
 
 /**
  * The runtime role, `investigator_app`: what the API connects as, so what code under test runs
  * as (T-073). It is not a superuser, has no BYPASSRLS and owns nothing, so row-level security
  * applies to it — which is the only reason a policy test can mean anything.
  */
-export const TEST_DATABASE_URL =
-  process.env['DATABASE_URL'] ??
-  'postgres://investigator_app:investigator_app@localhost:5433/investigator_dev';
+export const TEST_DATABASE_URL = process.env['DATABASE_URL'] ?? DEFAULT_APP_URL;
 
 /**
  * The owner: what migrations run as, and what fixtures and schema-rule tests use. Fixtures need
@@ -16,9 +15,24 @@ export const TEST_DATABASE_URL =
  * workspaces once T-077 lands); schema tests need it to reach a constraint that a revoked
  * privilege would otherwise refuse first.
  */
-export const TEST_OWNER_URL =
-  process.env['MIGRATION_DATABASE_URL'] ??
-  'postgres://postgres:postgres@localhost:5433/investigator_dev';
+export const TEST_OWNER_URL = process.env['MIGRATION_DATABASE_URL'] ?? DEFAULT_OWNER_URL;
+
+/**
+ * Both variables are rewritten by `setup-database.ts`, which runs before a spec file and
+ * everything it imports. If this module were ever loaded first, these constants would hold
+ * the shared development database and the suite would quietly go back to writing into it —
+ * so it says so instead (T-042).
+ */
+if (process.env['VITEST_POOL_ID'] !== undefined) {
+  for (const url of [TEST_DATABASE_URL, TEST_OWNER_URL]) {
+    if (!/_w\d+$/.test(databaseName(url))) {
+      throw new Error(
+        `test/db.ts loaded before test/setup-database.ts: ${databaseName(url)} is not this ` +
+          `worker's database. setupFiles order in vitest.config.mts decides this.`,
+      );
+    }
+  }
+}
 
 /**
  * The only way a spec opens a database pool (T-069; a static spec enforces it).

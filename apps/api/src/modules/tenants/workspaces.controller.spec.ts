@@ -2,7 +2,7 @@ import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { workspaceResolverStub } from '../../../test/context';
 import { closeApp, listenOnce } from '../../../test/http';
 import { ActorService } from '../../common/authz/actor.service';

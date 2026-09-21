@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthzService, type AuthzContext } from './authz.service';
-import { testActor } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import type { Actor } from './contract';
 
 const ctx: AuthzContext = { action: 'mission.publish', resourceType: 'mission', resourceId: 'm1' };

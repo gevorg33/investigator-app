@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { atTime } from '../../../test/time';
 import { LIMITS, MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 
 describe('rate limiting', () => {
@@ -9,6 +10,24 @@ describe('rate limiting', () => {
     }
     await expect(svc.consume('loginPerAccount', 'acct')).rejects.toMatchObject({
       code: 'RATE_LIMITED',
+    });
+  });
+
+  it('lets the same caller back in once the window has passed', async () => {
+    // The window was never exercised: the store's `resetAt <= now` branch counted as covered
+    // because the `||` in front of it short-circuits, so a limiter that never reset would have
+    // passed every test here and locked people out permanently (T-042).
+    const svc = new RateLimitService(new MemoryRateLimitStore());
+    await atTime('2026-03-01T12:00:00.000Z', async (clock) => {
+      for (let i = 0; i < LIMITS.loginPerAccount.max; i++) {
+        await svc.consume('loginPerAccount', 'acct');
+      }
+      await expect(svc.consume('loginPerAccount', 'acct')).rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+      });
+
+      clock.advance((LIMITS.loginPerAccount.windowSeconds + 1) * 1000);
+      await expect(svc.consume('loginPerAccount', 'acct')).resolves.toBeUndefined();
     });
   });
 

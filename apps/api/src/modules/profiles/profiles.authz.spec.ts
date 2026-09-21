@@ -2,23 +2,23 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
 import { investigatorProfiles, taxonomyNodes, users } from '../../database/schema';
-import { expectAuthorized, testActor } from '../../../test/authz-cases';
+import { expectAuthorized } from '../../../test/authz-cases';
+import { testActor } from '../../../test/actor';
 import { ProfilesService } from './profiles.service';
 import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
-import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
+import { roleDocumentIds } from '../../../test/legal-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
-
 
 describe('profile authorization', () => {
   let sql: postgres.Sql;
@@ -52,15 +52,6 @@ describe('profile authorization', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one only has to get past the gate.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'shared');
-  });
-
-  afterEach(async () => {
-    await unlockDocuments(ownerSql, 'shared');
-  });
-
   /** An account with the given roles, and the profiles those roles imply. */
   const person = async (
     roles: Array<'CUSTOMER' | 'INVESTIGATOR'>,
@@ -87,7 +78,11 @@ describe('profile authorization', () => {
     const actor = await person(['INVESTIGATOR']);
     const updated = await profiles.updateMyInvestigatorProfile(
       actor,
-      { headline: 'Corporate due diligence', visibility: 'PUBLISHED', contactPhone: '+374 10 000000' },
+      {
+        headline: 'Corporate due diligence',
+        visibility: 'PUBLISHED',
+        contactPhone: '555-0100',
+      },
       req,
     );
     return { actor, profileId: updated.id };
@@ -97,7 +92,7 @@ describe('profile authorization', () => {
     it('the owner sees it in full', async () => {
       const { actor } = await publishedInvestigator();
       const own = await profiles.getMyInvestigatorProfile(actor, req);
-      expect(own.contactPhone).toBe('+374 10 000000');
+      expect(own.contactPhone).toBe('555-0100');
       expect(own.visibility).toBe('PUBLISHED');
       expect(own.userId).toBe(actor.userId);
     });
@@ -105,7 +100,9 @@ describe('profile authorization', () => {
     it('someone with no investigator profile gets 404, not somebody else’s', async () => {
       const customer = await person(['CUSTOMER', 'INVESTIGATOR']);
       // Holds the role but has no row of their own; must not fall through to any other row.
-      await ownerDb.delete(investigatorProfiles).where(eq(investigatorProfiles.userId, customer.userId));
+      await ownerDb
+        .delete(investigatorProfiles)
+        .where(eq(investigatorProfiles.userId, customer.userId));
       await expect(profiles.getMyInvestigatorProfile(customer, req)).rejects.toMatchObject({
         status: 404,
       });
@@ -128,7 +125,7 @@ describe('profile authorization', () => {
       // The allowlist is the control. Anything not named in the projection cannot appear
       // here even after a column is added to the table.
       const blob = JSON.stringify(view);
-      expect(blob).not.toContain('+374 10 000000');
+      expect(blob).not.toContain('555-0100');
       expect(view).not.toHaveProperty('contactPhone');
       expect(view).not.toHaveProperty('userId');
       expect(view).not.toHaveProperty('visibility');
@@ -164,7 +161,7 @@ describe('profile authorization', () => {
       const own = await profiles.getMyCustomerProfile(customer, req);
       await profiles.updateMyCustomerProfile(
         customer,
-        { organisationName: 'Acme Holdings', contactPhone: '+374 11 111111' },
+        { organisationName: 'Acme Holdings', contactPhone: '555-0101' },
         req,
       );
       const stranger = await person(['INVESTIGATOR']);
@@ -173,7 +170,7 @@ describe('profile authorization', () => {
       expect(Object.keys(view).sort()).toEqual(['displayName', 'id']);
       const blob = JSON.stringify(view);
       expect(blob).not.toContain('Acme Holdings');
-      expect(blob).not.toContain('+374 11 111111');
+      expect(blob).not.toContain('555-0101');
     });
   });
 

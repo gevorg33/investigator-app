@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
 import type { MailMessage } from '../../common/mail/mailer';
@@ -18,9 +18,8 @@ import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { testPool } from '../../../test/db';
-import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
-import { scopedDb } from '../../../test/workspace-context';
 
+import { scopedDb } from '../../../test/workspace-context';
 
 /** Captures what would have been mailed, so the link can be followed in a test. */
 class CapturingMailer {
@@ -88,15 +87,6 @@ describe('verification and password reset', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one only has to get past the gate.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'shared');
-  });
-
-  afterEach(async () => {
-    await unlockDocuments(ownerSql, 'shared');
-  });
-
   describe('email verification', () => {
     it('mails a link on registration and activates the account when redeemed', async () => {
       const ctx = newCtx();
@@ -146,10 +136,7 @@ describe('verification and password reset', () => {
       const e = email();
       await auth.register(e, PASSWORD, ctx);
       const token = linkToken();
-      await db
-        .update(schema.users)
-        .set({ status: 'SUSPENDED' })
-        .where(eq(schema.users.email, e));
+      await db.update(schema.users).set({ status: 'SUSPENDED' }).where(eq(schema.users.email, e));
 
       await auth.verifyEmail(token, ctx);
 
@@ -229,9 +216,9 @@ describe('verification and password reset', () => {
       await auth.requestPasswordReset(e, newCtx());
       const token = linkToken();
       await auth.resetPassword(token, NEW_PASSWORD, ctx);
-      await expect(auth.resetPassword(token, 'yet-another-long-password', ctx)).rejects.toMatchObject(
-        { code: 'UNAUTHENTICATED' },
-      );
+      await expect(
+        auth.resetPassword(token, 'yet-another-long-password', ctx),
+      ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
     });
 
     it('will not accept a verification token at the reset endpoint', async () => {
@@ -326,7 +313,10 @@ describe('verification and password reset', () => {
       const victim = await auth.login(theirs, PASSWORD, newCtx());
 
       const victimRow = await db.query.userSessions.findFirst({
-        where: eq(userSessions.refreshTokenHash, new TokenService().fingerprint(victim.refreshToken)),
+        where: eq(
+          userSessions.refreshTokenHash,
+          new TokenService().fingerprint(victim.refreshToken),
+        ),
       });
 
       // IDOR: a valid session id, but not one of mine. 404, never 403 — a 403 would
@@ -375,9 +365,9 @@ describe('verification and password reset', () => {
   });
 
   it('refuses a verification token that matches no row', async () => {
-    await expect(
-      auth.verifyEmail('a-token-that-was-never-issued', newCtx()),
-    ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    await expect(auth.verifyEmail('a-token-that-was-never-issued', newCtx())).rejects.toMatchObject(
+      { code: 'UNAUTHENTICATED' },
+    );
 
     const reasons = (await ownerDb.select().from(auditLogs))
       .filter((x) => x.action === 'auth.verification.failed')
@@ -429,10 +419,7 @@ describe('verification and password reset', () => {
       });
       // The untouched session is dead too: refusing per call site has to be repeated
       // correctly everywhere, whereas revoking ends it once.
-      const rows = await db
-        .select()
-        .from(userSessions)
-        .where(eq(userSessions.userId, a.userId));
+      const rows = await db.select().from(userSessions).where(eq(userSessions.userId, a.userId));
       expect(rows.every((r) => r.revokedAt !== null)).toBe(true);
       await expect(auth.refresh(b.refreshToken, newCtx())).rejects.toMatchObject({
         code: 'UNAUTHENTICATED',

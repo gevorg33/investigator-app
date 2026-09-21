@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
-import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
+
 import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { member } from '../../../test/workspace-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
@@ -42,14 +42,8 @@ describe('legal consent', () => {
     await ownerSql.end();
   });
 
-  // Published documents are shared between suites (T-022): this one changes them.
-  beforeEach(async () => {
-    await lockDocuments(ownerSql, 'exclusive');
-  });
-
   afterEach(async () => {
     await clear();
-    await unlockDocuments(ownerSql, 'exclusive');
   });
 
   /** Consents reference documents, so they go first. */
@@ -223,7 +217,11 @@ describe('legal consent', () => {
       const db = scopedDb(app);
       await expect(
         db.transaction(async (tx) => {
-          await legal.accept({ userId, documentId: document.id, context: 'REGISTRATION' }, req(), tx);
+          await legal.accept(
+            { userId, documentId: document.id, context: 'REGISTRATION' },
+            req(),
+            tx,
+          );
           throw new Error('the registration failed after the consent was recorded');
         }),
       ).rejects.toThrow('the registration failed');

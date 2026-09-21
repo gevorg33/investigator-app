@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { Actor, Role, StaffScope } from '../src/common/authz/contract';
+import type { Actor } from '../src/common/authz/contract';
 
 /**
  * Lives outside src/ deliberately. It imports vitest, and anything under src/ is compiled
@@ -119,15 +119,4 @@ export async function expectRejectsAnonymous(attempt: () => Promise<unknown>): P
     status = (e as { status?: number }).status ?? 500;
   }
   expect(status, 'a request with no identity must be rejected').toBe(401);
-}
-
-/** Builds an Actor for tests. Defaults to an ordinary active customer. */
-export function testActor(over: Partial<Actor> & { userId: string }): Actor {
-  return Object.freeze({
-    sessionId: `session-${over.userId}`,
-    status: 'ACTIVE' as const,
-    roles: ['CUSTOMER'] as readonly Role[],
-    staffScopes: [] as readonly StaffScope[],
-    ...over,
-  });
 }

@@ -37,8 +37,8 @@ never a force-push, never from an arbitrary branch.
 
 ```
 fresh environment → install → provision clean database → migrate → fixtures
-  → lint → typecheck → unit → integration → API → E2E
-  → coverage gate → build → security & dependency checks → destroy environment
+  → lint → typecheck → tests + coverage gate
+  → build → security & dependency checks → destroy environment
 ```
 
 Rules:
@@ -51,6 +51,16 @@ Rules:
 3. **Fail fast, but run the whole suite.** Lint failing should not hide twelve test failures.
 4. **Destroy the environment**, including volumes. A leaked volume becomes the state the next
    run accidentally depends on.
+5. **A step runs something, or it does not exist** (T-042). `--if-present` is banned in the
+   workflow: it turns a script no package defines into a green step, and a green step that
+   runs nothing is indistinguishable from a passing one. Four steps were in that state —
+   `fixtures:load`, `test:integration`, `test:api`, `test:e2e` — as was the coverage gate for
+   four tasks (T-063). `pnpm -r <script>` fails by itself when nothing defines the script, and
+   `apps/api/test/workspace-scripts.spec.ts` refuses the flag, refuses a script the workflow
+   names but nothing defines, and refuses a root script that delegates to nothing.
+6. **One test step, not four.** There is one suite; naming a split the suite does not make
+   produced three steps that each ran everything or nothing. Coverage runs the tests, so
+   `pnpm test:coverage` is the step, and a failure in it names either the test or the number.
 
 ## Secrets and forks
 
@@ -129,3 +139,4 @@ with replicas and a CDN. Environment differences belong in configuration, never 
 - [ ] Production jobs manual and approval-gated
 - [ ] Migration job separate from deploy in production
 - [ ] Coverage gate present and blocking
+- [ ] Every step runs something — no `--if-present`, no script nothing defines

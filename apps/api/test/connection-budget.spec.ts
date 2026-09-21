@@ -14,7 +14,21 @@ import { testPool } from './db';
  * second pool, which would have pushed that worst case past the limit.
  */
 const API = join(__dirname, '..');
-const ALLOWED_POOL_FACTORIES = ['test/db.ts', 'src/database/database.module.ts'];
+/**
+ * `db.ts` and the application's own module are the two ways a spec reaches the database.
+ *
+ * The two harness files are not specs and cannot use either. `global-setup.ts` runs in the
+ * main process before any worker exists, connecting to databases it is in the middle of
+ * creating; `setup-database.ts` is what decides which database `db.ts` will then read from,
+ * so it cannot ask `db.ts` for a pool. Both hold one connection at a time and are counted in
+ * `PER_FILE_BUDGET` (T-042).
+ */
+const ALLOWED_POOL_FACTORIES = [
+  'test/db.ts',
+  'src/database/database.module.ts',
+  'test/global-setup.ts',
+  'test/setup-database.ts',
+];
 
 const files = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -62,6 +76,10 @@ describe('the test suite’s connection budget', () => {
 
   it('budgets for the app pool plus two helper pools, which T-073 needs', () => {
     expect(PER_FILE_BUDGET).toBeGreaterThanOrEqual(POOL_MAX + 2 * TEST_POOL_MAX);
+  });
+
+  it('budgets for the reset connection each spec file holds (T-042)', () => {
+    expect(PER_FILE_BUDGET).toBeGreaterThanOrEqual(POOL_MAX + 2 * TEST_POOL_MAX + 1);
   });
 
   it('runs on a fixed number of workers, taken from the budget', () => {
