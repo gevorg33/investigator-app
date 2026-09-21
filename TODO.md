@@ -3732,6 +3732,9 @@ pnpm --filter api test agencies && python3 scripts/validate-knowledge-base.py
 - New media categories are `AGENCY_LOGO` and `AGENCY_COVER`.
 
 **Acceptance criteria**
+- [ ] **Publishing is the agency's own act** (owner decision, 2026-09-21): a profile is unpublished until the agency publishes it, and can be unpublished again — the same shape as an investigator profile being DRAFT until PUBLISHED. An agency mid-setup, or one that only works with clients it already has, is never put in front of customers by accident
+- [ ] **Visible to signed-in workspaces, and no further** (owner decision, 2026-09-21): the read policy on `tenants` / `tenant_profiles` mirrors `investigator_profiles.public_read` — published **and** `app_current_tenant() IS NOT NULL`. The marketing site stays a marketing site: no anonymous access, nothing indexed (ADR-0002). Making supplier identities searchable on the open web is a privacy and safety question that would need its own ADR and counsel input
+- [ ] A suspended or archived agency disappears from wherever it was listed, on the next query
 - [ ] The public endpoint returns only projection fields; a test asserts no private settings, employees, customers or financial fields appear
 - [ ] Every settings section has a default; nothing is required to use the product
 - [ ] Branding cannot break contrast (tokens validated)
@@ -3813,6 +3816,7 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 "the workspace is ACTIVE". Whether agency verification also gates listing is decided in T-088.
 
 **Acceptance criteria**
+- [ ] **Open, and not yet anybody's task** (noted 2026-09-21): discovery searches investigator profiles, and this task only adds "which agency this profile belongs to". Nothing yet lets a customer browse or search **agencies as entities** — "find me a firm in Yerevan" rather than "find me an investigator". Now that agency profiles are to be published and visible to signed-in customers (T-084), decide whether that is a discovery feature of its own, and file it if so
 - [ ] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
 - [ ] Several profiles per agency; one per person per workspace; no identity fields duplicated
 - [ ] A suspended or archived agency's profiles disappear from discovery on the next query

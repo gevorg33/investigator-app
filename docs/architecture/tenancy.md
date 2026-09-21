@@ -496,7 +496,11 @@ visibility fails *open*: the owner check returns early when it cannot see the wo
 
 New tables are all tenant-owned unless they appear in this table:
 
-- `tenants` (policy: own row, or public read of the published profile)
+- `tenants` (policy: own row, or public read of the published profile). **Decided 2026-09-21:**
+  publishing is the agency's own act — unpublished until it says otherwise, unpublishable again —
+  and a published profile is readable by **signed-in workspaces only**, exactly as
+  `investigator_profiles.public_read` works today. Nothing about a supplier reaches the open web
+  or a search engine; that would need its own ADR (T-084)
 - `tenant_profiles`, `tenant_settings`, `tenant_memberships`, `tenant_invitations`
 - `teams`, `team_members`
 - `membership_roles`, `assignment_staff`
