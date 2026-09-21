@@ -14,6 +14,8 @@ export interface ExecutionContext {
   readonly tenantKind: 'PERSONAL' | 'AGENCY';
   readonly userId: string;
   readonly membershipId: string;
+  /** The session this request arrived on, so an audit row can say which one did it (T-080). */
+  readonly sessionId: string;
   /** Tenant permissions held in this workspace, read with the membership on this request. */
   readonly permissions: readonly string[];
 }

@@ -45,7 +45,13 @@ const keyOf = (table: string): string => KEY_COLUMN[table] ?? 'id';
 const PUBLIC_TO_EVERY_WORKSPACE = ['customer_profiles'];
 
 const SCOPED = Object.entries(TABLE_CLASSES)
-  .filter(([, s]) => s.class === 'tenancy' || s.class === 'tenant_owned' || s.class === 'two_party')
+  .filter(
+    ([, s]) =>
+      s.class === 'tenancy' ||
+      s.class === 'tenant_owned' ||
+      s.class === 'two_party' ||
+      s.class === 'platform_record',
+  )
   .map(([table]) => table)
   .sort();
 

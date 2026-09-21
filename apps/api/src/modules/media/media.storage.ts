@@ -27,6 +27,16 @@ export interface StoredAsset {
  * it needs rather than on an SDK.
  */
 export interface MediaStorage {
+  /**
+   * Where a new file goes: `…/tenant/{tenantId}/{category}/{uuid}`, derived from the execution
+   * context (T-080). Business code never builds a path and a client never names one, so a file
+   * cannot be written into another workspace's folder by getting a string wrong. Folders are
+   * organisation, not authorization — delivery is still a short-lived, backend-signed grant.
+   *
+   * Existing assets keep the `public_id` they were stored under; nothing moves a file that is
+   * already in storage.
+   */
+  publicIdFor(category: string): string;
   signUpload(input: { publicId: string; resourceType: string; allowedFormats: string[] }): SignedUpload;
   findAsset(publicId: string, resourceType: string): Promise<StoredAsset | undefined>;
   destroy(publicId: string, resourceType: string): Promise<void>;

@@ -16,7 +16,7 @@ import { MEDIA_POLICY, UPLOAD_AUTHORIZATION_TTL_SECONDS } from './media.policy';
 import { OwnMediaRepository, ViewableMediaRepository } from './media.repository';
 import { MediaService } from './media.service';
 import { testPool } from '../../../test/db';
-import { asRequests, scopedDb } from '../../../test/workspace-context';
+import { asRequests, personalContext, scopedDb } from '../../../test/workspace-context';
 
 
 describe('media upload flow', () => {
@@ -96,22 +96,26 @@ describe('media upload flow', () => {
       expect(ttl).toBeLessThanOrEqual(UPLOAD_AUTHORIZATION_TTL_SECONDS * 1000 + 1000);
     });
 
-    it('places the file under the configured folder and its category', async () => {
-      process.env['CLOUDINARY_FOLDER'] = 'investigator/test';
-      const out = await media.authorizeUpload(await person(ownerDb), pdf, req());
-      expect((await rowOf(out.assetId))?.publicId).toMatch(
-        /^investigator\/test\/verification-document\/[0-9a-f-]{36}$/,
+    it('stores the file where storage said, and asks storage for that path by category', async () => {
+      // Where the path comes from is the storage layer's business (T-080) — the service's part
+      // is to ask for one and to store what it is given, unchanged, on the row it signs.
+      const actor = await person(ownerDb);
+      const out = await media.authorizeUpload(actor, pdf, req());
+      expect(storage.publicIdFor).toHaveBeenCalledWith('VERIFICATION_DOCUMENT');
+      const derived = storage.publicIdFor.mock.results.at(-1)?.value as string;
+      expect((await rowOf(out.assetId))?.publicId).toBe(derived);
+      expect(storage.signUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ publicId: derived }),
       );
     });
 
-    it('falls back to the development folder when none is configured', async () => {
-      delete process.env['CLOUDINARY_FOLDER'];
-      const out = await media.authorizeUpload(
-        await person(ownerDb),
-        { category: 'PROFILE_IMAGE', mimeType: 'image/png', bytes: 10 },
-        req(),
-      );
-      expect((await rowOf(out.assetId))?.publicId).toMatch(/^investigator\/development\/profile-image\//);
+    it('puts the file in the workspace the request is acting in', async () => {
+      // The derived path carries the workspace, so one workspace's uploads never land in
+      // another's folder — the check that a caller cannot influence it is in the adapter's spec.
+      const actor = await person(ownerDb);
+      const out = await media.authorizeUpload(actor, pdf, req());
+      const workspace = await personalContext(ownerSql, actor.userId);
+      expect((await rowOf(out.assetId))?.publicId).toContain(`/tenant/${workspace.tenantId}/`);
     });
 
     it('audits the authorization', async () => {

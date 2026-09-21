@@ -102,7 +102,7 @@ The workspace is already resolved when your handler runs. Then:
 | Job | Enqueue through the job helper. It stores `{tenantId, userId, membershipId}`. The worker re-reads membership and tenant status, restores the context, then runs |
 | Cache | `cache.get(namespace, query)`. Never compose a key. Permission-dependent results key on the membership too |
 | File | Ask the storage layer for a path. It derives `tenant/{id}/{category}/{uuid}`. Folders never authorize |
-| Audit | `audit.record({ action, resourceType, resourceId, … })`. Tenant, user, membership, session and correlation come from the context |
+| Audit | `audit.record({ action, resourceType, resourceId, … })`. The workspace, membership and session are filled by DEFAULT from the context (T-080) — the event type has no field for them, so there is nothing to pass and nothing to forge. An entry outside a workspace records none, and the writer cannot read it back |
 | AI | A session belongs to one workspace for life. Memory defaults to `user_in_tenant`. Retrieval filters by tenant before similarity. A command declares `tenantScope`; it is never an input (ADR-0012) |
 
 ## Test recipe

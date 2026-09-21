@@ -57,8 +57,10 @@ export class WorkspaceResolver {
    * The context for a requested workspace, if the caller may work in it right now; otherwise
    * undefined. `requested` is a candidate to check against memberships, never one to act in.
    */
-  usable(userId: string, requested: string): Promise<ExecutionContext | undefined> {
-    return runAsUser(userId, () => this.usableAsUser(userId, requested));
+  usable(actor: Actor, requested: string): Promise<ExecutionContext | undefined> {
+    return runAsUser(actor.userId, () =>
+      this.usableAsUser(actor.userId, requested, actor.sessionId),
+    );
   }
 
   private async resolveAsUser(
@@ -68,7 +70,7 @@ export class WorkspaceResolver {
   ): Promise<ExecutionContext> {
     if (requested !== undefined && requested !== '') {
       const found = UUID.test(requested)
-        ? await this.usableAsUser(actor.userId, requested)
+        ? await this.usableAsUser(actor.userId, requested, actor.sessionId)
         : undefined;
       await this.authz.requireWorkspace(actor, found !== undefined, {
         action: 'workspace.use',
@@ -85,11 +87,11 @@ export class WorkspaceResolver {
       .where(eq(userSessions.id, actor.sessionId));
     const preferred = session?.defaultTenantId ?? null;
     if (preferred !== null) {
-      const found = await this.usableAsUser(actor.userId, preferred);
+      const found = await this.usableAsUser(actor.userId, preferred, actor.sessionId);
       if (found !== undefined) return found;
     }
 
-    const personal = await this.personal(actor.userId);
+    const personal = await this.personal(actor.userId, actor.sessionId);
     await this.db
       .update(userSessions)
       .set({ defaultTenantId: personal.tenantId })
@@ -100,6 +102,7 @@ export class WorkspaceResolver {
   private async usableAsUser(
     userId: string,
     requested: string,
+    sessionId: string,
   ): Promise<ExecutionContext | undefined> {
     const [row] = await this.db
       .select({
@@ -118,19 +121,24 @@ export class WorkspaceResolver {
         ),
       );
     if (row === undefined) return undefined;
-    return { ...row, userId, permissions: await this.permissionsOf(row.membershipId) };
+    return {
+      ...row,
+      userId,
+      sessionId,
+      permissions: await this.permissionsOf(row.membershipId),
+    };
   }
 
   /**
    * The caller's Personal workspace. The trigger that made the user made it (T-074), so it
    * exists; it is ACTIVE for as long as the account is. A request never runs without a workspace.
    */
-  private async personal(userId: string): Promise<ExecutionContext> {
+  private async personal(userId: string, sessionId: string): Promise<ExecutionContext> {
     const [row] = await this.db
       .select({ id: tenants.id })
       .from(tenants)
       .where(eq(tenants.personalOwnerId, userId));
-    const found = await this.usableAsUser(userId, row!.id);
+    const found = await this.usableAsUser(userId, row!.id, sessionId);
     return found!;
   }
 

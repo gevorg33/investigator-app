@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { drizzle } from 'drizzle-orm/postgres-js';
 import { vi } from 'vitest';
 import type { Actor, Role, StaffScope } from '../src/common/authz/contract';
+import { currentContext } from '../src/common/context/execution-context';
 import * as schema from '../src/database/schema';
 import type { MediaStorage, StoredAsset } from '../src/modules/media/media.storage';
 import { testActor } from './authz-cases';
@@ -15,6 +16,13 @@ export class FakeStorage implements MediaStorage {
   destroyed: string[] = [];
   failDestroy = false;
   onFind: (() => Promise<void>) | undefined;
+
+  /** The real adapter derives this from the execution context (T-080); so does this one. */
+  publicIdFor = vi.fn((category: string) => {
+    const tenantId = currentContext()?.tenantId;
+    if (tenantId === undefined) throw new Error('no workspace context: nothing to derive a path from');
+    return `test/tenant/${tenantId}/${category.toLowerCase().replace(/_/g, '-')}/${randomUUID()}`;
+  });
 
   signUpload = vi.fn((input: { publicId: string; resourceType: string; allowedFormats: string[] }) => ({
     url: `https://storage.test/${input.resourceType}/upload`,
