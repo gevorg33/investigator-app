@@ -36,7 +36,12 @@ export class ProfilesController {
     @Body() dto: ActivateRoleDto,
     @Req() req: Request,
   ): Promise<{ profileId: string }> {
-    return this.profiles.activateRole(actor, dto.role, requestContext(req));
+    return this.profiles.activateRole(
+      actor,
+      dto.role,
+      requestContext(req),
+      dto.acceptedDocumentIds ?? [],
+    );
   }
 
   @Get('investigator/me')

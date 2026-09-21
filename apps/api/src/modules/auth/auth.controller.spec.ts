@@ -78,6 +78,8 @@ describe('auth controller', () => {
         CREDENTIALS.email,
         CREDENTIALS.password,
         expect.objectContaining({ correlationId: 'correlation-abc' }),
+        // What the caller is accepting travels with the registration (T-022).
+        [],
       );
     });
 

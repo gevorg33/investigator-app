@@ -1,4 +1,12 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsOptional,
+  IsString,
+  Length,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { EmailField } from '../../common/validation/email';
 
 /**
@@ -15,6 +23,21 @@ export class CredentialsDto {
   // Bounded: an unbounded password is a denial-of-service against a memory-hard hash.
   @MaxLength(200, { message: 'error.validation.password.too_long' })
   password!: string;
+}
+
+/** Registering also accepts the documents registration requires (T-022). */
+export class RegisterDto extends CredentialsDto {
+  /**
+   * The documents being accepted, by id — so the record says which exact version and locale was
+   * shown (T-021). Empty is valid: with nothing published there is nothing to accept, and the
+   * gate refuses only when something required is in force and missing from this list.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @Length(36, 36, { each: true })
+  acceptedDocumentIds?: string[];
 }
 
 export class EmailOnlyDto {
@@ -40,3 +63,4 @@ export class ResetPasswordDto {
   @MaxLength(200, { message: 'error.validation.password.too_long' })
   password!: string;
 }
+

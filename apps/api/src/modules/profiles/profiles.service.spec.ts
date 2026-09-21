@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { LegalService } from '../legal/legal.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
@@ -15,6 +16,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
+import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 
@@ -39,6 +41,7 @@ describe('profile persistence', () => {
         new AuditService(db),
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
+        new LegalService(db, new AuditService(db)),
       ),
       ownerSql,
     );
@@ -49,13 +52,22 @@ describe('profile persistence', () => {
     await ownerSql.end();
   });
 
+  // Published documents are shared between suites (T-022): this one only has to get past the gate.
+  beforeEach(async () => {
+    await lockDocuments(ownerSql, 'shared');
+  });
+
+  afterEach(async () => {
+    await unlockDocuments(ownerSql, 'shared');
+  });
+
   const investigator = async (): Promise<Actor> => {
     const [user] = await ownerDb
       .insert(users)
       .values({ email: `persist-${randomUUID()}@example.test`, displayName: 'Nairi' })
       .returning();
     const actor = testActor({ userId: user?.id ?? '', roles: ['INVESTIGATOR'] });
-    await profiles.activateRole(actor, 'INVESTIGATOR', req);
+    await profiles.activateRole(actor, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
     return actor;
   };
 
@@ -199,7 +211,7 @@ describe('profile persistence', () => {
         .values({ email: `cust-${randomUUID()}@example.test`, displayName: 'Ani' })
         .returning();
       const actor = testActor({ userId: user?.id ?? '', roles: ['CUSTOMER'] });
-      await profiles.activateRole(actor, 'CUSTOMER', req);
+      await profiles.activateRole(actor, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
       return actor;
     };
 

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
+import { LegalService } from '../legal/legal.service';
 import { ActorService } from '../../common/authz/actor.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import * as schema from '../../database/schema';
@@ -18,6 +19,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import { testPool } from '../../../test/db';
+import { lockDocuments, roleDocumentIds, unlockDocuments } from '../../../test/legal-fixtures';
 
 
 describe('one account, both roles', () => {
@@ -46,6 +48,7 @@ describe('one account, both roles', () => {
         new AuditService(db),
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
+        new LegalService(db, new AuditService(db)),
       ),
       ownerSql,
     );
@@ -54,6 +57,15 @@ describe('one account, both roles', () => {
   afterAll(async () => {
     await sql.end();
     await ownerSql.end();
+  });
+
+  // Published documents are shared between suites (T-022): this one only has to get past the gate.
+  beforeEach(async () => {
+    await lockDocuments(ownerSql, 'shared');
+  });
+
+  afterEach(async () => {
+    await unlockDocuments(ownerSql, 'shared');
   });
 
   /** A live account with a session, so the real Actor resolution can be exercised. */
@@ -78,8 +90,8 @@ describe('one account, both roles', () => {
     const { userId, token } = await account();
     const bare = testActor({ userId, roles: [] });
 
-    await profiles.activateRole(bare, 'CUSTOMER', req);
-    await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
+    await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
 
     // One account. Not two identities, two verification histories and two reputations for
     // one person (plan.md:12).
@@ -91,8 +103,8 @@ describe('one account, both roles', () => {
   it('creates the profile each role implies', async () => {
     const { userId, token } = await account();
     const bare = testActor({ userId, roles: [] });
-    await profiles.activateRole(bare, 'CUSTOMER', req);
-    await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
+    await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
 
     const actor = await actors.fromRefreshToken(token);
     await expect(profiles.getMyCustomerProfile(actor, req)).resolves.toMatchObject({ userId });
@@ -102,8 +114,8 @@ describe('one account, both roles', () => {
   it('is idempotent — a double-submitted form is not an error', async () => {
     const { userId } = await account();
     const bare = testActor({ userId, roles: [] });
-    const first = await profiles.activateRole(bare, 'INVESTIGATOR', req);
-    const second = await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    const first = await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
+    const second = await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
 
     expect(second.profileId).toBe(first.profileId);
     const roles = await ownerDb
@@ -116,14 +128,14 @@ describe('one account, both roles', () => {
   it('re-activates a previously revoked role rather than stacking a second row', async () => {
     const { userId, token } = await account();
     const bare = testActor({ userId, roles: [] });
-    await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
     await ownerDb
       .update(userRoles)
       .set({ revokedAt: new Date() })
       .where(eq(userRoles.userId, userId));
     expect((await actors.fromRefreshToken(token)).roles).toEqual([]);
 
-    await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
     expect((await actors.fromRefreshToken(token)).roles).toEqual(['INVESTIGATOR']);
     const rows = await ownerDb.select().from(userRoles).where(eq(userRoles.userId, userId));
     expect(rows).toHaveLength(1);
@@ -132,8 +144,8 @@ describe('one account, both roles', () => {
   it('switching workspace needs no new sign-in, and the same session serves both', async () => {
     const { userId, token } = await account();
     const bare = testActor({ userId, roles: [] });
-    await profiles.activateRole(bare, 'CUSTOMER', req);
-    await profiles.activateRole(bare, 'INVESTIGATOR', req);
+    await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
+    await profiles.activateRole(bare, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'));
 
     const asCustomer = await actors.fromRefreshToken(token, 'CUSTOMER');
     const asInvestigator = await actors.fromRefreshToken(token, 'INVESTIGATOR');
@@ -154,7 +166,7 @@ describe('one account, both roles', () => {
     // staff roles are granted by staff.
     const { userId } = await account();
     const bare = testActor({ userId, roles: [] });
-    await profiles.activateRole(bare, 'CUSTOMER', req);
+    await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
     const roles = await ownerDb.select().from(userRoles).where(eq(userRoles.userId, userId));
     expect(roles.map((r) => r.role)).not.toContain('STAFF');
   });
@@ -162,7 +174,7 @@ describe('one account, both roles', () => {
   it('refuses activation for a suspended account', async () => {
     const { userId } = await account();
     const suspended = testActor({ userId, roles: [], status: 'SUSPENDED' });
-    await expect(profiles.activateRole(suspended, 'INVESTIGATOR', req)).rejects.toMatchObject({
+    await expect(profiles.activateRole(suspended, 'INVESTIGATOR', req, await roleDocumentIds(ownerSql, 'INVESTIGATOR'))).rejects.toMatchObject({
       status: 403,
     });
   });
@@ -184,8 +196,8 @@ describe('one account, both roles', () => {
   it('is idempotent for the customer role as well', async () => {
     const { userId } = await account();
     const bare = testActor({ userId, roles: [] });
-    const first = await profiles.activateRole(bare, 'CUSTOMER', req);
-    const second = await profiles.activateRole(bare, 'CUSTOMER', req);
+    const first = await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
+    const second = await profiles.activateRole(bare, 'CUSTOMER', req, await roleDocumentIds(ownerSql, 'CUSTOMER'));
 
     expect(second.profileId).toBe(first.profileId);
     const rows = await ownerDb

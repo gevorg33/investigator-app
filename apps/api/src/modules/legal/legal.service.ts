@@ -90,6 +90,79 @@ export class LegalService {
   }
 
   /**
+   * What this person still has to accept, of the types asked about.
+   *
+   * A type with nothing published is **not** outstanding: there is no text to agree to, and a
+   * gate that refused everybody until counsel delivered would be a gate on the wrong thing
+   * (owner decision, 2026-09-21). The moment a version is published it becomes required, and a
+   * material new version makes it outstanding again for people who accepted the old one.
+   */
+  async outstanding(
+    userId: string,
+    types: readonly LegalDocumentType[],
+  ): Promise<PublishedDocument[]> {
+    const pending: PublishedDocument[] = [];
+    for (const type of types) {
+      const document = await this.currentDocument(type).catch(() => undefined);
+      if (document === undefined) continue;
+      const state = await this.consentState(userId, type);
+      if (!state.satisfied) pending.push(document);
+    }
+    return pending;
+  }
+
+  /**
+   * The gate itself: every outstanding document of `types` must be among `acceptedDocumentIds`,
+   * and is recorded in the caller's transaction (T-022).
+   *
+   * Refuses by naming the types still missing — a client can act on that, and it says nothing
+   * about anyone else. Ids that are not outstanding are ignored rather than recorded twice:
+   * accepting the same version again is not a second agreement.
+   */
+  async requireAcceptance(
+    input: {
+      userId: string;
+      types: readonly LegalDocumentType[];
+      acceptedDocumentIds: readonly string[];
+      context: ConsentContext;
+    },
+    req: RequestContext,
+    tx?: Tx,
+  ): Promise<void> {
+    const pending = await this.outstanding(input.userId, input.types);
+    const missing = pending.filter((d) => !input.acceptedDocumentIds.includes(d.id));
+    if (missing.length > 0) {
+      throw AppError.validation(
+        missing.map((d) => ({
+          field: 'acceptedDocumentIds',
+          code: 'ACCEPTANCE_REQUIRED',
+          messageKey: `error.validation.legal.${d.type.toLowerCase()}`,
+        })),
+      );
+    }
+    await this.acceptAll(
+      { userId: input.userId, documentIds: pending.map((d) => d.id), context: input.context },
+      req,
+      tx,
+    );
+  }
+
+  /**
+   * Accepts several documents at once, in the caller's transaction — what a registration or a
+   * role activation does. Every id must be the version currently in force for its type, so a
+   * client cannot satisfy a gate by accepting something superseded.
+   */
+  async acceptAll(
+    input: { userId: string; documentIds: readonly string[]; context: ConsentContext },
+    req: RequestContext,
+    tx?: Tx,
+  ): Promise<void> {
+    for (const documentId of input.documentIds) {
+      await this.accept({ userId: input.userId, documentId, context: input.context }, req, tx);
+    }
+  }
+
+  /**
    * Records an acceptance. Takes the transaction the surrounding work runs in, so an account and
    * its consent rows commit together or not at all — an account without them must not exist.
    */

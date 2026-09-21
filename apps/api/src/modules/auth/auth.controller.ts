@@ -15,7 +15,8 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { requestContext } from '../../common/http/request-context';
-import { CredentialsDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
+import { CredentialsDto,
+  RegisterDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
 import type { SessionSummary } from './auth.service';
 import { ActorGuard } from '../../common/authz/actor.guard';
 import { CurrentActor } from '../../common/authz/actor.decorator';
@@ -44,8 +45,13 @@ export class AuthController {
   @Post('register')
   @HttpCode(202)
   @ApiOperation({ summary: 'Register. Always 202 — never reveals whether the address exists.' })
-  async register(@Body() dto: CredentialsDto, @Req() req: Request): Promise<{ status: string }> {
-    await this.auth.register(dto.email, dto.password, requestContext(req));
+  async register(@Body() dto: RegisterDto, @Req() req: Request): Promise<{ status: string }> {
+    await this.auth.register(
+      dto.email,
+      dto.password,
+      requestContext(req),
+      dto.acceptedDocumentIds ?? [],
+    );
     // Identical response whether or not the address was already registered.
     return { status: 'accepted' };
   }

@@ -16,11 +16,14 @@ describe('registration invariants', () => {
   const build = (returning: unknown[]) => {
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const mailer = { send: vi.fn().mockResolvedValue(undefined) };
-    const db = {
+    const db: Record<string, unknown> = {
       query: { users: { findFirst: vi.fn().mockResolvedValue(undefined) } },
       insert: () => ({ values: () => ({ returning: async () => returning }) }),
       update: () => ({ set: () => ({ where: async () => undefined }) }),
     };
+    // Registration writes the account and its consent rows in one transaction (T-022), so the
+    // stub has to be able to open one — it hands the same stub back.
+    db['transaction'] = async (fn: (tx: unknown) => Promise<unknown>) => fn(db);
     const tokens = new TokenService();
     const service = new AuthService(
       db as never,
@@ -31,6 +34,10 @@ describe('registration invariants', () => {
       audit as never,
       new UserTokenService(tokens),
       mailer as never,
+      {} as never,
+      {} as never,
+      // Nothing is published in this suite, so the gate has nothing to require.
+      { requireAcceptance: vi.fn().mockResolvedValue(undefined) } as never,
     );
     return { service, audit, mailer };
   };
@@ -55,8 +62,11 @@ describe('registration invariants', () => {
   it('audits and mails on the normal path', async () => {
     const { service, audit, mailer } = build([{ id: 'u1', email: 'probe@example.test' }]);
     await service.register('probe@example.test', PASSWORD, ctx);
+    // The account and its consent rows commit together now, so the audit entry is written
+    // inside that transaction and carries it (T-022).
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'auth.register', actorId: 'u1' }),
+      expect.anything(),
     );
     expect(mailer.send).toHaveBeenCalledWith(
       expect.objectContaining({ to: 'probe@example.test', template: 'email_verification' }),

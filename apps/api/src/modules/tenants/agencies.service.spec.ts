@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
+import { lockDocuments, unlockDocuments } from '../../../test/legal-fixtures';
 import { personalContext, scopedDb } from '../../../test/workspace-context';
 import { member } from '../../../test/workspace-fixtures';
 import { AuditService } from '../../common/audit/audit.service';
@@ -68,12 +69,26 @@ describe('agency registration', () => {
     await ownerSql.end();
   });
 
-  /** The agency terms in force. Published by the compliance owner in reality (ACTIONS #20). */
+  // Published documents are shared between suites (T-022): this one changes them.
   beforeEach(async () => {
+    await lockDocuments(ownerSql, 'exclusive');
+  });
+
+  afterEach(async () => {
+    await clear();
+    await unlockDocuments(ownerSql, 'exclusive');
+  });
+
+  const clear = async () => {
     await ownerSql`
       DELETE FROM user_consents WHERE legal_document_id IN
         (SELECT id FROM legal_documents WHERE type = 'AGENCY_AGREEMENT')`;
     await ownerSql`DELETE FROM legal_documents WHERE type = 'AGENCY_AGREEMENT'`;
+  };
+
+  /** The agency terms in force. Published by the compliance owner in reality (ACTIONS #20). */
+  beforeEach(async () => {
+    await clear();
     const [document] = await ownerDb
       .insert(legalDocuments)
       .values({

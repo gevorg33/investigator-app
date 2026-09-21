@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
+import { requiredForRole } from '../legal/legal.policy';
+import { LegalService } from '../legal/legal.service';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import { DB, type Db } from '../../database/database.module';
@@ -59,6 +61,7 @@ export class ProfilesService {
     private readonly audit: AuditService,
     private readonly ownInvestigator: OwnInvestigatorProfileRepository,
     private readonly ownCustomer: OwnCustomerProfileRepository,
+    private readonly legal: LegalService,
   ) {}
 
   // ── Role activation ───────────────────────────────────────────────────────────
@@ -77,20 +80,35 @@ export class ProfilesService {
     actor: Actor,
     role: 'CUSTOMER' | 'INVESTIGATOR',
     req: RequestContext,
+    acceptedDocumentIds: readonly string[] = [],
   ): Promise<{ profileId: string }> {
     await this.authz.requireActive(actor, ctxFor('profile.activate_role', 'user', req, actor.userId));
 
-    const existingRole = await this.db.query.userRoles.findFirst({
-      where: and(eq(userRoles.userId, actor.userId), eq(userRoles.role, role)),
+    // A customer who later becomes an investigator was not an investigator when they signed up,
+    // so what an investigator agrees to is accepted here (T-022, `legal-consent`). The role and
+    // the consent rows commit together: a role that exists having agreed to nothing is exactly
+    // what this gate is for.
+    await this.db.transaction(async (tx) => {
+      await this.legal.requireAcceptance(
+        {
+          userId: actor.userId,
+          types: requiredForRole(role),
+          acceptedDocumentIds,
+          context: 'ROLE_ACTIVATION',
+        },
+        req,
+        tx,
+      );
+
+      const existingRole = await tx.query.userRoles.findFirst({
+        where: and(eq(userRoles.userId, actor.userId), eq(userRoles.role, role)),
+      });
+      if (!existingRole) {
+        await tx.insert(userRoles).values({ userId: actor.userId, role });
+      } else if (existingRole.revokedAt !== null) {
+        await tx.update(userRoles).set({ revokedAt: null }).where(eq(userRoles.id, existingRole.id));
+      }
     });
-    if (!existingRole) {
-      await this.db.insert(userRoles).values({ userId: actor.userId, role });
-    } else if (existingRole.revokedAt !== null) {
-      await this.db
-        .update(userRoles)
-        .set({ revokedAt: null })
-        .where(eq(userRoles.id, existingRole.id));
-    }
 
     const profileId = await (role === 'INVESTIGATOR'
       ? this.ensureInvestigatorProfile(actor)

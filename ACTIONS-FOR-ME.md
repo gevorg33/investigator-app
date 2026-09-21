@@ -479,10 +479,16 @@ terms exist" must never read as "these terms were accepted".
 The hash is computed by the database from the text, so nothing needs to be calculated by hand.
 Translations are added as further rows of the same version with `is_authoritative_locale = false`.
 
-**Status:** ⬜ Pending — blocked on counsel (#0). T-022 cannot gate registration until the
-documents registration requires exist, and **creating an agency is refused until
-`AGENCY_AGREEMENT` is published** (T-083) — the gate working as intended, but it does mean that
-endpoint is unusable in production until this is done
+**Also needed: which documents bind whom.** T-022 records a first answer in
+`apps/api/src/modules/legal/legal.policy.ts` — registration asks for the privacy policy and the
+terms of service, an investigator additionally for the investigator agreement and the lawful-use
+policy, a customer for the terms and conditions. **Counsel confirms or corrects that**; it is a
+legal position, not an engineering one, and changing it is a one-line change with a test.
+
+**Status:** ⬜ Pending — blocked on counsel (#0). The gates are built and require nothing until
+a version is published: registration behaves exactly as it always has (T-022), while **creating
+an agency is refused until `AGENCY_AGREEMENT` is published** (T-083) — the gate working as
+intended, but it does mean that endpoint is unusable in production until this is done
 
 ---
 

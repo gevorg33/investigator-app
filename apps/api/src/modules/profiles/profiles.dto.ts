@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Length,
   Matches,
   Max,
   MaxLength,
@@ -129,4 +130,16 @@ export class ActivateRoleDto {
   // STAFF is deliberately absent: staff roles are granted by staff, never self-activated.
   @IsIn(['CUSTOMER', 'INVESTIGATOR'])
   role!: 'CUSTOMER' | 'INVESTIGATOR';
+
+  /**
+   * The documents being accepted, by id — so the record says which exact version and locale was
+   * shown (T-021). Empty is valid: with nothing published there is nothing to accept, and the
+   * gate refuses only when something required is in force and missing from this list.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @Length(36, 36, { each: true })
+  acceptedDocumentIds?: string[];
 }
