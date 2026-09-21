@@ -342,10 +342,11 @@ ci_probe_t11_1789674197 · ci_probe_t12_1789679229 · ci_probe_t13_1789760505
 ci_probe_t73_1789820244 · t074_backfill_probe_1789825455 · t074_backfill_probe2_1789837264
 t076_backfill_probe_1789843576 · ci_probe_t76_1789844659 · t077_probe_1789911432
 t077_probe2_1789911612 · t077_probe3_1789912288 · t080_probe_1789943500
+t021_probe_1789989096
 ```
 
 ```bash
-psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%' OR datname LIKE 't0__\_backfill%' OR datname LIKE 't077\_probe%' OR datname LIKE 't080\_probe%'"
+psql "postgres://postgres:postgres@localhost:5433/postgres" -Atc "SELECT 'DROP DATABASE ' || quote_ident(datname) || ';' FROM pg_database WHERE datname LIKE 'ci\_probe%' OR datname LIKE 'migrate\_probe%' OR datname LIKE 't0__\_backfill%' OR datname LIKE 't077\_probe%' OR datname LIKE 't080\_probe%' OR datname LIKE 't021\_probe%'"
 ```
 
 **Status:** ⬜ Pending — cosmetic
@@ -456,6 +457,30 @@ profile's service area. A published one's are public by design. Approved 2026-09
 
 **Status:** ⬜ Pending — only when the production database exists (#9), and only if its owner is
 not a superuser
+
+---
+
+### 20. Publish the first legal documents — the mechanism is waiting for the text
+
+**Why:** T-021 built the store and the gate machinery, and deliberately published nothing. The
+application role holds `SELECT` on `legal_documents` and no more: versions are data a compliance
+owner puts in, not something the product can write. Until a version is published,
+`GET /api/v1/legal/documents/:type` answers 404 for that type — which is correct, because "no
+terms exist" must never read as "these terms were accepted".
+
+**What is needed**, per document type (`PRIVACY_POLICY`, `TERMS_OF_SERVICE`,
+`TERMS_AND_CONDITIONS`, `LAWFUL_USE_POLICY`, `INVESTIGATOR_AGREEMENT`, `AGENCY_AGREEMENT`):
+
+- the text, from counsel (#0), in the authoritative locale — one locale per version governs
+- whether the version is **material** (`requires_reacceptance`): a compliance decision, never
+  inferred from a diff
+- the date it takes effect
+
+The hash is computed by the database from the text, so nothing needs to be calculated by hand.
+Translations are added as further rows of the same version with `is_authoritative_locale = false`.
+
+**Status:** ⬜ Pending — blocked on counsel (#0). T-022 cannot gate registration until at least
+the documents registration requires exist
 
 ---
 

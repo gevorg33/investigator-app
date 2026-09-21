@@ -60,7 +60,11 @@ and memory · investigation sources, notes, tasks and documents · ban identity 
 Two that need particular care:
 
 - **Consent records survive account deletion** by design — they are the proof of the basis on
-  which processing occurred (`legal-consent`).
+  which processing occurred (`legal-consent`). **Built in T-021:** `user_consents.user_id` is
+  deliberately not a foreign key, so deleting a user leaves the rows standing (tested), and the
+  application role holds no `UPDATE` or `DELETE` on the table. The document a row names cannot be
+  deleted either, and cannot be edited once published — a record that points at text somebody
+  later changed proves nothing.
 - **Ban identity hashes survive account deletion** or a ban is defeated by deleting and
   re-registering (`enforcement-actions`). Lawful basis is counsel question §19a.
 

@@ -2,6 +2,7 @@ export * from './assignments';
 export * from './audit';
 export * from './identities';
 export * from './idempotency';
+export * from './legal';
 export * from './quotes';
 export * from './media';
 export * from './missions';
