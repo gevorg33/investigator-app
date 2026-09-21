@@ -16,12 +16,14 @@ describe('workspace resolution', () => {
   let app: postgres.Sql;
   let owner: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let resolver: WorkspaceResolver;
 
   beforeAll(() => {
     app = testPool();
     owner = testPool({ role: 'owner' });
     db = scopedDb(app);
+    ownerDb = drizzle(owner, { schema });
     resolver = new WorkspaceResolver(db, new AuthzService(new AuditService(db)));
   });
 
@@ -34,8 +36,10 @@ describe('workspace resolution', () => {
     (await db.select().from(userSessions).where(eq(userSessions.id, sessionId)))[0]
       ?.defaultTenantId;
 
+  // As the owner: a refused workspace leaves an entry belonging to no workspace, and the
+  // application sees only its own workspace's rows (T-080).
   const denialFor = (correlationId: string) =>
-    db
+    ownerDb
       .select()
       .from(auditLogs)
       .where(

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { v2 as cloudinary } from 'cloudinary';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { runInContext } from '../../common/context/execution-context';
 import { CloudinaryStorage, storageFromEnv, UnconfiguredStorage } from './cloudinary.storage';
 
 const creds = { cloudName: 'demo-cloud', apiKey: '123456789', apiSecret: 'not-a-real-secret' };
@@ -17,6 +18,52 @@ const expectedSignature = (params: Record<string, string>, secret: string): stri
 describe('Cloudinary storage adapter', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('where a new file goes', () => {
+    const storage = new CloudinaryStorage(creds);
+    const context = (tenantId: string) => ({
+      tenantId,
+      tenantKind: 'PERSONAL' as const,
+      userId: '00000000-0000-4000-8000-00000000000e',
+      membershipId: '00000000-0000-4000-8000-00000000000f',
+      sessionId: '00000000-0000-4000-8000-000000000010',
+      permissions: [],
+    });
+
+    it('puts it under the workspace the request is acting in, by category', () => {
+      process.env['CLOUDINARY_FOLDER'] = 'investigator/test';
+      const tenantId = '11111111-1111-4111-8111-111111111111';
+      const path = runInContext(context(tenantId), () =>
+        storage.publicIdFor('VERIFICATION_DOCUMENT'),
+      );
+      expect(path).toMatch(
+        new RegExp(`^investigator/test/tenant/${tenantId}/verification-document/[0-9a-f-]{36}$`),
+      );
+    });
+
+    it('gives two uploads in one workspace different paths', () => {
+      const ctx = context('22222222-2222-4222-8222-222222222222');
+      const [a, b] = runInContext(ctx, () => [
+        storage.publicIdFor('PROFILE_IMAGE'),
+        storage.publicIdFor('PROFILE_IMAGE'),
+      ]);
+      expect(a).not.toBe(b);
+    });
+
+    it('falls back to the development folder when none is configured', () => {
+      delete process.env['CLOUDINARY_FOLDER'];
+      const path = runInContext(context('33333333-3333-4333-8333-333333333333'), () =>
+        storage.publicIdFor('PROFILE_IMAGE'),
+      );
+      expect(path).toMatch(/^investigator\/development\/tenant\/3{8}-.*\/profile-image\//);
+    });
+
+    it('refuses to derive a path outside a workspace', () => {
+      // An upload happens inside a request, and a request has a workspace. With none there is
+      // nothing to name the folder after, and inventing one would put the file anywhere.
+      expect(() => storage.publicIdFor('PROFILE_IMAGE')).toThrow();
+    });
   });
 
   describe('upload signature', () => {
@@ -156,6 +203,7 @@ describe('Cloudinary storage adapter', () => {
 
 describe('without credentials', () => {
   it.each([
+    ['publicIdFor', (s: UnconfiguredStorage) => s.publicIdFor()],
     ['signUpload', (s: UnconfiguredStorage) => s.signUpload()],
     ['findAsset', (s: UnconfiguredStorage) => s.findAsset()],
     ['destroy', (s: UnconfiguredStorage) => s.destroy()],

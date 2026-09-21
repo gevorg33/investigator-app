@@ -11,14 +11,14 @@ import { TABLE_CLASSES, type TableClass } from './table-classes';
  * between the two — `table-classes.spec.ts` already fails on a table missing from the registry,
  * and this fails on a table whose database state does not match its class.
  */
-const PROTECTED: readonly TableClass[] = ['tenancy', 'tenant_owned', 'two_party'];
+const PROTECTED: readonly TableClass[] = ['tenancy', 'tenant_owned', 'two_party', 'platform_record'];
 
 /** Not protected by policies, and why. Each entry is a decision with an owner, not an oversight. */
 const UNPROTECTED: Readonly<Record<TableClass, string>> = {
   identity: 'read before any workspace exists; whether they get user-keyed policies is T-098',
   platform: 'the same rows for every workspace; the app holds SELECT and nothing else',
   system: 'outbox_events has no workspace column until T-082',
-  platform_record: 'audit_logs has no workspace column until T-080',
+  platform_record: '',
   postgis: 'owned by PostGIS, never written by the application',
   tenancy: '',
   tenant_owned: '',

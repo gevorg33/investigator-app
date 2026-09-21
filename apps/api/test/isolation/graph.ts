@@ -151,10 +151,16 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     INSERT INTO assignment_status_history (assignment_id, to_status, actor_kind)
     VALUES (${assignment}, 'PENDING_ACCEPTANCE', 'SYSTEM') RETURNING id`);
 
+  // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
+  const entry = await id(owner`
+    INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
+    VALUES ('iso.probe', 'probe', ${randomUUID()}, ${customer.tenantId}) RETURNING id`);
+
   return {
     customer,
     supplier,
     rows: {
+      audit_logs: entry,
       tenants: customer.tenantId,
       tenant_memberships: customer.membershipId,
       // membership_roles is keyed by its membership and role, not by an id (see KEY_COLUMN).

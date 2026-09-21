@@ -19,6 +19,10 @@ import { runAsUser } from '../../common/context/execution-context';
 
 describe('auth end to end', () => {
   let sql: postgres.Sql;
+  // Sign-in and recovery happen outside any workspace, so their entries belong to none — and
+  // the application sees only its own workspace's rows (T-080). The owner is who reads them.
+  let ownerSql: postgres.Sql;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let auth: AuthService;
   let db: ReturnType<typeof drizzle<typeof schema>>;
 
@@ -39,6 +43,8 @@ describe('auth end to end', () => {
   beforeAll(() => {
     sql = testPool();
     db = scopedDb(sql);
+    ownerSql = testPool({ max: 1, role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
     const tokens = new TokenService();
     auth = new AuthService(
       db,
@@ -57,6 +63,7 @@ describe('auth end to end', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   it('registers and then logs in', async () => {
@@ -172,7 +179,7 @@ describe('auth end to end', () => {
     await auth.refresh(s.refreshToken, ctx);
     await auth.refresh(s.refreshToken, ctx).catch(() => undefined);
 
-    const rows = await db.select().from(auditLogs);
+    const rows = await ownerDb.select().from(auditLogs);
     const actions = new Set(rows.map((r) => r.action));
     for (const a of [
       'auth.register',
@@ -190,7 +197,7 @@ describe('auth end to end', () => {
     const e = email();
     await auth.register(e, PASSWORD, ctx);
     const s = await auth.login(e, PASSWORD, ctx);
-    const rows = await db.select().from(auditLogs);
+    const rows = await ownerDb.select().from(auditLogs);
     const blob = JSON.stringify(rows);
     expect(blob).not.toContain(PASSWORD);
     expect(blob).not.toContain(s.refreshToken);
@@ -219,7 +226,7 @@ describe('auth end to end', () => {
     expect((err as { code?: string }).code).toBe('UNAUTHENTICATED');
 
     const row = await db.query.users.findFirst({ where: eq(schema.users.email, e) });
-    const entries = await db
+    const entries = await ownerDb
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.resourceId, row?.id ?? ''));
@@ -251,7 +258,7 @@ describe('auth end to end', () => {
     await expect(auth.refresh(s.refreshToken, ctx)).rejects.toMatchObject({
       code: 'UNAUTHENTICATED',
     });
-    const entries = await db.select().from(auditLogs);
+    const entries = await ownerDb.select().from(auditLogs);
     expect(entries.filter((x) => x.action === 'auth.refresh.reuse_detected')).not.toContainEqual(
       expect.objectContaining({ actorId: s.userId }),
     );
@@ -261,7 +268,7 @@ describe('auth end to end', () => {
     const ctx = newCtx();
     // Must not throw: a stale cookie on logout is routine, not an error.
     await expect(auth.revoke('a-token-that-was-never-issued', ctx)).resolves.toBeUndefined();
-    const mine = await db
+    const mine = await ownerDb
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.correlationId, ctx.correlationId));

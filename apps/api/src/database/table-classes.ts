@@ -95,7 +95,10 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     class: 'system',
     note: 'its tenant column arrives with T-082 (jobs restore context)',
   },
-  audit_logs: { class: 'platform_record', note: 'its tenant column arrives with T-080' },
+  audit_logs: {
+    class: 'platform_record',
+    note: 'tenant_id, membership_id and session_id are filled by DEFAULT from the context (T-080); nullable, because plenty of audited things happen outside a workspace',
+  },
 
   spatial_ref_sys: { class: 'postgis' },
 };

@@ -3456,27 +3456,62 @@ pnpm --filter api test platform-context verification missions
 ---
 
 ### T-080 — Tenant-aware audit and storage paths
-- **Status:** TODO
+- **Status:** DONE (2026-09-21)
 - **Priority:** P1
 - **Depends on:** T-077
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/common/audit/**, apps/api/src/modules/media/**, migrations
+- **Affected:** migration 0014, apps/api/src/common/{audit,context}/**, apps/api/src/modules/media/**
 
-**Description**
-`audit_logs` gains nullable `tenant_id` and `membership_id`. `AuditService.record` fills the
-tenant, user, membership, session and correlation from the context, and the event type no
-longer accepts them from callers. The existing call sites are migrated.
+**What shipped**
 
-The storage layer derives `tenant/{tenantId}/{category}/{uuid}` for new uploads. Existing assets
-keep their stored `public_id`.
+`audit_logs` gained `tenant_id`, `membership_id` and `session_id`, **filled by DEFAULT** from the
+same transaction-local settings the policies read. `AuditEvent` has no field for any of them, so
+there is nothing for a caller to pass, forge or forget — an entry written by any path at all
+records where it happened, and one written outside a workspace records none, which is the truth
+rather than a gap.
 
-**Acceptance criteria**
-- [ ] **`audit_logs` gets its policies here** (deferred from T-077, which left it without any): insert allowed for the current workspace or none; `SELECT` for `audit.read` holders on their own workspace's rows; everything else through `PlatformContext`. Append-only grants unchanged, and the table joins the isolation matrix
-- [ ] Every audited action in the codebase writes the workspace; a caller cannot supply or override it
-- [ ] New uploads carry the derived prefix; no business code builds a path (static spec)
-- [ ] `audit-logging` and `cloudinary-media` skills already describe this — confirm, do not duplicate
+The execution context gained `sessionId` (and the scoped client a fifth setting), because an
+audit row should say which session did it and nothing else carried that.
+
+**The policies T-077 deferred.** `workspace_read` (own workspace, or platform access) and
+`workspace_insert` (this workspace or none). `audit_logs` joins the isolation matrix, which now
+covers the `platform_record` class too. Holding `audit.read` stays a service-layer check (T-078):
+a policy can see the settings, not the permission list, so the two answer different halves —
+which rows exist for this caller, and whether this caller may ask at all.
+
+**What that surfaced.** A row written outside a workspace **cannot be read back by its writer** —
+the append-only grant test had been using `INSERT … RETURNING`, which needs the read policy to
+pass. The probe now inserts and lets the owner confirm it landed. That is append-only working:
+the application appends, and reading is a separate question.
+
+**Storage paths.** `MediaStorage.publicIdFor(category)` derives
+`…/tenant/{tenantId}/{category}/{uuid}` from the context, and refuses outside a workspace — an
+upload happens inside a request, and a request has one. The service asks for a path and stores
+what it is given; `tenant-plumbing.spec.ts` holds that nothing else builds one. Existing assets
+keep the `public_id` they were stored under; nothing moves a file already in storage.
+
+**Tests** — 1453 passing, 100% coverage.
+- `audit-workspace.spec.ts`: the workspace, membership and session of the writing request; NULL
+  outside one; a raw insert naming another workspace refused; one workspace's entries out of
+  another's reach; and the event type read from source, so a field added to it fails here.
+- `cloudinary.storage.spec.ts`: the derived path by workspace and category, two uploads never
+  colliding, the folder fallback, and the refusal outside a workspace.
+- `media.service.spec.ts` now asserts the service asks for a path and stores it unchanged — where
+  the path comes from is the adapter's business, and it is tested where it is made.
+
+**Negative controls** — each broken on purpose, the failure watched, restored:
+
+| Control | Result |
+|---|---|
+| The audit columns stop defaulting from the context | 4 fail, including a fill-trigger path |
+| The insert policy stops checking the workspace | "refuses an entry written into another workspace" fails |
+| The service builds its own storage path again | 3 fail: the static rule and both media cases |
+| The read policy is opened to every workspace | 3 fail, including two matrix cells |
+
+Migration verified from scratch on a probe database and reversed: down leaves no columns, no
+policies and no functions; re-applying gives back both policies.
 
 **Validation**
 ```bash

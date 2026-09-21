@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle as drizzleClient, type drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testPool } from '../../../test/db';
 import { scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
-import type * as schema from '../../database/schema';
+import * as schema from '../../database/schema';
 import { auditLogs } from '../../database/schema';
 import { AuditService } from '../audit/audit.service';
 import { runInContext, type ExecutionContext } from '../context/execution-context';
@@ -28,6 +28,7 @@ describe('tenant permissions', () => {
   let app: postgres.Sql;
   let owner: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let authz: AuthzService;
   let resolver: WorkspaceResolver;
 
@@ -41,6 +42,7 @@ describe('tenant permissions', () => {
     app = testPool();
     owner = testPool({ role: 'owner' });
     db = scopedDb(app);
+    ownerDb = drizzleClient(owner, { schema });
     authz = new AuthzService(new AuditService(db));
     resolver = new WorkspaceResolver(db, authz);
   });
@@ -126,8 +128,10 @@ describe('tenant permissions', () => {
     expect(row).toMatchObject({ reason: 'workspace_context_missing' });
   });
 
+  // Audit rows read as the owner: an entry belongs to the workspace it happened in, and the
+  // application sees only its own (T-080).
   const denialsFor = (correlationId: string) =>
-    db.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
+    ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
 
   describe('customer work stays in a Personal workspace', () => {
     it('is allowed there', async () => {

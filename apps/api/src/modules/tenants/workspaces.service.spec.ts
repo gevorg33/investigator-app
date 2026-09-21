@@ -18,6 +18,8 @@ describe('workspaces', () => {
   let app: postgres.Sql;
   let owner: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  // Audit rows read as the owner (T-080): the application sees only its own workspace's.
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let service: WorkspacesService;
   let resolver: WorkspaceResolver;
   const req = () => ({ correlationId: randomUUID(), ip: '198.51.100.40' });
@@ -26,6 +28,7 @@ describe('workspaces', () => {
     app = testPool();
     owner = testPool({ role: 'owner' });
     db = scopedDb(app);
+    ownerDb = drizzle(owner, { schema });
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
     resolver = new WorkspaceResolver(db, authz);
@@ -71,7 +74,7 @@ describe('workspaces', () => {
     ).resolves.toEqual({ id: tenantId });
     const [session] = await db.select().from(userSessions).where(eq(userSessions.id, me.actor.sessionId));
     expect(session?.defaultTenantId).toBe(tenantId);
-    const [row] = await db
+    const [row] = await ownerDb
       .select()
       .from(auditLogs)
       .where(and(eq(auditLogs.correlationId, r.correlationId), eq(auditLogs.action, 'workspace.activated')));

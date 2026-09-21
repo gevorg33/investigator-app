@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle as drizzleClient, type drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testActor } from '../../../test/authz-cases';
 import { testContext } from '../../../test/context';
 import { testPool } from '../../../test/db';
 import { scopedDb } from '../../../test/workspace-context';
-import type * as schema from '../../database/schema';
+import * as schema from '../../database/schema';
 import { auditLogs } from '../../database/schema';
 import { databaseSettings } from '../../database/scoped-client';
 import { AuditService } from '../audit/audit.service';
@@ -24,7 +24,9 @@ import { currentPlatformAccess, PlatformContext } from './platform-context';
  */
 describe('platform access', () => {
   let app: postgres.Sql;
+  let ownerSql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let platform: PlatformContext;
 
   const reviewer = testActor({
@@ -35,17 +37,22 @@ describe('platform access', () => {
 
   const req = () => ({ ip: '198.51.100.90', userAgent: 'vitest', correlationId: randomUUID() });
 
+  // As the owner: these rows belong to no workspace (the spec enters from none), and the
+  // application sees only its own workspace's (T-080).
   const entries = (correlationId: string) =>
-    db.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
+    ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
 
   beforeAll(() => {
     app = testPool({ max: 2 });
     db = scopedDb(app);
+    ownerSql = testPool({ max: 1, role: 'owner' });
+    ownerDb = drizzleClient(ownerSql, { schema });
     platform = new PlatformContext(new AuditService(db));
   });
 
   afterAll(async () => {
     await app.end();
+    await ownerSql.end();
   });
 
   it('is absent until it is entered', () => {
@@ -122,6 +129,7 @@ describe('platform access', () => {
         tenantId: context.tenantId,
         userId: reviewer.userId,
         membershipId: context.membershipId,
+        sessionId: context.sessionId,
         platformAccess: 'on',
       });
     });
@@ -211,6 +219,7 @@ describe('platform access', () => {
         tenantId: '',
         userId: '',
         membershipId: '',
+        sessionId: '',
         platformAccess: 'on',
       });
       const [row] = await entries(r.correlationId!);

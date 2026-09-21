@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
@@ -42,7 +41,6 @@ export interface DeliveryUrl {
   expiresAt: Date;
 }
 
-const folder = (): string => process.env['CLOUDINARY_FOLDER'] || 'investigator/development';
 
 /**
  * The upload and delivery flow from the cloudinary-media skill. PostgreSQL decides who may
@@ -89,7 +87,8 @@ export class MediaService {
     }
     await this.limits.consume('mediaUploadPerAccount', actor.userId);
 
-    const publicId = `${folder()}/${input.category.toLowerCase().replace(/_/g, '-')}/${randomUUID()}`;
+    // The storage layer derives the path from the context; nothing here builds one (T-080).
+    const publicId = this.storage.publicIdFor(input.category);
     // Signed before the row exists: if storage refuses, no orphan authorization is left behind.
     const upload = this.storage.signUpload({
       publicId,

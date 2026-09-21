@@ -21,7 +21,7 @@ import { currentPlatformAccess } from '../common/context/platform-access';
  *
  * Three things set it (T-077), combined by `databaseSettings()`:
  *
- * - the execution context: the workspace, the user and the membership;
+ * - the execution context: the workspace, the user, the membership and the session;
  * - the pre-workspace context (`runAsUser`): the user alone, and it drops any workspace;
  * - `PlatformContext`: `app.platform_access`, on top of whatever else is set. This file writes
  *   the setting; only `platform-context.ts` can make it 'on'.
@@ -33,12 +33,15 @@ import { currentPlatformAccess } from '../common/context/platform-access';
 const SET_CONTEXT = `SELECT set_config('app.tenant_id', $1, true),
        set_config('app.user_id', $2, true),
        set_config('app.membership_id', $3, true),
-       set_config('app.platform_access', $4, true)`;
+       set_config('app.session_id', $4, true),
+       set_config('app.platform_access', $5, true)`;
 
 export interface DatabaseSettings {
   readonly tenantId: string;
   readonly userId: string;
   readonly membershipId: string;
+  /** Which session this request arrived on — what an audit row records (T-080). */
+  readonly sessionId: string;
   readonly platformAccess: 'on' | '';
 }
 
@@ -54,6 +57,7 @@ export function databaseSettings(): DatabaseSettings | undefined {
     tenantId: context?.tenantId ?? '',
     userId: user ?? context?.userId ?? '',
     membershipId: context?.membershipId ?? '',
+    sessionId: context?.sessionId ?? '',
     platformAccess: platform === undefined ? '' : 'on',
   };
 }
@@ -66,6 +70,7 @@ export async function applyContext(
     settings.tenantId,
     settings.userId,
     settings.membershipId,
+    settings.sessionId,
     settings.platformAccess,
   ]);
 }

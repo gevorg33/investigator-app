@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
 import { runInContext, type ExecutionContext } from '../src/common/context/execution-context';
@@ -34,8 +35,9 @@ export async function personalContext(
   owner: postgres.Sql,
   userId: string,
 ): Promise<ExecutionContext> {
-  const [row] = await owner<{ tenant: string; membership: string }[]>`
-    SELECT t.id AS tenant, m.id AS membership
+  const [row] = await owner<{ tenant: string; membership: string; session: string | null }[]>`
+    SELECT t.id AS tenant, m.id AS membership,
+           (SELECT s.id FROM user_sessions s WHERE s.user_id = t.personal_owner_id LIMIT 1) AS session
       FROM tenants t
       JOIN tenant_memberships m ON m.tenant_id = t.id AND m.user_id = t.personal_owner_id
      WHERE t.personal_owner_id = ${userId}`;
@@ -45,6 +47,7 @@ export async function personalContext(
     tenantKind: 'PERSONAL',
     userId,
     membershipId: row.membership,
+    sessionId: row.session ?? randomUUID(),
     permissions: await permissionsOf(owner, row.membership),
   };
 }
@@ -85,6 +88,7 @@ async function nowhere(owner: postgres.Sql): Promise<ExecutionContext> {
         tenantKind: 'PERSONAL' as const,
         userId: actor.userId,
         membershipId: row!.id,
+        sessionId: actor.sessionId,
         permissions: await permissionsOf(owner, row!.id),
       };
     })();

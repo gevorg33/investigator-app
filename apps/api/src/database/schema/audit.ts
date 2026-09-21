@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 /**
@@ -30,6 +31,13 @@ export const auditLogs = pgTable(
     newState: jsonb('new_state'),
     reason: text('reason'),
 
+    // Filled by DEFAULT from the transaction-local context (T-080), never by a caller: the
+    // event type has no field for any of them. Nullable, because signing in, redeeming a token
+    // and system work all happen outside a workspace, and NULL there is the truth.
+    tenantId: uuid('tenant_id').default(sql`app_current_tenant()`),
+    membershipId: uuid('membership_id').default(sql`app_current_membership()`),
+    sessionId: uuid('session_id').default(sql`app_current_session()`),
+
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
@@ -38,6 +46,7 @@ export const auditLogs = pgTable(
     index('audit_logs_actor_idx').on(t.actorId, t.occurredAt),
     index('audit_logs_resource_idx').on(t.resourceType, t.resourceId),
     index('audit_logs_correlation_idx').on(t.correlationId),
+    index('audit_logs_tenant_idx').on(t.tenantId, t.occurredAt.desc()),
     index('audit_logs_occurred_idx').on(t.occurredAt),
   ],
 );

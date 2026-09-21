@@ -473,7 +473,7 @@ visibility fails *open*: the owner check returns early when it cannot see the wo
 | `assignments`, `assignment_status_history` | Two-party | `parties` |
 | `idempotency_keys` | Tenant-owned | **`tenant_id` joins the unique key.** A replay in another workspace must never return this workspace's response |
 | `outbox_events` | System | Written in the producer's context (`tenant_id` recorded for the worker); read only by the dispatcher's system context. **No policies yet:** the column arrives with T-082 |
-| `audit_logs` | Platform record | **No policies yet:** the column arrives with T-080, which adds them. `tenant_id` nullable (platform events have none). Insert always allowed for the current tenant or NULL. `SELECT` for `audit.read` holders on their workspace's rows; everything else via `PlatformContext`. Append-only grants unchanged |
+| `audit_logs` | Platform record | **Built in T-080:** `tenant_id`, `membership_id` and `session_id`, filled by DEFAULT from the context — `AuditEvent` has no field for any of them, so a caller cannot name one. `workspace_read` (own workspace, or platform access) and `workspace_insert` (this workspace or none). Append-only grants unchanged; a row written outside a workspace cannot be read back by its writer, which is what append-only means here. `tenant_id` nullable (platform events have none). Holding `audit.read` is checked above this, in the service (T-078): a policy can see the settings, not the permission list |
 
 New tables are all tenant-owned unless they appear in this table:
 

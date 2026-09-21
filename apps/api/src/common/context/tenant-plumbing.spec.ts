@@ -142,4 +142,19 @@ describe('tenant isolation is not business-domain plumbing', () => {
       'modules/auth/auth.service.ts',
     ]);
   });
+
+  it('builds a storage path in the storage adapter and nowhere else', () => {
+    // A file's folder carries the workspace (T-080). Business code that assembled one would be
+    // a second place for the workspace to come from, and the wrong one — the adapter derives it
+    // from the execution context.
+    const offenders = sources
+      // The adapter derives the path; the env schema only validates that the root is configured.
+      .filter(
+        ({ path }) =>
+          path !== 'modules/media/cloudinary.storage.ts' && path !== 'config/env.schema.ts',
+      )
+      .filter(({ source }) => /CLOUDINARY_FOLDER|`[^`]*tenant\/\$\{/.test(source.getFullText()))
+      .map(({ path }) => path);
+    expect(offenders).toEqual([]);
+  });
 });

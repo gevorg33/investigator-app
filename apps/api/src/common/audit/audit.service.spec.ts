@@ -12,20 +12,27 @@ import { testPool } from '../../../test/db';
 describe('audit records', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
+  // Read as the owner: an entry belongs to the workspace it happened in, and the application
+  // sees only its own (T-080). What the application may see is rls.spec.ts's subject.
+  let ownerSql: postgres.Sql;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let audit: AuditService;
 
   beforeAll(() => {
     sql = testPool({ max: 2 });
     db = drizzle(sql, { schema });
+    ownerSql = testPool({ max: 1, role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
     audit = new AuditService(db);
   });
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   const read = async (action: string) =>
-    (await db.select().from(auditLogs).where(eq(auditLogs.action, action)))[0];
+    (await ownerDb.select().from(auditLogs).where(eq(auditLogs.action, action)))[0];
 
   it('stores an absent optional field as null, never as the string "undefined"', async () => {
     const action = `probe.minimal.${randomUUID()}`;

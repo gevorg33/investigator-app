@@ -36,10 +36,16 @@ describe('audit_logs is append-only for the application role', () => {
     await sql
       .begin(async (tx) => {
         await tx`SET LOCAL ROLE investigator_app`;
-        const [row] = await tx<{ id: string }[]>`
+        // No RETURNING: the row has no workspace, and the read policy (T-080) shows a caller
+        // only its own workspace's rows — so the writer cannot read this one back. That is what
+        // append-only means here, and the owner is who checks it landed.
+        await tx`
         INSERT INTO audit_logs (action, resource_type)
-        VALUES ('test.grant_probe', 'probe') RETURNING id`;
-        expect(row?.id).toBeTruthy();
+        VALUES ('test.grant_probe', 'probe')`;
+        await tx`RESET ROLE`;
+        const [row] = await tx<{ n: number }[]>`
+          SELECT count(*)::int AS n FROM audit_logs WHERE action = 'test.grant_probe'`;
+        expect(row?.n).toBe(1);
         // Rolled back — the probe must not persist.
         throw new RollbackSignal();
       })

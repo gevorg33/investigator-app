@@ -12,6 +12,7 @@ export function testContext(
     tenantKind: 'PERSONAL',
     userId: actor.userId,
     membershipId: '00000000-0000-4000-8000-00000000000b',
+    sessionId: '00000000-0000-4000-8000-00000000000c',
     permissions: [],
     ...over,
   };

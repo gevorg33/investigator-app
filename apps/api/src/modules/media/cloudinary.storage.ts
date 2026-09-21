@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { v2 as cloudinary } from 'cloudinary';
+import { currentContext } from '../../common/context/execution-context';
+import { AppError } from '../../common/errors/app-error';
 import type { MediaStorage, SignedUpload, StoredAsset } from './media.storage';
 
 export interface CloudinaryCredentials {
@@ -31,6 +34,14 @@ export class CloudinaryStorage implements MediaStorage {
    * What a signature cannot constrain is size. That is checked when the upload completes,
    * against the asset as Cloudinary actually holds it.
    */
+  publicIdFor(category: string): string {
+    // No workspace means no path: an upload happens inside a request, and a request has one.
+    const tenantId = currentContext()?.tenantId;
+    if (tenantId === undefined) throw new AppError('INTERNAL_ERROR');
+    const folder = process.env['CLOUDINARY_FOLDER'] ?? 'investigator/development';
+    return `${folder}/tenant/${tenantId}/${category.toLowerCase().replace(/_/g, '-')}/${randomUUID()}`;
+  }
+
   signUpload(input: { publicId: string; resourceType: string; allowedFormats: string[] }): SignedUpload {
     const params = {
       allowed_formats: input.allowedFormats.join(','),
@@ -108,6 +119,9 @@ export class CloudinaryStorage implements MediaStorage {
 export class UnconfiguredStorage implements MediaStorage {
   private refuse(): never {
     throw new Error('Media storage is not configured: set the CLOUDINARY_* variables (ACTIONS-FOR-ME #4).');
+  }
+  publicIdFor(): string {
+    return this.refuse();
   }
   signUpload(): SignedUpload {
     return this.refuse();

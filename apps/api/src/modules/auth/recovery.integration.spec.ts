@@ -30,6 +30,10 @@ class CapturingMailer {
 
 describe('verification and password reset', () => {
   let sql: postgres.Sql;
+  // Sign-in and recovery happen outside any workspace, so their entries belong to none — and
+  // the application sees only its own workspace's rows (T-080). The owner is who reads them.
+  let ownerSql: postgres.Sql;
+  let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let auth: AuthService;
   let mailer: CapturingMailer;
   let actors: ActorService;
@@ -54,6 +58,8 @@ describe('verification and password reset', () => {
   beforeAll(() => {
     sql = testPool();
     db = scopedDb(sql);
+    ownerSql = testPool({ max: 1, role: 'owner' });
+    ownerDb = drizzle(ownerSql, { schema });
     const tokens = new TokenService();
     mailer = new CapturingMailer();
     // The real resolution path, so these exercise the guard's behaviour rather than a
@@ -75,6 +81,7 @@ describe('verification and password reset', () => {
 
   afterAll(async () => {
     await sql.end();
+    await ownerSql.end();
   });
 
   describe('email verification', () => {
@@ -238,7 +245,7 @@ describe('verification and password reset', () => {
       const token = linkToken();
       await auth.resetPassword(token, NEW_PASSWORD, ctx);
 
-      const blob = JSON.stringify(await db.select().from(auditLogs));
+      const blob = JSON.stringify(await ownerDb.select().from(auditLogs));
       expect(blob).not.toContain(token);
       expect(blob).not.toContain(NEW_PASSWORD);
     });
@@ -359,7 +366,7 @@ describe('verification and password reset', () => {
       auth.verifyEmail('a-token-that-was-never-issued', newCtx()),
     ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
 
-    const reasons = (await db.select().from(auditLogs))
+    const reasons = (await ownerDb.select().from(auditLogs))
       .filter((x) => x.action === 'auth.verification.failed')
       .map((x) => x.reason);
     // Distinguished in the audit log from a token that existed and was spent.
@@ -427,7 +434,7 @@ describe('verification and password reset', () => {
       await suspend(e);
       await auth.refresh(s.refreshToken, ctx).catch(() => undefined);
 
-      const rows = await db
+      const rows = await ownerDb
         .select()
         .from(auditLogs)
         .where(eq(auditLogs.correlationId, ctx.correlationId));
@@ -450,7 +457,7 @@ describe('verification and password reset', () => {
       await expect(auth.refresh(s.refreshToken, ctx)).rejects.toMatchObject({
         code: 'UNAUTHENTICATED',
       });
-      const rows = await db
+      const rows = await ownerDb
         .select()
         .from(auditLogs)
         .where(eq(auditLogs.correlationId, ctx.correlationId));

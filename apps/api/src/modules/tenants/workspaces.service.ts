@@ -79,7 +79,7 @@ export class WorkspacesService {
   async activate(actor: Actor, requested: string, req: RequestContext): Promise<{ id: string }> {
     const c = this.ctx('workspace.activate', req, requested);
     await this.authz.requireActive(actor, c);
-    const found = await this.resolver.usable(actor.userId, requested);
+    const found = await this.resolver.usable(actor, requested);
     await this.authz.requireWorkspace(actor, found !== undefined, c);
 
     await this.db

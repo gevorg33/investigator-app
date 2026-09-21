@@ -18,7 +18,10 @@ describe('upload authorization invariant', () => {
     };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const limits = { consume: vi.fn().mockResolvedValue(undefined) };
-    const storage = { signUpload: vi.fn(() => ({ url: 'u', fields: {} })) };
+    const storage = {
+      publicIdFor: vi.fn(() => 'probe/tenant/t/verification-document/id'),
+      signUpload: vi.fn(() => ({ url: 'u', fields: {} })),
+    };
     const service = new MediaService(
       db as never,
       authz as never,
