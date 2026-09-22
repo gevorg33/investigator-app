@@ -2062,11 +2062,12 @@ Completed checklist in `docs/mobile/release-checklist.md`, signed off before sub
 ---
 
 ### T-045 — AI session and message persistence
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** T-004, T-077
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** Yes, as it turned out — RLS, resource authorization and a
+  deletion rule. **Approved 2026-09-23** as designed
 - **Owner agent:** ai-rag
 - **Affected:** apps/api/src/modules/ai-sessions/**, migrations
 
@@ -2077,19 +2078,57 @@ alternative is a chatbot whose memory is a prompt.
 **Tenancy (ADR-0011).** `ai_sessions`, `ai_messages` and their state carry `tenant_id` under RLS. **A session belongs to one workspace for life**; switching workspace opens that workspace's sessions.
 
 **Acceptance criteria**
-- [ ] `AiSession` with lifecycle `ACTIVE`/`IDLE`/`ARCHIVED`/`DELETED`, separate from workflow state
-- [ ] Create, open, resume, rename, archive, delete, search — all actor-scoped
-- [ ] `AiMessage` with sequence, role, metadata; tool calls stored as **structured events**, not prose
-- [ ] Hybrid session search: pgvector + Postgres full-text (ADR-0001)
-- [ ] `*.authz.spec.ts` proves another user cannot reach a session or its messages by any path
-- [ ] Titles renameable; generated titles never expose evidence content
-- [ ] Deleting a session removes its messages, summaries, memory and embeddings in one unit of work
+- [x] `AiSession` with lifecycle `ACTIVE`/`IDLE`/`ARCHIVED`/`DELETED`, separate from workflow state
+      — derived from timestamps, not stored, so it cannot go stale
+- [x] Create, open, resume, rename, archive, delete, search — all actor-scoped, and narrower than
+      the workspace: its own user only, even inside an agency
+- [x] `AiMessage` with sequence, role, metadata; tool calls stored as **structured events**, not
+      prose — shape checked by the database; append-only; numbered under a lock
+- [~] Hybrid session search: pgvector + Postgres full-text (ADR-0001) — **full-text built**;
+      the vector half is **T-133**, since no embedding provider exists yet (owner decision)
+- [x] `*.authz.spec.ts` proves another user cannot reach a session or its messages by any path —
+      all seven paths, list and search, a colleague and the agency's owner, and the policy alone
+- [x] Titles renameable; generated titles never expose evidence content — renameable; nothing
+      generates a title yet, and the rule moves to **T-056**, which will
+- [x] Deleting a session removes its messages, summaries, memory and embeddings in one unit of work
+      — messages erased with a tombstone left (owner decision); summaries, memory and embeddings do
+      not exist yet, and a spec makes each one join the erasure the day its table references
+      `ai_sessions`
 
 **Validation**
 ```bash
 pnpm --filter api test ai-sessions
 ```
 
+
+**DONE — 2026-09-23**
+
+Three owner decisions: approval of the design; **erase now, keep a tombstone** on delete; **full-text
+now**, the vector half as its own task.
+
+*Built.* Migration 0019: `ai_sessions` and `ai_messages`, a policy admitting only the session's user
+in its workspace (not even an agency owner), owners copied and bound by composite key, append-only
+messages, structured tool events, a tombstone that stays empty, DELETE granted on messages only.
+`/api/v1/ai/sessions` with create, list (paged, current or archived), search, open, resume,
+messages (paged), rename, archive, delete. `append` is a service method for the assistant (T-056).
+
+*Found by the spec.* `ai_messages_shape` let a tool call with no event through: a CHECK passes on
+NULL, and `jsonb_typeof(NULL -> 'tool') = 'string'` is NULL. Every JSON test is now coalesced to
+false, and a test inserts an empty event to hold it. Local harness databases were patched by
+renaming the old constraint aside rather than dropping it; CI builds from empty with the corrected
+one.
+
+*Guards from earlier tasks that caught this one:* T-064's spec type-check (a loosely typed helper),
+T-042's factory registry (a factory for sessions; messages written only by the service), and T-077's
+isolation matrix, which generated cases for both tables once seeded. The trigger naming convention
+(`*_tenant_immutable`) needed the rename too.
+
+*Negative controls:* the policy loosened to the whole workspace; deletion erasing nothing; appends
+without the row lock; the append-only trigger disabled — each watched to fail its tests.
+
+*Evidence.* 1778 tests, 100% coverage (2378/2378 statements, 1105/1105 branches). Retention register
+rows for both tables; `docs/architecture/ai-sessions.md`; the customer assistant article answers who
+sees a conversation, what deleting does, and how search works.
 ---
 
 ### T-046 — Context Builder, summaries and compaction
@@ -2108,6 +2147,8 @@ The service that decides what enters the model context. Per
 **Tenancy (ADR-0011).** The Context Builder reads only through the execution context. A summary never carries a workspace or authority. There is a test for stale context after a workspace switch.
 
 **Acceptance criteria**
+- [ ] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
+      `ai-sessions.service.spec.ts` fails until they do
 - [ ] **Permissions applied before assembly**, not after; a test proves no cross-session or
       cross-user message can be retrieved by semantic relevance
 - [ ] Token budget reserves output space; input never fills the window
@@ -2138,6 +2179,8 @@ pnpm --filter api test context-builder
 **Tenancy (ADR-0011).** Memory scopes: `platform`, `tenant`, `user_in_tenant` (default), `user_global` (declared preferences only, explicitly marked) and `session`. A cross-workspace memory test ships with this task.
 
 **Acceptance criteria**
+- [ ] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
+      `ai-sessions.service.spec.ts` fails until they do
 - [ ] Session memory and user memory stored separately; session memory dies with its session
 - [ ] Every memory carries provenance (source session and message), confidence, timestamp
 - [ ] **Selective** — a test proves ordinary conversation does not create memories
@@ -2562,6 +2605,8 @@ reach it; this is the surface.
 **Tenancy (ADR-0011).** Needs the app-web foundation (T-091). The assistant shows the active workspace and opens that workspace's sessions.
 
 **Acceptance criteria**
+- [ ] Generated session titles never expose evidence content — moved here from T-045, since this is
+      where titles are first generated; `AiSessionsService.rename` is the only title writer today
 - [ ] Docked panel on desktop; **full-screen sheet on mobile** (`responsive-design`)
 - [ ] **Responses render progressively as they stream — never a spinner.** Progressive rendering
       is information; a spinner is an apology (`animation`)
@@ -5493,6 +5538,36 @@ capability an investigator has, per jurisdiction — as distinct from what kind 
 **Validation**
 ```bash
 pnpm --filter api test sources
+```
+
+---
+
+### T-133 — Vector half of assistant session search
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-045, T-016
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it sends conversation content to an embedding provider, a
+  data-processing decision (ACTIONS-FOR-ME #6)
+- **Owner agent:** ai-rag
+- **Affected:** apps/api/src/modules/ai-sessions/**, migrations, workers
+
+**Description**
+Split from T-045 (2026-09-23): ADR-0001's hybrid search over sessions, adding pgvector similarity to
+the full-text search that shipped. Waits for T-016's embedding provider rather than building a
+second one.
+
+**Acceptance criteria**
+- [ ] Message embeddings through T-016's provider abstraction, computed by a job, never inline
+- [ ] The embeddings table joins `SESSION_CONTENT`, so deleting a session erases them in the same
+      transaction (a spec already fails until it does)
+- [ ] Hybrid ranking merges full-text and vector scores; a query with no embedding still works
+- [ ] Row-level security as `ai_messages`: its own user, its own workspace
+- [ ] Which provider receives conversation content, and under what terms, is recorded before any is sent
+
+**Validation**
+```bash
+pnpm --filter api test ai-sessions
 ```
 
 ---

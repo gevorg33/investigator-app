@@ -6,6 +6,8 @@ import { userStaffScopes } from './staff-scopes';
 import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
 import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
+import { aiMessages, aiSessions } from './ai-sessions';
+import { tenants } from './tenants';
 import { userRoles, users, userSessions } from './users';
 
 /**
@@ -80,5 +82,33 @@ describe('investigation sources', () => {
 
   it('keep who recorded them, even if that account goes', () => {
     expect(fks).toContainEqual({ columns: ['added_by'], target: users, onDelete: 'restrict' });
+  });
+});
+
+describe('assistant sessions (T-045)', () => {
+  const fks = (t: PgTable) =>
+    getTableConfig(t).foreignKeys.map((f) => ({
+      columns: f.reference().columns.map((c) => c.name),
+      target: f.reference().foreignTable,
+      onDelete: f.onDelete,
+    }));
+
+  it('belong to one user in one workspace, neither of which can be deleted from under them', () => {
+    // Restrict: a person or workspace with conversations is removed by the retention workflow,
+    // which erases the conversations first — never as a side effect of a cascade.
+    expect(fks(aiSessions)).toEqual(
+      expect.arrayContaining([
+        { columns: ['tenant_id'], target: tenants, onDelete: 'restrict' },
+        { columns: ['user_id'], target: users, onDelete: 'restrict' },
+      ]),
+    );
+  });
+
+  it('keep their messages until the session is erased on purpose', () => {
+    // Restrict, not cascade: deleting a session erases its messages explicitly, in the same
+    // transaction, and a tombstone stays — the session row itself is never deleted.
+    expect(fks(aiMessages)).toEqual([
+      { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
+    ]);
   });
 });

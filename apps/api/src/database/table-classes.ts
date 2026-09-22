@@ -109,6 +109,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   mission_screenings: { class: 'two_party', columns: ['customer_tenant_id'] },
   quotes: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
   assignments: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
+  ai_sessions: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'narrower than the class: its own user in its own workspace only, so not even an agency owner reads a colleague’s conversation (T-045)',
+  },
+  ai_messages: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_sessions, with the owner copied from the session; append-only (T-045)',
+  },
   investigation_sources: {
     class: 'two_party',
     columns: ['customer_tenant_id', 'supplier_tenant_id'],

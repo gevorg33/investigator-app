@@ -23,6 +23,7 @@ import { VerificationModule } from './modules/verification/verification.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
+import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { InvestigationSourcesModule } from './modules/investigation-sources/inve
     TenantsModule,
     TaxonomyModule,
     InvestigationSourcesModule,
+    AiSessionsModule,
     HealthModule,
   ],
 })
