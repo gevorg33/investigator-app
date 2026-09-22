@@ -175,6 +175,13 @@ generated but must be renameable, and must not expose anything the UI policy wou
 On resume: load metadata, summary, structured state and recent messages — then **resolve
 current application state**. Do not assume yesterday's answer still holds.
 
+**Built in T-045** (`apps/api/src/modules/ai-sessions`, `docs/architecture/ai-sessions.md`): the
+lifecycle is derived from timestamps rather than stored; a session is readable by its own user in
+its own workspace only; messages are append-only and numbered under a lock; tool calls and results
+are structured events the database checks; deleting erases every table in `SESSION_CONTENT` in one
+transaction and leaves a tombstone. **A table that references `ai_sessions` must be added to
+`SESSION_CONTENT`** — a spec fails until it is.
+
 ## Workspaces (ADR-0011)
 
 - **A session belongs to one workspace for life.** Switching workspace opens that workspace's

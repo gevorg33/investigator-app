@@ -4,13 +4,14 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-23
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/ai
+  - apps/api/src/modules/ai-sessions
 tags: [assistant, ai, help, limitations]
 ---
 
@@ -81,3 +82,27 @@ location, when you have asked for investigators nearby.
 
 If it can give you a useful answer with a stated assumption, it should do that instead of
 interrogating you. You can always narrow afterwards.
+
+## Who can see my conversations with the assistant?
+
+Only you. A conversation belongs to you and to the workspace you started it in, and nobody else can
+open it — not an investigator, not a colleague in an agency, not the agency's owner. If you switch
+to another workspace, you see that workspace's conversations and not these.
+
+## Can I come back to a conversation later?
+
+Yes. Conversations are kept, and you can reopen one, rename it, archive it to tidy your list, or
+bring an archived one back. When you return, the assistant works from what is true now — the state
+of your missions and quotes today — rather than from what it told you last time.
+
+## What happens when I delete a conversation?
+
+Everything you and the assistant said in it is erased at once, and cannot be recovered. What
+remains is only a record that a conversation existed and when you deleted it, with no title and no
+content.
+
+## Can I search my conversations?
+
+Yes, by words in a conversation's title or in anything said in it. Search works in English, Russian
+and Armenian, and matches words as you type them.
+

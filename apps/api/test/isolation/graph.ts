@@ -158,6 +158,15 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${assignment}, 'REGISTRY', 'Company register extract', true, ${supplier.userId})
     RETURNING id`);
 
+  // A conversation with the assistant, the customer's own (T-045).
+  const conversation = await id(owner`
+    INSERT INTO ai_sessions (tenant_id, user_id, title)
+    VALUES (${customer.tenantId}, ${customer.userId}, 'Planning a due-diligence mission')
+    RETURNING id`);
+  const said = await id(owner`
+    INSERT INTO ai_messages (session_id, sequence, role, content)
+    VALUES (${conversation}, 1, 'USER', 'What does a due-diligence mission cover?') RETURNING id`);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -190,6 +199,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       assignments: assignment,
       assignment_status_history: assignmentHistory,
       investigation_sources: source,
+      ai_sessions: conversation,
+      ai_messages: said,
     },
   };
 }

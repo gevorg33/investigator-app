@@ -134,6 +134,13 @@
       "when": 1790114836644,
       "tag": "0018_add_investigation_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790116679656,
+      "tag": "0019_add_ai_sessions",
+      "breakpoints": true
     }
   ]
 }
