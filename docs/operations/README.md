@@ -1,5 +1,7 @@
 # Operations handbook
 
+<!-- not-for-ingestion -->
+
 **This directory is never ingested into the knowledge base.** Nothing here is retrievable
 by the AI Assistant, for any audience, including staff.
 

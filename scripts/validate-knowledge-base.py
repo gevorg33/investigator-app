@@ -15,6 +15,9 @@ ENUMS = {
     "locale":          {"en", "ru", "hy"},
     "status":          {"current", "superseded", "draft"},
     "source_of_truth": {"docs", "database"},
+    # Optional, but when present it tells a reader whether the product does this yet — so a typo
+    # that reads as neither must not pass (T-015).
+    "implementation_status": {"specified", "partial", "implemented"},
 }
 # Folder -> the visibilities that make sense there. A staff runbook marked public
 # is the failure this catches.
@@ -40,17 +43,32 @@ def parse_frontmatter(text):
             fm[m.group(1)] = m.group(2).strip()
     return fm
 
+# docs/operations/ is never ingested (T-015), and that is held by construction rather than by
+# where a file happens to sit. Every operations document carries this marker; a file that carries
+# it is refused here, so copying a runbook into the knowledge base fails CI rather than reaching
+# the Assistant. The marker is an HTML comment: invisible when rendered, unmissable to this.
+NOT_FOR_INGESTION = "<!-- not-for-ingestion -->"
+
 errors, warnings, ids = [], [], {}
 
 if not KB.exists():
+    # Not a pass: a knowledge base that has gone missing is not one that validates.
     print("docs/knowledge-base/ not found")
-    sys.exit(0)
+    sys.exit(1)
 
-files = sorted(p for p in KB.rglob("*.md") if p.name != "README.md")
+# A symlink is how a file outside the knowledge base — a runbook in docs/operations/ — would reach
+# ingestion without being copied. Refused whatever it points at: nothing here needs one.
+for link in sorted(p for p in KB.rglob("*") if p.is_symlink()):
+    errors.append(f"{link.as_posix()}: symlinks are not allowed in the knowledge base")
+
+files = sorted(p for p in KB.rglob("*.md") if p.name != "README.md" and not p.is_symlink())
 
 for f in files:
     rel = f.as_posix()
-    fm = parse_frontmatter(f.read_text(encoding="utf-8"))
+    text = f.read_text(encoding="utf-8")
+    if NOT_FOR_INGESTION in text:
+        errors.append(f"{rel}: marked not-for-ingestion — operations content cannot be ingested")
+    fm = parse_frontmatter(text)
     if fm is None:
         errors.append(f"{rel}: missing or unterminated frontmatter")
         continue
@@ -84,7 +102,7 @@ for f in files:
     if fm.get("status") == "current" and fm.get("version") in (None, "", "0"):
         errors.append(f"{rel}: current document needs a version")
 
-    body = f.read_text(encoding="utf-8")
+    body = text
     if fm.get("status") == "draft":
         warnings.append(f"{rel}: status=draft — not ingested until set to current")
     # Headings should be in the user's voice, so a chunk matches how someone asks.

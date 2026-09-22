@@ -84,7 +84,7 @@ Every knowledge-base document carries frontmatter. Without it, ingestion rejects
 ---
 id: kb-customer-quote-expiry
 title: How long a quote stays valid
-audience: customer            # customer | investigator | staff | public
+audience: customer            # customer | investigator | agency | staff | public
 visibility: authenticated     # public | authenticated | participant | staff
 locale: en                    # en | ru | hy
 version: 3
@@ -102,6 +102,8 @@ tags: [quotes, expiry, missions]
 - `source_of_truth: database` means this document explains a rule whose *values* live in
   PostgreSQL. It must not list those values.
 - `related_code` is what makes staleness detectable — see below.
+- The full contract — required fields, folder-to-visibility rules, what is never ingested — is
+  `docs/knowledge-base/README.md`, and the validator enforces it on every pull request (T-015).
 
 ## Writing for retrieval
 

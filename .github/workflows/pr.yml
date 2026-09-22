@@ -62,6 +62,12 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The one control between an article and the Assistant that exists before retrieval-time
+      # visibility enforcement does (T-016/T-017): a staff runbook marked public, or an
+      # operations document copied in, fails here. Seconds, and needs no database (T-015).
+      - name: Knowledge base
+        run: python3 scripts/validate-knowledge-base.py
+
       - name: Install PostGIS into the service container
         run: |
           docker exec "$(docker ps -q --filter ancestor=pgvector/pgvector:pg17)" \

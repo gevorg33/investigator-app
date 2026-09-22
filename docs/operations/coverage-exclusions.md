@@ -1,5 +1,7 @@
 # Coverage exclusions
 
+<!-- not-for-ingestion -->
+
 The project enforces **100%** across statements, branches, functions and lines, per package,
 as a blocking CI gate.
 

@@ -1,5 +1,7 @@
 # Law enforcement and regulator requests
 
+<!-- not-for-ingestion -->
+
 **Not ingested into the knowledge base.**
 
 The staff knowledge base says: do not provide anything, do not confirm what exists, route it
