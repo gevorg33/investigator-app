@@ -109,6 +109,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   mission_screenings: { class: 'two_party', columns: ['customer_tenant_id'] },
   quotes: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
   assignments: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
+  investigation_sources: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'asymmetric: the supplier workspace reads and writes; the customer workspace reads shared, unwithdrawn rows only (T-031)',
+  },
   assignment_status_history: {
     class: 'two_party',
     columns: ['customer_tenant_id', 'supplier_tenant_id'],

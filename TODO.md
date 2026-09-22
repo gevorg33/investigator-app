@@ -1506,11 +1506,12 @@ Recorded decisions in the ADR. Not a code validation.
 ---
 
 ### T-031 — Investigation sources
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** T-012, T-077
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** Yes, as it turned out — a two-party table with its own RLS,
+  resource authorization and a retention rule. **Approved 2026-09-23** as designed
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/investigation-sources/**, migrations
 
@@ -1521,19 +1522,56 @@ distinct from the evidence obtained from it.
 **Tenancy (ADR-0011).** Workspace objects belong to the supplier workspace. Inside an agency, access follows assignment staffing once T-089 lands, and T-089 extends these objects; `shared` items are visible to the customer's workspace through the two-party policy.
 
 **Acceptance criteria**
-- [ ] Assignment-scoped; `*.authz.spec.ts` proves a non-participant gets 404
-- [ ] Type and reliability are enums; rationale required when reliability is not `unknown`
-- [ ] `EvidenceItem.source_id` added **nullable** — evidence must never be blocked on a source
-- [ ] Not a shared catalogue: a source from another assignment is unreachable by any path
-- [ ] Reliability does not accrete assertion-level confidence semantics (ADR-0005)
-- [ ] Locator accepts a URL but is never fetched server-side without the SSRF allowlist
-- [ ] Mutations audited; retention follows the assignment
+- [x] Assignment-scoped; `*.authz.spec.ts` proves a non-participant gets 404 — for reads and all
+      three writes, including a customer who also holds the investigator role
+- [x] Type and reliability are enums; rationale required when reliability is not `unknown` — in
+      the service (422) and by check constraint, across edits as well as creation
+- [→] `EvidenceItem.source_id` added **nullable** — **moved to T-116**: there is no evidence
+      table yet to add it to
+- [x] Not a shared catalogue: a source from another assignment is unreachable by any path — even
+      for the same investigator, through list, update and withdraw; RLS and the isolation matrix
+      hold it underneath
+- [x] Reliability does not accrete assertion-level confidence semantics (ADR-0005) — a spec
+      refuses confidence-like columns
+- [x] Locator accepts a URL but is never fetched server-side without the SSRF allowlist — the
+      module holds no HTTP client, and a spec keeps it that way
+- [x] Mutations audited; retention follows the assignment — type and changed field names, never
+      a title or locator; withdrawn rather than deleted, DELETE not granted, restricted FKs
 
 **Validation**
 ```bash
 pnpm --filter api test investigation-sources
 ```
 
+
+**DONE — 2026-09-23**
+
+Three owner decisions: approval of the design; sources **private by default**, shared per source by
+the investigator (a source can name a witness); writable while `ACCEPTED`, `IN_PROGRESS` or
+`REPORT_SUBMITTED`, read-only otherwise.
+
+*Built.* Migration 0018: `investigation_sources`, two-party, with an **asymmetric** policy —
+`supplier_works` for the investigator's workspace, `customer_reads_shared` (SELECT only, shared and
+unwithdrawn) for the customer's. Triggers copy and freeze both workspaces, keep a source on its
+assignment and its recorder, and make a withdrawal final. SELECT, INSERT and UPDATE granted, after
+REVOKE ALL. `GET/POST /assignments/:id/sources`, `PATCH .../:sourceId`,
+`POST .../:sourceId/withdraw`. Writes share-lock the assignment against a concurrent completion.
+
+*Found in my own work.* The service filtered the customer's view **and** the policy did, so a test
+could never see the service filter do anything — removing it left every test green. It is gone:
+the policy is the one tested place that decides, and loosening it now fails three tests across
+both layers. Separately, the `asApp` helper in T-053's taxonomy spec returned drizzle's lazy query
+from inside the workspace context, so it ran after the context ended — with no workspace at all.
+Its refusals held for the wrong reason; fixed there and here, and both specs still pass with a real
+context in place.
+
+*Negative controls:* the customer policy loosened to ignore `shared`; the record-keeping trigger
+disabled; the wrong-state check removed from all three writes — each watched to fail its tests.
+
+*Evidence.* 1718 tests, 100% coverage (2229/2229 statements, 1044/1044 branches); the isolation
+matrix generated read, write and no-context cases for the new table on its own; lint, typecheck and
+knowledge base clean. Docs: `docs/architecture/investigation.md`, a new investigator article, and a
+customer answer on seeing sources.
 ---
 
 ### T-032 — Investigation notes and tasks
@@ -4998,6 +5036,8 @@ Access is by **grant**, short-lived and audited. There is no "staff can browse e
 staff access requires a dispute-linked grant in `PlatformContext`.
 
 **Acceptance criteria**
+- [ ] `source_id` nullable, referencing `investigation_sources` — moved here from T-031, since
+      evidence must never be blocked on a source (plan.md §8)
 - [ ] Evidence cannot be edited or deleted by the application; a correction is a new item referencing the old
 - [ ] Every access writes a custody entry and an audit row; the customer can see the access history
 - [ ] Legal hold (T-035) blocks retention deletion

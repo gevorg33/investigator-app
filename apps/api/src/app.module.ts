@@ -22,6 +22,7 @@ import { ProfilesModule } from './modules/profiles/profiles.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
+import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
     VerificationModule,
     TenantsModule,
     TaxonomyModule,
+    InvestigationSourcesModule,
     HealthModule,
   ],
 })

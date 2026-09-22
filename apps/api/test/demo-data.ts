@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../src/database/schema';
 import { testPool } from './db';
-import { assignment } from './assignment-fixtures';
+import { assignment, investigationSource } from './assignment-fixtures';
 import { customerProfile } from './profile-fixtures';
 import { eligibleInvestigator, quotableMission, submittedQuote } from './quote-fixtures';
 import { agency, member } from './workspace-fixtures';
@@ -35,7 +35,23 @@ export async function loadDemoData(): Promise<Record<string, string>> {
       investigatorProfileId: investigator.profileId,
     });
 
-    const hired = await assignment(db, { quoteId: quote.id, customerId: mission.customerId });
+    const hired = await assignment(db, {
+      quoteId: quote.id,
+      customerId: mission.customerId,
+      status: 'IN_PROGRESS',
+    });
+    // One shared with the customer and one kept back, so both views have something to show.
+    await investigationSource(db, {
+      assignmentId: hired.id,
+      addedBy: investigator.userId,
+      shared: true,
+    });
+    await investigationSource(db, {
+      assignmentId: hired.id,
+      addedBy: investigator.userId,
+      type: 'WITNESS',
+      title: 'Former colleague of the subject',
+    });
 
     // A workspace with more than one person in it, which a personal workspace cannot show.
     const employee = await member(owner, { roles: ['INVESTIGATOR'] });

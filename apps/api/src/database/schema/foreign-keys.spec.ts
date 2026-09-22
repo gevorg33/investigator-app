@@ -4,6 +4,8 @@ import { userIdentities } from './identities';
 import { userTokens } from './tokens';
 import { userStaffScopes } from './staff-scopes';
 import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
+import { assignments } from './assignments';
+import { investigationSources } from './investigation-sources';
 import { userRoles, users, userSessions } from './users';
 
 /**
@@ -52,5 +54,31 @@ describe('taxonomy labels', () => {
     expect(fk?.reference().foreignTable).toBe(taxonomyNodes);
     expect(fk?.reference().columns.map((c) => c.name)).toEqual(['node_id']);
     expect(fk?.onDelete).toBe('restrict');
+  });
+});
+
+describe('investigation sources', () => {
+  const fks = getTableConfig(investigationSources).foreignKeys.map((f) => ({
+    columns: f.reference().columns.map((c) => c.name),
+    target: f.reference().foreignTable,
+    onDelete: f.onDelete,
+  }));
+
+  it('stay on their assignment, which cannot be deleted from under them (T-031)', () => {
+    // Restrict, as for the assignment's own history: a source is part of the record of the work.
+    expect(fks).toContainEqual({
+      columns: ['assignment_id'],
+      target: assignments,
+      onDelete: 'restrict',
+    });
+    expect(fks).toContainEqual({
+      columns: ['assignment_id', 'customer_tenant_id', 'supplier_tenant_id'],
+      target: assignments,
+      onDelete: 'restrict',
+    });
+  });
+
+  it('keep who recorded them, even if that account goes', () => {
+    expect(fks).toContainEqual({ columns: ['added_by'], target: users, onDelete: 'restrict' });
   });
 });
