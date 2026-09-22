@@ -33,7 +33,10 @@ jobs:
         # pgvector base + PostGIS installed in the step below. postgis/postgis
         # ships no pgvector, so `CREATE EXTENSION vector` would fail against it —
         # and it publishes amd64 only, which differs from local dev on Apple Silicon.
-        image: pgvector/pgvector:pg17
+        # Pinned by digest, as every image is (T-028): a tag is a promise the publisher can change
+        # overnight, and a digest is not. The same digest is the Dockerfile's base and is what
+        # the image scan below checks. Dependabot proposes updates, one reviewed PR at a time.
+        image: pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: investigator_test
@@ -42,19 +45,21 @@ jobs:
           --health-timeout 5s --health-retries 5
         ports: ['5432:5432']
       redis:
-        image: redis:7-alpine
+        # 8, the major local development runs (infrastructure/compose/local.yml). This was 7, so
+        # CI tested against a different Redis than anyone could reproduce locally (T-028).
+        image: redis:8-alpine@sha256:ba6e394f6acc2a695ef1b6944f161b9ca813711739be68319fa0db3470673f1d
         options: >-
           --health-cmd "redis-cli ping" --health-interval 10s
           --health-timeout 5s --health-retries 5
         ports: ['6379:6379']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # full history — the secret scan needs it
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc # single source of truth; see CLAUDE.md pinned versions
           cache: pnpm
@@ -68,9 +73,15 @@ jobs:
       - name: Knowledge base
         run: python3 scripts/validate-knowledge-base.py
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Install PostGIS into the service container
         run: |
-          docker exec "$(docker ps -q --filter ancestor=pgvector/pgvector:pg17)" \
+          docker exec "${{ job.services.postgres.id }}" \
             bash -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends \
               postgresql-17-postgis-3 postgresql-17-postgis-3-scripts"
 
@@ -104,12 +115,6 @@ jobs:
       - name: Load fixtures
         run: pnpm fixtures:load
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
       # One step, because there is one suite. The three that stood here -- integration, api,
       # e2e -- named a split the suite does not make and matched no package script, so all
       # three passed without running anything (T-042). Coverage runs the tests too, so running
@@ -119,7 +124,7 @@ jobs:
       - name: Tests and coverage gate
         run: pnpm test:coverage
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: coverage
@@ -129,8 +134,36 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Source maps reconstruct the source, so none may reach a bundle served to the public
+      # (launch-hardening, T-028). Checked on the build output, not on configuration.
+      - name: No source maps in public bundles
+        run: ./scripts/check-no-public-sourcemaps.sh
+
       - name: Dependency audit
         run: pnpm audit --audit-level=high
+
+      # Images scanned: CRITICAL or HIGH blocks, but only when a fix exists — a CVE nobody can
+      # patch would keep CI red with nothing to do about it, and it is the line `pnpm audit
+      # --audit-level=high` draws for dependencies (owner decision, 2026-09-23).
+      #
+      # Postgres is scanned as it would be deployed: built from infrastructure/docker/postgres,
+      # which upgrades Debian's packages over the pinned base. The service container above is the
+      # unmodified base, never deployed, so it is not the thing to gate on. `.trivyignore.yaml`
+      # accepts gosu's Go-stdlib findings only, by CVE, until they expire — see
+      # docs/operations/image-scan-exceptions.md. Trivy runs from its own image, pinned by
+      # digest: no third-party action code.
+      - name: Image scan
+        run: |
+          docker build -q -t investigator/postgres:ci infrastructure/docker/postgres
+          for image in investigator/postgres:ci \
+            redis:8-alpine@sha256:ba6e394f6acc2a695ef1b6944f161b9ca813711739be68319fa0db3470673f1d; do
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/.trivyignore.yaml:/.trivyignore.yaml:ro" \
+              aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 image \
+              --ignorefile /.trivyignore.yaml \
+              --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed --no-progress "$image"
+          done
 
       # Full history, not only this PR's diff: a secret committed and later deleted is still
       # in the history anyone can clone. The token lets the action read the PR's commits.
@@ -138,7 +171,7 @@ jobs:
       # is listed in its summary instead. Personal account, so no GITLEAKS_LICENSE is needed.
       # v3 changes only the runtime (Node 24); v2 ran on the deprecated Node 20.
       - name: Secret scan (full history)
-        uses: gitleaks/gitleaks-action@v3
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false

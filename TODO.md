@@ -1363,7 +1363,7 @@ Sign-off by the compliance owner. Not a code validation.
 ---
 
 ### T-028 — CI security gates
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** T-001
 - **Risk:** MEDIUM
@@ -1377,23 +1377,69 @@ scripts that do not exist yet. This task makes it green and wires in the build-t
 from `launch-hardening`. Contract: `.claude/skills/ci-cd/SKILL.md`.
 
 **Acceptance criteria**
-- [ ] `pr.yml` runs green end to end on a real PR
-- [ ] Fresh Postgres+Redis per run; migrations apply **from empty**; environment destroyed after
-- [ ] Coverage gate blocking at 100% per package, reports uploaded as artifacts
-- [ ] Secret scanning over **full git history**, not just the working tree; blocks the merge
-- [ ] `pnpm audit` (or SCA) fails the build on known-exploitable severity
-- [ ] CI installs with `--frozen-lockfile`
-- [ ] Container images pinned by digest and scanned
-- [ ] A test asserts no source map is emitted into the public production bundle
-- [ ] Automated dependency-update PRs enabled, human review required, never auto-merged
-- [ ] Pipeline order per plan.md §24: install → lint → typecheck → unit → integration →
-      build → security → migration validation → artifact
+- [x] `pr.yml` runs green end to end on a real PR — has since T-042
+- [x] Fresh Postgres+Redis per run; migrations apply **from empty**; environment destroyed after
+      — service containers are per job; each test worker's database is built from empty (T-042)
+- [x] Coverage gate blocking at 100% per package, reports uploaded as artifacts — and now
+      actually blocking: `verify` was not a required check on any branch
+- [x] Secret scanning over **full git history**, not just the working tree; blocks the merge —
+      the scan existed; blocking the merge needed the required check (owner-approved)
+- [x] `pnpm audit` (or SCA) fails the build on known-exploitable severity
+- [x] CI installs with `--frozen-lockfile`
+- [x] Container images pinned by digest and scanned — CI, compose and the Dockerfile; Trivy
+      blocks on CRITICAL/HIGH with a fix; one expiring, register-backed exception for gosu
+- [x] A test asserts no source map is emitted into the public production bundle — a script on
+      the build output, tested against built trees, run in CI after the build
+- [x] Automated dependency-update PRs enabled, human review required, never auto-merged —
+      Dependabot for four ecosystems with a 7-day cooldown; security updates enabled
+- [x] Pipeline order — install → knowledge base → lint → typecheck → database → tests → build →
+      source maps → audit → image scan → secret scan. Migration validation cannot come after the
+      tests, which run against the migrated database
 
 **Validation**
 ```bash
 pnpm audit --audit-level=high && pnpm lint && pnpm typecheck
 ```
 
+
+**DONE — 2026-09-23**
+
+Most of the pipeline existed and had run green since T-042. What this task found:
+
+*Nothing was required.* Neither `dev` nor `prod` had a required status check, so the coverage
+gate, the audit and the secret scan blocked only because nobody merged a red PR. `verify` is now
+required on both, with branches kept up to date (owner-approved; reversible in Settings →
+Branches). T-041 still owns the rest of branch protection.
+
+*CI and local ran different Redis majors* — 7 in CI, 8 on every laptop. Both now run the same
+digest.
+
+*Every public web app shipped source maps.* `tsconfig.base.json` turns on `sourceMap` for every
+package, and the three web apps' `dist/` had `.map` files. Turned off for those three; the API
+keeps its maps, which is what an error tracker needs.
+
+*The newest postgres image fails a fixable-only scan.* pgvector's newest pg17 build (bookworm)
+carries fixable Debian findings and 22 in gosu; the trixie variant is worse. The Dockerfile now
+runs `apt-get upgrade`, which clears every Debian finding. gosu 1.19 is the newest release, built
+with Go 1.24.6, so no fixed build exists, and none of the vulnerable paths run in gosu — accepted
+by CVE id, on that one path, until 2026-12-22, in `.trivyignore.yaml` and the register
+`docs/operations/image-scan-exceptions.md` (owner-approved). A new gosu CVE still fails.
+
+*Pinned:* five actions to commit SHAs within the majors already in use — moving majors is
+Dependabot's to propose, one reviewable PR at a time — and every image to its multi-arch index
+digest, resolved from the registry. Trivy 0.74.0 (five weeks old at pinning) runs from its own
+image rather than a third-party action.
+
+*Guarded by `test/supply-chain.spec.ts`*: SHA pins with version comments; digests everywhere; the
+same digests in CI, compose and the Dockerfile; the scan's flags; exceptions limited to CVEs on
+one path with an expiry that the register records; four Dependabot ecosystems with a cooldown of
+at least seven days; no workflow that auto-merges; public tsconfigs without maps; and the source-map
+script against built trees. Seven negative controls, each watched to fail its test.
+
+*Evidence.* 1666 tests, 100% coverage per package; lint, typecheck, build, audit (one moderate,
+below the threshold), knowledge base and source-map check clean; every workflow parses. The image
+scan was run locally with the exact command CI uses: clean with the exception, 22 gosu findings
+without it.
 ---
 
 ### T-029 — Pre-launch security audit

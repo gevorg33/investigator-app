@@ -36,10 +36,13 @@ never a force-push, never from an arbitrary branch.
 ## Pipeline — every PR, every push to an open PR
 
 ```
-fresh environment → install → provision clean database → migrate → fixtures
-  → lint → typecheck → tests + coverage gate
-  → build → security & dependency checks → destroy environment
+fresh environment → install → knowledge base → lint → typecheck
+  → provision clean database → migrate → fixtures → tests + coverage gate
+  → build → no public source maps → dependency audit → image scan → secret scan
+  → destroy environment
 ```
+
+Everything that needs no database runs before one is built, so a lint error fails in seconds.
 
 Rules:
 
@@ -61,6 +64,23 @@ Rules:
 6. **One test step, not four.** There is one suite; naming a split the suite does not make
    produced three steps that each ran everything or nothing. Coverage runs the tests, so
    `pnpm test:coverage` is the step, and a failure in it names either the test or the number.
+
+## Pinned, scanned, proposed, reviewed (T-028)
+
+- **Actions by commit SHA**, with the version as a comment. A tag is a promise the publisher can
+  move; a compromised action tag is how supply-chain attacks on CI have happened.
+- **Images by digest**, and the same digest in CI and local development. CI once ran Redis 7 while
+  every laptop ran 8.
+- **Scanned** with Trivy, run from its own digest-pinned image rather than a third-party action.
+  CRITICAL or HIGH blocks when a fix exists. Postgres is scanned as it would be deployed — built
+  from its Dockerfile, which upgrades Debian's packages over the pinned base.
+- **Exceptions** only by CVE id, on one path, with an expiry, in `.trivyignore.yaml` and the
+  register `docs/operations/image-scan-exceptions.md`. An agent never adds or renews one.
+- **Dependabot** proposes updates weekly for npm, actions, the Dockerfile and compose, after a
+  seven-day cooldown (the pinning policy). Security updates skip the cooldown. Nothing merges by
+  itself; `supply-chain.spec.ts` refuses a workflow that auto-merges.
+- **No source maps in public bundles**, checked on the build output by
+  `scripts/check-no-public-sourcemaps.sh`. The API keeps its maps.
 
 ## Secrets and forks
 
@@ -140,3 +160,6 @@ with replicas and a CDN. Environment differences belong in configuration, never 
 - [ ] Migration job separate from deploy in production
 - [ ] Coverage gate present and blocking
 - [ ] Every step runs something — no `--if-present`, no script nothing defines
+- [ ] Actions pinned by commit SHA with a version comment; images pinned by digest (T-028)
+- [ ] `verify` is a required status check on `dev` and `prod` — without it every gate above
+      blocks only by convention
