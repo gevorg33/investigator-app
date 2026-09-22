@@ -1,5 +1,7 @@
 # Escalation
 
+<!-- not-for-ingestion -->
+
 **Not ingested into the knowledge base.** See `README.md` in this directory for why.
 
 The staff knowledge base deliberately stops short and points here. These are the cases where a

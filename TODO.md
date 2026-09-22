@@ -829,7 +829,7 @@ pnpm --filter admin-web build
 ---
 
 ### T-015 — Knowledge base structure and CI validation
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** T-001
 - **Risk:** LOW
@@ -843,17 +843,47 @@ contract, and the validator wired into CI so malformed or mis-scoped documents c
 Procedure: `.claude/skills/documentation-first/SKILL.md`.
 
 **Acceptance criteria**
-- [ ] `python3 scripts/validate-knowledge-base.py` runs in CI and fails the build on error
-- [ ] Every seeded document passes; seeds promoted from `draft` to `current`
-- [ ] A staff document marked `visibility: public` fails validation (regression test)
-- [ ] `docs/operations/**` is excluded from ingestion by construction, not by convention
-- [ ] Authoring contract documented in `docs/knowledge-base/README.md`
+- [x] `python3 scripts/validate-knowledge-base.py` runs in CI and fails the build on error — a
+      `Knowledge base` step straight after install; a spec asserts the workflow runs it
+- [x] Every seeded document passes; seeds promoted from `draft` to `current` — all 35 were
+      already current; 0 errors, 0 warnings
+- [x] A staff document marked `visibility: public` fails validation (regression test) — run
+      against the real script, and seen to pass when the folder check is removed
+- [x] `docs/operations/**` is excluded from ingestion by construction, not by convention — a
+      `<!-- not-for-ingestion -->` marker on every operations document that the validator
+      refuses in the knowledge base, no frontmatter on any of them, and no symlinks allowed
+- [x] Authoring contract documented in `docs/knowledge-base/README.md` — rewritten: every field,
+      the folder/visibility table including `agency/`, what is never ingested and why, headings,
+      locales
 
 **Validation**
 ```bash
 python3 scripts/validate-knowledge-base.py
 ```
 
+
+**DONE — 2026-09-23**
+
+The validator existed and passed; nothing ran it, and nothing tested it. Now CI runs it on every
+pull request, before anything that needs a database, and `test/knowledge-base-validator.spec.ts`
+exercises the real script against built-up trees: a well-formed article passes; a staff article
+marked public, a missing frontmatter block, an out-of-range value, an operations document copied
+in with frontmatter added, a symlink, a missing knowledge base, and an orphan translation each
+fail. It also checks the repository's own documents and that every operations file is marked.
+
+*Changed in the validator:* the not-for-ingestion marker and symlinks are refused;
+`implementation_status` is held to `specified | partial | implemented` when present (a typo read
+as neither); and a missing `docs/knowledge-base/` exits 1 rather than 0 — a knowledge base that has
+gone missing is not one that validates.
+
+*Negative controls:* the folder/visibility check, the marker check and the symlink check each
+removed, the matching test watched to fail, the script restored byte for byte.
+
+*Documentation:* the README is now the contract; the `documentation-first` skill's example gained
+the `agency` audience T-083 added and points to it.
+
+*Evidence.* 1653 tests, 100% coverage per package, lint, typecheck and build clean, validator 0
+errors and 0 warnings.
 ---
 
 ### T-016 — Knowledge ingestion pipeline with sync and supersession
