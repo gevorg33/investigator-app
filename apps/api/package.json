@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build",
+    "typecheck:specs": "tsc -p tsconfig.spec.json",
     "dev": "node --watch dist/main.js",
     "start": "node dist/main.js",
     "migration:generate": "drizzle-kit generate",

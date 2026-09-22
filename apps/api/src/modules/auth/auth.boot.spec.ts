@@ -22,21 +22,16 @@ import { closeApp, listenOnce } from '../../../test/http';
  * The boundary under test is decorator metadata, not persistence: a request that
  * reaches either stub has already proven DI and validation ran.
  */
-class StubInfrastructureModule {}
-
-// Applied as plain calls rather than `@Global()` / `@Module()` syntax: tsconfig.json
-// excludes **/*.spec.ts, so the transformer does not enable experimentalDecorators for
-// this file and decorator syntax fails to parse here. A decorator is just a function,
-// so calling it directly is equivalent and needs no build configuration.
-Module({
+@Global()
+@Module({
   providers: [
     { provide: DB, useValue: {} },
     { provide: AuditService, useValue: { record: async () => undefined } },
     { provide: MAILER, useValue: { send: async () => undefined } },
   ],
   exports: [DB, AuditService, MAILER],
-})(StubInfrastructureModule);
-Global()(StubInfrastructureModule);
+})
+class StubInfrastructureModule {}
 
 /**
  * Guards the interaction between `emitDecoratorMetadata` and type-only imports.

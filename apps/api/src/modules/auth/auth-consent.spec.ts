@@ -177,7 +177,10 @@ describe('the acceptance gate', () => {
 
       const refusal = await auth
         .register(email(), PASSWORD, ctx(), [privacy.id])
-        .catch((e: unknown) => e as { details?: Array<{ messageKey: string }> });
+        .then(
+          () => ({}) as { details?: Array<{ messageKey: string }> },
+          (e: unknown) => e as { details?: Array<{ messageKey: string }> },
+        );
 
       expect(refusal.details?.map((d) => d.messageKey)).toEqual([
         'error.validation.legal.terms_of_service',

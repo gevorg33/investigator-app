@@ -221,7 +221,8 @@ describe('resolving the actor', () => {
     // An Actor a service can edit is not a security boundary.
     expect(Object.isFrozen(actor)).toBe(true);
     expect(() => {
-      (actor as { roles: string[] }).roles = ['STAFF'];
+      // Deliberately writing to a readonly field: the freeze, not the type, is under test.
+      (actor as unknown as { roles: string[] }).roles = ['STAFF'];
     }).toThrow();
   });
 });

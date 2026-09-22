@@ -178,6 +178,7 @@ describe('idempotency keys across workspaces', () => {
     tenantKind: 'AGENCY',
     userId,
     membershipId,
+    sessionId: randomUUID(),
     permissions: [],
   });
 

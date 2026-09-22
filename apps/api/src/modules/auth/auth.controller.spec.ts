@@ -94,7 +94,7 @@ describe('auth controller', () => {
       const res = await post('login').send(CREDENTIALS);
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ userId: 'u1' });
-      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=tok-login`);
+      expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=tok-login`);
     });
 
     it('never returns the refresh token in the body', async () => {
@@ -104,7 +104,7 @@ describe('auth controller', () => {
 
     it('marks the cookie HttpOnly, SameSite=Strict and host-only', async () => {
       const res = await post('login').send(CREDENTIALS);
-      const cookie = res.headers['set-cookie'][0];
+      const cookie = res.headers['set-cookie']![0];
       expect(cookie).toContain('HttpOnly');
       expect(cookie).toContain('SameSite=Strict');
       expect(cookie).toContain('Path=/');
@@ -118,7 +118,7 @@ describe('auth controller', () => {
       const res = await post('refresh').set('Cookie', [`${COOKIE}=tok-old`]).send();
       expect(res.status).toBe(200);
       expect(auth.refresh).toHaveBeenCalledWith('tok-old', expect.any(Object));
-      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=tok-refreshed`);
+      expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=tok-refreshed`);
     });
 
     it('passes an empty token when no cookie is present', async () => {
@@ -134,14 +134,14 @@ describe('auth controller', () => {
       expect(res.status).toBe(204);
       expect(auth.revoke).toHaveBeenCalledWith('tok-old', expect.any(Object));
       // Cleared by expiry in the past, not by omission.
-      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=;`);
+      expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=;`);
     });
 
     it('still clears the cookie when there was no session to revoke', async () => {
       const res = await post('logout').send();
       expect(res.status).toBe(204);
       expect(auth.revoke).not.toHaveBeenCalled();
-      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=;`);
+      expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=;`);
     });
   });
 
@@ -149,25 +149,25 @@ describe('auth controller', () => {
     it('passes a string id through unchanged', async () => {
       requestId = 'abc';
       await post('register').send(CREDENTIALS);
-      expect(auth.register.mock.calls[0][2]).toMatchObject({ correlationId: 'abc' });
+      expect(auth.register.mock.calls[0]![2]).toMatchObject({ correlationId: 'abc' });
     });
 
     it('stringifies a numeric id, so the shape is uniform downstream', async () => {
       requestId = 42;
       await post('register').send(CREDENTIALS);
-      expect(auth.register.mock.calls[0][2]).toMatchObject({ correlationId: '42' });
+      expect(auth.register.mock.calls[0]![2]).toMatchObject({ correlationId: '42' });
     });
 
     it('leaves it undefined when the request carries no id', async () => {
       requestId = undefined;
       await post('register').send(CREDENTIALS);
-      expect(auth.register.mock.calls[0][2].correlationId).toBeUndefined();
+      expect(auth.register.mock.calls[0]![2].correlationId).toBeUndefined();
     });
 
     it('ignores an id of an unexpected type rather than coercing it', async () => {
       requestId = { nested: true };
       await post('register').send(CREDENTIALS);
-      expect(auth.register.mock.calls[0][2].correlationId).toBeUndefined();
+      expect(auth.register.mock.calls[0]![2].correlationId).toBeUndefined();
     });
   });
 
@@ -215,7 +215,7 @@ describe('auth controller', () => {
         expect.any(Object),
       );
       // Reset revokes every session including this one; the cookie must not linger.
-      expect(res.headers['set-cookie'][0]).toContain(`${COOKIE}=;`);
+      expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=;`);
     });
 
     it('holds a reset to the same password policy as registration', async () => {

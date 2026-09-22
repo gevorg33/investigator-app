@@ -2765,7 +2765,7 @@ pnpm --filter api test:coverage
 ---
 
 ### T-064 — Type-check and lint the test suite
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** —
 - **Risk:** LOW
@@ -2790,16 +2790,54 @@ workaround should disappear once this is fixed.
 Needs a separate `tsconfig.spec.json` so specs are checked without being emitted into `dist`.
 
 **Acceptance criteria**
-- [ ] `pnpm typecheck` covers `**/*.spec.ts`
-- [ ] `dist/` still contains no spec output
-- [ ] A deliberate type error in a spec fails `pnpm typecheck`
-- [ ] Decorator syntax works in a spec; the `auth.boot.spec.ts` workaround is removed
+- [x] `pnpm typecheck` covers `**/*.spec.ts` — and `test/**`, and the vitest configs, in both
+      packages that have specs; a spec guards that every such package keeps doing so
+- [x] `dist/` still contains no spec output — none in any package's `dist`
+- [x] A deliberate type error in a spec fails `pnpm typecheck` — and so does the T-005 case, a
+      constructor called with the wrong number of arguments
+- [x] Decorator syntax works in a spec; the `auth.boot.spec.ts` workaround is removed — and the
+      three copies of it in `bootstrap.spec.ts`, `health.controller.spec.ts` and
+      `legal.controller.spec.ts`
 
 **Validation**
 ```bash
 pnpm typecheck && pnpm --filter api build && test ! -e apps/api/dist/modules/auth/auth.boot.spec.js
 ```
 
+
+**DONE — 2026-09-23**
+
+`tsconfig.spec.json` beside each package's `tsconfig.json`: extends it, `noEmit`, includes specs,
+helpers and the vitest config. **Bundler** module resolution, because Vite runs specs, not Node —
+under Node16 the deliberate environment-first `await import('./app.module')` reads as an error and
+drizzle's types load twice (five errors of the first 54 were that alone). Root `typecheck` is now
+`tsc --build --verbose && pnpm -r typecheck:specs`. ESLint already covered specs; nothing ignored
+them.
+
+*54 errors on first run*, all in code that passed at runtime. Most were strictness — possibly
+undefined reads, `exactOptionalPropertyTypes` meeting a deliberate `undefined`. The ones worth
+knowing: `MediaService` constructed with 7 of its 8 arguments (the T-005 bug class; it passed only
+because the missing one is not reached on that path); five execution contexts missing the
+`sessionId` T-080 added; `platform-context.spec`'s "holds another scope" using `'SUPPORT'`, which
+is not a scope, so it proved only that an unknown string is not `VERIFICATION` — now `MODERATION`;
+and `authz.plumbing.spec` typing against a `schema.Db` that never existed.
+
+*Checking the configs found `coverage.all`* in both, which Vitest 4 removed and had been ignoring.
+The gate stayed honest — in Vitest 4, `include` counts untested files, verified by adding one and
+watching the total fall below threshold — but the comment explaining the gate named the wrong
+option. Removed, and the comment corrected. It also found a missing `override` on the T-042
+reverse sequencer.
+
+*Found by shuffling*: `scoped-client.spec` asserted "no context" on the raw
+`current_setting()`, which is NULL on a fresh connection and '' on a used one, so it passed or
+failed on pool history. It now asserts what policies read, `app_current_tenant()`, after giving the
+connection that history on purpose — the old assertion fails 3 of 3 that way.
+
+*Negative controls*: a type error in a spec, and the 7-of-8-arguments constructor, each fail
+`pnpm typecheck`; removing `typecheck:specs` from a package with specs fails the guard.
+
+*Evidence.* Validation command passes. 1641 tests, 100% coverage per package, lint and build
+clean, shuffled order green.
 ---
 
 ### T-065 — Malware scanning for uploaded media

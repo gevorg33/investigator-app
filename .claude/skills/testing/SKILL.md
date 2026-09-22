@@ -219,6 +219,25 @@ These three are how this suite used to flake. Each is now enforced by a spec:
   busy the machine is. See `password.service.spec.ts`: the structural check caught a regression
   that the timing bound let through.
 
+## Test code is type-checked (T-064)
+
+`pnpm typecheck` checks specs and test helpers too. Each package's `tsconfig.json` still excludes
+`*.spec.ts`, so nothing reaches `dist`; a sibling `tsconfig.spec.json` checks them with
+`noEmit`, and the root script runs every package's `typecheck:specs`. A package that gains specs
+gains the script — `test/workspace-scripts.spec.ts` refuses one that does not.
+
+Specs are checked with **bundler** module resolution, not the Node16 resolution the build uses,
+because Vite runs them, not Node. Under Node16, the deliberate `await import('./app.module')`
+that sets the environment first reads as an error, and drizzle's types load twice.
+
+What it caught on first run, all passing at runtime: a `MediaService` built with seven of its
+eight arguments; five execution contexts missing the `sessionId` T-080 added; a "holds another
+scope" test using `'SUPPORT'`, which is not a scope; and `coverage.all`, which Vitest 4 removed and
+had been silently ignoring.
+
+Decorator syntax works in specs — `@Module({...}) class X {}` — because Vite applies legacy
+decorators to every file (T-042). Write it as syntax, not as `Module({...})(X)`.
+
 ## A regression test for every fixed bug
 
 Every bug fix ships with a test that **fails against the old code and passes against the new**.

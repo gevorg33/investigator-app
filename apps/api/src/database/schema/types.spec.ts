@@ -103,8 +103,8 @@ describe('reading geography back through drizzle', () => {
     const db = drizzle(sql);
     await db.insert(pointProbe).values({ id: 1, place: YEREVAN });
     const [row] = await db.select().from(pointProbe);
-    expect(row?.place.lon).toBeCloseTo(YEREVAN.lon, 6);
-    expect(row?.place.lat).toBeCloseTo(YEREVAN.lat, 6);
+    expect(row?.place?.lon).toBeCloseTo(YEREVAN.lon, 6);
+    expect(row?.place?.lat).toBeCloseTo(YEREVAN.lat, 6);
   });
 });
 
@@ -251,8 +251,8 @@ describe('geography polygon', () => {
       ];
       await db.insert(probe).values({ id: 2, area: { rings: [square, hole] } });
       const [row] = await db.select().from(probe).where(eq(probe.id, 2));
-      expect(row?.area.rings).toHaveLength(2);
-      expect(row?.area.rings[1]).toEqual(hole);
+      expect(row?.area?.rings).toHaveLength(2);
+      expect(row?.area?.rings[1]).toEqual(hole);
     });
   });
 });

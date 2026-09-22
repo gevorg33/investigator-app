@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Db } from '../../database/database.module';
 import * as schema from '../../database/schema';
 import { users } from '../../database/schema';
 import { testActor } from '../../../test/actor';
@@ -19,7 +20,7 @@ type UserRow = typeof users.$inferSelect;
 
 /** A repository that scopes to the actor, for comparison with the one below. */
 class ScopedUsers extends ActorScopedRepository<UserRow> {
-  constructor(db: schema.Db) {
+  constructor(db: Db) {
     super(db as never, users);
   }
   protected scopeFor(actor: Actor): SQL | undefined {
@@ -35,7 +36,7 @@ class ScopedUsers extends ActorScopedRepository<UserRow> {
  * branch is exercised rather than assumed.
  */
 class UnscopedUsers extends ActorScopedRepository<UserRow> {
-  constructor(db: schema.Db) {
+  constructor(db: Db) {
     super(db as never, users);
   }
   protected scopeFor(): SQL | undefined {

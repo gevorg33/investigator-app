@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --build --verbose",
+    "typecheck": "tsc --build --verbose && pnpm -r typecheck:specs",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test:coverage",
     "fixtures:load": "pnpm -r fixtures:load",

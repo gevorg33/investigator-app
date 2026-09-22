@@ -22,7 +22,7 @@ import { QuotesService } from './quotes.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
-import { runInContext } from '../../common/context/execution-context';
+import { runInContext, type ExecutionContext } from '../../common/context/execution-context';
 
 
 describe('quotes', () => {
@@ -416,7 +416,8 @@ describe('quotes', () => {
         tenantKind: 'AGENCY' as const,
         userId,
         membershipId: row!.membership,
-        permissions: row!.permissions,
+        sessionId: randomUUID(),
+        permissions: row!.permissions as ExecutionContext['permissions'],
       };
     };
 

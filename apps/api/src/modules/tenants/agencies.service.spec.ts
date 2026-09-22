@@ -42,15 +42,26 @@ describe('agency registration', () => {
 
   const req = () => ({ ip: '198.51.100.12', userAgent: 'vitest', correlationId: randomUUID() });
 
-  const complete = (over: Partial<CreateAgencyDto> = {}): CreateAgencyDto => ({
-    name: `Agency ${randomUUID().slice(0, 8)}`,
-    countryCode: 'AM',
-    businessEmail: `hello-${randomUUID()}@agency.test`,
-    timezone: 'Asia/Yerevan',
-    currency: 'AMD',
-    agreementDocumentId: agreementId,
-    ...over,
-  });
+  /**
+   * A complete agency, with overrides. An override of `undefined` means "the client left this
+   * out", so the key is removed rather than sent as undefined — which is what a request that
+   * omits the field actually looks like.
+   */
+  const complete = (
+    over: { [K in keyof CreateAgencyDto]?: CreateAgencyDto[K] | undefined } = {},
+  ): CreateAgencyDto => {
+    const dto: Record<string, unknown> = {
+      name: `Agency ${randomUUID().slice(0, 8)}`,
+      countryCode: 'AM',
+      businessEmail: `hello-${randomUUID()}@agency.test`,
+      timezone: 'Asia/Yerevan',
+      currency: 'AMD',
+      agreementDocumentId: agreementId,
+      ...over,
+    };
+    for (const key of Object.keys(dto)) if (dto[key] === undefined) delete dto[key];
+    return dto as unknown as CreateAgencyDto;
+  };
 
   beforeAll(() => {
     app = testPool({ max: 3 });

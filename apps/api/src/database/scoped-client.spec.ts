@@ -19,6 +19,7 @@ const context = (n: number): ExecutionContext => ({
   tenantKind: 'AGENCY',
   userId: `00000000-0000-4000-9000-${String(n).padStart(12, '0')}`,
   membershipId: `00000000-0000-4000-a000-${String(n).padStart(12, '0')}`,
+  sessionId: `00000000-0000-4000-b000-${String(n).padStart(12, '0')}`,
   permissions: [],
 });
 
@@ -79,14 +80,21 @@ describe('the scoped client', () => {
     // Drizzle queries are lazy: nothing runs until awaited. One returned un-awaited from inside
     // runInContext executes after the context has ended — and so without one, which RLS turns
     // into "no rows" (T-077). Pinned here because it is the footgun: always await inside.
+    //
+    // Asserted as policies read it, through app_current_tenant(). The raw setting is NULL on a
+    // connection that never set it and '' on one that did, so asserting on it made this pass or
+    // fail on which pooled connection the test happened to get — found by shuffling (T-064).
     const db = drizzle(scopedClient(one), { schema });
+    // Give the one connection a history first, so the raw setting reads '' rather than NULL:
+    // the worst case, made certain instead of left to the order tests happen to run in.
+    await runInContext(context(12), () => db.select().from(schema.roles).limit(1));
     const lazy = runInContext(context(11), () =>
       db
-        .select({ tenant: sql<string>`current_setting('app.tenant_id', true)` })
+        .select({ tenant: sql<string | null>`app_current_tenant()` })
         .from(schema.roles)
         .limit(1),
     );
-    expect(await lazy).toEqual([{ tenant: '' }]);
+    expect(await lazy).toEqual([{ tenant: null }]);
   });
 
   it('sets it as the first statement of a transaction, for every query inside', async () => {

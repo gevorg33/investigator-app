@@ -56,8 +56,8 @@ const respond = (exception: unknown, requestId?: string) => {
   };
   new AppExceptionFilter().catch(exception, host as never);
   return {
-    status: status.mock.calls[0]?.[0] as number,
-    body: json.mock.calls[0]?.[0] as { error: Record<string, unknown> },
+    status: (status.mock.calls[0] as unknown[] | undefined)?.[0] as number,
+    body: (json.mock.calls[0] as unknown[] | undefined)?.[0] as { error: Record<string, unknown> },
   };
 };
 

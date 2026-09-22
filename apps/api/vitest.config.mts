@@ -12,7 +12,7 @@ import { MAX_WORKERS } from './test/db-budget';
  * specific one that is easy to reason about and easy to reproduce.
  */
 class ReverseSequencer extends BaseSequencer {
-  async sort(files: Parameters<BaseSequencer['sort']>[0]) {
+  override async sort(files: Parameters<BaseSequencer['sort']>[0]) {
     return (await super.sort(files)).reverse();
   }
 }
@@ -114,10 +114,11 @@ export default defineConfig({
       : {}),
     coverage: {
       provider: 'v8',
-      // `all` is what makes the gate honest: without it a source file with no spec is
-      // simply absent from the report rather than counted as 0%. Turning it on is what
-      // revealed that the gate had never actually run (see T-063).
-      all: true,
+      // `include` is what makes the gate honest: every file it matches is reported, and one
+      // no spec imports counts as 0% rather than being absent (T-063). Vitest 4 removed the
+      // `all` option that used to do this and made `include` do it instead; the `all: true`
+      // that stood here was silently ignored, which only type-checking the config found
+      // (T-064). Verified: a source file with no spec drops the total below the threshold.
       include: ['src/**/*.ts'],
       // Specs and type-only declarations are the measuring instrument, not the subject.
       // Anything beyond these two belongs in the exclusions register

@@ -698,6 +698,7 @@ describe('missions', () => {
         tenantKind: 'AGENCY' as const,
         userId: actor.userId,
         membershipId: memberships[0]!,
+        sessionId: randomUUID(),
         permissions: [],
       };
 

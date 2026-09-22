@@ -39,7 +39,7 @@ describe('search controller', () => {
   });
 
   const http = () => request(app.getHttpServer());
-  const post = (body: unknown) => http().post('/search/investigators').send(body);
+  const post = (body: object) => http().post('/search/investigators').send(body);
 
   it('answers a search with 200, because it creates nothing', async () => {
     expect((await post({})).status).toBe(200);

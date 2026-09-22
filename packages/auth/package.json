@@ -15,6 +15,7 @@
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build",
+    "typecheck:specs": "tsc -p tsconfig.spec.json",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
