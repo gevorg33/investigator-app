@@ -371,8 +371,11 @@ describe('the shared taxonomy (ADR-0007, T-053)', () => {
    * these are the checks that stand when something else writes — a script, a console, a bug.
    */
   describe('the database holds the rules itself', () => {
+    // Awaited inside the context: a drizzle query is lazy, and one handed back un-awaited runs
+    // after the context has ended — with no workspace at all, so a refusal would prove nothing
+    // about the policy. Found while writing T-031; this helper had that bug in T-053.
     const asApp = <T>(userId: string, fn: (db: ReturnType<typeof scopedDb>) => Promise<T>) =>
-      inWorkspaceOf(owner, userId, () => fn(scopedDb(sql)));
+      inWorkspaceOf(owner, userId, async () => await fn(scopedDb(sql)));
 
     /** drizzle wraps the database's refusal; the policy's own words are on `cause`. */
     const refusedByPolicy = {

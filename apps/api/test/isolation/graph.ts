@@ -151,6 +151,13 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     INSERT INTO assignment_status_history (assignment_id, to_status, actor_kind)
     VALUES (${assignment}, 'PENDING_ACCEPTANCE', 'SYSTEM') RETURNING id`);
 
+  // Shared, so it is readable by the customer's workspace too — the stronger case for the matrix:
+  // a row both parties can see is still one no third workspace can (T-031).
+  const source = await id(owner`
+    INSERT INTO investigation_sources (assignment_id, type, title, shared, added_by)
+    VALUES (${assignment}, 'REGISTRY', 'Company register extract', true, ${supplier.userId})
+    RETURNING id`);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -182,6 +189,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       quotes: quote,
       assignments: assignment,
       assignment_status_history: assignmentHistory,
+      investigation_sources: source,
     },
   };
 }

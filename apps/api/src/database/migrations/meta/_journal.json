@@ -127,6 +127,13 @@
       "when": 1790111331513,
       "tag": "0017_add_taxonomy_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790114836644,
+      "tag": "0018_add_investigation_sources",
+      "breakpoints": true
     }
   ]
 }

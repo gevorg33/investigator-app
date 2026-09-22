@@ -41,9 +41,45 @@ export async function assignment(
       currency: quote.currency,
       estimatedDurationDays: quote.estimatedDurationDays,
       status: input.status ?? 'PENDING_ACCEPTANCE',
+      // Every state past acceptance carries the moment of it (`assignments_accepted_at_consistent`),
+      // so a test can ask for an IN_PROGRESS assignment and get one the database would accept.
+      acceptedAt:
+        (input.status ?? 'PENDING_ACCEPTANCE') === 'PENDING_ACCEPTANCE' ? null : new Date(),
       paymentReference: input.paymentReference ?? `pi_${randomUUID()}`,
       paymentAuthorizedAt: new Date(),
       acceptanceDueAt: input.acceptanceDueAt ?? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+    })
+    .returning();
+  return row!;
+}
+
+/**
+ * A source recorded on an assignment (T-031). Private and of unknown reliability unless a test
+ * says otherwise — the same defaults the service applies — so a test about sharing states only
+ * that it shared one.
+ */
+export async function investigationSource(
+  db: TestDb,
+  input: {
+    assignmentId: string;
+    addedBy: string;
+    type?: (typeof schema.investigationSources.type.enumValues)[number];
+    title?: string;
+    shared?: boolean;
+    reliability?: (typeof schema.investigationSources.reliability.enumValues)[number];
+    reliabilityRationale?: string;
+  },
+): Promise<typeof schema.investigationSources.$inferSelect> {
+  const [row] = await db
+    .insert(schema.investigationSources)
+    .values({
+      assignmentId: input.assignmentId,
+      addedBy: input.addedBy,
+      type: input.type ?? 'REGISTRY',
+      title: input.title ?? 'Company register extract',
+      shared: input.shared ?? false,
+      reliability: input.reliability ?? 'UNKNOWN',
+      reliabilityRationale: input.reliabilityRationale ?? null,
     })
     .returning();
   return row!;

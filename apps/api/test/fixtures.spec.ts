@@ -46,6 +46,7 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   missions: 'quote-fixtures.quotableMission',
   quotes: 'quote-fixtures.submittedQuote',
   assignments: 'assignment-fixtures.assignment',
+  investigation_sources: 'assignment-fixtures.investigationSource',
 };
 
 /** Tables a factory must NOT write, because something else is what makes them true. */

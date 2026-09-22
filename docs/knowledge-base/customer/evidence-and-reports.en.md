@@ -4,15 +4,16 @@ title: Evidence and reports — what you receive and how to access it
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-23
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/evidence
   - apps/api/src/modules/reports
   - apps/api/src/modules/media
+  - apps/api/src/modules/investigation-sources
 tags: [evidence, reports, deliverables, access, downloads]
 ---
 
@@ -53,6 +54,15 @@ them and when.
 Once a file is on your device, protecting it is your responsibility. Evidence often
 contains personal information about identifiable people, and you remain subject to the law
 in how you use and store it.
+
+## Can I see where the investigator's information came from?
+
+You see the sources your investigator chooses to share with you, and the findings in your report
+say what they rest on. An investigator does not have to share every source while the work is under
+way, and some — a witness, for example — may stay private to protect the person concerned.
+
+A source can be withdrawn by the investigator if it turns out to be wrong or irrelevant. It then
+disappears from your view but is kept, so the record of the work stays complete.
 
 ## Who else can see my evidence?
 
