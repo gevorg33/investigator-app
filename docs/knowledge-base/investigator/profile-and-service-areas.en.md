@@ -4,15 +4,16 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-14
+updated: 2026-09-23
 source_of_truth: database
 implementation_status: specified
 related_code:
   - apps/api/src/modules/profiles
   - apps/api/src/modules/service-areas
-tags: [profile, service-areas, specialties, availability, languages, discovery]
+  - apps/api/src/modules/taxonomy
+tags: [profile, service-areas, specialties, availability, languages, discovery, taxonomy]
 ---
 
 # Profile and service areas
@@ -23,7 +24,7 @@ tags: [profile, service-areas, specialties, availability, languages, discovery]
 ## What determines whether I appear in a customer's results?
 
 Your declared settings, checked as hard requirements: the area you cover, your specialties,
-the services you offer, your languages, your availability, and your verification status.
+your languages, your availability, and your verification status.
 
 Failing any one of them removes you from that customer's results entirely. Profile prose
 does not compensate — descriptions affect ordering among investigators who already qualify,
@@ -99,12 +100,26 @@ on the town or district you work in rather than your street.
 
 ## What is the difference between a specialty and a service?
 
-A specialty is the kind of investigation — the domain you work in. A service is a specific
-thing you do within it.
+There is no separate list of services. Specialties form a tree: a broad kind of investigation,
+and more specific kinds of work beneath it. What might be called a service is simply a deeper
+specialty.
 
-Customers filter on both. Declaring a specialty you do not actually offer services in
-produces mismatched missions; declaring services you cannot lawfully perform in a declared
-area is a compliance problem, not just a mismatch.
+Declare as precisely as your work really is. Matching walks the tree in both directions: if you
+declare a specific specialty, you match customers who chose it or the broader one above it; if
+you declare a broad one, you match customers who chose anything beneath it. Declaring broadly
+therefore brings you more missions, including ones that turn out to need something you do not
+do — and declaring specialties you cannot lawfully practise in your declared areas is a
+compliance problem, not just a mismatch.
+
+## What happens when a specialty I declared is retired?
+
+Nothing changes for you. A retired specialty disappears from the list new declarations are
+chosen from, but you keep it: it stays on your profile, it still matches customers exactly as
+before, and you can go on saving the rest of your profile with it in place.
+
+What you cannot do is newly add a retired specialty. If you remove it, it cannot be added back.
+Staff retire a specialty when the tree is reorganised; they do not remove one from anybody who
+already declared it.
 
 ## How do I work as a customer as well?
 

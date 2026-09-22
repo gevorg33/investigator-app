@@ -21,6 +21,7 @@ import { ServiceAreasModule } from './modules/service-areas/service-areas.module
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
+import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
     AssignmentsModule,
     VerificationModule,
     TenantsModule,
+    TaxonomyModule,
     HealthModule,
   ],
 })

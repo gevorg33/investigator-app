@@ -11,12 +11,19 @@ import { TABLE_CLASSES, type TableClass } from './table-classes';
  * between the two — `table-classes.spec.ts` already fails on a table missing from the registry,
  * and this fails on a table whose database state does not match its class.
  */
-const PROTECTED: readonly TableClass[] = ['tenancy', 'tenant_owned', 'two_party', 'platform_record'];
+const PROTECTED: readonly TableClass[] = [
+  'tenancy',
+  'tenant_owned',
+  'two_party',
+  'platform_record',
+];
 
 /** Not protected by policies, and why. Each entry is a decision with an owner, not an oversight. */
 const UNPROTECTED: Readonly<Record<TableClass, string>> = {
   identity: 'read before any workspace exists; whether they get user-keyed policies is T-098',
-  platform: 'the same rows for every workspace; the app holds SELECT and nothing else',
+  platform:
+    'the same rows for every workspace; the app holds SELECT and nothing else — except the ' +
+    'staff-maintained tables, which are protected (T-053)',
   system: 'outbox_events has no workspace column until T-082',
   platform_record: '',
   postgis: 'owned by PostGIS, never written by the application',
@@ -53,7 +60,7 @@ describe('row-level security', () => {
     for (const [table, spec] of Object.entries(TABLE_CLASSES)) {
       const row = applied.get(table);
       if (row === undefined) continue;
-      const mustBe = PROTECTED.includes(spec.class);
+      const mustBe = PROTECTED.includes(spec.class) || spec.staffMaintained === true;
       if (row.enabled !== mustBe || row.forced !== mustBe) {
         problems.push(`${table}: enabled=${row.enabled} forced=${row.forced}, expected ${mustBe}`);
       }
@@ -73,14 +80,56 @@ describe('row-level security', () => {
     expect(unexplained).toEqual([]);
   });
 
-  it('gives the application no way to write the tables every workspace reads', async () => {
+  const platformTables = (staff: boolean) =>
+    Object.entries(TABLE_CLASSES)
+      .filter(([, spec]) => spec.class === 'platform' && (spec.staffMaintained === true) === staff)
+      .map(([table]) => table);
+
+  it('gives the application no way to write the platform tables staff do not maintain', async () => {
     const writable = await owner<{ table: string; privilege: string }[]>`
       SELECT table_name AS table, privilege_type AS privilege
         FROM information_schema.role_table_grants
        WHERE grantee = 'investigator_app' AND table_schema = 'public'
-         AND table_name IN ('taxonomy_nodes', 'permissions', 'roles', 'role_permissions')
+         AND table_name = ANY(${platformTables(false)})
          AND privilege_type <> 'SELECT'`;
+    expect(platformTables(false).length).toBeGreaterThan(3);
     expect(writable).toEqual([]);
+  });
+
+  it('lets the application insert and update staff-maintained tables, and never delete', async () => {
+    const granted = await owner<{ table: string; privilege: string }[]>`
+      SELECT table_name AS table, privilege_type AS privilege
+        FROM information_schema.role_table_grants
+       WHERE grantee = 'investigator_app' AND table_schema = 'public'
+         AND table_name = ANY(${platformTables(true)})`;
+    // Sorted in JS, not SQL: collation differs between the CI image and a laptop (T-077).
+    const shape = [...new Set(granted.map((g) => g.privilege))].sort();
+    expect(platformTables(true)).toEqual(['taxonomy_nodes', 'taxonomy_node_labels']);
+    expect(shape).toEqual(['INSERT', 'SELECT', 'UPDATE']);
+    for (const table of platformTables(true)) {
+      expect(granted.filter((g) => g.table === table)).toHaveLength(3);
+    }
+  });
+
+  it('admits a write to a staff-maintained table only under platform access', async () => {
+    // Reads are open — the tree is the same for everyone — but every policy that admits a write
+    // says exactly `app_platform_access()`, which only PlatformContext turns on.
+    const policies = await owner<
+      { table: string; cmd: string; qual: string | null; check: string | null }[]
+    >`
+      SELECT tablename AS table, cmd, qual, with_check AS check
+        FROM pg_policies
+       WHERE schemaname = 'public' AND tablename = ANY(${platformTables(true)})`;
+    for (const p of policies) {
+      if (p.cmd === 'SELECT') {
+        expect(p.qual, `${p.table} ${p.cmd}`).toBe('true');
+      } else {
+        expect(p.cmd, p.table).toMatch(/^(INSERT|UPDATE)$/);
+        expect(p.check, `${p.table} ${p.cmd}`).toBe('app_platform_access()');
+        if (p.cmd === 'UPDATE') expect(p.qual, p.table).toBe('app_platform_access()');
+      }
+    }
+    expect(policies).toHaveLength(6);
   });
 
   it('reads the context through NULLIF, so no context matches nothing', async () => {

@@ -81,7 +81,10 @@ services including surveillance, under their acceptable use policy, in your laun
 
 ### 2. Investigator licensing research
 
-**Why:** T-053 seeds the taxonomy and cannot be completed without it. ADR-0009 raised the bar:
+**Why:** T-131 seeds the taxonomy and cannot start without it. T-053 built everything else —
+labels, the staff write path, the rules — and closed on 2026-09-23 without seeding, because slugs
+become permanent ids the moment they are written. Until this is answered there is nothing for a
+customer to file a mission under. ADR-0009 raised the bar:
 verification must now establish a **surveillance-specific** licence in the jurisdiction of the
 work, not merely that someone is licensed.
 

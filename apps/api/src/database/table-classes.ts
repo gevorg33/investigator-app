@@ -32,6 +32,12 @@ export interface TableClassification {
   readonly nullable?: Readonly<Record<string, string>>;
   /** Anything a reader of the registry must know that the class does not say. */
   readonly note?: string;
+  /**
+   * Platform data that staff maintain through the application rather than by migration
+   * (T-053). The runtime role may INSERT and UPDATE it — never DELETE — and row-level security
+   * admits those writes only inside PlatformContext. `rls.spec.ts` holds both halves.
+   */
+  readonly staffMaintained?: true;
 }
 
 export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
@@ -49,7 +55,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     note: 'belongs to a person, not a workspace, and outlives the account (T-021). Its tenant_id records where the consent was given, and is not what scopes the row',
   },
 
-  taxonomy_nodes: { class: 'platform' },
+  taxonomy_nodes: {
+    class: 'platform',
+    staffMaintained: true,
+    note: 'read by everyone; written only by TAXONOMY staff inside PlatformContext, enforced by policy (T-053)',
+  },
+  taxonomy_node_labels: {
+    class: 'platform',
+    staffMaintained: true,
+    note: 'as taxonomy_nodes: read by everyone, written only under platform access (T-053)',
+  },
   legal_documents: {
     class: 'platform',
     note: 'published text, the same for everyone; the application reads and never writes (T-021)',

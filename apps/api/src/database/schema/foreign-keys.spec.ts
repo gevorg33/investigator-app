@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { userIdentities } from './identities';
 import { userTokens } from './tokens';
 import { userStaffScopes } from './staff-scopes';
+import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
 import { userRoles, users, userSessions } from './users';
 
 /**
@@ -42,4 +43,14 @@ describe('staff scope grants', () => {
       expect(fks).toContainEqual({ column, target: users, onDelete: 'set null' });
     },
   );
+});
+
+describe('taxonomy labels', () => {
+  it('belong to a node, and stop the node being removed — nodes are retired, never deleted', () => {
+    // Restrict, not cascade: a node with labels is a node someone has used (ADR-0007 rule 1).
+    const [fk] = getTableConfig(taxonomyNodeLabels).foreignKeys;
+    expect(fk?.reference().foreignTable).toBe(taxonomyNodes);
+    expect(fk?.reference().columns.map((c) => c.name)).toEqual(['node_id']);
+    expect(fk?.onDelete).toBe('restrict');
+  });
 });

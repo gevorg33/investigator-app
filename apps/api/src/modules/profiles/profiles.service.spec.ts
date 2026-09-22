@@ -207,6 +207,61 @@ describe('profile persistence', () => {
     expect(after.specialtyNodeIds).toEqual([]);
   });
 
+  describe('a retired taxonomy node (ADR-0007 rule 1, T-053)', () => {
+    const retired = async (): Promise<string> => {
+      const id = await node();
+      await ownerDb
+        .update(taxonomyNodes)
+        .set({ status: 'DEPRECATED' })
+        .where(eq(taxonomyNodes.id, id));
+      return id;
+    };
+
+    it('cannot be newly declared', async () => {
+      const actor = await investigator();
+      await expect(
+        profiles.updateMyInvestigatorProfile(actor, { specialtyNodeIds: [await retired()] }, req),
+      ).rejects.toMatchObject({
+        details: [expect.objectContaining({ code: 'DEPRECATED_TAXONOMY_NODE' })],
+      });
+    });
+
+    it('stays declared by someone who had it, through every later save', async () => {
+      const actor = await investigator();
+      const kept = await node();
+      const added = await node();
+      await profiles.updateMyInvestigatorProfile(actor, { specialtyNodeIds: [kept] }, req);
+      await ownerDb
+        .update(taxonomyNodes)
+        .set({ status: 'DEPRECATED' })
+        .where(eq(taxonomyNodes.id, kept));
+
+      // The client sends the whole set on every save. Refusing the retired node here would lock
+      // this investigator out of editing their profile over a decision they did not make.
+      const saved = await profiles.updateMyInvestigatorProfile(
+        actor,
+        { headline: 'Still editing', specialtyNodeIds: [kept, added] },
+        req,
+      );
+      expect([...saved.specialtyNodeIds].sort()).toEqual([kept, added].sort());
+    });
+
+    it('is refused alongside a held one when it is the new addition', async () => {
+      const actor = await investigator();
+      const held = await node();
+      await profiles.updateMyInvestigatorProfile(actor, { specialtyNodeIds: [held] }, req);
+      await expect(
+        profiles.updateMyInvestigatorProfile(
+          actor,
+          { specialtyNodeIds: [held, await retired()] },
+          req,
+        ),
+      ).rejects.toMatchObject({
+        details: [expect.objectContaining({ code: 'DEPRECATED_TAXONOMY_NODE' })],
+      });
+    });
+  });
+
   describe('customer profile', () => {
     const customer = async (): Promise<Actor> => {
       const [user] = await ownerDb
@@ -240,7 +295,11 @@ describe('profile persistence', () => {
     it('updates one field without clearing the other', async () => {
       const actor = await customer();
       await profiles.updateMyCustomerProfile(actor, { organisationName: 'Acme' }, req);
-      const after = await profiles.updateMyCustomerProfile(actor, { contactPhone: '555-0105' }, req);
+      const after = await profiles.updateMyCustomerProfile(
+        actor,
+        { contactPhone: '555-0105' },
+        req,
+      );
       expect(after).toMatchObject({ organisationName: 'Acme', contactPhone: '555-0105' });
     });
 

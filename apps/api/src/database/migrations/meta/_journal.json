@@ -120,6 +120,13 @@
       "when": 1789991010424,
       "tag": "0016_add_agency_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790111331513,
+      "tag": "0017_add_taxonomy_labels",
+      "breakpoints": true
     }
   ]
 }
