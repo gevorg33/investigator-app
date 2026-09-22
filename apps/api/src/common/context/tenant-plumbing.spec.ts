@@ -126,6 +126,9 @@ describe('tenant isolation is not business-domain plumbing', () => {
     expect(callers).toEqual([
       'modules/assignments/assignments.service.ts',
       'modules/media/media.service.ts',
+      // Staff maintaining the taxonomy, which is platform data that only a write under platform
+      // access may change (T-053, approved 2026-09-23). It reads no workspace's rows.
+      'modules/taxonomy/taxonomy.service.ts',
       'modules/verification/verification.service.ts',
     ]);
   });

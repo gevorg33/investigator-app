@@ -2265,55 +2265,102 @@ pnpm --filter api test blocks && pnpm --filter api test search-blocks
 ---
 
 ### T-053 — Shared taxonomy
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P0 — blocks matching, discovery and mission creation
 - **Depends on:** T-004
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** Yes, as it turned out — the staff write path crosses three AGENTS.md
+  gates (staff authorization, grants and RLS, PlatformContext). **Approved 2026-09-23** as designed
 - **Owner agent:** database (schema) + backend-domain (service)
-- **Affected:** apps/api/src/modules/taxonomy/**, migrations, packages/validation
+- **Affected:** apps/api/src/modules/{taxonomy,profiles}/**, migration 0017, table-classes.ts,
+  rls.spec.ts, docs/architecture/taxonomy.md, docs/knowledge-base/{staff,investigator}/**
 
 **Description**
 One taxonomy shared by missions and investigator practice areas, per ADR-0007. This is the core
 matching mechanism — eligibility, discovery, routing and notifications all join on it, so it
 lands before anything that depends on it.
 
-**Acceptance criteria**
-- [ ] `TaxonomyNode` hierarchical with stable ids, slug, parent, ordering, status
-- [ ] **Nodes are never deleted, only deprecated** — a test proves a deprecated node still
-      resolves for missions and profiles that reference it
-- [ ] `TaxonomyNodeLabel` per locale (en/ru/hy); the node id is the canonical language-neutral
-      value (`localization`)
-- [ ] A mission at a parent matches investigators declared at any descendant, and vice versa —
-      tree-walking matching tested in both directions
-- [ ] Applied as a **hard SQL filter**; no path lets prose or a tag substitute for a declared node
-- [ ] `Tag` curated and flat; `MissionTag` applied to missions
-- [ ] **A test proves a tag cannot make an investigator eligible, and a missing tag cannot
-      exclude a qualified one** (ADR-0007)
-- [ ] Staff-managed through the admin console; adding, deprecating and relabelling are audited
-- [ ] Initial tree seeded from `docs/product/taxonomy-draft.md` **after domain and licensing
-      review** — the six open questions in that document are answered first
-- [ ] Each node carries a risk band (`standard`/`elevated`/`high`) driving moderation queue
-      ordering (T-051) and the structured questions at mission creation (plan.md §10)
-- [ ] `high`-band nodes route to a moderator every time, regardless of queue configuration
-- [ ] No `Service` entity; a service is a deeper node
+**Scope, as decided 2026-09-23.** Three parts of the original text moved, none dropped:
+the **seed** to T-131 (blocked on the six review questions — slugs are permanent, so nothing is
+seeded before them); the **source axis** (ADR-0008) to T-132; **tags** to T-055, which already
+specified every tag criterion here, including the eligibility test, and is where search first
+consumes tags.
 
-**Second axis — source capability (ADR-0008)**
-- [ ] `SourceNode` tree with per-locale labels, staff-maintained
-- [ ] `InvestigatorSourceCapability` is **(investigator, source, jurisdiction)** — an
-      unqualified source declaration is meaningless
-- [ ] Declared by investigators only; **customers never see or pick sources**
-- [ ] **A test proves a source declaration cannot gate eligibility** — neither excluding an
-      investigator the taxonomy qualified, nor qualifying one it did not
-- [ ] Source capability reorders results by feasibility in the mission's jurisdiction
-- [ ] Self-declared capability is stored and displayed as self-declared, never as verified
-- [ ] `TaxonomySourceHint` maps taxonomy node + jurisdiction to likely sources, as a routing
-      hint; a wrong hint degrades ordering, never correctness
+**Acceptance criteria**
+- [x] `TaxonomyNode` hierarchical with stable ids, slug, parent, ordering, status — existed
+      (T-007); slug and parent now permanent by trigger, slug shape by check
+- [x] **Nodes are never deleted, only deprecated** — DELETE is not granted; tests prove a retired
+      node still resolves by id, still labels a mission filed under it, still matches in
+      discovery from either side, and stays on a profile that declared it
+- [x] `TaxonomyNodeLabel` per locale (en/ru/hy); the node id is the canonical value — English
+      required at creation, fallback reported as `labelLocale`
+- [x] A mission at a parent matches investigators declared at any descendant, and vice versa —
+      existed (T-011, six tests); T-053 adds the retired-node case
+- [x] Applied as a **hard SQL filter**; no path lets prose or a tag substitute for a declared
+      node — the filter existed (T-011), and T-011's "the filter set is closed" already refuses
+      `q` and `relevanceHint` with 400. Seen to fail when either field is added to the DTO
+- [→] `Tag` curated and flat; `MissionTag` applied to missions — **moved to T-055**
+- [→] **A test proves a tag cannot make an investigator eligible…** — **moved to T-055**
+- [x] Staff-managed; adding, deprecating and relabelling are audited — API only, since admin-web
+      does not exist (T-014). Every write carries a reason, recorded with what changed
+- [→] Initial tree seeded from `docs/product/taxonomy-draft.md` — **moved to T-131**
+- [x] Each node carries a risk band driving moderation queue ordering — existed (T-010); required
+      when staff add a node, audited when it changes. Four bands, not three: ADR-0009 added
+      RESTRICTED. The per-node structured questions (plan.md §10) go with the seed, T-131
+- [x] `high`-band nodes route to a moderator every time — true already: every mission is
+      moderated, and HIGH and above go to priority review (T-010)
+- [x] No `Service` entity; a service is a deeper node — asserted against the table registry; the
+      investigator KB article that described services as a second filter is corrected
+
+**Second axis — source capability (ADR-0008)** — **moved to T-132**, all seven criteria.
 
 **Validation**
 ```bash
 pnpm --filter api test taxonomy
 ```
+
+**DONE — 2026-09-23**
+
+*Staff write path, approved.* `TaxonomyService` checks active → STAFF → TAXONOMY scope, then runs
+inside `PlatformContext.asStaff` under three new route purposes (`taxonomy.create_node`,
+`taxonomy.update_node`, `taxonomy.set_label`). Each write is serialised by a transaction-scoped
+advisory lock and audited as `<what changed> — <why>`, e.g. `riskBand STANDARD → HIGH — …`.
+A change that changes nothing writes nothing and records nothing.
+
+*The database holds the rules on its own* (migration 0017). The runtime role gets SELECT, INSERT
+and UPDATE on the two taxonomy tables and never DELETE; RLS is enabled and forced, reading is open,
+and writes are admitted only under `app_platform_access()`. Triggers keep slugs and parents
+permanent and every ACTIVE node under an ACTIVE parent, from both directions. `table-classes.ts`
+gained `staffMaintained`, and `rls.spec.ts` now asserts both halves: those two tables have exactly
+that grant and policy shape, and every other platform table is still read-only. The old assertion
+("the application cannot write the tables every workspace reads") was replaced, not deleted.
+
+*Found and fixed.* A profile could **newly** declare a retired specialty — missions already
+refused one, profiles did not. Profiles save the whole set each time, so the fix refuses only a
+retired node being *added*: an investigator who held one before it was retired keeps it and can go
+on editing. And the investigator KB article described specialties and services as two things
+customers filter on, which ADR-0007 had already folded into one tree.
+
+*Seen to fail first.* The grant assertion failed on its first run: migration 0000's default
+privileges gave the new labels table DELETE, and a GRANT alone would have left it there. The
+migration now REVOKEs first.
+
+*Negative controls* — each broken, watched to fail, restored: the service's scope check removed
+→ `refuses staff holding another scope` (which asserts the **audited** denial: PlatformContext
+also refuses, but silently, so a test that only checked the 403 passed with the check gone); the
+children check removed → `retires a branch leaf first`; retired nodes newly declarable → two
+profile tests; discovery dropping retired nodes → `still matches through a node that has since
+been retired`; `q`/`relevanceHint` added to the search DTO → T-011's closed-filter tests; the
+identity trigger disabled → `keeps a slug and a parent for good`.
+
+*Evidence.* 1640 tests, 100% coverage (2154/2154 statements, 1003/1003 branches, 616/616
+functions, 1964/1964 lines). Two branches were reached by adding tests, two were impossible and
+were made non-null with the reason stated, and one early return was removed because drizzle writes
+an empty `IN` as `false`.
+
+*Also.* drizzle-kit's stored snapshots had not known about migrations 0015 and 0016, which were
+written by hand; the 0017 snapshot is the first accurate one since, so the next `generate` will
+not re-emit them.
 
 ---
 
@@ -2361,6 +2408,10 @@ pnpm --filter api test mission-browse
 - **Affected:** apps/api/src/modules/{missions,taxonomy}/**, apps/admin-web/**
 
 **Description**
+**Owns tags entirely** — the `Tag` and `MissionTag` tables and the eligibility test that T-053
+originally listed moved here on 2026-09-23, since this task already specified all of them and is
+where search first consumes tags.
+
 Tags as refinement on top of the taxonomy. Deliberately curated rather than customer free text:
 free-text tags in three locales are unusable for matching, and a customer-authored tag is a
 moderation surface.
@@ -5222,6 +5273,72 @@ than to reformat them.
 **Validation**
 ```bash
 pnpm format:check
+```
+
+---
+
+### T-131 — Seed the reviewed taxonomy
+- **Status:** BLOCKED — needs ACTIONS-FOR-ME #2 (the six open questions in `docs/product/taxonomy-draft.md`)
+- **Priority:** P0 — until this lands, there is nothing to file a mission under or declare
+- **Depends on:** T-053
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — which nodes exist, and at what band, is a licensing and
+  compliance decision (AGENTS.md)
+- **Owner agent:** database
+- **Affected:** a new migration, docs/product/taxonomy-draft.md, docs/knowledge-base/**
+
+**Description**
+Split from T-053 (2026-09-23). Slugs become permanent ids the moment they are written (ADR-0007
+rule 1), so the tree is seeded once, after review, rather than provisionally.
+
+**Acceptance criteria**
+- [ ] The six open questions answered and recorded in `taxonomy-draft.md`, with the licensing
+      requirement per node per launch jurisdiction
+- [ ] Seeded by migration, with every node carrying an English label and a risk band — the
+      migration sets `app.platform_access`, because RLS on the taxonomy is forced on the owner too
+- [ ] `ru` and `hy` labels, professionally translated (as T-027 is for legal text)
+- [ ] Structured questions per node (plan.md §10) — the HIGH and RESTRICTED bands are
+      meaningless without them, and `creating-a-mission.en.md` already promises them
+- [ ] The customer and investigator KB describe the real tree, not the draft
+
+**Validation**
+```bash
+pnpm --filter api test taxonomy
+```
+
+---
+
+### T-132 — Source capability axis
+- **Status:** TODO
+- **Priority:** P2 — ranks and routes; never gates eligibility
+- **Depends on:** T-053
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes discovery's ordering, and adds staff write paths
+  to platform data, as T-053 did
+- **Owner agent:** database (schema) + backend-domain (service)
+- **Affected:** apps/api/src/modules/{taxonomy,search,profiles}/**, migrations
+
+**Description**
+Split from T-053 (2026-09-23): the second, investigator-only axis of ADR-0008. What access and
+capability an investigator has, per jurisdiction — as distinct from what kind of work it is.
+
+**Acceptance criteria**
+- [ ] `SourceNode` tree with per-locale labels, staff-maintained — the same `staffMaintained`
+      table class, grants and policies as the taxonomy (T-053)
+- [ ] `InvestigatorSourceCapability` is **(investigator, source, jurisdiction)** — an
+      unqualified source declaration is meaningless
+- [ ] Declared by investigators only; **customers never see or pick sources**
+- [ ] **A test proves a source declaration cannot gate eligibility** — neither excluding an
+      investigator the taxonomy qualified, nor qualifying one it did not
+- [ ] Source capability reorders results by feasibility in the mission's jurisdiction
+- [ ] Self-declared capability is stored and displayed as self-declared, never as verified
+- [ ] `TaxonomySourceHint` maps taxonomy node + jurisdiction to likely sources, as a routing
+      hint; a wrong hint degrades ordering, never correctness
+- [ ] The source vocabulary is seeded after the same review as T-131
+
+**Validation**
+```bash
+pnpm --filter api test sources
 ```
 
 ---

@@ -4,6 +4,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -25,11 +26,14 @@ export const riskBand = pgEnum('risk_band', ['STANDARD', 'ELEVATED', 'HIGH', 'RE
 /**
  * One taxonomy, drawn from by both missions and investigator specialties (ADR-0007).
  *
- * This is the STRUCTURAL subset only. T-053 owns the rest — per-locale labels, risk bands,
- * tags, tree-walking matching, the admin surface, and seeding the actual tree, which waits
- * on domain and licensing review. It exists here because T-007 declares investigator
- * specialties, and a specialty pointing at nothing is not a specialty: without the table
- * the join column would be an id with no referent.
+ * Created by T-007, because a specialty pointing at nothing is not a specialty. T-053 added
+ * per-locale labels and the staff write path (docs/architecture/taxonomy.md). The tree itself
+ * is seeded by T-131, after the domain and licensing review in docs/product/taxonomy-draft.md;
+ * tags are T-055's and the source axis (ADR-0008) is T-132's.
+ *
+ * `slug` and `parent_id` never change once written — a trigger holds it. The slug is the
+ * language-neutral name the node is known by, and the parent is what matching walks: moving a
+ * node would silently change which investigators every historical mission under it reached.
  *
  * Nodes are never deleted, only deprecated (ADR-0007 rule 1). A profile referencing a node
  * from two years ago must stay valid; deleting one silently breaks historical records and
@@ -61,4 +65,31 @@ export const taxonomyNodes = pgTable(
     uniqueIndex('taxonomy_nodes_slug_unique').on(t.slug),
     index('taxonomy_nodes_parent_idx').on(t.parentId),
   ],
+);
+
+/** The locales a label can be written in (`localization`). English is the fallback. */
+export const TAXONOMY_LOCALES = ['en', 'ru', 'hy'] as const;
+export type TaxonomyLocale = (typeof TAXONOMY_LOCALES)[number];
+
+/**
+ * What a node is called, per locale (ADR-0007 rule 2, T-053).
+ *
+ * The node id is the canonical value; a label is how it reads. So a label can be corrected
+ * without touching a single mission or specialty, and a missing translation falls back to
+ * English rather than to a slug nobody should see.
+ */
+export const taxonomyNodeLabels = pgTable(
+  'taxonomy_node_labels',
+  {
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => taxonomyNodes.id, { onDelete: 'restrict' }),
+    locale: text('locale').notNull().$type<TaxonomyLocale>(),
+    label: text('label').notNull(),
+    /** A sentence a customer reads when choosing, where the label alone is ambiguous. */
+    description: text('description'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.nodeId, t.locale] })],
 );

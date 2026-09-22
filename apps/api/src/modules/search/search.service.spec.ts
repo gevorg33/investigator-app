@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -17,7 +17,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
-import { serviceAreas } from '../../database/schema';
+import { serviceAreas, taxonomyNodes } from '../../database/schema';
 import { SearchService } from './search.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
@@ -216,6 +216,27 @@ describe('investigator discovery', () => {
     it('does not match an unrelated branch', async () => {
       const found = await mine({ specialtyNodeIds: [await node(ownerDb)] });
       expect(ids(await near(found.centre, { taxonomyNodeIds: [await node(ownerDb)] }))).toEqual([]);
+    });
+
+    it('still matches through a node that has since been retired, from either side', async () => {
+      // Rule 1 (ADR-0007, T-053): retiring a node takes it out of the pickers, and nothing else.
+      // An investigator who declared it before it was retired is still that specialist, and a
+      // mission filed under it is still that kind of work.
+      const parent = await node(ownerDb);
+      const child = await node(ownerDb, { parentId: parent });
+      await ownerDb
+        .update(taxonomyNodes)
+        .set({ status: 'DEPRECATED' })
+        .where(eq(taxonomyNodes.id, child));
+
+      const declaredRetired = await mine({ specialtyNodeIds: [child] });
+      expect(ids(await near(declaredRetired.centre, { taxonomyNodeIds: [parent] }))).toEqual([
+        declaredRetired.profileId,
+      ]);
+      const declaredParent = await mine({ specialtyNodeIds: [parent] });
+      expect(ids(await near(declaredParent.centre, { taxonomyNodeIds: [child] }))).toEqual([
+        declaredParent.profileId,
+      ]);
     });
 
     it('returns nothing for a node that does not exist, rather than everything', async () => {

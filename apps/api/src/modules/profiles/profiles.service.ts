@@ -231,7 +231,7 @@ export class ProfilesService {
     await this.authz.requirePermission(actor, 'investigators.update', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
 
-    if (dto.specialtyNodeIds) await this.assertNodesExist(dto.specialtyNodeIds);
+    if (dto.specialtyNodeIds) await this.assertDeclarable(row.id, dto.specialtyNodeIds);
 
     await this.db.transaction(async (tx) => {
       await tx
@@ -328,11 +328,18 @@ export class ProfilesService {
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
-  /** A specialty must name a real node. Free text can never substitute for one (ADR-0007). */
-  private async assertNodesExist(nodeIds: string[]): Promise<void> {
+  /**
+   * A specialty must name a real node — free text can never substitute for one — and a node
+   * being added must be ACTIVE (ADR-0007, T-053).
+   *
+   * Retired means no new references, not that existing ones break: the client sends the whole
+   * set on every save, so an investigator who declared a node before it was retired keeps it
+   * and can go on editing the rest of their profile. Only adding a retired node is refused.
+   */
+  private async assertDeclarable(profileId: string, nodeIds: string[]): Promise<void> {
     if (nodeIds.length === 0) return;
     const found = await this.db
-      .select({ id: taxonomyNodes.id })
+      .select({ id: taxonomyNodes.id, status: taxonomyNodes.status })
       .from(taxonomyNodes)
       .where(inArray(taxonomyNodes.id, nodeIds));
     if (found.length !== new Set(nodeIds).size) {
@@ -341,6 +348,27 @@ export class ProfilesService {
           field: 'specialtyNodeIds',
           code: 'UNKNOWN_TAXONOMY_NODE',
           messageKey: 'error.validation.taxonomy_node.unknown',
+        },
+      ]);
+    }
+
+    const retired = found.filter((n) => n.status !== 'ACTIVE').map((n) => n.id);
+    if (retired.length === 0) return;
+    const held = await this.db
+      .select({ id: investigatorSpecialties.taxonomyNodeId })
+      .from(investigatorSpecialties)
+      .where(
+        and(
+          eq(investigatorSpecialties.profileId, profileId),
+          inArray(investigatorSpecialties.taxonomyNodeId, retired),
+        ),
+      );
+    if (held.length !== retired.length) {
+      throw AppError.validation([
+        {
+          field: 'specialtyNodeIds',
+          code: 'DEPRECATED_TAXONOMY_NODE',
+          messageKey: 'error.validation.taxonomy_node.deprecated',
         },
       ]);
     }

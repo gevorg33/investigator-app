@@ -21,7 +21,10 @@ export type RoutePurpose =
   | 'verification.review'
   | 'verification.decide'
   | 'verification.open_document'
-  | 'media.deliver';
+  | 'media.deliver'
+  | 'taxonomy.create_node'
+  | 'taxonomy.update_node'
+  | 'taxonomy.set_label';
 
 /** A purpose with no fixed route behind it. These must say why, in words, every time. */
 export type AdHocPurpose = 'support.lookup';
