@@ -85,6 +85,23 @@ describe('CI runs what it says it runs', () => {
     expect(ungated).toEqual([]);
   });
 
+  it('type-checks the tests of every package that has any (T-064)', () => {
+    // A package's own tsconfig excludes its specs, so they stay out of dist — which also kept
+    // them out of `pnpm typecheck` until T-064. A spec calling a constructor with the wrong
+    // number of arguments then surfaced as a TypeError mid-run, or not at all.
+    const withSpecs = packages.filter(
+      (p) =>
+        globSync(`${p.path.replace(/\/package\.json$/, '')}/src/**/*.spec.ts`, { cwd: ROOT })
+          .length > 0,
+    );
+    expect(withSpecs.length).toBeGreaterThan(1);
+    const unchecked = withSpecs
+      .filter((p) => !('typecheck:specs' in (p.manifest.scripts ?? {})))
+      .map((p) => p.path);
+    expect(unchecked).toEqual([]);
+    expect(root.scripts?.['typecheck']).toContain('pnpm -r typecheck:specs');
+  });
+
   it('loads fixtures against a database CI migrated from empty', () => {
     // The point of the step: the factories are exercised against the schema as the migrations
     // leave it, so one that has drifted from a constraint fails here rather than at random.

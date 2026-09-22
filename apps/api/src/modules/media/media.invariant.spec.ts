@@ -30,6 +30,7 @@ describe('upload authorization invariant', () => {
       {} as never,
       {} as never,
       storage as never,
+      {} as never, // PlatformContext: not reached on the upload path
     );
 
     await expect(

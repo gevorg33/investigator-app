@@ -41,8 +41,7 @@ describe('GET /api/v1/legal/documents/:type', () => {
   });
 
   const make = async (service: Partial<LegalService>): Promise<INestApplication> => {
-    class TestModule {}
-    Module({
+    @Module({
       controllers: [LegalController],
       providers: [
         { provide: LegalService, useValue: service },
@@ -51,7 +50,8 @@ describe('GET /api/v1/legal/documents/:type', () => {
         { provide: ActorService, useValue: { fromRefreshToken: async () => actor } },
         workspaceResolverStub(actor),
       ],
-    })(TestModule);
+    })
+    class TestModule {}
 
     const moduleRef = await Test.createTestingModule({ imports: [TestModule] }).compile();
     const created = moduleRef.createNestApplication();

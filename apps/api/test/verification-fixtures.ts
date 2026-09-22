@@ -89,7 +89,7 @@ export async function reviewer(
   return person(db, {
     roles: opts.roles ?? ['STAFF'],
     staffScopes: opts.staffScopes ?? ['VERIFICATION'],
-    activeRole: opts.activeRole,
+    ...(opts.activeRole === undefined ? {} : { activeRole: opts.activeRole }),
   });
 }
 

@@ -140,7 +140,9 @@ describe('platform access', () => {
       ['is not staff at all', testActor({ userId: 'c-1', roles: ['CUSTOMER'] })],
       [
         'holds another scope',
-        testActor({ userId: 's-2', roles: ['STAFF'], staffScopes: ['SUPPORT'] }),
+        // A real scope, and not the one asked for. 'SUPPORT' stood here — not a scope at all, so
+        // the refusal it proved was only that an unknown string is not VERIFICATION (T-064).
+        testActor({ userId: 's-2', roles: ['STAFF'], staffScopes: ['MODERATION'] }),
       ],
       [
         'is staff but working as an investigator right now',

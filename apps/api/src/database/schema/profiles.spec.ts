@@ -20,7 +20,9 @@ import { users } from './users';
 describe('profile table shape', () => {
   const indexNames = (t: Parameters<typeof getTableConfig>[0]): string[] => {
     const c = getTableConfig(t);
-    return [...c.indexes.map((i) => i.config.name), ...c.uniqueConstraints.map((u) => u.name)];
+    return [...c.indexes.map((i) => i.config.name), ...c.uniqueConstraints.map((u) => u.name)].filter(
+      (n): n is string => n !== undefined,
+    );
   };
 
   it('allows one customer profile per user', () => {

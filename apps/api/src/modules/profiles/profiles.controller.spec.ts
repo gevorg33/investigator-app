@@ -139,7 +139,7 @@ describe('profiles controller', () => {
   });
 
   describe('DTO validation', () => {
-    const patch = (body: unknown) => http().patch('/profiles/investigator/me').send(body);
+    const patch = (body: object) => http().patch('/profiles/investigator/me').send(body);
 
     it('accepts a full, valid update', async () => {
       const res = await patch({

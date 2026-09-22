@@ -93,7 +93,11 @@ describe('the isolation matrix', () => {
     context: ExecutionContext | undefined,
     fn: (tx: postgres.TransactionSql) => Promise<T>,
   ): Promise<T> =>
-    context === undefined ? app.begin(fn) : runInContext(context, () => scoped.begin(fn));
+    // postgres.js types `begin` as unwrapping an array result; these callbacks return rows, and
+    // the value is what the callback returned either way.
+    (context === undefined
+      ? app.begin(fn)
+      : runInContext(context, () => scoped.begin(fn))) as Promise<T>;
 
   const rowsSeen = async (
     context: ExecutionContext | undefined,

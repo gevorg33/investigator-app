@@ -10,11 +10,11 @@ import { DATABASE_CHECK_TIMEOUT_MS, HealthController } from './health.controller
 import { HealthModule } from './health.module';
 import { closeApp, listenOnce } from '../../../test/http';
 
-/** A stand-in database whose one query behaves as told. Decorators as calls (T-064). */
+/** A stand-in database whose one query behaves as told. */
 const databaseThat = (execute: () => Promise<unknown>) => {
+  @Global()
+  @Module({ providers: [{ provide: DB, useValue: { execute } }], exports: [DB] })
   class StubDatabaseModule {}
-  Module({ providers: [{ provide: DB, useValue: { execute } }], exports: [DB] })(StubDatabaseModule);
-  Global()(StubDatabaseModule);
   return StubDatabaseModule;
 };
 

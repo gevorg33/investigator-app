@@ -12,13 +12,9 @@ import { closeApp, listenOnce } from '../test/http';
 // environment at import time. Stand it in so this file tests configuration only.
 vi.mock('./app.module', () => ({ AppModule: class AppModule {} }));
 
-// Applied as calls: specs are excluded from tsconfig, so decorator syntax does not parse
-// here (T-064).
+@Global()
+@Module({ providers: [{ provide: DB, useValue: { execute: async () => [] } }], exports: [DB] })
 class StubDatabaseModule {}
-Module({ providers: [{ provide: DB, useValue: { execute: async () => [] } }], exports: [DB] })(
-  StubDatabaseModule,
-);
-Global()(StubDatabaseModule);
 
 describe('global application configuration', () => {
   const originalEnv = process.env['NODE_ENV'];

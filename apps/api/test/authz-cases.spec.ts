@@ -45,7 +45,8 @@ describe('the seven-case helper', () => {
   });
 
   it('fails when the owner is refused', async () => {
-    const refusesEveryone = async (): Promise<never> => authz.visible(OWNER, undefined, ctx);
+    const refusesEveryone = (): Promise<unknown> =>
+      authz.visible<{ id: string }>(OWNER, undefined, ctx);
     await expect(expectAuthorized(refusesEveryone, allCases)).rejects.toThrow(/owner must be allowed/);
   });
 
