@@ -1,0 +1,46 @@
+# Automated update PRs (T-028). Every one is reviewed and merged by a person: nothing in this
+# repository enables auto-merge, and `apps/api/test/supply-chain.spec.ts` refuses a workflow that
+# does. An auto-merged dependency bump is a supply-chain path (launch-hardening).
+#
+# The cooldown is the repository's pinning policy (CLAUDE.md): newest usable, not newest
+# published. A release is proposed once it has been public for a week, not the day it ships.
+# Security updates are enabled separately, in the repository's settings, and skip the cooldown —
+# a known CVE should not wait.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      # Patch and minor together, majors one at a time: a major is a decision, the rest is upkeep.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Actions are pinned by commit SHA; Dependabot keeps the SHA and its version comment current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  # The postgres Dockerfile's pinned base.
+  - package-ecosystem: docker
+    directory: /infrastructure/docker/postgres
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  # Redis in local development. The same digest is pinned in pr.yml's services, which Dependabot
+  # does not read — the supply-chain spec fails until the two agree again.
+  - package-ecosystem: docker-compose
+    directory: /infrastructure/compose
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

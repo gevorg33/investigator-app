@@ -1,0 +1,116 @@
+# Accepted image-scan findings (T-028). The register, with the reasoning, is
+# docs/operations/image-scan-exceptions.md — an entry here without one there is not accepted.
+#
+# Only gosu, only these CVEs, only until they expire. A new gosu CVE is not on this list and
+# fails the scan; so does any finding in any other file, package or image.
+vulnerabilities:
+  - id: CVE-2025-61726  # HIGH — stdlib: golang: net/url: Memory exhaustion in query parameter parsing in net/u
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2025-61729  # HIGH — stdlib: crypto/x509: golang: Denial of Service due to excessive resource consu
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2025-68121  # CRITICAL — stdlib: crypto/tls: crypto/tls: Incorrect certificate validation during TLS se
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-25679  # HIGH — stdlib: net/url: Incorrect parsing of IPv6 host literals in net/url
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-27145  # HIGH — stdlib: crypto/x509: golang: golang crypto/x509: Denial of Service via excessi
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-32280  # HIGH — stdlib: crypto/x509: crypto/tls: golang: Go: Denial of Service vulnerability i
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-32281  # HIGH — stdlib: crypto/x509: golang: Go crypto/x509: Denial of Service via inefficient
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-32283  # HIGH — stdlib: crypto/tls: golang: Go crypto/tls: Denial of Service via multiple TLS 
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-33811  # HIGH — stdlib: net: golang: Go net package: Denial of Service via long CNAME response
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-33814  # HIGH — stdlib: net/http/internal/http2: golang: golang.org/x/net: Go HTTP/2: Denial o
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-33818  # HIGH — stdlib: encoding/asn1: golang: Go encoding/asn1: Denial of Service via excessi
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-39820  # HIGH — stdlib: net/mail: golang: Go net/mail: Denial of Service via crafted email inp
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-39821  # HIGH — stdlib: golang.org/x/net/idna: golang: net/http: golang.org/x/net/idna: Privil
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-39822  # HIGH — stdlib: golang: Go os.Root: Symlink following vulnerability allows directory t
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-39836  # HIGH — stdlib: net: golang: Go net package: Denial of Service via NUL byte in Dial an
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-42499  # HIGH — stdlib: net/mail: golang: net/mail: Denial of Service via pathological email a
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-42504  # HIGH — stdlib: mime: golang: Golang MIME: Denial of Service via maliciously-crafted M
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-56853  # HIGH — stdlib: net/http: golang: Go net/http: Unencrypted HTTP/2 connections vulnerab
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-56858  # HIGH — stdlib: html/template: golang: Go html/template: Cross-Site Scripting via path
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-56859  # HIGH — stdlib: encoding/xml: golang: Go: Denial of Service via XML decoding recursion
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-56860  # HIGH — stdlib: net/url: golang: golang net/url: Denial of Service from quadratic comp
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
+  - id: CVE-2026-56862  # HIGH — stdlib: crypto/tls: golang: Golang crypto/tls: Denial of Service via indefinit
+    paths:
+      - usr/local/bin/gosu
+    expired_at: 2026-12-22
+    statement: gosu only drops privileges at container start; the vulnerable Go stdlib paths never run
