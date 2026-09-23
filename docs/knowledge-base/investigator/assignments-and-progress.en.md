@@ -4,9 +4,9 @@ title: Running an assignment — acceptance, progress, scope and deadlines
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-23
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -75,7 +75,11 @@ assignment is cancelled. Accepting does not trap you: if you discover the proble
 twenty, you can still stop.
 
 Say specifically what the problem is — which document, and why you believe it was not lawfully
-obtained or shared. A specific concern gets resolved; a vague one stalls.
+obtained or shared. A specific concern gets resolved; a vague one stalls. The platform asks for at
+least a sentence or two.
+
+**The customer does not see what you wrote.** They see that the assignment was declined, or that it
+is suspended while staff review it — not your reasons. Staff read your ground; the customer does not.
 
 ## Does refusing on policy grounds hurt my record?
 
@@ -86,6 +90,11 @@ An unsubstantiated one does count, the same as any other decline. That is delibe
 refusal were free, it would become the exit route from any assignment someone regretted taking.
 Raising a genuine concern is protected. Using it as a convenient door is not.
 
+A refusal still under review counts neither way until staff decide. You can see your own record —
+how many refusals were counted, how many were excused, and how many are pending. Staff see the same
+record when they review your next concern, and a pattern of refusals found to be in bad faith is
+referred for enforcement.
+
 ## Will I be paid for work I did before the halt?
 
 If nothing had started, the customer is simply refunded.
@@ -94,6 +103,9 @@ If you had already done lawful work before the problem surfaced, whether that wo
 is decided on the assignment record, the same way a dispute is — it is not automatic either
 way. Record what you did and when you raised the concern, because that record is what the
 decision rests on.
+
+The decision about the money is recorded separately from the decision about your concern. A
+concern can be upheld and the work still unpayable, or the reverse.
 
 ## What if the work would require something unlawful?
 

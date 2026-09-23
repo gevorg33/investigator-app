@@ -61,6 +61,10 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the verification submission; the rows are append-only by trigger (T-013)',
   verification_decisions: 'the reviewer`s decision; append-only by trigger',
   idempotency_keys: 'the idempotency service, which is the subject of its own specs',
+  policy_reviews:
+    'the refusal service, which opens one only alongside the transition it reviews (T-050)',
+  money_decisions:
+    'the refusal service, which records one only as the consequence of a refusal or a review (T-050)',
   ai_messages:
     'the session service, which numbers each message under a lock on its session (T-045)',
 };

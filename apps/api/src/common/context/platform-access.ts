@@ -24,7 +24,9 @@ export type RoutePurpose =
   | 'media.deliver'
   | 'taxonomy.create_node'
   | 'taxonomy.update_node'
-  | 'taxonomy.set_label';
+  | 'taxonomy.set_label'
+  | 'policy_review.queue'
+  | 'policy_review.resolve';
 
 /** A purpose with no fixed route behind it. These must say why, in words, every time. */
 export type AdHocPurpose = 'support.lookup';

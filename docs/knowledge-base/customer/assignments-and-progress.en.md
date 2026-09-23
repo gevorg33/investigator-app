@@ -4,9 +4,9 @@ title: What happens after you pay, and what each status means
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-23
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -93,3 +93,22 @@ mission, assignment and payment, with its own scope and its own evidence.
 
 There is no ongoing retainer arrangement in the platform. Continuing work is a series of
 missions.
+
+## My investigator declined the assignment. What happens to my money?
+
+If your investigator declines before accepting the work, nothing has been done and you are refunded
+in full, whatever their reason. You are free to choose someone else.
+
+If they declined on policy grounds, staff also review your mission, because a concern one
+investigator raised is one the next may raise too.
+
+## Why has my assignment been suspended?
+
+Your investigator has stopped the work on lawful grounds — for example, a concern about material
+supplied for the investigation. The work stops, your payment stays held, and platform staff review
+the concern. Either the work resumes, or the assignment is cancelled and staff decide what happens
+to the payment.
+
+You will not see the investigator's own description of the concern. Staff may contact you if they
+need you to remove or replace material.
+

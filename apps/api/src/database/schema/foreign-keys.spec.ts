@@ -8,6 +8,8 @@ import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
+import { missions } from './missions';
+import { moneyDecisions, policyReviews } from './policy-reviews';
 import { userRoles, users, userSessions } from './users';
 
 /**
@@ -110,5 +112,37 @@ describe('assistant sessions (T-045)', () => {
     expect(fks(aiMessages)).toEqual([
       { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
     ]);
+  });
+});
+
+describe('policy reviews and money decisions (T-050)', () => {
+  const fks = (t: PgTable) =>
+    getTableConfig(t).foreignKeys.map((f) => ({
+      columns: f.reference().columns.map((c) => c.name),
+      target: f.reference().foreignTable,
+      onDelete: f.onDelete,
+    }));
+
+  it('keep a review with its assignment, its mission and both people in it', () => {
+    // Restrict throughout: a review is part of the record of the work and of an investigator's
+    // standing, and nothing it names may disappear from under it.
+    expect(fks(policyReviews)).toEqual(
+      expect.arrayContaining([
+        { columns: ['assignment_id'], target: assignments, onDelete: 'restrict' },
+        { columns: ['mission_id'], target: missions, onDelete: 'restrict' },
+        { columns: ['raised_by'], target: users, onDelete: 'restrict' },
+        { columns: ['decided_by'], target: users, onDelete: 'restrict' },
+      ]),
+    );
+  });
+
+  it('keep a money decision with its assignment, its review and who made it', () => {
+    expect(fks(moneyDecisions)).toEqual(
+      expect.arrayContaining([
+        { columns: ['assignment_id'], target: assignments, onDelete: 'restrict' },
+        { columns: ['policy_review_id'], target: policyReviews, onDelete: 'restrict' },
+        { columns: ['decided_by'], target: users, onDelete: 'restrict' },
+      ]),
+    );
   });
 });
