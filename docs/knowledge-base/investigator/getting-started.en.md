@@ -10,7 +10,7 @@ updated: 2026-09-12
 source_of_truth: docs
 implementation_status: specified
 related_code:
-  - apps/api/src/modules/investigator-profiles
+  - apps/api/src/modules/profiles
 tags: [getting-started, onboarding, roles, overview]
 ---
 

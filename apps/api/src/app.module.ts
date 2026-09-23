@@ -24,6 +24,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
 import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
     TaxonomyModule,
     InvestigationSourcesModule,
     AiSessionsModule,
+    KnowledgeModule,
     HealthModule,
   ],
 })

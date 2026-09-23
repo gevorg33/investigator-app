@@ -67,6 +67,10 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the refusal service, which records one only as the consequence of a refusal or a review (T-050)',
   ai_messages:
     'the session service, which numbers each message under a lock on its session (T-045)',
+  knowledge_documents:
+    'the knowledge sync, from docs/knowledge-base — a document nobody wrote is one retrieval would trust (T-016)',
+  knowledge_chunks: 'the knowledge sync, which chunks only a current document (T-016)',
+  knowledge_conflicts: 'the knowledge sync`s conflict detection (T-016)',
 };
 
 const domainTables = (): string[] => {

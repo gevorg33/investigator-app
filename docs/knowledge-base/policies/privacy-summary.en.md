@@ -11,7 +11,7 @@ source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/evidence
-  - apps/api/src/modules/audit
+  - apps/api/src/common/audit
 tags: [privacy, data, policy, summary, security]
 ---
 

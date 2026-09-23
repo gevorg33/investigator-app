@@ -10,7 +10,6 @@ updated: 2026-09-19
 source_of_truth: docs
 implementation_status: specified
 related_code:
-  - apps/api/src/modules/users
   - apps/api/src/modules/auth
 tags: [getting-started, account, roles, overview]
 ---

@@ -39,6 +39,11 @@ jobs:
       - name: Migrate
         run: echo "TODO(T-040) run migrations against staging"
 
+      # After migrating, before serving: the Assistant answers from what this commit documents
+      # (T-016). Idempotent, so a redeploy of the same commit changes nothing.
+      - name: Knowledge sync
+        run: echo "TODO(T-040) pnpm --filter api knowledge:sync --fail-on-conflict against staging"
+
       - name: Deploy
         run: echo "TODO(T-040) deploy ${{ github.sha }}"
 
