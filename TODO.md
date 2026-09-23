@@ -5616,7 +5616,7 @@ pnpm --filter api test ai-sessions
 ---
 
 ### T-134 — The verification queue repeats a row at every page boundary
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1 — staff see a duplicated application on every page after the first
 - **Depends on:** —
 - **Risk:** LOW
@@ -5631,15 +5631,37 @@ cursor therefore reads back *earlier* than the row it was built from, and the ne
 that row again. The queue's tests never see it because they set `submitted_at` from JavaScript.
 
 **Acceptance criteria**
-- [ ] A regression test that submits through the service, pages across a boundary, and is seen to fail first
-- [ ] Order and compare at millisecond precision, as `PolicyRefusalService.queue` does, or carry the full value in the cursor
-- [ ] Every other cursor-paged list checked for the same shape, and the check recorded
+- [x] A regression test that submits through the service, pages across a boundary, and is seen to fail first
+- [x] Order and compare at millisecond precision, as `PolicyRefusalService.queue` does
+- [x] Every other cursor-paged list checked for the same shape, and the check recorded — see below
 
 **Validation**
 ```bash
 pnpm --filter api test verification
 ```
 
+
+**DONE — 2026-09-23**
+
+*Worse than filed.* The regression test did not find a duplicate at the boundary; it found that
+paging **never advanced**. The cursor read back earlier than its own row, so every "next page" was
+the same application. A reviewer could not get past page two of the verification queue. The test
+submitted two applications through the service and paged one at a time: 500 iterations, one unique
+row, against the old code. Fixed by ordering and comparing on `date_trunc('milliseconds', …)`.
+
+*Every other paged list, checked:*
+
+| List | Cursor | Finding |
+|---|---|---|
+| Verification queue | `submitted_at`, id | **Broken in production** — fixed |
+| Policy-review queue | `raised_at`, id | Fixed in T-050 |
+| Assistant sessions | `last_activity_at`, id, newest first | **Latent** — every writer sets it from JavaScript today, but the column defaults to microseconds, and newest-first that silently **skips** rows. Test written with microseconds, seen to lose one of four, fixed |
+| Assistant messages | integer sequence | Correct |
+| Investigator search | distance (float8), id | Correct — a float64 round-trips exactly |
+
+*Guard.* `test/cursor-precision.spec.ts` refuses a timestamp column compared directly with a decoded
+cursor value; seen to fail when the verification comparison is put back. The rule is written into
+`docs/api/pagination.md`.
 ---
 
 ## Backlog

@@ -35,7 +35,6 @@ import { VerificationService } from './verification.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
-
 describe('verification', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -207,7 +206,12 @@ describe('verification', () => {
 
     it('accepts a new application once the last one was decided', async () => {
       const { actor, userId, request } = await applied();
-      await decide(await reviewer(ownerDb), request.id, 'REJECTED', 'The licence number is illegible.');
+      await decide(
+        await reviewer(ownerDb),
+        request.id,
+        'REJECTED',
+        'The licence number is illegible.',
+      );
       const doc = await document(ownerDb, userId);
       await expect(service.submit(actor, { documentIds: [doc] }, req())).resolves.toMatchObject({
         status: 'SUBMITTED',
@@ -329,6 +333,28 @@ describe('verification', () => {
   });
 
   describe('the queue', () => {
+    it('never repeats an application across a page boundary, for applications submitted for real', async () => {
+      // Regression (T-134). Submitted through the service, so `submitted_at` is the database's
+      // default, with microseconds — unlike the tests below, which set it from JavaScript. The
+      // cursor used to carry milliseconds, read back earlier than the row it came from, and the
+      // next page began with that row again.
+      await applied();
+      await applied();
+      const staff = await reviewer(ownerDb);
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await service.queue(
+          staff,
+          cursor === undefined ? { limit: 1 } : { limit: 1, cursor },
+          req(),
+        );
+        seen.push(...page.items.map((i) => i.id));
+        cursor = page.pageInfo.nextCursor ?? undefined;
+      } while (cursor !== undefined && seen.length < 500);
+      expect(new Set(seen).size).toBe(seen.length);
+    });
+
     it('records the crossing: a reviewer reads other workspaces, and the log says so', async () => {
       // The queue spans every applicant's workspace, so reading it is a crossing (T-079). The
       // row goes in whatever the queue then returns — here, before any application exists.
@@ -338,7 +364,12 @@ describe('verification', () => {
       const [crossing] = await ownerDb
         .select()
         .from(auditLogs)
-        .where(and(eq(auditLogs.correlationId, r.correlationId), eq(auditLogs.action, 'platform.access')));
+        .where(
+          and(
+            eq(auditLogs.correlationId, r.correlationId),
+            eq(auditLogs.action, 'platform.access'),
+          ),
+        );
       expect(crossing).toMatchObject({
         actorId: staff.userId,
         actorRole: 'STAFF',
@@ -521,7 +552,12 @@ describe('verification', () => {
 
     it('rejecting an addition leaves an existing verification standing', async () => {
       const { profileId, verifiedAt, request } = await applied({ verificationStatus: 'VERIFIED' });
-      await decide(await reviewer(ownerDb), request.id, 'REJECTED', 'No licence for the new region.');
+      await decide(
+        await reviewer(ownerDb),
+        request.id,
+        'REJECTED',
+        'No licence for the new region.',
+      );
 
       const profile = await profileOf(profileId);
       expect(profile.verificationStatus).toBe('VERIFIED');
@@ -596,9 +632,11 @@ describe('verification', () => {
     });
 
     it('answers an unknown application as not found', async () => {
-      await expect(decide(await reviewer(ownerDb), randomUUID(), 'APPROVED')).rejects.toMatchObject({
-        status: 404,
-      });
+      await expect(decide(await reviewer(ownerDb), randomUUID(), 'APPROVED')).rejects.toMatchObject(
+        {
+          status: 404,
+        },
+      );
     });
   });
 

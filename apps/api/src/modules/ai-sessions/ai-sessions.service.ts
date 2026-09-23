@@ -140,15 +140,15 @@ export class AiSessionsService {
           after === undefined
             ? undefined
             : or(
-                lt(aiSessions.lastActivityAt, after.lastActivityAt),
+                sql`${lastActivityMs} < ${after.lastActivityAt.toISOString()}::timestamptz`,
                 and(
-                  eq(aiSessions.lastActivityAt, after.lastActivityAt),
+                  sql`${lastActivityMs} = ${after.lastActivityAt.toISOString()}::timestamptz`,
                   lt(aiSessions.id, after.id),
                 ),
               ),
         ),
       )
-      .orderBy(desc(aiSessions.lastActivityAt), desc(aiSessions.id))
+      .orderBy(desc(lastActivityMs), desc(aiSessions.id))
       .limit(limit + 1);
 
     const page = rows.slice(0, limit);
@@ -411,6 +411,14 @@ export class AiSessionsService {
     );
   }
 }
+
+/**
+ * `last_activity_at` as the list's cursor sees it (T-134). The column keeps microseconds and the
+ * cursor a JavaScript Date's milliseconds; newest-first, that silently skipped every row sharing
+ * the cursor's millisecond. Every writer here sets it from JavaScript today, which is why nothing
+ * was lost — and exactly why it would have been the day anything else wrote it.
+ */
+const lastActivityMs = sql<Date>`date_trunc('milliseconds', ${aiSessions.lastActivityAt})`;
 
 const ctx = (action: string, req: RequestContext, resourceId?: string): AuthzContext => ({
   action,

@@ -258,16 +258,16 @@ export class VerificationService {
             after === undefined
               ? undefined
               : or(
-                  gt(verificationRequests.submittedAt, after.submittedAt),
+                  sql`${submittedAtMs} > ${after.submittedAt.toISOString()}::timestamptz`,
                   and(
-                    eq(verificationRequests.submittedAt, after.submittedAt),
+                    sql`${submittedAtMs} = ${after.submittedAt.toISOString()}::timestamptz`,
                     gt(verificationRequests.id, after.id),
                   ),
                 ),
           ),
         )
         .groupBy(verificationRequests.id)
-        .orderBy(asc(verificationRequests.submittedAt), asc(verificationRequests.id))
+        .orderBy(asc(submittedAtMs), asc(verificationRequests.id))
         .limit(limit + 1);
 
       const hasNextPage = rows.length > limit;
@@ -645,6 +645,15 @@ export class VerificationService {
     };
   }
 }
+
+/**
+ * `submitted_at` as the queue's cursor sees it (T-134). PostgreSQL keeps microseconds and the cursor
+ * round-trips through a JavaScript Date, which keeps milliseconds — so the cursor read back
+ * *earlier* than the row it was built from, and every next page began with that same row: paging
+ * never advanced. Ordering and comparing on the millisecond value makes the cursor exact; the id
+ * breaks ties. `PolicyRefusalService.queue` does the same.
+ */
+const submittedAtMs = sql<Date>`date_trunc('milliseconds', ${verificationRequests.submittedAt})`;
 
 /** Postgres reports a unique-index violation as 23505; anything else is not ours to interpret. */
 const uniqueViolation = (e: unknown): boolean =>
