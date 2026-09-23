@@ -129,6 +129,11 @@ it separately from the halt itself.
 
 [Counsel question: whether work performed before a customer-caused halt is payable.]
 
+**Built in T-050** (`docs/architecture/quotes-and-assignments.md`): `policy_reviews` and
+`money_decisions`, `PolicyRefusalService`. The ground is never written to the assignment's history
+(the customer reads it). Money decisions are recorded for payments to execute, never moved here.
+Counsel question 34 in `docs/compliance/counsel-brief.md`.
+
 ## Cross-machine
 
 Mission status and assignment status are separate machines, as are payment states. Do not

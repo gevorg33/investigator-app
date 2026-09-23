@@ -28,7 +28,7 @@ time regardless of engineering pace.
 experience.
 
 **What to give them:** [`docs/compliance/counsel-brief.md`](docs/compliance/counsel-brief.md) —
-the platform facts and **33 numbered questions** (26–31 added for agencies, ADR-0011; 32–33 for the hiring experience, plan.md §30), written so they can start without a discovery
+the platform facts and **34 numbered questions** (26–31 added for agencies, ADR-0011; 32–33 for the hiring experience, plan.md §30; 34 for policy refusal, T-050), written so they can start without a discovery
 call. Plus the three drafts in `docs/compliance/`.
 
 **Flag when you brief them:**

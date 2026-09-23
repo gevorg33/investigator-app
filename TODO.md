@@ -2245,6 +2245,8 @@ decision requires. Per `.claude/skills/enforcement-actions/SKILL.md`.
 **Tenancy (ADR-0011).** Enforcement reaches agencies (ADR-0011, plan.md §29). A permanently banned person is banned in every workspace they belong to. An agency answers for its members' conduct. Registering a new agency does not reset a banned identity (`BanIdentityHash`; principals checked in T-088).
 
 **Acceptance criteria**
+- [ ] Repeated bad-faith policy refusals (`policy_reviews.bad_faith`, counted in the response record)
+      route to enforcement — moved here from T-050
 - [ ] `InvestigatorViolation` and `EnforcementDecision`; evidence stored as **references, never content**
 - [ ] Decision records are **append-only** — a reversal appends; a test proves it cannot be edited
 - [ ] A ban cannot be issued without a recorded notice **and** an elapsed response window
@@ -2273,11 +2275,12 @@ pnpm --filter api test enforcement
 ---
 
 ### T-050 — Investigator policy refusal and halt
-- **Status:** TODO
+- **Status:** DONE — 2026-09-23
 - **Priority:** P1
 - **Depends on:** T-010, T-012
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** Yes, as it turned out — a staff decision route, money decisions,
+  and the edge of enforcement. **Approved 2026-09-23** as designed
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/{assignments,mission-policy}/**
 
@@ -2286,17 +2289,23 @@ The mechanism behind the refusal right the Terms already grant (§3, §4). Payme
 acceptance, so there are two windows. Per `.claude/skills/mission-state-machine/SKILL.md`.
 
 **Acceptance criteria**
-- [ ] `ASSIGNED → decline(POLICY_CONCERN) → CANCELLED`: automatic full refund, mission flagged
-      for staff review
-- [ ] `ACCEPTED | IN_PROGRESS → policy_halt → SUSPENDED`: work stops, funds held, staff review
-- [ ] **The halt is available at any point**, including after evidence exists — tested
-- [ ] Staff outcome resumes the assignment or cancels it; both recorded with reasoning
-- [ ] **Substantiated refusals excluded from the response record; unsubstantiated ones counted**
-      — tested both ways, because this asymmetry is the whole design
-- [ ] Repeated bad-faith policy claims route to `enforcement-actions`
-- [ ] The money decision is recorded **separately** from the halt decision
-- [ ] Material withdrawn from use is marked, never erased (`evidence-integrity`)
-- [ ] Both transitions go through the transition service — status, history, audit, outbox in
+- [x] `ASSIGNED → decline(POLICY_CONCERN) → CANCELLED`: automatic full refund, mission flagged
+      for staff review — the refund is a recorded `FULL_REFUND` decision on **every** investigator
+      decline (no work was done either way); the review names the mission for T-051's queue
+- [x] `ACCEPTED | IN_PROGRESS → policy_halt → SUSPENDED`: work stops, funds held, staff review
+- [x] **The halt is available at any point**, including after evidence exists — tested with
+      recorded sources, which stay intact; refused from every other state
+- [x] Staff outcome resumes the assignment or cancels it; both recorded with reasoning — decided
+      once, by MODERATION staff, inside PlatformContext
+- [x] **Substantiated refusals excluded from the response record; unsubstantiated ones counted**
+      — tested both ways, in both windows, and seen to fail when the exclusion is removed
+- [~] Repeated bad-faith policy claims route to `enforcement-actions` — staff mark bad faith and the
+      record counts it; the **routing moves to T-049**, which builds enforcement
+- [x] The money decision is recorded **separately** from the halt decision — its own table, row and
+      audit entry; recorded for payments to execute (owner decision)
+- [→] Material withdrawn from use is marked, never erased — **moved to T-116 and T-066**: evidence
+      and attachments do not exist yet. The halt erases nothing that does exist
+- [x] Both transitions go through the transition service — status, history, audit, outbox in
       one transaction
 
 **Open for counsel:** whether work lawfully performed before a customer-caused halt is payable.
@@ -2306,6 +2315,38 @@ acceptance, so there are two windows. Per `.claude/skills/mission-state-machine/
 pnpm --filter api test assignments-policy-refusal
 ```
 
+
+**DONE — 2026-09-23**
+
+Three owner decisions: approval of the design; money **recorded, executed later** by payments;
+the response record built here, with enforcement routing and material marking moved.
+
+*Built.* Migration 0020: `policy_reviews` and `money_decisions`, two-party, asymmetric RLS — the
+investigator's workspace raises reviews and records only a refund or a hold; only staff in
+PlatformContext decide or record anything else; the customer reads money decisions but never a
+review. Triggers copy parties, mission and currency from the assignment, keep what was raised,
+decide a review once, and allow a money decision only to be marked executed once. `decline` moved
+from `AssignmentsService` to `PolicyRefusalService` and gained a structured `reasonCode`; `POST
+/assignments/:id/halt`; `GET /policy-reviews`, `POST /policy-reviews/:id/resolve`,
+`GET /policy-reviews/response-record/me`.
+
+*Found.* A policy ground typed as a decline reason went into the assignment's history, which the
+customer reads — a leak waiting for T-050 to make the reason load-bearing. Only the code goes there
+now. And the queue's cursor repeated its last row on every page: PostgreSQL keeps microseconds, a
+JavaScript Date milliseconds, so the cursor read back earlier than the row it came from. Ordered and
+compared at millisecond precision now; the paging test caught it. **The verification queue has the
+same bug in production** — filed as T-134, since real submissions take the database default while
+its tests set JavaScript dates, which is why they never saw it.
+
+*Negative controls:* substantiated refusals counted; the ground written into the history; a halt
+recording no hold; the customer's workspace able to read reviews — each watched to fail its tests.
+
+*Also fixed:* a shuffled run (seed 50) found `verification.service.spec`'s queue test passing only
+when an earlier test in the file had left an application open. It now creates the two it needs.
+
+*Evidence.* 1839 tests, 100% coverage (2509/2509 statements, 1191/1191 branches). Counsel question 34
+added (work done before a customer-caused halt). Docs: the architecture section, the
+`mission-state-machine` skill, and the investigator, customer and staff articles.
 ---
 
 ### T-051 — Mission moderation queue (admin console)
@@ -3053,6 +3094,7 @@ lands.
 **Tenancy (ADR-0011).** Attachments are tenant-owned media of the customer's workspace, visible to suppliers only through the two-party mission policy.
 
 **Acceptance criteria**
+- [ ] Attachments withdrawn from use after a policy halt are marked, never erased — moved here from T-050
 - [ ] A `MISSION_ATTACHMENT` media category with its own size, formats, visibility and retention
 - [ ] Attachments belong to a mission and are authorised through the existing media flow
 - [ ] **A mission with an unscanned or infected attachment cannot be published** — fails closed
@@ -5081,6 +5123,7 @@ Access is by **grant**, short-lived and audited. There is no "staff can browse e
 staff access requires a dispute-linked grant in `PlatformContext`.
 
 **Acceptance criteria**
+- [ ] Material withdrawn from use after a policy halt is marked, never erased — moved here from T-050
 - [ ] `source_id` nullable, referencing `investigation_sources` — moved here from T-031, since
       evidence must never be blocked on a source (plan.md §8)
 - [ ] Evidence cannot be edited or deleted by the application; a correction is a new item referencing the old
@@ -5568,6 +5611,33 @@ second one.
 **Validation**
 ```bash
 pnpm --filter api test ai-sessions
+```
+
+---
+
+### T-134 — The verification queue repeats a row at every page boundary
+- **Status:** TODO
+- **Priority:** P1 — staff see a duplicated application on every page after the first
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No — ordering only; nothing about who may see what changes
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/verification/verification.service.ts, its spec
+
+**Description**
+Found in T-050. `verification_requests.submitted_at` takes the database default, with microsecond
+precision; the queue's cursor round-trips it through a JavaScript `Date`, with milliseconds. The
+cursor therefore reads back *earlier* than the row it was built from, and the next page begins with
+that row again. The queue's tests never see it because they set `submitted_at` from JavaScript.
+
+**Acceptance criteria**
+- [ ] A regression test that submits through the service, pages across a boundary, and is seen to fail first
+- [ ] Order and compare at millisecond precision, as `PolicyRefusalService.queue` does, or carry the full value in the cursor
+- [ ] Every other cursor-paged list checked for the same shape, and the check recorded
+
+**Validation**
+```bash
+pnpm --filter api test verification
 ```
 
 ---

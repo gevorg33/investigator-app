@@ -4,11 +4,11 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-23
 source_of_truth: docs
-implementation_status: specified
+implementation_status: partial
 related_code:
   - apps/api/src/modules/mission-policy
   - apps/api/src/modules/missions
@@ -110,6 +110,15 @@ violation itself.
 
 Record both decisions. They are not the same decision and they can go different ways.
 
+**And, when you cancel, what happens to the money** — a third decision, recorded on its own: a full
+refund, a split paying the investigator for lawful work already done, or a hold while the question
+is open. A split can never pay the investigator more than the customer paid. Resuming releases the
+hold without a money decision of its own. A declined assignment has already been refunded in full,
+so there you record only whether the concern held up.
+
+You decide a review once. Write the reasoning for the next reader: at least a couple of sentences,
+saying what you looked at and why the concern did or did not hold.
+
 ## Does a policy refusal count against the investigator?
 
 Only if it does not hold up. A substantiated refusal is excluded from their response record;
@@ -118,6 +127,11 @@ an unsubstantiated one counts like any other decline.
 Say which you found, and why. Without that, an investigator who did the right thing is
 penalised by the same metric as one who simply abandoned work — and the next one learns not to
 raise concerns.
+
+The review queue shows each investigator's record beside their concern: refusals counted, excused
+and pending, and any found in bad faith. Mark an unsubstantiated refusal as **bad faith** only when
+it was an excuse rather than a mistake — a concern raised to leave an unprofitable assignment, not an
+honest misjudgement. Bad-faith findings are what an enforcement referral rests on.
 
 ## What if I am unsure?
 

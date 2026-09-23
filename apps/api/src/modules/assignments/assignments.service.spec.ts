@@ -23,7 +23,6 @@ import { AssignmentsService } from './assignments.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
-
 describe('assignments', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -134,9 +133,9 @@ describe('assignments', () => {
           req(),
         ),
       ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
-      expect(await ownerDb.select().from(assignments).where(eq(assignments.quoteId, quote.id))).toEqual(
-        [],
-      );
+      expect(
+        await ownerDb.select().from(assignments).where(eq(assignments.quoteId, quote.id)),
+      ).toEqual([]);
     });
 
     it('refuses a quote nobody accepted', async () => {
@@ -258,18 +257,6 @@ describe('assignments', () => {
       await expect(service.accept(inv.actor, assignment.id, req())).rejects.toMatchObject({
         status: 403,
       });
-    });
-
-    it('declines, recording the ground it was declined on', async () => {
-      const { inv, assignment } = await created();
-      const declined = await service.decline(inv.actor, assignment.id, 'POLICY_CONCERN', req());
-      expect(declined.status).toBe('CANCELLED');
-
-      const history = await ownerDb
-        .select()
-        .from(schema.assignmentStatusHistory)
-        .where(eq(schema.assignmentStatusHistory.assignmentId, assignment.id));
-      expect(history.at(-1)).toMatchObject({ toStatus: 'CANCELLED', reason: 'POLICY_CONCERN' });
     });
 
     it('refuses an investigator who is not the one assigned', async () => {

@@ -113,6 +113,43 @@ refused — and properties are asserted over the whole map rather than edge by e
 if anything else writes it. It writes status, history, audit and outbox in the caller's
 transaction, guarded by the version and status that were read.
 
+## Policy refusal and halt (T-050)
+
+The refusal right the Terms grant (§3, §4), in two windows because payment precedes acceptance.
+
+| | Window 1 — decline | Window 2 — halt |
+|---|---|---|
+| From | `PENDING_ACCEPTANCE` | `ACCEPTED`, `IN_PROGRESS` |
+| To | `CANCELLED` | `SUSPENDED` |
+| Review | only when `reasonCode` is `POLICY_CONCERN`, of kind `DECLINE` | always, of kind `HALT` |
+| Money | `FULL_REFUND`, on every investigator decline | `HOLD` |
+
+`policy_reviews` holds the ground and staff's decision on it: **finding** (substantiated or not),
+**bad faith** (only with unsubstantiated), and for a halt a **disposition** — `RESUME` moves
+`SUSPENDED → IN_PROGRESS` with money `RESUME`; `CANCEL` moves `SUSPENDED → CANCELLED` with a money
+decision staff give (`FULL_REFUND`, `SPLIT`, `HOLD`). Every move goes through the transition service.
+
+**Money is recorded, not moved.** `money_decisions` is append-only; the latest row is in force;
+`executed_at` is set once, by payments (T-110 to T-113). A `SPLIT` can never exceed the price — the
+service says so, and a trigger holds it.
+
+**The response record** (`PolicyRefusalService.recordOf`): counted = investigator declines with no
+substantiated or pending policy review, plus unsubstantiated halts; excused = substantiated
+reviews; pending = open reviews; bad faith = its own count, which enforcement will read (T-049).
+
+**Privacy.** The ground never reaches the customer: the assignment's history records only the reason
+code for a policy decline, and the customer's workspace cannot read `policy_reviews`. Both parties
+read `money_decisions`.
+
+**Row-level security.** The investigator's workspace raises and reads reviews, and records only
+`FULL_REFUND` or `HOLD`; only staff inside PlatformContext decide a review, record any other money
+decision, or mark one executed. Triggers keep what was raised unrewritten, decide a review once, and
+never change a money decision beyond marking it executed.
+
+**Staff routes.** `GET /policy-reviews` (open, oldest first, with each raiser's record) and
+`POST /policy-reviews/:id/resolve`, under MODERATION and purposes `policy_review.queue` and
+`policy_review.resolve`.
+
 ## The terms are snapshotted, not joined
 
 An assignment copies the scope, deliverables, assumptions, exclusions, cancellation terms,

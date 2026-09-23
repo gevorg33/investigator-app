@@ -205,3 +205,16 @@ for later.
     blocking contact details and flagging requests the policy prohibits. What lawful basis
     covers this, what must the privacy notice say, and does flagging a message to a human
     moderator change the answer?
+
+### Policy refusal (T-050)
+
+An investigator may stop accepted work on lawful grounds at any point — for example on discovering
+that material the customer supplied was obtained unlawfully. The assignment is suspended, the
+customer's money stays held, and staff decide whether the work resumes or is cancelled. When it is
+cancelled, staff record a separate money decision: a full refund, or a split paying the
+investigator for work already done. Staff cannot yet make that call with confidence.
+
+34. **Work done before a customer-caused halt.** When the problem was the customer's own material,
+    is lawful work the investigator performed before discovering it payable — in full, in part,
+    or not at all? Does the answer change if the customer knew the material was unlawful?
+

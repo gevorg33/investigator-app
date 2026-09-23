@@ -396,6 +396,9 @@ describe('verification', () => {
     });
 
     it('starts from the oldest open application without a cursor, and clamps the limit', async () => {
+      // Two, so a next page exists whatever ran before: with one, this passed only when an earlier
+      // test in the file had left another application open (found by a shuffled run, T-050).
+      await applied();
       await applied();
       const staff = await reviewer(ownerDb);
       const page = await service.queue(staff, { limit: 0 }, req());

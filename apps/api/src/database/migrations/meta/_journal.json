@@ -141,6 +141,13 @@
       "when": 1790116679656,
       "tag": "0019_add_ai_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790192235910,
+      "tag": "0020_add_policy_reviews",
+      "breakpoints": true
     }
   ]
 }

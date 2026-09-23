@@ -231,34 +231,6 @@ export class AssignmentsService {
     });
   }
 
-  /**
-   * The investigator declines before accepting. "Decline before accepting, and do it promptly —
-   * the customer can then go to someone else while their timeframe still allows it."
-   */
-  async decline(
-    actor: Actor,
-    assignmentId: string,
-    reason: string | undefined,
-    req: RequestContext,
-  ): Promise<AssignmentView> {
-    const c = this.ctx('assignment.decline', req, assignmentId);
-    await this.authz.requireActive(actor, c);
-    await this.authz.requireRole(actor, 'INVESTIGATOR', c);
-    await this.authz.requirePermission(actor, 'investigations.update', c);
-
-    return this.db.transaction(async (tx) => {
-      const assignment = await this.lockAsInvestigator(tx, actor, assignmentId, c);
-      const moved = await this.transitions.apply(
-        tx,
-        { id: assignment.id, status: assignment.status, version: assignment.version },
-        'CANCELLED',
-        { kind: 'INVESTIGATOR', actor },
-        { reason, correlationId: req.correlationId, ipAddress: req.ip, userAgent: req.userAgent },
-      );
-      return view({ ...assignment, ...moved });
-    });
-  }
-
   /** One assignment, for either of its two parties and nobody else. */
   async getForParty(
     actor: Actor,
@@ -351,3 +323,6 @@ const view = (a: AssignmentRow): AssignmentView => ({
   acceptedAt: a.acceptedAt,
   createdAt: a.createdAt,
 });
+
+/** For the policy-refusal service, which returns the same view of the same row. */
+export { view as toAssignmentView };

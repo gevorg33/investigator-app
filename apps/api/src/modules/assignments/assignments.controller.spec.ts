@@ -8,6 +8,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { AssignmentsController } from './assignments.controller';
 import { AssignmentsService } from './assignments.service';
+import { PolicyRefusalService } from './policy-refusal.service';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
 
@@ -17,18 +18,23 @@ const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 describe('assignments controller', () => {
   let app: INestApplication;
   let assignments: Record<string, ReturnType<typeof vi.fn>>;
+  let refusal: Record<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(async () => {
     assignments = {
       getForParty: vi.fn().mockResolvedValue({ id: ID }),
       accept: vi.fn().mockResolvedValue({ id: ID, status: 'ACCEPTED' }),
-      decline: vi.fn().mockResolvedValue({ id: ID, status: 'CANCELLED' }),
       createForAuthorizedPayment: vi.fn(),
+    };
+    refusal = {
+      decline: vi.fn().mockResolvedValue({ id: ID, status: 'CANCELLED' }),
+      halt: vi.fn().mockResolvedValue({ id: ID, status: 'SUSPENDED' }),
     };
     const mod = await Test.createTestingModule({
       controllers: [AssignmentsController],
       providers: [
         { provide: AssignmentsService, useValue: assignments },
+        { provide: PolicyRefusalService, useValue: refusal },
         { provide: ActorService, useValue: { fromRefreshToken: async () => ACTOR } },
         workspaceResolverStub(ACTOR),
       ],
@@ -58,20 +64,45 @@ describe('assignments controller', () => {
     expect((await http().post(`/assignments/${ID}/accept`).send({})).status).toBe(201);
     expect(assignments['accept']).toHaveBeenCalledWith(ACTOR, ID, expect.any(Object));
 
+    const ground = 'The attachment appears to be an intercepted private message';
     expect(
-      (await http().post(`/assignments/${ID}/decline`).send({ reason: 'POLICY_CONCERN' })).status,
+      (
+        await http()
+          .post(`/assignments/${ID}/decline`)
+          .send({ reasonCode: 'POLICY_CONCERN', reason: ground })
+      ).status,
     ).toBe(201);
-    expect(assignments['decline']).toHaveBeenCalledWith(
+    expect(refusal['decline']).toHaveBeenCalledWith(
       ACTOR,
       ID,
-      'POLICY_CONCERN',
+      { reasonCode: 'POLICY_CONCERN', reason: ground },
       expect.any(Object),
     );
   });
 
   it('declines without a reason', async () => {
     expect((await http().post(`/assignments/${ID}/decline`).send({})).status).toBe(201);
-    expect(assignments['decline']).toHaveBeenCalledWith(ACTOR, ID, undefined, expect.any(Object));
+    expect(refusal['decline']).toHaveBeenCalledWith(
+      ACTOR,
+      ID,
+      { reasonCode: undefined, reason: undefined },
+      expect.any(Object),
+    );
+  });
+
+  it('halts with a ground, and refuses one too short to review', async () => {
+    const ground = 'Customer asked me to access the subject’s email account';
+    expect((await http().post(`/assignments/${ID}/halt`).send({ ground })).status).toBe(201);
+    expect(refusal['halt']).toHaveBeenCalledWith(ACTOR, ID, ground, expect.any(Object));
+    expect((await http().post(`/assignments/${ID}/halt`).send({ ground: 'no' })).status).toBe(400);
+    expect((await http().post(`/assignments/${ID}/halt`).send({})).status).toBe(400);
+    expect(refusal['halt']).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a decline reason code that does not exist', async () => {
+    const res = await http().post(`/assignments/${ID}/decline`).send({ reasonCode: 'BORED' });
+    expect(res.status).toBe(400);
+    expect(refusal['decline']).not.toHaveBeenCalled();
   });
 
   describe('there is no way to create one over HTTP', () => {
@@ -96,7 +127,7 @@ describe('assignments controller', () => {
       ['a reason over 1000 characters', { reason: 'x'.repeat(1001) }],
     ])('refuses %s on decline', async (_label, body) => {
       expect((await http().post(`/assignments/${ID}/decline`).send(body)).status).toBe(400);
-      expect(assignments['decline']).not.toHaveBeenCalled();
+      expect(refusal['decline']).not.toHaveBeenCalled();
     });
 
     it('refuses anything in the acceptance body', async () => {

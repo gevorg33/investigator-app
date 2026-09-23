@@ -158,6 +158,17 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${assignment}, 'REGISTRY', 'Company register extract', true, ${supplier.userId})
     RETURNING id`);
 
+  // A halt under review, and the hold it put on the money (T-050).
+  const review = await id(owner`
+    INSERT INTO policy_reviews (assignment_id, mission_id, kind, ground, raised_by)
+    VALUES (${assignment}, ${mission}, 'HALT', 'The attachment appears to be an intercepted message',
+            ${supplier.userId})
+    RETURNING id`);
+  const money = await id(owner`
+    INSERT INTO money_decisions (assignment_id, policy_review_id, decision, currency, reason, decided_by)
+    VALUES (${assignment}, ${review}, 'HOLD', 'AMD', 'Held while the halt is reviewed', ${supplier.userId})
+    RETURNING id`);
+
   // A conversation with the assistant, the customer's own (T-045).
   const conversation = await id(owner`
     INSERT INTO ai_sessions (tenant_id, user_id, title)
@@ -201,6 +212,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       investigation_sources: source,
       ai_sessions: conversation,
       ai_messages: said,
+      policy_reviews: review,
+      money_decisions: money,
     },
   };
 }

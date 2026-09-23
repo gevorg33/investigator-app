@@ -109,6 +109,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   mission_screenings: { class: 'two_party', columns: ['customer_tenant_id'] },
   quotes: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
   assignments: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
+  policy_reviews: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'asymmetric: the supplier workspace raises and reads; only staff under platform access decide; the customer does not read the ground (T-050)',
+  },
+  money_decisions: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'both parties read; the supplier records only FULL_REFUND or HOLD; staff record the rest and payments marks execution (T-050)',
+  },
   ai_sessions: {
     class: 'tenant_owned',
     columns: ['tenant_id'],
