@@ -169,6 +169,28 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${assignment}, ${review}, 'HOLD', 'AMD', 'Held while the halt is reviewed', ${supplier.userId})
     RETURNING id`);
 
+  // Knowledge that belongs to one workspace — an agency's own (T-097), the case the matrix can test:
+  // the platform's rows, with no tenant, are meant to be readable everywhere (T-016).
+  const knowledgeDoc = async (key: string) =>
+    id(owner`
+      INSERT INTO knowledge_documents (tenant_id, doc_key, locale, version, status, title, audience,
+                                       visibility, source_of_truth, source_path, updated_on, content_hash)
+      VALUES (${customer.tenantId}, ${key}, 'en', 1, 'current', 'Our intake process', 'agency',
+              'authenticated', 'docs', ${`docs/knowledge-base/agency/${key}.en.md`}, current_date,
+              ${randomUUID()})
+      RETURNING id`);
+  const [docA, docB] = [
+    await knowledgeDoc(`iso-a-${randomUUID()}`),
+    await knowledgeDoc(`iso-b-${randomUUID()}`),
+  ].sort() as [string, string];
+  const chunk = await id(owner`
+    INSERT INTO knowledge_chunks (document_id, ordinal, heading, content, content_hash, visibility, locale)
+    VALUES (${docA}, 0, 'How do we take on a case?', 'Intake is by referral.', ${randomUUID()}, 'authenticated', 'en')
+    RETURNING id`);
+  const conflict = await id(owner`
+    INSERT INTO knowledge_conflicts (document_a, document_b, reason, subject)
+    VALUES (${docA}, ${docB}, 'same_question', 'how do we take on a case?') RETURNING id`);
+
   // A conversation with the assistant, the customer's own (T-045).
   const conversation = await id(owner`
     INSERT INTO ai_sessions (tenant_id, user_id, title)
@@ -214,6 +236,9 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       ai_messages: said,
       policy_reviews: review,
       money_decisions: money,
+      knowledge_documents: docA!,
+      knowledge_chunks: chunk,
+      knowledge_conflicts: conflict,
     },
   };
 }

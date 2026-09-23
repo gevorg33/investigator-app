@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "fixtures:load": "tsx test/demo-data.ts"
+    "fixtures:load": "tsx test/demo-data.ts",
+    "knowledge:sync": "tsc --build && node dist/modules/knowledge/knowledge-sync.main.js"
   },
   "dependencies": {
     "@investigator/auth": "workspace:*",

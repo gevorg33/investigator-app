@@ -4,9 +4,9 @@ title: Handling disputes
 audience: staff
 visibility: staff
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-24
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -16,7 +16,7 @@ tags: [staff, disputes, resolution, refunds]
 
 # Dispute handling
 
-## What am I deciding?
+## What am I deciding in a dispute?
 
 Whether what was delivered matches what the accepted quote said would be delivered. That is
 the central question, and most disputes resolve on it alone.

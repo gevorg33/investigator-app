@@ -76,8 +76,20 @@ Store content, embedding, model name, model version, and content hash together. 
 when the hash changes. Never mix vectors from different models in one index — the
 distances are meaningless across models.
 
-Embedding generation is an idempotent BullMQ job keyed on `(source_type, source_id,
-content_hash, model_version)`.
+Embedding generation is idempotent, keyed on `(source_type, source_id, content_hash,
+model_version)`. For the knowledge base it is the `knowledge:sync` command (T-016,
+`docs/architecture/knowledge.md`), not a queue: it runs once per deploy over a few hundred chunks.
+Other sources (T-133) use BullMQ jobs.
+
+While a model change is being rolled out, one column holds vectors from two models. So retrieval
+filters on `embedding_model` and `embedding_model_version` equal to the embedder's own, and a
+chunk still under the old model is treated as not embedded yet: it is found by text, not by
+distance.
+
+On the knowledge tables, `visibility` and `locale` are copied onto each chunk from its document by
+a trigger, so a chunk cannot claim a wider audience than its document. **Row-level security does not
+filter by visibility.** Any context can read platform rows, and the retrieval query is what filters
+on visibility, every time.
 
 ## Injection
 

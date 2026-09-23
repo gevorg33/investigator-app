@@ -128,21 +128,24 @@ have acted on it, and a dispute may turn on what it said.
 - Set the old document `status: superseded`, and point the new one at it via `supersedes`.
 - Superseded documents are excluded from retrieval but retained.
 - Two `current` documents that contradict each other are a **conflict**: ingestion flags it
-  rather than picking one. Resolution is a human decision, recorded with a reason — the
-  same discipline as `evidence-integrity`.
+  rather than picking one. Resolution is a human decision: edit a document, or — when both are
+  meant to answer and agree — record the pair in `docs/knowledge-base/overlaps-reviewed.yml`,
+  bound to the versions read. The same discipline as `evidence-integrity`.
 
 ## Keeping RAG synchronized
 
 Documentation that is not ingested is not knowledge.
 
-1. Ingestion is keyed on content hash. Changing a file enqueues a re-embedding job
-   (`background-jobs`), idempotent on `(document_id, content_hash, model_version)`.
+1. Ingestion is keyed on content hash: `pnpm --filter api knowledge:sync` (T-016) re-chunks a
+   changed file and re-embeds only chunks whose text or embedding model changed, idempotent on
+   `(chunk content hash, model, model version)`. CI runs it on every pull request with
+   `--fail-on-conflict`; `docs/architecture/knowledge.md` has the details.
 2. Deleting or superseding a document deletes or re-scopes its chunks **in the same unit
    of work**. A stale chunk pointing at withdrawn guidance is a wrong answer waiting for a
    query.
-3. A staleness check compares each document's `related_code` paths against their last
-   change. Code that moved after its documentation flags the document for review. This is
-   a report for a human, not an automatic edit.
+3. A staleness check (`knowledge:sync --staleness`) compares each document's `related_code`
+   paths against their last change. Code that moved after its documentation flags the document
+   for review. This is a report for a human, not an automatic edit.
 4. Narrowing a document's `visibility` re-scopes its chunks immediately.
 
 ## Verification — run before marking any task DONE

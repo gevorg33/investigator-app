@@ -887,13 +887,13 @@ errors and 0 warnings.
 ---
 
 ### T-016 — Knowledge ingestion pipeline with sync and supersession
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P1
 - **Depends on:** T-004, T-015, T-077
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** ai-rag
-- **Affected:** apps/api/src/modules/knowledge/**, migrations, workers
+- **Affected:** apps/api/src/modules/knowledge/**, migrations, workers (none — a command, see below)
 
 **Description**
 Ingest `docs/knowledge-base/**` into `knowledge_documents` / `knowledge_chunks` with
@@ -903,19 +903,69 @@ plan.md §17 and the `documentation-first` skill.
 **Tenancy (ADR-0011).** `knowledge_documents` and `knowledge_chunks` carry `tenant_id`, which is NULL for the platform knowledge base, under RLS from the first migration. Agency documents are T-097.
 
 **Acceptance criteria**
-- [ ] Ingestion keyed on `(document_id, content_hash, model_version)`; re-running is a no-op
-- [ ] Document `visibility` is stored and enforced at query time, never inferred from folder
-- [ ] Superseding a document removes its chunks from retrieval in the same unit of work
-- [ ] Deleting a document deletes its chunks in the same unit of work
-- [ ] Two `current` documents with conflicting guidance are flagged, not silently ranked
-- [ ] Embedding model name and version stored with every chunk
-- [ ] Staleness report compares `related_code` paths against their last change
-- [ ] Test proves a `docs/operations/` file is never ingested
+- [x] Ingestion keyed on `(document_id, content_hash, model_version)`; re-running is a no-op
+- [x] Document `visibility` is stored and enforced at query time, never inferred from folder
+- [x] Superseding a document removes its chunks from retrieval in the same unit of work
+- [x] Deleting a document deletes its chunks in the same unit of work
+- [x] Two `current` documents with conflicting guidance are flagged, not silently ranked
+- [x] Embedding model name and version stored with every chunk
+- [x] Staleness report compares `related_code` paths against their last change
+- [x] Test proves a `docs/operations/` file is never ingested
 
 **Validation**
 ```bash
 pnpm --filter api test knowledge
 ```
+
+
+**DONE — 2026-09-24**
+
+*What exists.* Migration `0021_add_knowledge`: `knowledge_documents`, `knowledge_chunks`
+(`vector(1536)`, HNSW cosine, `simple` tsvector) and `knowledge_conflicts`, all `tenant_owned`,
+with NULL tenant for the platform. The command `pnpm --filter api knowledge:sync [--fail-on-conflict]
+[--staleness]` runs as the system under `PlatformContext` (`knowledge.sync`). It is a command rather
+than a BullMQ worker: a few hundred chunks, once per deploy, with its result printed where the deploy
+can fail on it. Details: `docs/architecture/knowledge.md`.
+
+*Visibility, criterion 2.* Stored on every document and copied onto every chunk by trigger, whatever
+the insert claims. Never inferred from the folder: the frontmatter decides, and the folder can only
+refuse a mismatch. *Enforcement at query time is T-017's*: RLS admits platform rows to every context
+by design (approved 2026-09-23), so the retrieval query is the filter. That is now an explicit T-017
+criterion, together with filtering on the embedding model.
+
+*Conflicts.* Flagged when two current documents ask the same question or give near-identical answers
+(cosine ≥ 0.95) for overlapping readers, never ranked. Real knowledge base: 3 found, all
+customer-privacy vs the public privacy summary. Read both, found consistent, and recorded in
+`docs/knowledge-base/overlaps-reviewed.yml` **by the agent, for the owner's confirmation** (ACTIONS #21).
+A review names versions, so a new version brings the conflict back. Three staff documents
+had generic headings ("What am I deciding?") that collided with each other. Renamed per subject and
+versions bumped.
+
+*Found by the tests, not by the dev run.* (1) The chunk trigger refused every embedding: a BEFORE
+trigger sees a stored generated column as NULL in NEW, so `search` looked changed. The dev run never
+embedded (no key), so only the HashingEmbedder test caught it. Fixed in the migration, and in the
+local databases with `CREATE OR REPLACE FUNCTION`. (2) Conflict output was in random order (by
+uuid); now sorted by path and printed with `id@version`, which is what a review records. (3) The
+report label `kb-x@1.en` read as an email domain to the no-personal-data fixture rule, so it is now
+`en/kb-x@1` and the rule is unchanged. (4) Staleness reported 20 missing paths for `specified`
+documents pointing at modules still to be built. Now a missing path is reported only for `partial` /
+`implemented` documents. Real report: 30 references, 0 missing.
+
+*Negative controls* (each seen to fail, then restored byte-for-byte or to the migration's
+definition): chunk deletion on retirement removed, which fails 5 tests; embedding reuse removed;
+reviewed overlap not version-bound; staleness `specified` exemption removed; chunk fill trigger
+without `visibility`/`locale` (in the worker databases), which fails the audience test. Removing
+visibility from the service's insert does **not** fail. The trigger overwrites it, so the rule
+lives in the database and is tested there.
+
+*Other files.* `related_code` corrected in 6 documents (`users`→`auth`, `audit`→`common/audit`,
+`investigator-profiles`→`profiles`). A document with no answer in it is now refused.
+CI runs the sync twice after Build, and the second run must change nothing. Staging has a
+`TODO(T-040)` step; T-040 and T-041 have the criterion. Embeddings wait for an OpenAI key
+(ACTIONS #6): 360 chunks pending, searchable by text.
+
+*Verified.* Dev database: 36 documents, 360 chunks, 0 open conflicts, 3 reviewed, second run
+36 unchanged. `pnpm lint`, `typecheck`, `build`, knowledge-base validator 0/0, and API tests 1940 at 100% coverage.
 
 ---
 
@@ -936,6 +986,9 @@ retrieval. Per `.claude/skills/permission-aware-rag/SKILL.md`.
 
 **Acceptance criteria**
 - [ ] Hybrid retrieval: pgvector + tsvector fused by RRF, per ADR-0001
+- [ ] Filters on chunk `visibility` in every query (RLS admits every platform row to every context,
+      by design — T-016), and on `embedding_model` / `embedding_model_version` equal to the
+      embedder's own, so a model change never compares vectors across models
 - [ ] Vector search returns IDs only; rows loaded and authorized before reaching the prompt
 - [ ] A customer cannot retrieve staff or operations content by any phrasing
 - [ ] Answers cite their source documents
@@ -1839,6 +1892,8 @@ run. Per `.claude/skills/ci-cd/SKILL.md`.
 - [ ] GitHub `staging` environment with **staging-only** secrets; production secrets absent
 - [ ] Build once, push a tagged image, deploy that same artifact
 - [ ] Migrations run automatically against staging
+- [ ] `pnpm --filter api knowledge:sync --fail-on-conflict` runs after migrating and before serving
+  (T-016)
 - [ ] Health check polls and **fails the job** if unhealthy
 - [ ] Smoke tests run against deployed staging
 - [ ] Deployment recorded: sha, actor, outcome
@@ -1880,6 +1935,8 @@ are not implemented.
 - [ ] Rollback output states plainly that a contract migration is recovered by restore, not revert
 - [ ] Migrations run with `MIGRATION_DATABASE_URL` (the owner); the API's environment holds **only** `DATABASE_URL` (`investigator_app`) and never the owner's credentials. The deploy runs `scripts/set-app-role-password.sh` with `APP_DB_PASSWORD` from the environment's secrets after migrating (T-073)
 - [ ] Deployment audit log: version, actor, approver, outcome
+- [ ] The deploy job runs `pnpm --filter api knowledge:sync --fail-on-conflict` after migrations
+  are current and before traffic moves (T-016)
 
 **Validation**
 A rehearsed deploy and a rehearsed rollback against production, signed off.

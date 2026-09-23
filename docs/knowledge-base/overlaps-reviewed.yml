@@ -1,0 +1,29 @@
+# Overlaps a person has read and found consistent (T-016).
+#
+# The sync flags two current documents that answer the same question for overlapping readers,
+# because it cannot tell agreement from contradiction. An entry here records that someone read
+# both answers and they agree. It names each document AT A VERSION: a new version of either
+# lapses the review, and the overlap is flagged again until someone reads it again.
+#
+# Two documents that disagree are not reviewed here — one of them is edited or superseded.
+#
+# Fields: subject (the question, lower case, no question mark), documents (two `id@version`),
+# reviewed (date), by, finding.
+
+- subject: who can see my evidence and reports
+  documents: [kb-customer-privacy-data@2, kb-policy-privacy-summary@1]
+  reviewed: 2026-09-24
+  by: Claude (agent), for the owner's confirmation
+  finding: consistent — both say only the parties see evidence by default and staff access needs a recorded reason
+
+- subject: what data does the platform hold about me
+  documents: [kb-customer-privacy-data@2, kb-policy-privacy-summary@1]
+  reviewed: 2026-09-24
+  by: Claude (agent), for the owner's confirmation
+  finding: consistent — the same list; the public summary adds what investigators have held
+
+- subject: how long is my data kept
+  documents: [kb-customer-privacy-data@2, kb-policy-privacy-summary@1]
+  reviewed: 2026-09-24
+  by: Claude (agent), for the owner's confirmation
+  finding: consistent — both say retention differs by type and nothing is kept indefinitely

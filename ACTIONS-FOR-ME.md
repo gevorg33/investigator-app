@@ -189,7 +189,14 @@ Full checklist: [`infrastructure/caddy/dns-and-email.md`](infrastructure/caddy/d
 **Steps:** Create a key scoped to this project. Set a usage limit — embedding backfills can be
 larger than expected.
 
-**Where it goes:** `.env.local` → `OPENAI_API_KEY`.
+**Where it goes:** `.env.local` → `OPENAI_API_KEY`. Optional: `OPENAI_EMBEDDING_MODEL`
+(default `text-embedding-3-small`, at 1536 dimensions).
+
+**What is waiting on it (T-016):** the knowledge base is ingested, but its 360 chunks have no
+embeddings. They are searchable by text only. With the key set, the next
+`pnpm --filter api knowledge:sync` embeds them. The whole knowledge base is a few hundred short
+chunks, so it costs cents. Knowledge-base text is written by the platform and contains no personal
+data.
 
 **Status:** ⬜ Pending
 
@@ -498,6 +505,24 @@ legal position, not an engineering one, and changing it is a one-line change wit
 a version is published: registration behaves exactly as it always has (T-022), while **creating
 an agency is refused until `AGENCY_AGREEMENT` is published** (T-083) — the gate working as
 intended, but it does mean that endpoint is unusable in production until this is done
+
+---
+
+### 21. Confirm three knowledge-base overlaps the agent reviewed — for T-016
+
+**Why:** The knowledge sync flags two current documents that answer the same question for the
+same readers, because it cannot tell agreement from contradiction. It found three, all between
+`customer/privacy-and-data.en.md` and `policies/privacy-summary.en.md`: who can see my evidence,
+what data you hold, and how long it is kept. I read both documents and found them consistent, so I
+recorded that in `docs/knowledge-base/overlaps-reviewed.yml` so CI does not fail. The entries are
+marked `by: Claude (agent), for the owner's confirmation`. A privacy answer is exactly where two
+subtly different statements would matter.
+
+**What is needed:** read the three pairs (about ten minutes). If each pair agrees, change `by:` to
+your name. If one pair disagrees, delete its entry and say which document is right. CI will then
+flag it until the other document is corrected.
+
+**Status:** ⬜ Pending — not blocking. CI passes on the agent's review.
 
 ---
 

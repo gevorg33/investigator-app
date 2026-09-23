@@ -4,9 +4,9 @@ title: Reviewing investigator verification
 audience: staff
 visibility: staff
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-18
+updated: 2026-09-24
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -16,7 +16,7 @@ tags: [staff, verification, review, queue]
 
 # Verification review
 
-## What am I deciding?
+## What am I deciding in a verification review?
 
 Whether the documents submitted establish the applicant's identity and professional standing
 for the specialties and service areas they declared.

@@ -119,6 +119,25 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['customer_tenant_id', 'supplier_tenant_id'],
     note: 'both parties read; the supplier records only FULL_REFUND or HOLD; staff record the rest and payments marks execution (T-050)',
   },
+  knowledge_documents: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    nullable: {
+      tenant_id: 'NULL is the platform knowledge base, readable in every workspace; an agency’s own documents carry theirs (T-097)',
+    },
+    note: 'written only by the sync, under platform access; retrieval filters on visibility (T-016)',
+  },
+  knowledge_chunks: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    nullable: { tenant_id: 'as its document: NULL is the platform knowledge base (T-016)' },
+    note: 'tenant and visibility copied from the document; only current documents have chunks',
+  },
+  knowledge_conflicts: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    nullable: { tenant_id: 'as its documents: NULL is the platform knowledge base (T-016)' },
+  },
   ai_sessions: {
     class: 'tenant_owned',
     columns: ['tenant_id'],

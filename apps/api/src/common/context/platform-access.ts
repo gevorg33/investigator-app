@@ -32,7 +32,7 @@ export type RoutePurpose =
 export type AdHocPurpose = 'support.lookup';
 
 /** Work no person triggers. It has no actor, so the purpose is all the record there is. */
-export type SystemPurpose = 'assignment.create_from_payment';
+export type SystemPurpose = 'assignment.create_from_payment' | 'knowledge.sync';
 
 export interface PlatformAccess {
   readonly scope: PlatformScope;

@@ -4,9 +4,9 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-23
+updated: 2026-09-24
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -17,7 +17,7 @@ tags: [staff, policy, missions, review, lawful-use]
 
 # Mission policy review
 
-## What am I deciding?
+## What am I deciding when I review a mission?
 
 Whether a mission that was held can be released to investigators, needs more information
 from the customer, or must be rejected.

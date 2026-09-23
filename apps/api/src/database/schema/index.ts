@@ -19,3 +19,4 @@ export * from './verification';
 export * from './investigation-sources';
 export * from './ai-sessions';
 export * from './policy-reviews';
+export * from './knowledge';

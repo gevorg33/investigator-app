@@ -94,10 +94,29 @@ Every translation needs its English source: a `ru` or `hy` file whose `id` has n
 an orphan and fails validation, since it would serve content with no authoritative original.
 Missing translations are reported as coverage, not as errors.
 
+## Ingestion
+
+`pnpm --filter api knowledge:sync` copies this folder into PostgreSQL, one chunk per `## `
+question. It runs on every pull request, and will run on every deploy once the deploy pipelines exist (T-040, T-041). A file it cannot ingest fails the pull
+request that added it. `docs/architecture/knowledge.md` explains how it works.
+
+- **Correcting** a document without changing its meaning keeps its `version`. The sync updates it
+  in place.
+- **Changing what a document says** needs a higher `version`. The old version stops being
+  retrieved in the same transaction the new one starts.
+- **Deleting** a file removes it from retrieval the same way.
+- Two current documents that ask the same question, or give nearly identical answers, for the same
+  readers are a **conflict**. CI fails on it. Resolve it by editing one of them. If both are meant
+  to answer the question and they agree, record that in `overlaps-reviewed.yml`, naming the
+  versions you read. A new version of either document brings the conflict back.
+- `--staleness` lists documents whose `related_code` changed after their `updated` date. It is a
+  report to read, not an error.
+
 ## Checking your work
 
 ```bash
 python3 scripts/validate-knowledge-base.py
+pnpm --filter api knowledge:sync --fail-on-conflict --staleness   # needs DATABASE_URL
 ```
 
 Zero errors is required to merge. Zero warnings is the standard the repository keeps.

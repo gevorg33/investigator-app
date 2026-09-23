@@ -11,8 +11,8 @@ source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/admin
-  - apps/api/src/modules/users
-  - apps/api/src/modules/audit
+  - apps/api/src/modules/auth
+  - apps/api/src/common/audit
 tags: [staff, suspension, deletion, data-requests, audit]
 ---
 
