@@ -39,6 +39,13 @@ Encode the sort key plus a tiebreaker — always including a unique column, norm
 Sorting by a non-unique column without a tiebreaker makes pagination non-deterministic and
 rows will be skipped.
 
+**A timestamp in a cursor is compared at millisecond precision** (T-134). PostgreSQL keeps
+microseconds and a cursor round-trips through a JavaScript `Date`, which keeps milliseconds.
+Compared directly, an oldest-first list repeats its last row on every page — the verification
+queue never got past page two — and a newest-first list silently skips rows. Order and compare on
+`date_trunc('milliseconds', column)`, pass the cursor value as an ISO string cast to
+`timestamptz`, and break ties on the id. `test/cursor-precision.spec.ts` refuses a direct comparison.
+
 Cursors are scoped to the query that produced them. A cursor from one filter set applied to
 another is rejected with `VALIDATION_FAILED`, never silently reinterpreted.
 

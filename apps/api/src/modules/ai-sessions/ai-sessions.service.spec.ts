@@ -128,6 +128,30 @@ describe('assistant sessions (ADR-0006, T-045)', () => {
       expect(second.pageInfo).toEqual({ hasNextPage: false, nextCursor: null });
     });
 
+    it('skips nothing when activity times carry microseconds (T-134)', async () => {
+      // Every writer in the service sets last_activity_at from JavaScript (milliseconds), but the
+      // column defaults to now() (microseconds). Newest-first, a cursor in milliseconds excluded
+      // every row in the same millisecond with more microseconds: rows silently vanished from the
+      // list. Written here with microseconds on purpose, as any other writer would.
+      const { actor: someone, personalId } = await member(owner);
+      const mine = asRequests(raw, owner);
+      for (let i = 0; i < 4; i++) {
+        await owner`
+          INSERT INTO ai_sessions (tenant_id, user_id, title, last_activity_at)
+          VALUES (${personalId}, ${someone.userId}, ${`s${i}`},
+                  date_trunc('milliseconds', now()) + make_interval(secs => ${i} * 0.000123))`;
+      }
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await mine.list(someone, { limit: 1, cursor }, req());
+        seen.push(...page.items.map((i) => i.id));
+        cursor = page.pageInfo.nextCursor ?? undefined;
+      } while (cursor !== undefined && seen.length < 50);
+      expect(new Set(seen).size).toBe(4);
+      expect(seen).toHaveLength(4);
+    });
+
     it('refuses a cursor from the other list, or one that is not a cursor', async () => {
       const someone = (await member(owner)).actor;
       const mine = asRequests(raw, owner);
