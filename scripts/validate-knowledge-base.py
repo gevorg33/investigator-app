@@ -50,6 +50,7 @@ def parse_frontmatter(text):
 NOT_FOR_INGESTION = "<!-- not-for-ingestion -->"
 
 errors, warnings, ids = [], [], {}
+meta = {}  # (id, locale) -> {"version", "status"}, for the translation checks after the loop
 
 if not KB.exists():
     # Not a pass: a knowledge base that has gone missing is not one that validates.
@@ -98,18 +99,26 @@ for f in files:
         if key in ids:
             errors.append(f"{rel}: duplicate id+locale, also in {ids[key]}")
         ids[key] = rel
+        meta[key] = {"version": fm.get("version", ""), "status": fm.get("status")}
 
     if fm.get("status") == "current" and fm.get("version") in (None, "", "0"):
         errors.append(f"{rel}: current document needs a version")
 
     body = text
-    if fm.get("status") == "draft":
+    # An English draft is unfinished work, and says so. A translation draft is the state every
+    # translation waits in until a native speaker has reviewed it (T-026), so it is counted in the
+    # coverage line instead — otherwise a whole locale awaiting review is 36 lines of noise.
+    if fm.get("status") == "draft" and fm.get("locale") == "en":
         warnings.append(f"{rel}: status=draft — not ingested until set to current")
     # Headings should be in the user's voice, so a chunk matches how someone asks.
     # Two valid shapes: a question ("Can I cancel?") or a first-person symptom
-    # statement ("I cannot sign in"), which is how troubleshooting is searched.
+    # statement ("I cannot sign in"), which is how troubleshooting is searched. Armenian marks a
+    # question with `՞` over the stressed word, not `?` at the end, so it is looked for anywhere.
     user_voice = re.search(r"^##\s+.+\?\s*$", body, re.M) or \
-                 re.search(r"^##\s+(I|My|Nothing|Something)\b", body, re.M)
+                 re.search(r"^##\s+.*\u055e", body, re.M) or \
+                 re.search(r"^##\s+(I|My|Nothing|Something"
+                           r"|Я|Мой|Моя|Моё|Мои|Мне|Не|Ничего|Что-то"
+                           r"|Ես|Իմ|Չեմ|Ոչինչ|Ինչ-որ)(?=\s|$)", body, re.M)
     if not user_voice:
         warnings.append(f"{rel}: no user-voice '## ' heading (a question, or a first-person "
                         f"symptom) — chunks retrieve worse")
@@ -130,13 +139,47 @@ for doc_id, locs in sorted(by_id.items()):
         for loc, path in sorted(locs.items()):
             errors.append(f"{path}: orphan translation — no 'en' source for id '{doc_id}'")
 
+# A translation carries the version of the English it was translated from (T-026). Newer than its
+# source is impossible, so an error. Older means the English has moved on: a *current* translation
+# would then answer from superseded text, so that is a warning; a draft is not served, so it is
+# counted with the drafts and reviewed with them.
+stale_drafts = {loc: 0 for loc in LOCALES}
+drafts = {loc: 0 for loc in LOCALES}
+for doc_id, locs in sorted(by_id.items()):
+    src = meta.get((doc_id, "en"))
+    for loc, path in sorted(locs.items()):
+        if loc == "en" or src is None:
+            continue
+        tr = meta[(doc_id, loc)]
+        if tr["status"] == "draft":
+            drafts[loc] += 1
+        if not (tr["version"].isdigit() and src["version"].isdigit()):
+            continue
+        if int(tr["version"]) > int(src["version"]):
+            errors.append(f"{path}: version {tr['version']} is newer than its English source "
+                          f"({src['version']})")
+        elif int(tr["version"]) < int(src["version"]):
+            if tr["status"] == "draft":
+                stale_drafts[loc] += 1
+            else:
+                warnings.append(f"{path}: translated from version {tr['version']}, but the "
+                                f"English is at {src['version']} — retranslate before it answers "
+                                f"from superseded text")
+
 coverage = {loc: sum(1 for l in by_id.values() if loc in l) for loc in LOCALES}
 total = len(by_id)
 
+def describe(loc):
+    notes = []
+    if coverage[loc] != total:
+        notes.append("incomplete")
+    if drafts[loc]:
+        notes.append(f"{drafts[loc]} draft" + (f", {stale_drafts[loc]} behind English"
+                                               if stale_drafts[loc] else ""))
+    return f"{loc} {coverage[loc]}/{total}" + (f" ({'; '.join(notes)})" if notes else "")
+
 print(f"knowledge-base: {len(files)} document(s), {total} unique id(s)")
-print("locale coverage: " + "  ".join(
-    f"{loc} {coverage[loc]}/{total}" + ("" if coverage[loc] == total else " (incomplete)")
-    for loc in LOCALES))
+print("locale coverage: " + "  ".join(describe(loc) for loc in LOCALES))
 
 for w in warnings:
     print(f"  WARN  {w}")

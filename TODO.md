@@ -1493,7 +1493,7 @@ pnpm --filter api test auth-cookies
 ---
 
 ### T-026 — Knowledge base translation into ru and hy
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25. 72 translations, all `draft` until native-speaker review (ACTIONS-FOR-ME #22)
 - **Priority:** P2
 - **Depends on:** T-019
 - **Risk:** LOW
@@ -1510,23 +1510,54 @@ Excludes the legal documents in `docs/compliance/`, which are T-027 and must not
 agent-translated.
 
 **Acceptance criteria**
-- [ ] 64 files: every `en` document has a `ru` and an `hy` counterpart
-- [ ] Same `id`, differing `locale`; version tracks the English source it was translated from
-- [ ] `python3 scripts/validate-knowledge-base.py` reports full parity and zero orphans
-- [ ] Headings stay user-voice in the target language — translated as how a speaker would
-      actually ask, not word-for-word from English
-- [ ] Sections remain self-contained; no chunk depends on an English neighbour
-- [ ] Russian plurals use ICU `one/few/many/other`; Armenian plural rules applied correctly
-- [ ] No `source_of_truth: database` document lists values in any locale
-- [ ] Public policy summaries state, in the target language, that the authoritative legal
-      text governs
-- [ ] **Native-speaker review before any translated document is set `status: current`**
-- [ ] A retrieval test confirms locale preference and reported `en` fallback
+- [x] 64 files: every `en` document has a `ru` and an `hy` counterpart — 72: the knowledge base had grown to 36
+- [x] Same `id`, differing `locale`; version tracks the English source it was translated from — now enforced (newer is an error; a lagging current translation warns)
+- [x] `python3 scripts/validate-knowledge-base.py` reports full parity and zero orphans — `ru 36/36 (36 draft)  hy 36/36 (36 draft)`, 0 errors, 0 warnings
+- [x] Headings stay user-voice in the target language — translated as how a speaker would
+      actually ask, not word-for-word from English — the validator now recognises Armenian `՞` and ru/hy first-person symptoms
+- [x] Sections remain self-contained; no chunk depends on an English neighbour — the real parser, run over all 72 as if current, gives each the same chunk count as its source
+- [x] Russian plurals use ICU `one/few/many/other`; Armenian plural rules applied correctly — N/A to prose: the knowledge base has no count templates; forms are written grammatically
+- [x] No `source_of_truth: database` document lists values in any locale — the three are rule-only, as in English
+- [x] Public policy summaries state, in the target language, that the authoritative legal
+      text governs — all three `policies/` translations keep the notice
+- [x] **Native-speaker review before any translated document is set `status: current`** — held: every translation is `draft`; the review is ACTIONS-FOR-ME #22
+- [x] A retrieval test confirms locale preference and reported `en` fallback — exists since T-017 (`knowledge-retrieval.service.spec.ts`, `describe('language')`); needs PostgreSQL, so it ran in CI, not locally
 
 **Validation**
 ```bash
 python3 scripts/validate-knowledge-base.py
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* A Russian and an Armenian version of every knowledge-base document, `status: draft`,
+same `id`, `version` and `tags` as the English. One glossary throughout (mission задание/առաջադրանք,
+quote предложение/գնառաջարկ, assignment заказ/պատվեր, investigator детектив/խուզարկու). Identifiers,
+paths and audit event names left untranslated.
+
+*The validator, extended* (`scripts/validate-knowledge-base.py`, 7 new cases in
+`apps/api/test/knowledge-base-validator.spec.ts`). (1) A translation draft is counted in the coverage
+line, not warned per file: the repository test demands zero warnings, and the task requires drafts,
+so without this the task could not pass CI honestly. An English draft still warns. (2) A translation
+newer than its source is an error; a current one that lags is a warning; a lagging draft is counted.
+(3) Armenian `՞` and ru/hy first-person headings count as user voice — without it all 31 Armenian
+files that phrase questions the Armenian way warned.
+
+*Verified.* No browser surface — documentation and a CI script. Validator: 0 errors, 0 warnings.
+Structural parity script: every translation has the same frontmatter fields, `##` sections, table
+rows, code spans and legal notice as its source. The real parser (`parseDocument`), run over all 72
+with `status` swapped to current, chunked each exactly as its English. `knowledge-source.spec.ts`,
+which reads the real knowledge base, passes (drafts skipped). *Negative controls* (validator broken,
+seen to fail, restored byte-for-byte): Armenian mark unrecognised (2 tests, 31 real warnings); drafts
+warned again; newer-than-source allowed; lagging draft warned.
+
+*Found along the way.* Reviewed overlaps are matched by question text, and conflicts are detected per
+locale, so the three reviewed English privacy overlaps will be flagged again in each language when the
+translations are promoted. Documented in the README's promotion procedure and ACTIONS-FOR-ME #22 —
+not a defect today, since drafts are not ingested.
+
+*Not done.* Native-speaker review — a person's job (ACTIONS-FOR-ME #22). The API suite, which needs
+PostgreSQL, was not run locally; only the knowledge-base validator and source specs were.
 
 ---
 

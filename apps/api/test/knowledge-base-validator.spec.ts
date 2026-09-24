@@ -151,6 +151,91 @@ describe('the knowledge-base validator', () => {
     expect(run.code).toBe(1);
     expect(run.output).toContain('orphan translation');
   });
+
+  describe('translations (T-026)', () => {
+    const en = (over: Record<string, string> = {}) => article({ version: '2', ...over });
+    const tr = (locale: string, over: Record<string, string> = {}, body?: string) =>
+      article({ locale, version: '2', status: 'draft', ...over }, body);
+
+    it('counts a translation awaiting review, and warns only for an English draft', () => {
+      const translated = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en(),
+          'docs/knowledge-base/customer/a.ru.md': tr('ru'),
+        }),
+      );
+      expect(translated.output).toContain('ru 1/1 (1 draft)');
+      expect(translated.output).toContain('0 error(s), 0 warning(s)');
+
+      const english = validate(
+        repo({ 'docs/knowledge-base/customer/a.en.md': en({ status: 'draft' }) }),
+      );
+      expect(english.output).toContain('status=draft');
+      expect(english.output).toContain('1 warning(s)');
+    });
+
+    it('fails a translation claiming a newer version than its English source', () => {
+      const run = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en(),
+          'docs/knowledge-base/customer/a.hy.md': tr('hy', { version: '3' }),
+        }),
+      );
+      expect(run.code).toBe(1);
+      expect(run.output).toContain('version 3 is newer than its English source (2)');
+    });
+
+    it('warns when a current translation has fallen behind its English source', () => {
+      const run = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en({ version: '3' }),
+          'docs/knowledge-base/customer/a.ru.md': tr('ru', { status: 'current' }),
+        }),
+      );
+      expect(run.output).toContain('translated from version 2, but the English is at 3');
+      expect(run.output).toContain('1 warning(s)');
+    });
+
+    it('counts a draft that has fallen behind, since a draft answers nothing', () => {
+      const run = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en({ version: '3' }),
+          'docs/knowledge-base/customer/a.ru.md': tr('ru'),
+        }),
+      );
+      expect(run.output).toContain('ru 1/1 (1 draft, 1 behind English)');
+      expect(run.output).toContain('0 error(s), 0 warning(s)');
+    });
+
+    it.each([
+      ['a Russian question', 'ru', '## Как долго действует предложение?\n\nТак.\n'],
+      [
+        'an Armenian question, marked on the word',
+        'hy',
+        '## Որքա՞ն է գործում գնառաջարկը\n\nԱյսպես։\n',
+      ],
+      ['a Russian first-person symptom', 'ru', '## Я не могу войти\n\nТак.\n'],
+      ['an Armenian first-person symptom', 'hy', '## Չեմ կարողանում մուտք գործել\n\nԱյսպես։\n'],
+    ])('takes %s as a user-voice heading', (_, locale, body) => {
+      const run = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en(),
+          [`docs/knowledge-base/customer/a.${locale}.md`]: tr(locale, {}, body),
+        }),
+      );
+      expect(run.output).toContain('0 error(s), 0 warning(s)');
+    });
+
+    it('still warns for a translated heading that is neither a question nor a symptom', () => {
+      const run = validate(
+        repo({
+          'docs/knowledge-base/customer/a.en.md': en(),
+          'docs/knowledge-base/customer/a.hy.md': tr('hy', {}, '## Գնառաջարկներ\n\nԱյսպես։\n'),
+        }),
+      );
+      expect(run.output).toContain("no user-voice '## ' heading");
+    });
+  });
 });
 
 describe('the repository’s own documents', () => {
