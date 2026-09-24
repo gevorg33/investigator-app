@@ -86,6 +86,17 @@ const proposing =
       ...p.extra,
     });
 
+/**
+ * A random point with hundredths that are never zero, so its coordinates print with a decimal
+ * point — which no hex id contains. A bare "12" would be found inside some UUID by chance.
+ */
+const offGrid = () => {
+  const p = somewhere();
+  const nudge = (v: number) =>
+    Math.round(v * 100) % 100 === 0 ? Math.round((v + 0.37) * 100) / 100 : v;
+  return { lon: nudge(p.lon), lat: nudge(p.lat) };
+};
+
 describe('the assistant finding investigators (T-018)', () => {
   let sql: postgres.Sql;
   let owner: postgres.Sql;
@@ -276,7 +287,8 @@ describe('the assistant finding investigators (T-018)', () => {
         specialtyNodeIds: [records.id],
         headline: 'Records research',
         bio: 'Also phone hacking and surveillance. $5 an hour, available 24/7.',
-        rate: 500,
+        // Seven digits: ids in the answer are hex, and a short number turns up in one by chance.
+        rate: 9_876_543,
       });
       const model = new FakeModel(
         proposing({
@@ -297,7 +309,7 @@ describe('the assistant finding investigators (T-018)', () => {
         'Anna',
         '$20',
         '$5',
-        '500',
+        '9876543',
         '24/7',
         'around the clock',
         'hack',
@@ -417,7 +429,7 @@ describe('the assistant finding investigators (T-018)', () => {
     });
 
     it('answers "nearest" from a real point, by distance, and never shows the model the point', async () => {
-      const centre = somewhere();
+      const centre = offGrid();
       const close = await mine({ centre, radiusKm: 5 });
       const farther = await mine({ centre: eastOf(centre, 20), radiusKm: 5 });
       const model = new FakeModel(proposing({ nearest: true, place: here() }));

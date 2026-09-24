@@ -33,6 +33,17 @@ import type { SearchInvestigatorsInput } from './discovery.schemas';
 import { ListTaxonomyTool } from './list-taxonomy.tool';
 import { CANDIDATE_POOL, SearchInvestigatorsTool } from './search-investigators.tool';
 
+/**
+ * A random point with hundredths that are never zero, so its coordinates print with a decimal
+ * point — which no hex id contains. A bare "12" would be found inside some UUID by chance.
+ */
+const offGrid = () => {
+  const p = somewhere();
+  const nudge = (v: number) =>
+    Math.round(v * 100) % 100 === 0 ? Math.round((v + 0.37) * 100) / 100 : v;
+  return { lon: nudge(p.lon), lat: nudge(p.lat) };
+};
+
 describe('assistant discovery tools (T-018)', () => {
   let sql: postgres.Sql;
   let owner: postgres.Sql;
@@ -238,13 +249,14 @@ describe('assistant discovery tools (T-018)', () => {
   });
 
   it('gives a public projection only: no price, no bio, no contact, no account, no coordinates', async () => {
-    const centre = somewhere();
+    const centre = offGrid();
     await mine({
       centre,
       headline: 'Records research',
       bio: 'I also do phone hacking, ask me',
       contactPhone: '555-0142',
-      rate: 150_000,
+      // Seven digits: ids in the output are hex, and a short number turns up in one by chance.
+      rate: 9_876_543,
     });
     const out = await find({ near: { ...centre, radiusKm: 0 } });
     const [result] = out.results;
@@ -264,7 +276,7 @@ describe('assistant discovery tools (T-018)', () => {
       ].sort(),
     );
     const json = JSON.stringify(out);
-    for (const leak of ['hacking', '555-0142', '150000', 'AMD', String(centre.lon), 'userId']) {
+    for (const leak of ['hacking', '555-0142', '9876543', 'AMD', String(centre.lon), 'userId']) {
       expect(json).not.toContain(leak);
     }
     expect(result).toMatchObject({ headline: 'Records research', verificationStatus: 'VERIFIED' });
