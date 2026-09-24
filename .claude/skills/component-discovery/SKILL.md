@@ -28,7 +28,10 @@ Use the shadcn MCP: `search_items_in_registries` → `view_items_in_registries` 
 
 ### Registries, verified working
 
-`@shadcn` and `@react-bits` (684 items) resolve through the shadcn MCP. `@cult-ui` to be added.
+`@shadcn`, `@cult-ui` and `@react-bits` (684 items) are configured in `apps/app-web/components.json`
+and in the root file the MCP reads (T-091). `@cult-ui`'s URL was taken from shadcn's official
+registry index (`https://ui.shadcn.com/r/registries.json`). `cult-ui.com` answers HTTP 429 to the
+MCP and to `curl` from some networks; its catalogue is also listed at `https://cult-ui.com/docs`.
 There is no separate MCP per library — registries are configured in `components.json` and one
 MCP reads them all.
 
@@ -40,6 +43,12 @@ variant means hand-writing types for a component you now own.
 
 Note: `get_add_command_for_items` currently renders as `[object Promise]` — a CLI formatting
 bug. Run the add manually: `npx shadcn@latest add @react-bits/ComponentName-TS-TW`.
+
+**Read the diff after every `shadcn add`** (found in T-091). CLI 4.21 wrote
+`import { cn } from "cn"` into `@shadcn/empty` and installed shadcn's new `cn` npm package —
+unpinned and two days old — instead of using the `utils` alias. Point the import at
+`@/lib/utils`, remove the package, and add any dependency the CLI assumed was present
+(`class-variance-authority`). Pin the CLI version: `pnpm dlx shadcn@4.21.0 add …`.
 
 ## Reviewing what you add
 

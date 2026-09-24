@@ -820,6 +820,7 @@ Procedure and conventions: `.claude/skills/component-discovery/SKILL.md`.
 - [ ] Agents take `-TS-TW` variants from React Bits, never `-JS-`
 - [ ] One component added end-to-end (`button`) to prove the pipeline
 - [ ] `components/ui/**` is web-only and not imported by `apps/mobile`
+- [ ] Follows the pattern T-091 set (`docs/architecture/app-web.md`): tokens from `@investigator/ui-tokens/tokens.css`, the raw-value lint rule extended to `apps/admin-web/src/**`, the bundle budget script, and the per-app `components.json` with `@cult-ui` — then the root `components.json` goes
 
 **Validation**
 ```bash
@@ -1958,7 +1959,7 @@ pnpm --filter api test investigation-search
 ---
 
 ### T-039 — UI skills and agents
-- **Status:** IN_PROGRESS — 7 skills + 2 agents + CLAUDE.md done; Playwright MCP remains
+- **Status:** DONE — 2026-09-24
 - **Priority:** P1
 - **Depends on:** T-030
 - **Risk:** LOW
@@ -1979,7 +1980,12 @@ Create the seven skills and two agents specified in `docs/architecture/ui-archit
 - [x] **Playwright MCP** added and smoke-tested — 24 tools, `browser_resize` + `browser_snapshot`
 - [x] ~~Refero MCP~~ — **declined on cost** (2026-09-13). Not a blocker; `interaction-design`
       carries the rules independently
-- [ ] Each smoke-tested over stdio before being relied on, not assumed working
+- [x] Each smoke-tested over stdio before being relied on, not assumed working — 2026-09-24:
+      shadcn MCP read the root `components.json` (`@shadcn`, `@react-bits`) and searched the
+      registries; Playwright MCP navigated, snapshotted and closed. Two things seen: the shadcn
+      server prints its add command as `[object Promise]` in search results (use
+      `get_add_command_for_items` instead), and Playwright writes snapshots to `.playwright-mcp/`,
+      now gitignored
 - [x] Every skill has a trigger-accurate description; frontmatter validates
 - [x] Escalation and law-enforcement procedures written (`docs/operations/`), resolving the
       dangling pointers from the staff knowledge base
@@ -4493,13 +4499,13 @@ pnpm --filter api test tenant-lifecycle
 ---
 
 ### T-091 — app-web UI foundation
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P1
 - **Depends on:** T-030
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/**, packages/ui/**
+- **Affected:** apps/app-web/**, packages/ui-tokens/** (new — the plan's token package; `packages/ui` stays a stub, since shadcn components are per app), eslint.config.js, .github/workflows/pr.yml
 
 **Description**
 `app-web` is still a stub (`src/index.ts`). Every customer, investigator and agency screen —
@@ -4512,15 +4518,61 @@ including the assistant (T-056) — needs a real Next.js app first:
 - `test` and `build` scripts that run in CI
 
 **Acceptance criteria**
-- [ ] `components.json` in app-web; `get_project_registries` returns the three registries
-- [ ] Light and dark themes from tokens; no raw values in feature code
-- [ ] The shell passes visual QA at 375, 768 and 1280, with no horizontal scroll and tap targets of at least 44px
-- [ ] CI runs app-web tests and build; Core Web Vitals budget recorded (`frontend-performance`)
+- [x] `components.json` in app-web; `get_project_registries` returns the three registries — the MCP reads the root file, which now lists `@cult-ui` too; app-web's own was read by `shadcn@4.21.0 info`
+- [x] Light and dark themes from tokens; no raw values in feature code — lint-enforced
+- [x] The shell passes visual QA at 375, 768 and 1280, with no horizontal scroll and tap targets of at least 44px
+- [x] CI runs app-web tests and build; Core Web Vitals budget recorded (`frontend-performance`)
 
 **Validation**
 ```bash
 pnpm --filter app-web test && pnpm --filter app-web build
 ```
+
+**DONE — 2026-09-24**
+
+*What exists.* `packages/ui-tokens` (typed tokens → generated, committed `tokens.css`) and a Next.js
+15.5.25 app in `apps/app-web`: Tailwind 4, shadcn (`components.json`, registries `@shadcn`,
+`@cult-ui`, `@react-bits`), a mobile-first shell, five destination routes. `docs/architecture/app-web.md`
+records the pattern T-014 and marketing-web follow.
+
+*Criteria.*
+- Registries: `@cult-ui`'s URL taken from shadcn's official registry index. Discovery searched all
+  three before any custom component; `@shadcn/empty` adopted and re-tokenised, the navigation
+  custom and recorded with why (`component-inventory.md`).
+- Tokens: Tailwind's palette and scales are **reset**, so only token utilities exist; dark swaps
+  under `prefers-color-scheme`; every duration is 0 under reduced motion. `CONTRAST_PAIRS` is
+  measured against WCAG AA in both themes by a test. ESLint refuses a hex/functional colour, an
+  arbitrary value with a number, `duration-200` and `150ms` in app-web (probed: 6 violations
+  caught, token forms pass).
+- Visual QA (Playwright, production build): 375 light and dark, 768, 1280 and 1440 — no horizontal
+  scroll at any width; bottom-bar targets 75×64, sidebar 44 tall; current page marked by
+  `aria-current` and not by colour alone; skip link visible on focus with the token focus ring;
+  reduced motion zeroes transitions; accessibility tree is landmark → nav list → main → h1/h2.
+- CI: `pnpm test:coverage` and `pnpm build` now include app-web and ui-tokens (100% each), and a
+  new step fails the PR when a route's initial JS exceeds 250 kB gzip. Recorded at 375px, Slow 4G,
+  4× CPU: 119 kB, LCP 476 ms cold, CLS 0.
+
+*Found along the way.* (1) **`shadcn add` installed an npm package named `cn`** (shadcn's own,
+two days old, unpinned) and wrote `import { cn } from "cn"`; removed, import pointed at our
+helper, the missing `class-variance-authority` added. The component-discovery skill now says to
+read the diff after every add. (2) **`pnpm audit --audit-level=high` would have failed CI**: every
+next 15.x pins postcss 8.4.31 (two HIGH advisories). Scoped override `next>postcss` → 8.5.23, the
+version next 16 ships, documented in `pnpm-workspace.yaml` like the multer one; the app was
+re-verified in the browser on it. (3) TypeScript 6 checks side-effect imports, so `globals.css`
+needs a declaration Next 15 does not provide. (4) Next's generated `next-env.d.ts` points into
+`.next/`, so it is gitignored — committed, it would make `pnpm typecheck` depend on a build. (5) My
+first `cn` taught tailwind-merge our token names; a negative control showed plain tailwind-merge
+already merges them, so the extension was removed and the tests kept as a guard.
+
+*Negative controls* (each broken on purpose, seen to fail, restored byte-for-byte): muted text below
+AA; a role missing from dark; palette not reset; no reduced-motion swap; `aria-current` dropped;
+bottom bar shown on desktop; `/missionsarchive` counted as `/missions`; robots header removed; a
+tight bundle budget (exit 1).
+
+*Not built.* A theme toggle (the device decides); an app icon (the favicon 404s until there is a
+brand mark); every real screen (T-127, T-092, T-056, the core loop). The destinations beyond Home
+are empty states saying what will appear.
+
 
 ---
 
@@ -5627,6 +5679,7 @@ optional.
 **Acceptance criteria**
 - [ ] A missing key in any locale fails the build
 - [ ] No user-facing string literal in feature code (lint rule)
+- [ ] Replaces T-091's interim `apps/app-web/src/i18n/messages.ts` (English, typed keys); the keys it defines carry over, and `<html lang>` follows the reader's locale
 
 **Validation**
 ```bash

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["-u", "NODE_ENV", "pnpm", "--filter", "@investigator/app-web", "start"],
+      "port": 3000
+    }
+  ]
+}
