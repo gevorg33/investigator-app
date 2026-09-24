@@ -23,6 +23,10 @@ const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
  */
 export const EMBEDDING_DIMENSIONS = 1536;
 
+/** The locales a document may be written in — the migration's `knowledge_documents_locale_known`. */
+export const KNOWLEDGE_LOCALES = ['en', 'ru', 'hy'] as const;
+export type KnowledgeLocale = (typeof KNOWLEDGE_LOCALES)[number];
+
 export const knowledgeAudience = pgEnum('knowledge_audience', [
   'customer',
   'investigator',

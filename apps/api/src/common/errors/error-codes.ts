@@ -11,6 +11,8 @@ export const ErrorCode = {
   RATE_LIMITED: 'RATE_LIMITED',
   IDEMPOTENCY_KEY_REUSED: 'IDEMPOTENCY_KEY_REUSED',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
+  /** A dependency — a model provider — is not configured or not answering. Retry later. */
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -25,6 +27,7 @@ export const ERROR_MESSAGE_KEY: Record<ErrorCodeValue, string> = {
   RATE_LIMITED: 'error.common.rate_limited',
   IDEMPOTENCY_KEY_REUSED: 'error.common.idempotency_key_reused',
   INTERNAL_ERROR: 'error.common.internal',
+  SERVICE_UNAVAILABLE: 'error.common.service_unavailable',
 };
 
 export const ERROR_STATUS: Record<ErrorCodeValue, number> = {
@@ -36,4 +39,5 @@ export const ERROR_STATUS: Record<ErrorCodeValue, number> = {
   RATE_LIMITED: 429,
   IDEMPOTENCY_KEY_REUSED: 409,
   INTERNAL_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
 };

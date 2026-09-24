@@ -970,13 +970,13 @@ CI runs the sync twice after Build, and the second run must change nothing. Stag
 ---
 
 ### T-017 — Assistant knowledge answering over RAG
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P1
 - **Depends on:** T-016, T-077
 - **Risk:** HIGH
-- **Human approval required:** Yes — AI retrieval surface
+- **Human approval required:** Yes — AI retrieval surface. **Approved 2026-09-24:** retrieval + answering; audience by role; stateless endpoint
 - **Owner agent:** ai-rag
-- **Affected:** apps/api/src/modules/ai/**
+- **Affected:** apps/api/src/modules/ai/**, apps/api/src/modules/knowledge/**
 
 **Description**
 Answer customer knowledge questions from the knowledge base through permission-aware
@@ -985,21 +985,72 @@ retrieval. Per `.claude/skills/permission-aware-rag/SKILL.md`.
 **Tenancy (ADR-0011).** Retrieval runs as context → permission filter → tenant filter → search. The cross-workspace retrieval test ships with this task (`tenant-isolation`).
 
 **Acceptance criteria**
-- [ ] Hybrid retrieval: pgvector + tsvector fused by RRF, per ADR-0001
-- [ ] Filters on chunk `visibility` in every query (RLS admits every platform row to every context,
+- [x] Hybrid retrieval: pgvector + tsvector fused by RRF, per ADR-0001
+- [x] Filters on chunk `visibility` in every query (RLS admits every platform row to every context,
       by design — T-016), and on `embedding_model` / `embedding_model_version` equal to the
       embedder's own, so a model change never compares vectors across models
-- [ ] Vector search returns IDs only; rows loaded and authorized before reaching the prompt
-- [ ] A customer cannot retrieve staff or operations content by any phrasing
-- [ ] Answers cite their source documents
-- [ ] No retrieval result means "I don't have that", never a reconstructed answer
-- [ ] Retrieved content is delimited and treated as data; injection test passes
-- [ ] Response is in the user's selected locale, with fallback reported
+- [x] Vector search returns IDs only; rows loaded and authorized before reaching the prompt
+- [x] A customer cannot retrieve staff or operations content by any phrasing
+- [x] Answers cite their source documents
+- [x] No retrieval result means "I don't have that", never a reconstructed answer
+- [x] Retrieved content is delimited and treated as data; injection test passes
+- [x] Response is in the user's selected locale, with fallback reported
 
 **Validation**
 ```bash
-pnpm --filter api test ai-knowledge
+pnpm --filter api test knowledge ai/
 ```
+
+
+**DONE — 2026-09-24**
+
+*What exists.* `KnowledgeRetrievalService` (knowledge module) and `POST /api/v1/ai/knowledge/answer`
+(new `ai` module, under the existing `ai/` prefix beside `ai/sessions`). `docs/architecture/knowledge.md`
+has the whole path. Approved scope: retrieval and answering, audience by role, stateless.
+
+*Who reads what.* Public guidance for everyone, and each role's own audience for that role, with the
+active role respected. An agency workspace adds `agency`, which extends "audience by role" to the
+workspace kind. Staff visibility goes to STAFF only, and `participant` to nobody (no real document
+uses it today). Staff do **not** read customer guidance. The staff assistant (T-061) will decide
+whether they should.
+
+*Criteria.* Hybrid retrieval: an IDF-weighted lexical leg, with heading words counted double,
+plus a model-matched vector leg, fused by RRF. Visibility and embedding model are filtered in every
+query. Rows are loaded by id and gated by `mayRead`. The staff exclusion is tested across 7
+phrasings, with and without vectors, and end to end through the prompt. Citations are checked
+against the sources the model was given. No retrieval means no model call. Sources and the question
+are escaped inside their delimiters, and an injected document cannot close its delimiter or lend a
+fake citation. Locale comes from the request, then the user's saved locale, then English, and a
+fallback is reported. Cross-workspace: an agency's own document is served in that agency and in no
+other workspace.
+
+*Found along the way.* (1) The tenant-plumbing guard refused `mayRead(reader, tenantId, row)`; the
+gate now reads the workspace from the execution context. (2) Postgres ranking has no IDF, so "how
+do I" outweighed "refund"; an IDF is computed over the reader's own scope, so hidden documents
+never shape a ranking. (3) On the real knowledge base, "Can I cancel a mission after I have paid?"
+missed "Can I cancel a mission?" because longer sections matched more words; heading words now
+count double. (4) The first locale test could not fail: its question shared no words with the
+English text. A test now asks in English for `ru` and must not get the English version. (5) Removing
+the query's audience or visibility filter went unnoticed, because the gate holds. Two 41-section
+crowding tests now show the scope's real job: without it, hidden sections take every candidate slot.
+
+*Negative controls* (each seen to fail, then restored byte-for-byte): gate always true;
+`participant` readable; active role ignored; vector compared across models; no locale preference;
+no similarity floor; no rarity rule; no heading weight; SQL audience filter removed; SQL visibility
+filter removed; invented citation tolerated; no escaping; model called with no sources. Only
+removing the SQL **tenant** clause survives, by design: RLS enforces the same rule, and the RAG skill
+asks for both.
+
+*Verified.* No OpenAI key, so no real answer yet (ACTIONS #6, which now also asks for
+`OPENAI_CHAT_MODEL` and, before production, a privacy-policy processor entry from counsel). Ran
+retrieval on the real knowledge base in the dev database as the runtime role. Customer, investigator
+and staff questions landed on the right sections, and a customer's verification-review question
+never reached the staff procedure. The request logger records no bodies, so the help article's
+claim that the question is not kept holds. `pnpm lint`, `typecheck`, `build`, knowledge-base
+validator 0/0, and API tests at 100% coverage.
+
+*Filed:* T-135 (error-message catalogs; none of the codes, including the new
+`SERVICE_UNAVAILABLE`, has a translation anywhere yet).
 
 ---
 
@@ -5719,6 +5770,35 @@ row, against the old code. Fixed by ordering and comparing on `date_trunc('milli
 *Guard.* `test/cursor-precision.spec.ts` refuses a timestamp column compared directly with a decoded
 cursor value; seen to fail when the verification comparison is put back. The rule is written into
 `docs/api/pagination.md`.
+---
+
+### T-135 — Error message catalogs in en, ru and hy
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-091
+- **Risk:** LOW
+- **Human approval required:** No — native-speaker review before ru/hy ship, as T-026
+- **Owner agent:** localization
+- **Affected:** apps/app-web (message catalogs), docs/api/errors.md
+
+**Description**
+Found in T-017. `docs/api/errors.md` says every error code ships with its translation key in en, ru
+and hy. The API sends only keys (`error.common.rate_limited`, …), and no catalog exists anywhere to
+turn one into a sentence, so none of the nine codes can be shown to a user in any language,
+including `SERVICE_UNAVAILABLE`, added in T-017. The catalogs belong to the web app, which T-091
+founds.
+
+**Acceptance criteria**
+- [ ] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
+      `messageKey` a validation error can carry
+- [ ] A test fails when an API error key has no entry in every locale
+- [ ] ru and hy reviewed by a native speaker before they are marked current
+
+**Validation**
+```bash
+pnpm test
+```
+
 ---
 
 ## Backlog

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EMBEDDING_INPUT_REVISION, embeddingInput, OpenAiEmbedder } from './embedder';
+import { ProviderError } from '../../common/errors/provider-error';
+import {
+  EMBEDDING_INPUT_REVISION,
+  embedderFromEnv,
+  embeddingInput,
+  OpenAiEmbedder,
+} from './embedder';
 
 const reply = (status: number, body: unknown) =>
   vi.fn(
@@ -63,5 +69,26 @@ describe('the OpenAI embedder (T-016)', () => {
     await expect(
       new OpenAiEmbedder('sk-test', 'm', 3, reply(200, body)).embed(['x']),
     ).rejects.toThrow('embedding response did not match the request');
+  });
+
+  it('fails as a provider failure, so a caller can tell an outage from a bug', async () => {
+    await expect(
+      new OpenAiEmbedder('sk-test', 'm', 3, reply(503, {})).embed(['x']),
+    ).rejects.toBeInstanceOf(ProviderError);
+  });
+
+  it('is configured by a key, with the small model at the table’s width unless another is named', () => {
+    expect(embedderFromEnv({})).toBeNull();
+    expect(embedderFromEnv({ OPENAI_API_KEY: '' })).toBeNull();
+    expect(embedderFromEnv({ OPENAI_API_KEY: 'sk-test' })).toMatchObject({
+      model: 'text-embedding-3-small',
+      version: `${EMBEDDING_INPUT_REVISION}/1536d`,
+    });
+    expect(
+      embedderFromEnv({
+        OPENAI_API_KEY: 'sk-test',
+        OPENAI_EMBEDDING_MODEL: 'text-embedding-3-large',
+      })?.model,
+    ).toBe('text-embedding-3-large');
   });
 });

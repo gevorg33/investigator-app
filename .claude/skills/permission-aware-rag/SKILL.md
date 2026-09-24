@@ -86,6 +86,10 @@ filters on `embedding_model` and `embedding_model_version` equal to the embedder
 chunk still under the old model is treated as not embedded yet: it is found by text, not by
 distance.
 
+The knowledge base's implementation of this whole skill is `KnowledgeRetrievalService` (T-017,
+`docs/architecture/knowledge.md`): reader → scoped legs → RRF → load by id → `mayRead`. It is the
+reference to copy for the next retrievable source.
+
 On the knowledge tables, `visibility` and `locale` are copied onto each chunk from its document by
 a trigger, so a chunk cannot claim a wider audience than its document. **Row-level security does not
 filter by visibility.** Any context can read platform rows, and the retrieval query is what filters
