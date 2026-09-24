@@ -12,6 +12,15 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["-u", "NODE_ENV", "pnpm", "--filter", "@investigator/admin-web", "start"],
       "port": 3002
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/api && NODE_ENV=development PORT=3001 APP_BASE_URL=http://localhost:3000 DATABASE_URL=postgres://investigator_app:investigator_app@localhost:5433/investigator_dev REDIS_URL=redis://localhost:6380 SESSION_SECRET=$(openssl rand -hex 32) exec node dist/main.js"
+      ],
+      "port": 3001
     }
   ]
 }

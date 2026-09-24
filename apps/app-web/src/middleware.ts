@@ -6,6 +6,12 @@ import { LOCALE_COOKIE, LOCALE_COOKIE_OPTIONS } from '@/i18n/cookie';
 export const LANG_PARAM = 'lang';
 
 /**
+ * The path and query the reader asked for, handed to server components (which cannot read the URL)
+ * so the sign-in gate can bring them back to it. Always set here, over anything a client sent.
+ */
+export const PATHNAME_HEADER = 'x-pathname';
+
+/**
  * Carries a language choice across the domain boundary (ADR-0013).
  *
  * The marketing site keeps its locale in the URL (`/ru/pricing`, domain-and-seo) and cannot set
@@ -19,7 +25,11 @@ export const LANG_PARAM = 'lang';
  */
 export function middleware(request: NextRequest): NextResponse {
   const lang = request.nextUrl.searchParams.get(LANG_PARAM);
-  if (lang === null) return NextResponse.next();
+  if (lang === null) {
+    const headers = new Headers(request.headers);
+    headers.set(PATHNAME_HEADER, request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.next({ request: { headers } });
+  }
   const clean = request.nextUrl.clone();
   clean.searchParams.delete(LANG_PARAM);
   const response = NextResponse.redirect(clean, 303);
@@ -28,6 +38,6 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Pages only: never Next's own assets, the favicon or files with an extension.
-  matcher: ['/((?!_next/|favicon.ico|.*\\..*).*)'],
+  // Pages only: never the API, Next's own assets, the favicon or files with an extension.
+  matcher: ['/((?!api/|_next/|favicon.ico|.*\\..*).*)'],
 };

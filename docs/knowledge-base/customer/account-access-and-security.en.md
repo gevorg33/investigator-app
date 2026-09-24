@@ -4,12 +4,14 @@ title: Signing in, verifying your email, resetting your password and managing se
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-13
+updated: 2026-09-25
 source_of_truth: docs
 implementation_status: implemented
 related_code:
+  - apps/api/src/modules/account
+  - apps/app-web
   - apps/api/src/modules/auth
 tags: [account, sign-in, password, email-verification, sessions, security]
 ---
@@ -30,7 +32,9 @@ link cancels the previous one, so only the most recent message works.
 
 ## I never received the verification email. What now?
 
-Ask for a new link from the sign-in screen. A few things to check first:
+Ask for a new link. Right after signing up, the **Check your email** page has a **Nothing
+arrived?** form for it. Once signed in, **Account → Your details** shows whether your address is
+confirmed and offers **Send the confirmation link again**. A few things to check first:
 
 - Look in spam or promotions — verification mail often lands there.
 - Confirm the address you typed. A mistyped address means the message went somewhere else,
@@ -40,10 +44,14 @@ Ask for a new link from the sign-in screen. A few things to check first:
 There is a limit on how often a new link can be requested for the same address, so if you
 ask repeatedly in quick succession, later requests are declined for a while.
 
+Opening the link does not confirm the address by itself: the page asks you to press **Confirm my
+email address**. Email services open links to check them for danger, and a link that confirmed on
+opening would be used up before you ever saw it.
+
 ## How do I reset my password?
 
-Ask for a reset link from the sign-in screen and open it. The link lets you set a new
-password once, and expires after one hour.
+Choose **Forgot your password?** on the sign-in screen, enter your address, and open the link that
+arrives. The link lets you set a new password once, and expires after one hour.
 
 The window is shorter than for verification on purpose: a reset link is effectively a
 temporary key to the account, so it should be usable for as little time as possible.
@@ -70,19 +78,19 @@ You will need to sign in with the new password afterwards.
 
 ## Where can I see the devices that are signed in?
 
-Your account settings list every active session with the approximate location, the browser
-or app, when it started, and when it was last used. The session you are currently using is
-marked.
+Under **Account → Where you are signed in**. Each session shows the browser and operating system
+(for example "Chrome on macOS"), when it was last used, and when it signed in — in your time zone.
+The device you are using now is listed first and marked **This device**.
 
-The list never shows anything that could be used to sign in — only a description of the
-session.
+The list does not show IP addresses or locations: a device and a time are what you need to
+recognise a session. It never shows anything that could be used to sign in.
 
 ## How do I sign out a device I do not recognise?
 
-Select it in that list and revoke it. It stops working immediately rather than at the end
-of some countdown, so a revoked session cannot be used again even seconds later.
+Press **Sign out** next to it. It stops working immediately rather than at the end of some
+countdown, so a revoked session cannot be used again even seconds later.
 
-If you see a session you cannot account for, revoke it and change your password. Changing
+If you see a session you cannot account for, sign it out and change your password. Changing
 the password sweeps every other session as well, which is the surer move if you are unsure
 which entry is the problem.
 
@@ -115,3 +123,41 @@ while. It protects accounts from having passwords guessed at speed.
 
 Waiting clears it. If you cannot recall the password, a reset is faster than continuing to
 guess.
+
+## Where does signing in take me?
+
+Back to the page you were trying to open. If you followed a link into the platform while signed
+out, you are asked to sign in and then taken to that page, not to the start.
+
+When you are already signed in, the sign-in and sign-up pages send you straight on.
+
+## Why does the sign-in screen not say whether my email or my password was wrong?
+
+For the same reason the reset screen answers the same for every address: saying "no such account"
+would tell anyone who typed your address that you have none — and saying "wrong password" would
+tell them you do. Every refusal reads the same.
+
+## Does the platform remember my language on another device?
+
+Yes. The language you choose while signed in is saved to your account, and signing in on another
+device or browser switches to it. The language you sign up in is saved as your first choice.
+
+Before you sign in, the language buttons at the bottom of the sign-in screen change the language
+for that browser only.
+
+## Which time zone are dates and times shown in?
+
+Your account's. It is set from your device when you sign up, and you can change it under
+**Account → Time zone**. If your device is set to a different zone — after travelling, say — the
+page offers to switch to it in one press, or you can choose any zone from the list.
+
+## Why am I asked to accept a document again?
+
+When a new version of a document you accepted comes into force and the change is significant, you
+are asked to read and accept the new version. A notice appears at the top of every screen with a
+**Review** link to **Account → Documents to accept**, where each document can be read in full
+before you accept it.
+
+This does not lock you out. Only the actions a document covers wait for it — adding the
+investigator role, for example, asks you to accept the investigator agreement first. The
+documents themselves are what govern; this article only describes how acceptance works.

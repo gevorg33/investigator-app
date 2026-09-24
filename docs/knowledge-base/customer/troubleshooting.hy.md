@@ -4,12 +4,13 @@ title: Հաճախակի խնդիրների լուծում
 audience: customer
 visibility: authenticated
 locale: hy
-version: 1
+version: 2
 status: draft
 updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/app-web
   - apps/api/src/modules/auth
   - apps/api/src/modules/media
   - apps/api/src/modules/notifications
@@ -21,7 +22,9 @@ tags: [troubleshooting, support, problems, help]
 ## Չեմ ստանում հաստատման նամակը
 
 Նախ ստուգեք «Սպամ» թղթապանակը և համոզվեք, որ ստուգում եք այն հասցեն, որով գրանցվել եք։
-Մուտքի էկրանից խնդրեք նոր հաստատման նամակ․ նախորդ հղման ժամկետը կարող է լրացած լինել։
+Խնդրեք նոր հաստատման նամակ՝ գրանցվելուց անմիջապես հետո «Ստուգեք ձեր էլ. փոստը» էջում կամ,
+մուտք գործելուց հետո, **Հաշիվ → Ձեր տվյալները** բաժնում։ Նախորդ հղման ժամկետը կարող է լրացած
+լինել։
 
 Եթե մի քանի փորձից հետո ոչինչ չի գալիս, հասցեն կարող է արգելափակված լինել ձեր փոստային
 մատակարարի կողմից։ Գրեք աջակցման ծառայությանը այլ հասցեից և նշեք, թե որ հասցեով եք

@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/authz/actor.decorator';
@@ -13,6 +23,11 @@ import { LegalService, type LegalDocumentType, type PublishedDocument } from './
 
 /** The response: the text itself, and what would be recorded if someone accepted it. */
 export interface LegalDocumentResponse {
+  /**
+   * This exact version and locale. What registration, role activation and re-acceptance post back
+   * as `acceptedDocumentIds`, so the record names the text that was shown.
+   */
+  id: string;
   type: LegalDocumentType;
   version: number;
   locale: string;
@@ -53,6 +68,41 @@ export class LegalController {
     // A type that does not exist and one with nothing published are answered alike: 404.
     if (!TYPES.has(type)) throw AppError.notFound();
     return view(await this.legal.currentDocument(type as LegalDocumentType, locale));
+  }
+
+  @Get('required')
+  @ApiOperation({
+    summary: 'What a step requires accepting: registration, or activating a role',
+    description:
+      '`for=registration`, `for=CUSTOMER` or `for=INVESTIGATOR`. The documents currently in force ' +
+      'for that step, in the locale asked for where translated — so a screen can show them before ' +
+      'the person accepts, and post back their ids. A type with nothing published is left out: ' +
+      'there is no text to agree to. The list of types lives here, in the API, and nowhere else.',
+  })
+  async required(
+    @Query('for') step?: string,
+    @Query('locale') locale?: string,
+  ): Promise<LegalDocumentResponse[]> {
+    const types =
+      step === 'registration'
+        ? REQUIRED_AT_REGISTRATION
+        : step === 'CUSTOMER' || step === 'INVESTIGATOR'
+          ? requiredForRole(step)
+          : null;
+    if (types === null) {
+      throw AppError.validation([
+        { field: 'for', code: 'INVALID', messageKey: 'error.common.validation_failed' },
+      ]);
+    }
+    const found = await Promise.all(
+      types.map((type) =>
+        this.legal.currentDocument(type, locale).catch((e: unknown) => {
+          if (e instanceof AppError && e.code === 'NOT_FOUND') return null;
+          throw e;
+        }),
+      ),
+    );
+    return found.filter((d): d is PublishedDocument => d !== null).map(view);
   }
 
   @Get('outstanding')
@@ -105,6 +155,7 @@ export class LegalController {
 }
 
 const view = (d: PublishedDocument): LegalDocumentResponse => ({
+  id: d.id,
   type: d.type,
   version: d.version,
   locale: d.locale,

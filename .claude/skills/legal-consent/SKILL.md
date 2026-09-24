@@ -121,6 +121,12 @@ When a document publishes a new version:
 > request: that would block read access to an active assignment's existing obligations, which
 > this skill forbids. Gating specific later actions on outstanding acceptance belongs with the
 > screens that prompt for it (T-127).
+>
+> **T-127 outcome.** The app shows outstanding documents as a notice on every screen, linking to
+> Account → Documents to accept, where they are read in full and accepted. The one action held
+> back is the one the API already gates: adding a role shows and requires that role's documents
+> in the same form. Nothing else is blocked. Clients never hold their own list of what a step
+> requires — they ask `GET /legal/required?for=registration|CUSTOMER|INVESTIGATOR&locale=…`.
 
 Whether a change is material is a **compliance decision, not an engineering one.** The flag
 is set by the compliance owner on the document; code reads it. Do not infer materiality from

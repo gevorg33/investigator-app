@@ -15,7 +15,6 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { testPool } from '../../../test/db';
 
-
 describe('actor-scoped reads', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -50,7 +49,10 @@ describe('actor-scoped reads', () => {
       refreshTokenHash: issued.refreshTokenHash,
       expiresAt: issued.expiresAt,
     });
-    return { actor: testActor({ userId, sessionId: issued.sessionId }), sessionId: issued.sessionId };
+    return {
+      actor: testActor({ userId, sessionId: issued.sessionId }),
+      sessionId: issued.sessionId,
+    };
   };
 
   it('returns a row to the actor it belongs to', async () => {
@@ -82,7 +84,10 @@ describe('actor-scoped reads', () => {
 
   it('excludes revoked rows from the scope entirely', async () => {
     const { actor, sessionId } = await seed();
-    await db.update(userSessions).set({ revokedAt: new Date() }).where(eq(userSessions.id, sessionId));
+    await db
+      .update(userSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(userSessions.id, sessionId));
     await expect(repo.findOneForActor(actor, sessionId)).resolves.toBeUndefined();
   });
 

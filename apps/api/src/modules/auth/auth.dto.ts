@@ -1,6 +1,7 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsIn,
   IsOptional,
   IsString,
   Length,
@@ -8,6 +9,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { EmailField } from '../../common/validation/email';
+import { IsTimeZone } from '../../common/validation/time-zone';
+import { KNOWLEDGE_LOCALES, type KnowledgeLocale } from '../../database/schema';
 
 /**
  * whitelist + forbidNonWhitelisted are on globally (main.ts), so a client cannot
@@ -38,6 +41,19 @@ export class RegisterDto extends CredentialsDto {
   @IsString({ each: true })
   @Length(36, 36, { each: true })
   acceptedDocumentIds?: string[];
+
+  /**
+   * The language the sign-up screen was shown in (T-127). Saved on the account, so the language
+   * someone registered in is the one they get back at every sign-in. Absent: English.
+   */
+  @IsOptional()
+  @IsIn(KNOWLEDGE_LOCALES)
+  locale?: KnowledgeLocale;
+
+  /** The browser's time zone, for dates shown to this person (T-127). Absent: UTC. */
+  @IsOptional()
+  @IsTimeZone()
+  timezone?: string;
 }
 
 export class EmailOnlyDto {
@@ -63,4 +79,3 @@ export class ResetPasswordDto {
   @MaxLength(200, { message: 'error.validation.password.too_long' })
   password!: string;
 }
-

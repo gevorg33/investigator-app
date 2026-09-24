@@ -5700,7 +5700,7 @@ pnpm --filter app-web test earnings
 ---
 
 ### T-127 — Sign-up, sign-in and account screens (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P0 — every other screen starts here
 - **Depends on:** T-091, T-128, T-022
 - **Risk:** MEDIUM
@@ -5714,11 +5714,43 @@ reset, the session and device list, and role switching between customer and inve
 Google sign-in joins with T-062.
 
 **Acceptance criteria**
-- [ ] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
-- [ ] Every auth error is privacy-preserving, and never reveals whether an email is registered
-- [ ] Session cookie behaviour matches T-025; the flows are tested end to end against the API
-- [ ] The language choice (T-128's `locale` cookie, **Account → Language**) is saved to the account, and a signed-in user's saved language is written to the cookie at sign-in — the API's assistant reads `users.locale`, so the two must agree
-- [ ] The reader's time zone is stored and passed to `formatDateTime`, which requires one (T-128)
+- [x] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
+      — documents come from the new `GET /legal/required?for=registration|CUSTOMER|INVESTIGATOR&locale=`
+      (policy stays single-sourced in `legal.policy.ts`), are read in full in place, and their ids —
+      the exact version and locale shown — are posted back. Checked in the browser: a Russian sign-up
+      shown English documents recorded `locale_shown = en`, context `REGISTRATION`. Outstanding
+      documents are a notice on every screen and a section on the account page; the one action held
+      back is adding a role, which shows and requires that role's documents in the same form
+- [x] Every auth error is privacy-preserving, and never reveals whether an email is registered
+      — one sign-in message for wrong password, unknown address and malformed field; register,
+      resend and reset answer the same for every address; reference ids only on 5xx and network
+      failures
+- [x] Session cookie behaviour matches T-025; the flows are tested end to end against the API
+      — the API alone sets and clears the cookie (browser calls to same-origin `/api/v1`); checked
+      in the browser as HTTP-only, `SameSite=Strict`, host-only. Every flow was run by hand against
+      the real API at 375, 768 and 1280px, and in Vitest against a stand-in API that fails any
+      unexpected request. An automated browser run in CI is **T-139**
+- [x] The language choice (T-128's `locale` cookie, **Account → Language**) is saved to the account, and a signed-in user's saved language is written to the cookie at sign-in — the API's assistant reads `users.locale`, so the two must agree
+      — `chooseLocale` saves via the new `PATCH /me/preferences` (audited); `/session/start` writes
+      the account's language into the cookie; sign-up saves the screen's language. Checked: `hy`
+      saved, restored on a fresh English browser with no cookie
+- [x] The reader's time zone is stored and passed to `formatDateTime`, which requires one (T-128)
+      — `users.timezone`, set from the device at sign-up, editable on the account page (IANA names
+      only; offsets refused); session times are formatted in it
+
+**Evidence**
+- app-web: 22 spec files, 184 tests, 100% statements/branches/functions/lines;
+  `pnpm --filter app-web test auth` 38 tests. API: 2179 tests, 100%. Mutation check: removing the
+  double-submit guard fails its test
+- `pnpm lint`, `pnpm typecheck`, `pnpm build` (with `NODE_ENV` unset, as CI), bundle budget (largest
+  route `/account` 137.7 kB of 250), no public source maps, `pnpm audit --audit-level=high` clean,
+  knowledge-base validator 0 errors / 0 warnings
+- Docs: `docs/architecture/app-web.md` (accounts section), component inventory, `legal-consent`
+  skill note, KB `account-access-and-security`, `getting-started`, `troubleshooting` in en/ru/hy
+- Found and filed: **T-138** (API has no `trust proxy`: per-IP limits and audit IPs are the
+  proxy's), **T-139** (browser flows in CI); T-135 progress noted. Fixed in passing: legal document
+  responses carried no `id`, so no client could accept a published document (regression test seen
+  failing first)
 
 **Validation**
 ```bash
@@ -6033,6 +6065,11 @@ turn one into a sentence, so none of the nine codes can be shown to a user in an
 including `SERVICE_UNAVAILABLE`, added in T-017. The catalogs belong to the web app, which T-091
 founds.
 
+**Progress (T-127):** `packages/i18n` now has en, ru and hy entries for all nine
+`ERROR_MESSAGE_KEY` keys and for the validation keys the auth and account forms meet (email,
+password, time zone, each legal document); app-web renders them by key. Still open: every other
+validation `messageKey`, the assistant codes, and the test below.
+
 **Acceptance criteria**
 - [ ] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
       `messageKey` a validation error can carry
@@ -6098,6 +6135,71 @@ the newest version that has been out long enough, per CLAUDE.md, and note it in 
 **Validation**
 ```bash
 npx -y @playwright/mcp@<version> --help
+```
+
+---
+
+### T-138 — The API behind Caddy sees the proxy's address, not the client's
+- **Status:** TODO
+- **Priority:** P1 — per-IP rate limits and audit IPs are wrong in every deployed environment
+- **Depends on:** —
+- **Risk:** MEDIUM — changes which address rate limits and audit rows record
+- **Human approval required:** Yes — it touches a security control (rate limiting)
+- **Owner agent:** infra-devops + backend-domain
+- **Affected:** apps/api/src/bootstrap.ts, infrastructure/caddy/Caddyfile, apps/app-web/src/lib/api/server.ts
+
+**Description**
+Found in T-127. The API never sets Express's `trust proxy`, so behind Caddy `req.ip` is Caddy's
+container address for every request. `request-context.ts` passes it to the auth rate limits
+(`loginPerIp`: 20 per five minutes) — one limit shared by every user of the platform, so a handful
+of failed sign-ins anywhere locks out everyone — and to every audit row and consent record that
+stores an IP. Caddy already sends `X-Real-IP` and `X-Forwarded-For`; nothing reads them.
+
+A second hop arrives with T-127: app-web's server components call the API directly
+(`serverApi`), so those requests carry app-web's address. They are reads today, but the client's
+address should travel with them once the API trusts the proxy.
+
+**Acceptance criteria**
+- [ ] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
+      internal calls) — never `true`, which would let any client choose its own address
+- [ ] A spoofed `X-Forwarded-For` from a client is not believed
+- [ ] Per-IP rate limits key on the client's address; audit and consent rows record it
+- [ ] `docs/operations` says which headers each hop sets and trusts
+
+**Validation**
+```bash
+pnpm --filter api test request-context
+```
+
+---
+
+### T-139 — Browser flows for sign-up, sign-in and the account page in CI
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-127
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend + infra-devops
+- **Affected:** apps/app-web/e2e/**, .github/workflows/**
+
+**Description**
+Found in T-127. Its flows are tested in Vitest against a stand-in for the API, and were checked by
+hand in a browser against the real API at 375, 768 and 1280px — but no automated run drives a
+browser through the real stack, so a change to a cookie attribute, the dev rewrite or
+`/session/start` would pass CI. T-098 plans `apps/app-web/e2e/`; this starts it with the flows
+every other screen depends on: sign up (with a published document), confirm the address from the
+emailed link, sign in and land on the page asked for, the saved language restored on a fresh
+browser, time zone saved, a role added, another session ended, sign out, reset a password.
+
+**Acceptance criteria**
+- [ ] The flows above run in CI against the API and a migrated database, at 375 and 1280px
+- [ ] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
+      the browser, not the API's unit tests
+- [ ] Accessibility checks pass on each signed-out screen and the account page
+
+**Validation**
+```bash
+pnpm --filter app-web test:e2e
 ```
 
 ---

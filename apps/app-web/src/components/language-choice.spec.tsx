@@ -5,14 +5,14 @@ import { LanguageChoice } from './language-choice';
 
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 const action = vi.hoisted(() => vi.fn());
-vi.mock('@/app/(workspace)/account/actions', () => ({ chooseLocale: action }));
+vi.mock('@/i18n/actions', () => ({ chooseLocale: action }));
 
 describe('choosing a language', () => {
   beforeEach(() => request.reset());
 
   it('offers every language by its own name, marks the one in use, and needs no JavaScript', async () => {
     request.cookies.set('locale', 'ru');
-    render(await LanguageChoice());
+    render(await LanguageChoice({}));
     const section = screen.getByRole('region', { name: 'Язык' });
     const buttons = within(section).getAllByRole('button');
     expect(
@@ -36,8 +36,21 @@ describe('choosing a language', () => {
 
   it('follows the browser until the reader chooses', async () => {
     request.acceptLanguage = 'hy';
-    render(await LanguageChoice());
+    render(await LanguageChoice({}));
     expect(screen.getByRole('button', { name: 'Հայերեն', pressed: true })).toBeInTheDocument();
     expect(screen.getByText(/Քանի դեռ չեք ընտրել/)).toBeInTheDocument();
+  });
+
+  it('fits the signed-out screens without its card: a labelled group of the same buttons', async () => {
+    request.cookies.set('locale', 'hy');
+    render(await LanguageChoice({ compact: true }));
+    const nav = screen.getByRole('navigation', { name: 'Լեզու' });
+    expect(
+      within(nav)
+        .getAllByRole('button')
+        .map((b) => b.getAttribute('value')),
+    ).toEqual(['en', 'ru', 'hy']);
+    expect(screen.queryByRole('region')).toBeNull();
+    expect(screen.queryByRole('heading')).toBeNull();
   });
 });

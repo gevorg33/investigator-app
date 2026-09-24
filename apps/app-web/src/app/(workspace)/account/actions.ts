@@ -1,17 +1,20 @@
 'use server';
 
-import { isLocale } from '@investigator/i18n';
 import { cookies } from 'next/headers';
-import { LOCALE_COOKIE, LOCALE_COOKIE_OPTIONS } from '@/i18n/cookie';
+import { ACTIVE_ROLE_COOKIE } from '@/lib/session-cookies';
 
 /**
- * Records the reader's language choice. Anything that is not a launch locale changes nothing —
- * the value comes from a form, and a form can be edited.
- *
- * Setting it re-renders the page in the new language. T-127 also saves the choice to the account.
+ * Which role the platform is shown as, for someone who holds both (T-127). `CUSTOMER` or
+ * `INVESTIGATOR` narrows; anything else — "both" — clears the choice. The cookie lasts the browser
+ * session: the API treats the role as per-request narrowing, never a stored preference, and it can
+ * only ever narrow (ActorGuard intersects it with the roles held).
  */
-export async function chooseLocale(form: FormData): Promise<void> {
-  const locale = form.get('locale');
-  if (!isLocale(locale)) return;
-  (await cookies()).set(LOCALE_COOKIE, locale, LOCALE_COOKIE_OPTIONS);
+export async function chooseActiveRole(form: FormData): Promise<void> {
+  const role = form.get('role');
+  const jar = await cookies();
+  if (role === 'CUSTOMER' || role === 'INVESTIGATOR') {
+    jar.set(ACTIVE_ROLE_COOKIE, role, { path: '/', sameSite: 'lax', secure: true, httpOnly: true });
+  } else {
+    jar.delete(ACTIVE_ROLE_COOKIE);
+  }
 }

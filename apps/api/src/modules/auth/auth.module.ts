@@ -3,11 +3,7 @@ import { LegalModule } from '../legal/legal.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
-import {
-  MemoryRateLimitStore,
-  RATE_LIMIT_STORE,
-  RateLimitService,
-} from './rate-limit.service';
+import { MemoryRateLimitStore, RATE_LIMIT_STORE, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { UserTokenService } from './user-token.service';

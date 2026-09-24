@@ -4,12 +4,13 @@ title: Решение частых проблем
 audience: customer
 visibility: authenticated
 locale: ru
-version: 1
+version: 2
 status: draft
 updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/app-web
   - apps/api/src/modules/auth
   - apps/api/src/modules/media
   - apps/api/src/modules/notifications
@@ -21,7 +22,8 @@ tags: [troubleshooting, support, problems, help]
 ## Мне не приходит письмо с подтверждением
 
 Сначала проверьте папку «Спам» и убедитесь, что проверяете тот адрес, с которым
-регистрировались. Запросите новое письмо с подтверждением на экране входа — предыдущая ссылка
+регистрировались. Запросите новое письмо с подтверждением — на странице «Проверьте почту» сразу
+после регистрации или, войдя в аккаунт, в разделе **Аккаунт → Ваши данные**. Предыдущая ссылка
 могла истечь.
 
 Если после нескольких попыток ничего не приходит, адрес может блокировать ваш почтовый

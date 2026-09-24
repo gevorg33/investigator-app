@@ -4,12 +4,13 @@ title: Troubleshooting common problems
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/app-web
   - apps/api/src/modules/auth
   - apps/api/src/modules/media
   - apps/api/src/modules/notifications
@@ -21,8 +22,9 @@ tags: [troubleshooting, support, problems, help]
 ## I am not receiving the verification email
 
 Check your spam folder first, and confirm the address you registered is the one you are
-checking. Request a new verification email from the sign-in screen — the previous link may
-have expired.
+checking. Request a new verification email — from the **Check your email** page right after
+signing up, or once signed in under **Account → Your details**. The previous link may have
+expired.
 
 If nothing arrives after several attempts, the address may be blocked by your provider.
 Contact support from a different address and tell them which address you registered.
