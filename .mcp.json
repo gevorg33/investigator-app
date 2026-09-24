@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "shadcn": {
-      "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
+      "command": "sh",
+      "args": ["-c", "cd apps/app-web && exec npx -y shadcn@4.21.0 mcp"]
     },
     "playwright": {
       "command": "npx",

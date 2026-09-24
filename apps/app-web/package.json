@@ -12,7 +12,7 @@
     "typecheck:specs": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "budget": "node scripts/check-bundle-budget.mjs"
+    "budget": "node ../../scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
     "@investigator/ui-tokens": "workspace:*",
