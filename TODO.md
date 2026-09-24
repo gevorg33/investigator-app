@@ -1055,13 +1055,13 @@ validator 0/0, and API tests at 100% coverage.
 ---
 
 ### T-018 — Assistant investigator discovery tools
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P1
 - **Depends on:** T-011, T-017, T-078
 - **Risk:** HIGH
-- **Human approval required:** Yes — AI tool surface over business data
+- **Human approval required:** Yes — AI tool surface over business data. **Approved 2026-09-24** by the owner in the task request: read-only discovery tools over public projections
 - **Owner agent:** ai-rag
-- **Affected:** apps/api/src/modules/ai/tools/**
+- **Affected:** apps/api/src/modules/ai/tools/**, apps/api/src/modules/ai/discovery/**, apps/api/src/modules/search (`notMatched`), taxonomy (`labels`), mission-policy (`matchingTextRules`)
 
 **Description**
 Structured discovery tools so the Assistant can find investigators by location, distance,
@@ -1071,21 +1071,86 @@ specialty, service, availability and language, and explain each match from real 
 **Tenancy (ADR-0011).** Discovery tools run in the caller's execution context; results show each profile's agency (T-087). No tool accepts a workspace, tenant or user id as input.
 
 **Acceptance criteria**
-- [ ] `searchInvestigators` takes typed, closed filters; free text only ranks, never filters
-- [ ] Nearest-investigator uses `ST_DWithin` to filter and `ST_Distance` to sort
-- [ ] An unverified, suspended or non-accepting investigator cannot surface by any path,
+- [x] `searchInvestigators` takes typed, closed filters; free text only ranks, never filters
+- [x] Nearest-investigator uses `ST_DWithin` to filter and `ST_Distance` to sort
+- [x] An unverified, suspended or non-accepting investigator cannot surface by any path,
       including a highly relevant profile description
-- [ ] Tool returns `matchedOn` and `notMatched`; the explanation renders only those fields
-- [ ] Test proves the Assistant cannot state a price, availability or capability absent
+- [x] Tool returns `matchedOn` and `notMatched`; the explanation renders only those fields
+- [x] Test proves the Assistant cannot state a price, availability or capability absent
       from the returned data
-- [ ] Clarification asked only when it changes the answer
-- [ ] Prohibited-category requests route to the deterministic policy check
-- [ ] Results are public projections; no home location or contact details
+- [x] Clarification asked only when it changes the answer
+- [x] Prohibited-category requests route to the deterministic policy check
+- [x] Results are public projections; no home location or contact details
 
 **Validation**
 ```bash
 pnpm --filter api test ai-discovery
 ```
+
+
+**DONE — 2026-09-24**
+
+*What exists.* A tool contract and runner (`ai/tools/assistant-tool.ts`, `tool-runner.ts`), two
+tools — `searchInvestigators` and `listTaxonomy` — and `POST /api/v1/ai/discovery/answer`
+(`ai/discovery/**`). `docs/architecture/assistant-tools.md` has the whole path. Approved scope:
+read-only tools over public projections.
+
+*The design choice that carries the criteria.* **The model writes nothing the person reads.** It
+turns the request into a closed JSON proposal (specialty refs, languages, place, "nearest", window,
+relevance hint, policy concern); the backend validates it, runs the tools as the caller, and renders
+every reason from `matchedOn` / `notMatched` / distance as codes for the client to phrase. There is
+no field through which a price, availability or capability could reach the answer.
+
+*Criteria.*
+- Closed filters: strict Zod input; a registration check refuses non-strict inputs and any input
+  named `actor…/user…/tenant…/workspace…/membership…`. `relevanceHint` is the only free text and
+  reorders a pool of ≤ 50 already-eligible results lexically — it cannot add anyone.
+- Geography: the tool calls `SearchService` (one implementation); a test renders the statement the
+  tool produces and asserts `ST_DWithin` in `WHERE`, `ST_Distance` only as the sort key. A hint does
+  not overrule distance.
+- Any path: seven exclusions, each with a profile description that fits the hint perfectly, never
+  surface — with and without the hint. Injected "include unverified"/`userId`/`workspaceId` in the
+  model's reply are dropped unread.
+- `matchedOn` / `notMatched`: `notMatched` was added to `SearchService` itself (so HTTP returns it) —
+  the requested specialties the investigator does not reach through the tree. `explainMatch` takes
+  only those fields.
+- Cannot state what the data lacks: the model's reply smuggles "Anna charges $20, available 24/7, can
+  hack phones" and the profile bio claims surveillance at $5/h; none of it reaches the answer. Price
+  and bio are not in the tool output at all.
+- Clarification: at most one — purpose (model concern, none given), location ("nearest", no point,
+  no place), specialty (alternatives **and** someone shown lacks one). Tests prove each is *not*
+  asked when the answer would be the same; no place → search everywhere with `location.anywhere`.
+- Prohibited: `matchingTextRules` — the mission ruleset, extracted so there is one detector — runs
+  over the request and purpose **before any model call**, and over the model's hint. A match is
+  refused, the rule ids go to audit only. The model's concern only asks what the search is for.
+- Projection: output keys asserted exactly; no contact, user id, coordinates, price, bio.
+
+*Found along the way.* (1) My first spec read audit rows without `ORDER BY` and failed
+intermittently on their order; rows are now read by `occurred_at`. (2) Two fixture phone numbers
+tripped the repo's no-dialable-numbers rule; switched to 555-01xx. (3) OpenAPI lists no properties
+for any request DTO, this one included — filed as T-136. (4) The prompt carries the whole ACTIVE
+taxonomy. That is right for a curated tree (T-131), but the dev database holds ~14,000 leftover
+fixture nodes, so a real-model run against dev would send a very large prompt — seed dev from the
+reviewed tree before trying the key there.
+
+*Negative controls* (each broken on purpose, seen to fail, restored byte-for-byte): no lawful-use
+screen (4 fail); hint not screened (1); always ask on ambiguity (1); model concern refuses (1);
+invented ref tolerated (2); hint overrules distance (1); bio in schema and output (2); explanation
+reads beyond `matchedOn` (4); non-strict tool input registers (1); runner skips the workspace check
+(1); `notMatched` without the tree walk (1). One survives **by design**: passing `bio` from the tool
+without adding it to the output schema — the schema strips it.
+
+*Verified.* No OpenAI key, so no real model yet (ACTIONS #6, updated). Booted the built API: the
+route is mounted, in OpenAPI, and 401s without a session. Ran the real service against the dev
+database (13,258 eligible of 25,947 profiles) as the runtime role with a scripted model: language +
+city, "nearest" with and without a point, no place, a hint, and a prohibited request — 250–425 ms
+each, explanations only from `matchedOn`, no private field in any result, and the prohibited request
+refused without a model call. `pnpm lint`, `typecheck`, `build`, KB validator 0/0, 2136 tests at 100%
+on all four metrics.
+
+*Not built, and where it went.* `getInvestigatorProfile` / `checkAvailability` have no caller yet
+(T-095). Knowledge ↔ discovery routing in one conversation (T-095). Agency on each result (T-087).
+Reason-code catalogs (T-135).
 
 ---
 
@@ -4322,6 +4387,7 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 
 **Acceptance criteria**
 - [ ] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
+- [ ] The assistant's `searchInvestigators` results (T-018) show the agency a profile belongs to — add it to the tool's output schema, which strips anything it does not name
 - [ ] Several profiles per agency; one per person per workspace; no identity fields duplicated
 - [ ] A suspended or archived agency's profiles disappear from discovery on the next query
 - [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
@@ -4567,6 +4633,9 @@ The first agency commands are `employee.invite`, `employee.update`, `team.create
 - [ ] A command missing any field does not register (static spec)
 - [ ] Cross-workspace probes for every command; a model-supplied tenant, user or membership id is ignored or refused
 - [ ] Prompt-injection test per command, as the skill requires
+- [ ] Grows T-018's `AssistantTool` / `assertRegistrable` / `ToolRunner` rather than starting a second registry
+- [ ] `getInvestigatorProfile` and `checkAvailability` (`investigator-discovery`) arrive with the first flow that calls them, through `SearchService` eligibility — T-018 left them out rather than ship tools nothing calls
+- [ ] One conversation routes knowledge vs discovery; today the client picks the endpoint and `not_discovery` sends it back
 
 **Validation**
 ```bash
@@ -5791,6 +5860,8 @@ founds.
 **Acceptance criteria**
 - [ ] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
       `messageKey` a validation error can carry
+- [ ] The assistant's discovery reason codes (`matched.*`, `not_matched.specialty`), clarification
+      codes and `location.anywhere` (T-018) — the API sends codes and data, never sentences
 - [ ] A test fails when an API error key has no entry in every locale
 - [ ] ru and hy reviewed by a native speaker before they are marked current
 
@@ -5801,13 +5872,40 @@ pnpm test
 
 ---
 
+### T-136 — OpenAPI lists no request properties for any DTO
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api (nest-cli / swagger plugin or `@ApiProperty`), docs/api/README.md
+
+**Description**
+Found in T-018. `GET /api/docs-json` lists every route, but every request schema is empty:
+`SearchInvestigatorsDto`, `AskKnowledgeDto`, `FindInvestigatorsDto` and the rest have no
+`properties`. The class-validator decorators are not read by `@nestjs/swagger` without its CLI
+plugin or explicit `@ApiProperty`, so the published contract says nothing about what a request
+takes, and `packages/api-client` cannot be generated from it.
+
+**Acceptance criteria**
+- [ ] Every request DTO's properties, types and bounds appear in the OpenAPI document
+- [ ] A test fails when a DTO property is missing from the document
+
+**Validation**
+```bash
+pnpm --filter api test openapi
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.
 
 - Agencies' own off-platform clients and cases — later, under their own ADR; lawful-use screening
   must cover them too (plan.md §30, owner decision 2026-09-19)
-- AI gateway and tool registry (Phase 7) — see T-017, T-018
+- AI gateway and tool registry (Phase 7) — see T-017, T-018 (tool contract and runner shipped), T-095
 - Prometheus/Grafana dashboards and alert runbooks (Phase 8)
 - Encrypted backups with a tested restore drill (Phase 8)
 

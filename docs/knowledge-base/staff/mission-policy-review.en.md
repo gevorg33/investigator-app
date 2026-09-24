@@ -4,13 +4,14 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 3
+version: 4
 status: current
 updated: 2026-09-24
 source_of_truth: docs
 implementation_status: partial
 related_code:
   - apps/api/src/modules/mission-policy
+  - apps/api/src/modules/ai/discovery
   - apps/api/src/modules/missions
 tags: [staff, policy, missions, review, lawful-use]
 ---
@@ -146,6 +147,18 @@ No. It flags and it can summarise, and its classification is visible to you as i
 
 The decision is yours and is recorded as yours. Do not record the assistant's assessment as
 the reason for your decision.
+
+## Do the same rules screen anything besides missions?
+
+Yes. When a customer asks the assistant to find investigators, the request — and any purpose they
+give — is checked by the same ruleset before anything is searched. A match is not searched; the
+customer is pointed to the lawful use policy and is not told which rule matched.
+
+Each refusal is recorded in the audit log as `assistant.discovery_answered` with the ids of the
+rules that matched and the ruleset version, never the request text. Where the assistant's own
+reading raised a concern, the row says `policy_concern`: that concern only ever led to asking the
+customer what the search was for. Nothing here reaches your queue — a refused search creates no
+mission — but a pattern of refusals on one account is worth a look.
 
 ## Can a customer appeal?
 

@@ -1,5 +1,10 @@
 import { missionScreeningOutcome, riskBand, subjectRelationship } from '../../database/schema';
-import { RULESET_VERSION, STRUCTURED_FLAGS, TEXT_RULES } from './mission-policy.rules';
+import {
+  RULESET_VERSION,
+  STRUCTURED_FLAGS,
+  TEXT_RULES,
+  type TextRule,
+} from './mission-policy.rules';
 
 export type RiskBandValue = (typeof riskBand.enumValues)[number];
 export type SubjectRelationshipValue = (typeof subjectRelationship.enumValues)[number];
@@ -67,6 +72,17 @@ export function normaliseForScreening(text: string): string {
   );
 }
 
+/**
+ * The prohibited-request rules this text trips, normalised first. One detector for every surface
+ * that screens text: a mission when it is submitted, and a request to the assistant to find an
+ * investigator (T-018). Two copies of the phrase list would drift, and the one nobody updated is
+ * the one a request would slip through.
+ */
+export function matchingTextRules(text: string): TextRule[] {
+  const normalised = normaliseForScreening(text);
+  return TEXT_RULES.filter((rule) => rule.patterns.some((p) => p.test(normalised)));
+}
+
 const higher = (a: RiskBandValue, b: RiskBandValue): RiskBandValue =>
   RISK_BANDS.indexOf(b) > RISK_BANDS.indexOf(a) ? b : a;
 
@@ -92,14 +108,10 @@ export function screenMission(input: ScreeningInput): ScreeningResult {
   }
   if (input.protectiveOrderDeclared === true) raise(STRUCTURED_FLAGS.protectiveOrderDeclared);
 
-  const text = normaliseForScreening(
-    [input.title, input.description, input.purpose, input.locationLabel]
-      .filter((s) => s !== null)
-      .join('\n'),
-  );
-  for (const rule of TEXT_RULES) {
-    if (rule.patterns.some((p) => p.test(text))) raise(rule);
-  }
+  const text = [input.title, input.description, input.purpose, input.locationLabel]
+    .filter((s) => s !== null)
+    .join('\n');
+  for (const rule of matchingTextRules(text)) raise(rule);
 
   const outcome: ScreeningOutcome =
     flags.length > 0 || RISK_BANDS.indexOf(band) >= RISK_BANDS.indexOf('HIGH')

@@ -37,11 +37,25 @@ export interface MatchedOn {
   availability: boolean;
 }
 
+/**
+ * What was asked for and this investigator does not cover, as data (T-018).
+ *
+ * Only the taxonomy can have a gap. Its nodes are alternatives — any one of them admits an
+ * investigator — so a search for due diligence and surveillance returns someone who offers only
+ * the first, and saying "does not offer surveillance" is more honest than silence about it. Every
+ * other filter must be met in full, or the investigator would not be in the result at all.
+ */
+export interface NotMatched {
+  /** Requested nodes that none of this investigator's declared specialties reach, either way. */
+  taxonomyNodeIds: string[];
+}
+
 export interface InvestigatorSearchResult extends PublicInvestigatorProfile {
   /** Rounded up to whole kilometres, and null when the search had no location. Never geometry. */
   distanceKm: number | null;
   verificationStatus: 'VERIFIED';
   matchedOn: MatchedOn;
+  notMatched: NotMatched;
 }
 
 export interface SearchPage {
@@ -100,7 +114,8 @@ export class SearchService {
     const filters = filterFingerprintInput(dto);
     const cursor = dto.cursor === undefined ? null : decodeCursor(filters, dto.cursor);
 
-    const closure = await this.taxonomyClosure(dto.taxonomyNodeIds);
+    const reach = await this.taxonomyClosure(dto.taxonomyNodeIds);
+    const closure = [...new Set([...reach.values()].flat())];
     // An empty closure from a non-empty request means every node asked for is unknown: nothing
     // can match, and saying so costs one round trip instead of a pointless scan.
     if (
@@ -119,7 +134,7 @@ export class SearchService {
     const page = rows.slice(0, limit);
     if (page.length === 0) return { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };
 
-    const items = await this.project(page, dto, closure);
+    const items = await this.project(page, dto, reach);
     const last = page[page.length - 1]!;
     return {
       items,
@@ -133,42 +148,50 @@ export class SearchService {
   }
 
   /**
-   * Requested taxonomy nodes, plus their descendants and their ancestors.
+   * Each requested taxonomy node, with its descendants and its ancestors.
    *
    * Both directions, because ADR-0007 says matching walks the tree from either side: a
    * customer asking about `corporate` reaches an investigator who declared
    * `corporate/due-diligence`, and one asking about `corporate/due-diligence` reaches an
    * investigator who declared `corporate`.
+   *
+   * Kept per requested node rather than merged, so a result can say which of several requested
+   * specialties it does not cover (`notMatched`). A node that does not exist has no entry.
    */
-  private async taxonomyClosure(nodeIds: string[] | undefined): Promise<string[]> {
-    if (nodeIds === undefined || nodeIds.length === 0) return [];
+  private async taxonomyClosure(nodeIds: string[] | undefined): Promise<Map<string, string[]>> {
+    const reach = new Map<string, string[]>();
+    if (nodeIds === undefined || nodeIds.length === 0) return reach;
     const ids = sql.join(
       [...new Set(nodeIds)].map((id) => sql`${id}::uuid`),
       sql`, `,
     );
     const rows = (await this.db.execute(sql`
       WITH RECURSIVE requested AS (
-        SELECT id, parent_id FROM taxonomy_nodes WHERE id IN (${ids})
+        SELECT id AS root, id, parent_id FROM taxonomy_nodes WHERE id IN (${ids})
       ),
       down AS (
-        SELECT id, parent_id FROM requested
+        SELECT root, id, parent_id FROM requested
         UNION
-        SELECT t.id, t.parent_id FROM taxonomy_nodes t JOIN down d ON t.parent_id = d.id
+        SELECT d.root, t.id, t.parent_id FROM taxonomy_nodes t JOIN down d ON t.parent_id = d.id
       ),
       up AS (
-        SELECT id, parent_id FROM requested
+        SELECT root, id, parent_id FROM requested
         UNION
-        SELECT t.id, t.parent_id FROM taxonomy_nodes t JOIN up a ON a.parent_id = t.id
+        SELECT a.root, t.id, t.parent_id FROM taxonomy_nodes t JOIN up a ON a.parent_id = t.id
       )
-      SELECT id FROM down UNION SELECT id FROM up`)) as unknown as Array<{ id: string }>;
-    return rows.map((r) => r.id);
+      SELECT root, id FROM down UNION SELECT root, id FROM up`)) as unknown as Array<{
+      root: string;
+      id: string;
+    }>;
+    for (const r of rows) reach.set(r.root, [...(reach.get(r.root) ?? []), r.id]);
+    return reach;
   }
 
   /** Public fields only, in the order the query returned them, with the reasons it matched. */
   private async project(
     page: Array<{ profileId: string; distanceM: number | null }>,
     dto: SearchInvestigatorsDto,
-    closure: string[],
+    reach: Map<string, string[]>,
   ): Promise<InvestigatorSearchResult[]> {
     const ids = page.map((r) => r.profileId);
     const [profiles, languages, availability, specialties] = await Promise.all([
@@ -193,7 +216,7 @@ export class SearchService {
 
     const byId = new Map(profiles.map((p) => [p.profile.id, p]));
     const requestedLanguages = new Set(dto.languages ?? []);
-    const closureSet = new Set(closure);
+    const closureSet = new Set([...reach.values()].flat());
 
     return page.flatMap((row) => {
       const found = byId.get(row.profileId);
@@ -229,6 +252,11 @@ export class SearchService {
               .filter((code) => requestedLanguages.has(code)),
             place,
             availability: dto.availableDuring !== undefined,
+          },
+          notMatched: {
+            taxonomyNodeIds: [...reach]
+              .filter(([, nodes]) => !nodes.some((id) => rel.specialtyNodeIds.includes(id)))
+              .map(([requested]) => requested),
           },
         },
       ];

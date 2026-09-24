@@ -4,13 +4,14 @@ title: What cannot be requested on this platform
 audience: public
 visibility: public
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-24
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/mission-policy
+  - apps/api/src/modules/ai/discovery
 tags: [policy, lawful-use, prohibited, safety]
 ---
 
@@ -161,3 +162,9 @@ decision.
 
 Policy decisions are made by deterministic checks and, where needed, by trained staff. The
 outcome is recorded with its reason.
+
+When you ask the assistant to find investigators, your request is checked by the same fixed rules
+that check missions, before anything is searched. A request that matches them is not searched, and
+you are pointed to this page. If the assistant's own reading suggests a request could be for
+something prohibited, it can only ask what the search is for — it does not refuse on its own
+judgement, and your answer is checked by the same rules.

@@ -195,10 +195,14 @@ larger than expected.
 **Also choose the chat model: `OPENAI_CHAT_MODEL` (T-017).** This one has no default on purpose.
 The model you pick answers users' questions about the platform, which is a trade-off between cost
 and quality, and it should be your call rather than something an unset variable decides. Until it
-is set, `POST /api/v1/ai/knowledge/answer` answers 503.
+is set, `POST /api/v1/ai/knowledge/answer` answers 503 — and so does
+`POST /api/v1/ai/discovery/answer` (T-018), which uses the same model to turn a request to find
+investigators into search filters.
 
 **Before you set a key in production:** the assistant sends each question, together with the
-guidance it retrieved, to this provider. The privacy policy must name the provider as a processor
+guidance it retrieved, to this provider. A request to find investigators is sent too, with any
+purpose the customer states and the list of taxonomy categories — never their location, and never
+any investigator's profile. The privacy policy must name the provider as a processor
 before that happens. That is a counsel item (#0, #20), and the help article on the assistant already
 defers to the privacy policy on this point.
 

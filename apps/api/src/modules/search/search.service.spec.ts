@@ -414,6 +414,26 @@ describe('investigator discovery', () => {
       expect(matched?.availability).toBe(true);
     });
 
+    it('names each requested specialty an investigator does not reach, and only those (T-018)', async () => {
+      // Specialties are alternatives, so someone offering one of two appears — with the other
+      // stated as a gap rather than left out.
+      const parent = await node(ownerDb);
+      const child = await node(ownerDb, { parentId: parent });
+      const surveillance = await node(ownerDb);
+      const unknown = randomUUID();
+      const centre = somewhere();
+      const found = await mine({ centre, specialtyNodeIds: [child] });
+
+      const page = await near(centre, { taxonomyNodeIds: [parent, surveillance, unknown] });
+      expect(page.items[0]?.id).toBe(found.profileId);
+      // The parent is reached through the child they declared; a node that does not exist is
+      // not a specialty anyone lacks.
+      expect(page.items[0]?.notMatched).toEqual({ taxonomyNodeIds: [surveillance] });
+
+      const unasked = await near(centre);
+      expect(unasked.items[0]?.notMatched).toEqual({ taxonomyNodeIds: [] });
+    });
+
     it('claims no match for a filter nobody applied', async () => {
       // No place filter at all here, so `place` can be null — which means the tag cannot isolate
       // this one. The result is found by id rather than by position instead.

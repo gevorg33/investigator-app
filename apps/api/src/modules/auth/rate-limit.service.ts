@@ -55,7 +55,18 @@ export class RateLimitService {
   constructor(@Inject(RATE_LIMIT_STORE) private readonly store: RateLimitStore) {}
 
   async consume(scope: keyof typeof LIMITS, identifier: string): Promise<void> {
-    const { max, windowSeconds } = LIMITS[scope];
+    await this.consumeWithin(scope, identifier, LIMITS[scope]);
+  }
+
+  /**
+   * A limit declared somewhere other than `LIMITS` — by an assistant tool, whose declaration
+   * carries its own (`ai-tool-registry`). Same store, same keys, same refusal.
+   */
+  async consumeWithin(
+    scope: string,
+    identifier: string,
+    { max, windowSeconds }: { max: number; windowSeconds: number },
+  ): Promise<void> {
     // The account dimension is keyed by a hash, so the limiter never stores an
     // address in a key that ends up in logs or metrics.
     const n = await this.store.incr(`rl:${scope}:${identifier}`, windowSeconds);
