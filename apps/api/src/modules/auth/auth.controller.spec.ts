@@ -80,6 +80,39 @@ describe('auth controller', () => {
         expect.objectContaining({ correlationId: 'correlation-abc' }),
         // What the caller is accepting travels with the registration (T-022).
         [],
+        { locale: undefined, timezone: undefined },
+      );
+    });
+
+    it('carries the language and time zone the sign-up screen was shown in (T-127)', async () => {
+      const res = await post('register').send({
+        ...CREDENTIALS,
+        locale: 'hy',
+        timezone: 'Asia/Yerevan',
+      });
+      expect(res.status).toBe(202);
+      expect(auth.register).toHaveBeenLastCalledWith(
+        CREDENTIALS.email,
+        CREDENTIALS.password,
+        expect.anything(),
+        [],
+        { locale: 'hy', timezone: 'Asia/Yerevan' },
+      );
+    });
+
+    it.each([
+      ['a language the platform does not speak', { locale: 'de' }],
+      ['a time zone that does not exist', { timezone: 'Mars/Olympus_Mons' }],
+    ])('refuses %s', async (_label, extra) => {
+      const res = await post('register').send({ ...CREDENTIALS, ...extra });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBeLessThan(500);
+      expect(auth.register).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining(extra),
       );
     });
 
@@ -115,7 +148,9 @@ describe('auth controller', () => {
 
   describe('refresh', () => {
     it('reads the token from the cookie and rotates it', async () => {
-      const res = await post('refresh').set('Cookie', [`${COOKIE}=tok-old`]).send();
+      const res = await post('refresh')
+        .set('Cookie', [`${COOKIE}=tok-old`])
+        .send();
       expect(res.status).toBe(200);
       expect(auth.refresh).toHaveBeenCalledWith('tok-old', expect.any(Object));
       expect(res.headers['set-cookie']![0]).toContain(`${COOKIE}=tok-refreshed`);
@@ -130,7 +165,9 @@ describe('auth controller', () => {
 
   describe('logout', () => {
     it('revokes the session and clears the cookie', async () => {
-      const res = await post('logout').set('Cookie', [`${COOKIE}=tok-old`]).send();
+      const res = await post('logout')
+        .set('Cookie', [`${COOKIE}=tok-old`])
+        .send();
       expect(res.status).toBe(204);
       expect(auth.revoke).toHaveBeenCalledWith('tok-old', expect.any(Object));
       // Cleared by expiry in the past, not by omission.
@@ -198,10 +235,7 @@ describe('auth controller', () => {
     it('answers 202 to a reset request', async () => {
       const res = await post('password-reset').send({ email: CREDENTIALS.email });
       expect(res.status).toBe(202);
-      expect(auth.requestPasswordReset).toHaveBeenCalledWith(
-        CREDENTIALS.email,
-        expect.any(Object),
-      );
+      expect(auth.requestPasswordReset).toHaveBeenCalledWith(CREDENTIALS.email, expect.any(Object));
     });
 
     it('confirms a reset and clears the now-dead cookie', async () => {
@@ -246,7 +280,9 @@ describe('auth controller', () => {
     });
 
     it('resolves the actor from the cookie rather than trusting the body', async () => {
-      await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', [`${COOKIE}=tok-old`]);
+      await request(app.getHttpServer())
+        .get('/auth/sessions')
+        .set('Cookie', [`${COOKIE}=tok-old`]);
       expect(auth.listSessions).toHaveBeenCalledWith(ACTOR, expect.any(Object));
     });
 
@@ -269,7 +305,9 @@ describe('auth controller', () => {
 
     it('passes the resolved actor to revoke, never an id from the request body', async () => {
       const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-      await request(app.getHttpServer()).delete(`/auth/sessions/${id}`).send({ userId: 'someone-else' });
+      await request(app.getHttpServer())
+        .delete(`/auth/sessions/${id}`)
+        .send({ userId: 'someone-else' });
       expect(auth.revokeSession).toHaveBeenCalledWith(ACTOR, id, expect.any(Object));
     });
   });

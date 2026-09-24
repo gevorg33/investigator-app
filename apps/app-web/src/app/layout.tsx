@@ -7,7 +7,13 @@ import { getLocale, getT } from '@/i18n/server';
 import './globals.css';
 
 /** The namespaces client components translate. Everything else is rendered on the server. */
-export const CLIENT_NAMESPACES = ['nav'] as const satisfies ReadonlyArray<keyof Catalog>;
+export const CLIENT_NAMESPACES = [
+  'nav',
+  'auth',
+  'account',
+  'legal',
+  'error',
+] as const satisfies ReadonlyArray<keyof Catalog>;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();

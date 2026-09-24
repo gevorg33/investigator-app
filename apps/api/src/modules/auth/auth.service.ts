@@ -86,6 +86,7 @@ export class AuthService {
     password: string,
     ctx: RequestContext,
     acceptedDocumentIds: readonly string[] = [],
+    preferences: { locale?: string | undefined; timezone?: string | undefined } = {},
   ): Promise<void> {
     await this.limits.consume('registerPerIp', ctx.ip ?? 'unknown');
 
@@ -105,7 +106,16 @@ export class AuthService {
     }
 
     const created = await this.db.transaction(async (tx) => {
-      const [row] = await tx.insert(users).values({ email, passwordHash }).returning();
+      const [row] = await tx
+        .insert(users)
+        .values({
+          email,
+          passwordHash,
+          // Absent means the columns' defaults — English and UTC — not an empty value.
+          ...(preferences.locale !== undefined ? { locale: preferences.locale } : {}),
+          ...(preferences.timezone !== undefined ? { timezone: preferences.timezone } : {}),
+        })
+        .returning();
       // RETURNING on a single-row insert always yields the row, so this is an invariant
       // rather than a case. It throws instead of skipping: carrying on would leave an
       // account that exists, was never audited, and has no way to verify itself.
@@ -407,7 +417,10 @@ export class AuthService {
 
     await this.db.transaction(async (tx) => {
       await tx.update(userTokens).set({ consumedAt: new Date() }).where(eq(userTokens.id, row.id));
-      await tx.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, row.userId));
+      await tx
+        .update(users)
+        .set({ passwordHash, updatedAt: new Date() })
+        .where(eq(users.id, row.userId));
       await tx
         .update(userSessions)
         .set({ revokedAt: new Date() })

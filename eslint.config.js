@@ -58,9 +58,14 @@ const LITERAL_MESSAGE =
   'User-facing text belongs in the catalogs: use t("…") (localization, T-128).';
 const UI_LITERALS = [
   { selector: `JSXText[value=/${LETTER}/]`, message: LITERAL_MESSAGE },
-  { selector: `JSXExpressionContainer > Literal[value=/${LETTER}/]`, message: LITERAL_MESSAGE },
+  // A string or template as a child is text on screen; the same inside an attribute (`id`,
+  // `className`) is not, so only a child of an element or fragment counts.
   {
-    selector: `JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=/${LETTER}/]`,
+    selector: `:matches(JSXElement, JSXFragment) > JSXExpressionContainer > Literal[value=/${LETTER}/]`,
+    message: LITERAL_MESSAGE,
+  },
+  {
+    selector: `:matches(JSXElement, JSXFragment) > JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=/${LETTER}/]`,
     message: LITERAL_MESSAGE,
   },
   {

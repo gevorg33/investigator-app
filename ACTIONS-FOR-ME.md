@@ -529,7 +529,8 @@ policy, a customer for the terms and conditions. **Counsel confirms or corrects 
 legal position, not an engineering one, and changing it is a one-line change with a test.
 
 **Status:** ⬜ Pending — blocked on counsel (#0). The gates are built and require nothing until
-a version is published: registration behaves exactly as it always has (T-022), while **creating
+a version is published: registration behaves exactly as it always has (T-022) — the sign-up screen
+(T-127) shows whatever is published, in full, and records its acceptance — while **creating
 an agency is refused until `AGENCY_AGREEMENT` is published** (T-083) — the gate working as
 intended, but it does mean that endpoint is unusable in production until this is done
 
@@ -587,8 +588,9 @@ The app's words, and the two places they still differ from these, are in
 if a key is missing) and read correctly to me, but an agent's Armenian in particular is not
 something to launch on: it reads as unfinished software to exactly the market this is for.
 
-**What is needed:** a native speaker of each language reads their file — about 20 strings today,
-five minutes — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+**What is needed:** a native speaker of each language reads their file — about 150 strings since
+T-127 added sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), half an
+hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:
@@ -615,8 +617,9 @@ valid. A nav label longer than about 60px at 12px will clip — check a replacem
 **Why:** The repository lives in `~/Desktop`, which iCloud syncs. iCloud keeps making conflict
 copies — `css.spec 2.ts`, `package 2.json`, a whole `src/app 2/`, and three inside `.git/`
 (`index 2`, `index 3`, `index 4`). They are gitignored, so they never reach a commit, but
-TypeScript and Vitest see them: T-011 quarantined 135 and T-128 another 50, each time because `tsc`
-or the test run broke. Copies inside `.git/` are the worrying ones — iCloud is syncing a live git
+TypeScript and Vitest see them: T-011 quarantined 135, T-128 another 50 and T-127 eleven
+knowledge-base articles, each time because `tsc`, the test run or the knowledge-base validator
+broke. Copies inside `.git/` are the worrying ones — iCloud is syncing a live git
 index.
 
 **What is needed:** move the folder somewhere iCloud does not sync, e.g.

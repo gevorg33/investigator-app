@@ -1,7 +1,7 @@
 import { LOCALES, localeName } from '@investigator/i18n';
 import { Check } from 'lucide-react';
-import { chooseLocale } from '@/app/(workspace)/account/actions';
 import { getLocale, getT } from '@/i18n/server';
+import { chooseLocale } from '@/i18n/actions';
 import { cn } from '@/lib/utils';
 
 /**
@@ -9,9 +9,50 @@ import { cn } from '@/lib/utils';
  * Each is named in its own language — the reader who cannot read the current one can still find
  * theirs — and carries `lang`, so a screen reader pronounces it correctly. The one in use is
  * pressed, and marked with a check as well as colour.
+ *
+ * `compact` is the same control without its card, for the sign-in screens: a language has to be
+ * choosable before there is an account to choose it in.
  */
-export async function LanguageChoice() {
+export async function LanguageChoice({ compact = false }: { compact?: boolean }) {
   const [t, { locale }] = await Promise.all([getT(), getLocale()]);
+  const buttons = (
+    <form
+      action={chooseLocale}
+      className={cn(
+        'flex gap-2',
+        compact ? 'flex-wrap justify-center' : 'mt-4 flex-col sm:flex-row',
+      )}
+    >
+      {LOCALES.map((option) => {
+        const current = option === locale;
+        return (
+          <button
+            key={option}
+            type="submit"
+            name="locale"
+            value={option}
+            lang={option}
+            aria-pressed={current}
+            className={cn(
+              'flex min-h-11 items-center justify-center gap-2 rounded-md border border-border-control px-4 text-base transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-sunken',
+              current &&
+                'border-primary bg-primary-subtle font-semibold text-primary hover:bg-primary-subtle',
+            )}
+          >
+            {current && <Check aria-hidden className="size-4" />}
+            {localeName(option)}
+          </button>
+        );
+      })}
+    </form>
+  );
+  if (compact) {
+    return (
+      <nav aria-label={t('account.language.title')} className="flex justify-center">
+        {buttons}
+      </nav>
+    );
+  }
   return (
     <section
       aria-labelledby="language-title"
@@ -21,29 +62,7 @@ export async function LanguageChoice() {
         {t('account.language.title')}
       </h2>
       <p className="mt-1 text-sm text-text-muted">{t('account.language.body')}</p>
-      <form action={chooseLocale} className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {LOCALES.map((option) => {
-          const current = option === locale;
-          return (
-            <button
-              key={option}
-              type="submit"
-              name="locale"
-              value={option}
-              lang={option}
-              aria-pressed={current}
-              className={cn(
-                'flex min-h-11 items-center justify-center gap-2 rounded-md border border-border-control px-4 text-base transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-sunken',
-                current &&
-                  'border-primary bg-primary-subtle font-semibold text-primary hover:bg-primary-subtle',
-              )}
-            >
-              {current && <Check aria-hidden className="size-4" />}
-              {localeName(option)}
-            </button>
-          );
-        })}
-      </form>
+      {buttons}
     </section>
   );
 }

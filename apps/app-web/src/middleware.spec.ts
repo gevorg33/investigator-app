@@ -38,14 +38,27 @@ describe('a link that says which language its reader chose', () => {
     expect(res.cookies.getAll()).toEqual([]);
   });
 
-  it('runs for pages, never for Next’s assets or files', () => {
+  it('tells the page which address was asked for, so signing in can return to it', () => {
+    const res = middleware(
+      new NextRequest(new URL('/missions/7?tab=quotes', 'https://app.example.test'), {
+        // A client cannot choose where it is sent back to: the header is always overwritten.
+        headers: { 'x-pathname': '//evil.test' },
+      }),
+    );
+    expect(res.headers.get('x-middleware-request-x-pathname')).toBe('/missions/7?tab=quotes');
+    expect(res.headers.get('x-middleware-override-headers')).toContain('x-pathname');
+  });
+
+  it('runs for pages, never for the API, Next’s assets or files', () => {
     const [pattern] = config.matcher;
     const runs = (path: string) => new RegExp(`^${pattern}$`).test(path);
     expect([runs('/'), runs('/missions/42'), runs('/account')]).toEqual([true, true, true]);
-    expect([runs('/_next/static/chunks/a.js'), runs('/favicon.ico'), runs('/robots.txt')]).toEqual([
-      false,
-      false,
-      false,
-    ]);
+    expect([
+      runs('/_next/static/chunks/a.js'),
+      runs('/favicon.ico'),
+      runs('/robots.txt'),
+      // The API owns its own requests; the dev rewrite passes them straight through.
+      runs('/api/v1/auth/login'),
+    ]).toEqual([false, false, false, false]);
   });
 });

@@ -1,36 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { request } from '@/test/request';
-import { chooseLocale } from './actions';
+import { chooseActiveRole } from './actions';
 
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 
-const form = (locale: string | null) => {
+const form = (role: string | null) => {
   const f = new FormData();
-  if (locale !== null) f.set('locale', locale);
+  if (role !== null) f.set('role', role);
   return f;
 };
 
-describe('recording a language choice', () => {
+describe('choosing which role the platform is shown as', () => {
   beforeEach(() => request.reset());
 
-  it('keeps it a year, on this host only, out of reach of scripts', async () => {
-    await chooseLocale(form('hy'));
-    expect(request.set).toHaveBeenCalledWith('locale', 'hy', {
-      path: '/',
-      maxAge: 31_536_000,
-      sameSite: 'lax',
-      secure: true,
-      httpOnly: true,
-    });
-    // Host-only: no domain, so the cookie never reaches the marketing site or another subdomain.
-    expect(request.set.mock.calls[0]![2]).not.toHaveProperty('domain');
-  });
-
-  it.each([['de'], ['<script>'], [null]])(
-    'changes nothing for %s — a form can be edited',
-    async (value) => {
-      await chooseLocale(form(value));
-      expect(request.set).not.toHaveBeenCalled();
+  it.each([['CUSTOMER'], ['INVESTIGATOR']])(
+    'narrows to %s for this browser session only, out of reach of scripts',
+    async (role) => {
+      await chooseActiveRole(form(role));
+      expect(request.set).toHaveBeenCalledWith('active_role', role, {
+        path: '/',
+        sameSite: 'lax',
+        secure: true,
+        httpOnly: true,
+      });
+      // No maxAge: it ends with the browser session — the API never stores it as a preference.
+      expect(request.set.mock.calls[0]![2]).not.toHaveProperty('maxAge');
+      expect(request.delete).not.toHaveBeenCalled();
     },
   );
+
+  it.each([['both'], ['STAFF'], [null]])('clears the choice for %s', async (role) => {
+    await chooseActiveRole(form(role));
+    expect(request.delete).toHaveBeenCalledWith('active_role');
+    expect(request.set).not.toHaveBeenCalled();
+  });
 });
