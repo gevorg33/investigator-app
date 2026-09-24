@@ -64,4 +64,5 @@ ACTIVE is not shown at the top level — it is simply not reached.
 - **Tags** — T-055, which specifies all of them: the vocabulary, suggestion and confirmation, and
   the test that a tag never affects eligibility.
 - **The source axis** — T-132 (ADR-0008).
-- **A console** — admin-web does not exist yet (T-014); the API is the whole surface for now.
+- **A console** — admin-web exists (T-014) but has no screens yet (T-070 onwards); the API is the
+  whole surface for now.

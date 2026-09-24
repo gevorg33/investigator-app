@@ -29,9 +29,6 @@
       "path": "apps/api"
     },
     {
-      "path": "apps/admin-web"
-    },
-    {
       "path": "apps/marketing-web"
     },
     {

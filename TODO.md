@@ -793,7 +793,7 @@ pnpm --filter api test verification
 ---
 
 ### T-014 — Initialize shadcn/ui in admin-web
-- **Status:** TODO — unblocked by T-013 (API) on 2026-09-18
+- **Status:** DONE — 2026-09-25
 - **Priority:** P2
 - **Depends on:** T-001, T-013
 - **Risk:** LOW
@@ -810,22 +810,54 @@ Procedure and conventions: `.claude/skills/component-discovery/SKILL.md`.
 **Tenancy (ADR-0011).** Admin-web is the **platform staff** console. Agency owners and admins use `app-web` (T-091 to T-094), never admin-web — their authority is tenant permissions, not a platform staff scope.
 
 **Acceptance criteria**
-- [ ] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn`
-- [ ] Tailwind and CSS variables wired; light and dark themes both render
-- [ ] Registries configured per app: `@shadcn`, `@react-bits`
+- [x] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn` — called over JSON-RPC against `shadcn@4.21.0 mcp` run in the app: `@shadcn`, `@cult-ui`, `@react-bits`
+- [x] Tailwind and CSS variables wired; light and dark themes both render — measured in the browser: every colour resolves to its token in each theme
+- [x] Registries configured per app: `@shadcn`, `@react-bits`
       (`https://reactbits.dev/r/{name}.json`), `@cult-ui`
-- [ ] The **root `components.json` is removed** once per-app configs exist — it exists only so
-      registry search works before any app does
-- [ ] Only allowlisted registry namespaces present; no token committed
-- [ ] Agents take `-TS-TW` variants from React Bits, never `-JS-`
-- [ ] One component added end-to-end (`button`) to prove the pipeline
-- [ ] `components/ui/**` is web-only and not imported by `apps/mobile`
-- [ ] Follows the pattern T-091 set (`docs/architecture/app-web.md`): tokens from `@investigator/ui-tokens/tokens.css`, the raw-value lint rule extended to `apps/admin-web/src/**`, the bundle budget script, and the per-app `components.json` with `@cult-ui` — then the root `components.json` goes
+- [x] The **root `components.json` is removed** once per-app configs exist — `.mcp.json` now starts the MCP inside `apps/app-web`, since `--cwd` is ignored
+- [x] Only allowlisted registry namespaces present; no token committed
+- [x] Agents take `-TS-TW` variants from React Bits, never `-JS-` — the rule stands in `component-discovery`; nothing from React Bits was added here
+- [x] One component added end-to-end (`button`) to prove the pipeline
+- [x] `components/ui/**` is web-only and not imported by `apps/mobile` — now lint-enforced (it was not; see below)
+- [x] Follows the pattern T-091 set (`docs/architecture/app-web.md`): tokens from `@investigator/ui-tokens/tokens.css`, the raw-value lint rule extended to `apps/admin-web/src/**`, the bundle budget script, and the per-app `components.json` with `@cult-ui` — then the root `components.json` goes
 
 **Validation**
 ```bash
 pnpm --filter admin-web build
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* admin-web is a Next.js 15.5.25 app on port 3002 (`docs/architecture/admin-web.md`):
+Tailwind 4 on `@investigator/ui-tokens`, `components.json` with the three registries, `@shadcn/button`
+adopted and re-tokenised, one landing route with a **disabled** Sign in (staff sign-in arrives with
+T-070), never indexed. 26 tests, 100% coverage; `/` is 102.7 kB initial JS against the 250 kB budget,
+which CI now checks for admin-web too.
+
+*Pattern shared, not copied.* The bundle-budget script moved to `scripts/check-bundle-budget.mjs` and
+reads the app from its working directory; both apps' `budget` scripts call it. The raw-value and
+Next.js lint block covers both apps. admin-web left the root `tsc --build` graph, as app-web did.
+
+*Found along the way.* (1) **`shadcn mcp --cwd` is ignored** — the tools read the process's own
+directory. With the root `components.json` gone, `get_project_registries` from the root returned
+nothing; `.mcp.json` now starts the MCP inside `apps/app-web` (`sh -c 'cd … && exec npx -y
+shadcn@4.21.0 mcp'`, pinned), verified from the root. (2) The CLI again installed the third-party
+`cn` package, and the `radix-ui` umbrella unpinned (73 packages) for one `Slot`; replaced by our `cn`
+and `@radix-ui/react-slot` 1.3.3 (2 packages). (3) **`apps/mobile` had lost T-001's deep-import rule**:
+its `no-restricted-imports` block replaced the generic one, so `../../../packages/validation/src` and
+any web app's `components/ui` were importable. The pattern is now shared and repeated in the mobile
+block, which also names both web apps; probed — four violations fail, the tokens import passes.
+(4) Upstream's button drew no app focus outline (`outline-none`), drew dark on dark with `dark:`
+overrides the tokens already handle, and had sizes under 44px; all changed (component inventory).
+
+*Browser* (production build): 375 light and dark, 768, 1280 — no horizontal scroll; button 44px;
+keyboard focus shows the focus-ring token at 2px offset; hover applies only where the device can
+hover; theme-color metas for both schemes; `X-Robots-Tag`, robots meta, no `X-Powered-By`; no console
+output. *Negative controls* (broken, seen to fail, restored byte-for-byte): `h-9`, `outline-none`,
+`text-white`, sign-in enabled, caller class dropped.
+
+*Not run locally.* The API suite needs PostgreSQL and this machine has no container runtime; nothing
+in `apps/api` changed, and CI runs it.
 
 ---
 
@@ -5948,6 +5980,32 @@ takes, and `packages/api-client` cannot be generated from it.
 **Validation**
 ```bash
 pnpm --filter api test openapi
+```
+
+---
+
+### T-137 — Pin the Playwright MCP version
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .mcp.json, .claude/skills/visual-qa/SKILL.md
+
+**Description**
+`.mcp.json` starts the Playwright MCP as `@playwright/mcp@latest`, so every session runs whatever
+was published most recently — the unpinned-dependency risk CLAUDE.md's version policy exists to
+avoid. T-014 pinned the shadcn MCP (`shadcn@4.21.0`); this one was out of that task's scope. Pin
+the newest version that has been out long enough, per CLAUDE.md, and note it in `visual-qa`.
+
+**Acceptance criteria**
+- [ ] `.mcp.json` names an exact `@playwright/mcp` version, chosen by release date and changelog
+- [ ] The MCP starts and a browser snapshot works on the pinned version
+
+**Validation**
+```bash
+npx -y @playwright/mcp@<version> --help
 ```
 
 ---
