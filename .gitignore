@@ -46,3 +46,11 @@ apps/api/test/**/*.js
 apps/api/test/**/*.js.map
 apps/api/test/**/*.d.ts
 apps/api/test/**/*.d.ts.map
+
+# Playwright MCP writes page snapshots and screenshots here during visual QA (T-039). Working
+# files, not artifacts: a baseline that should be kept is committed deliberately elsewhere.
+.playwright-mcp/
+
+# Next.js regenerates this on every dev and build run, and it points at .next/types, which exists
+# only after one. Committing it would make `pnpm typecheck` depend on a build having run.
+apps/*/next-env.d.ts

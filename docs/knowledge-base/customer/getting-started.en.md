@@ -4,13 +4,14 @@ title: What the platform does and how to get started
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-19
+updated: 2026-09-24
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/auth
+  - apps/app-web
 tags: [getting-started, account, roles, overview]
 ---
 
@@ -52,6 +53,19 @@ notifications and the assistant all follow that choice.
 Investigators list the languages they work in, and you can require a specific language
 when looking for one. The language you use in the app and the language an investigator
 works in are separate choices.
+
+## Can I use it on my phone?
+
+Yes, in your phone's browser. There is no separate app to install: the same site adapts to the
+screen. On a phone, the main sections sit in a bar along the bottom of the screen; on a tablet or
+computer they move to a sidebar. Everything you can do on a computer, you can do on a phone.
+
+## Does it follow my device's dark mode?
+
+Yes. The platform uses a light or dark appearance to match your device's setting, and changes
+when your device does. There is no separate setting to manage.
+
+If your device is set to reduce motion, the platform changes state instantly instead of animating.
 
 ## What do I need to provide to get started?
 

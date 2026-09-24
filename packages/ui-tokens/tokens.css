@@ -1,0 +1,169 @@
+/*
+ * Generated from packages/ui-tokens/src/tokens.ts by
+ * `pnpm --filter @investigator/ui-tokens tokens:css`. Do not edit: a test fails when this
+ * file and the tokens disagree.
+ */
+
+:root {
+  color-scheme: light;
+  --surface: #f7f7f8;
+  --surface-raised: #ffffff;
+  --surface-sunken: #efeff1;
+  --surface-overlay: #ffffff;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --border: #e4e4e7;
+  --border-control: #71717a;
+  --focus-ring: #1d4ed8;
+  --primary: #1d4ed8;
+  --primary-contrast: #ffffff;
+  --primary-subtle: #e8eefc;
+  --danger: #b91c1c;
+  --danger-contrast: #ffffff;
+  --success: #15803d;
+  --success-contrast: #ffffff;
+  --warning: #92400e;
+  --warning-contrast: #ffffff;
+  --evidence-fact: #15803d;
+  --evidence-claim: #0369a1;
+  --evidence-inference: #6d28d9;
+  --evidence-hypothesis: #92400e;
+  --evidence-unknown: #52525b;
+  --evidence-contradicted: #b91c1c;
+  --ai-unreviewed: #c2410c;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --duration-spatial: 300ms;
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface: #0f0f11;
+    --surface-raised: #18181b;
+    --surface-sunken: #09090b;
+    --surface-overlay: #1f1f23;
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    --border: #27272a;
+    --border-control: #71717a;
+    --focus-ring: #60a5fa;
+    --primary: #60a5fa;
+    --primary-contrast: #0b1220;
+    --primary-subtle: #172554;
+    --danger: #f87171;
+    --danger-contrast: #1f0a0a;
+    --success: #4ade80;
+    --success-contrast: #052e16;
+    --warning: #fbbf24;
+    --warning-contrast: #1c1400;
+    --evidence-fact: #4ade80;
+    --evidence-claim: #38bdf8;
+    --evidence-inference: #a78bfa;
+    --evidence-hypothesis: #fbbf24;
+    --evidence-unknown: #a1a1aa;
+    --evidence-contradicted: #f87171;
+    --ai-unreviewed: #fb923c;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-spatial: 0ms;
+  }
+}
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --ease-*: initial;
+  --breakpoint-*: initial;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-control: var(--border-control);
+  --color-focus-ring: var(--focus-ring);
+  --color-primary: var(--primary);
+  --color-primary-contrast: var(--primary-contrast);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-danger: var(--danger);
+  --color-danger-contrast: var(--danger-contrast);
+  --color-success: var(--success);
+  --color-success-contrast: var(--success-contrast);
+  --color-warning: var(--warning);
+  --color-warning-contrast: var(--warning-contrast);
+  --color-evidence-fact: var(--evidence-fact);
+  --color-evidence-claim: var(--evidence-claim);
+  --color-evidence-inference: var(--evidence-inference);
+  --color-evidence-hypothesis: var(--evidence-hypothesis);
+  --color-evidence-unknown: var(--evidence-unknown);
+  --color-evidence-contradicted: var(--evidence-contradicted);
+  --color-ai-unreviewed: var(--ai-unreviewed);
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-card: var(--surface-raised);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface-overlay);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-contrast);
+  --color-secondary: var(--surface-sunken);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-sunken);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--primary-subtle);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-contrast);
+  --color-border: var(--border);
+  --color-input: var(--border-control);
+  --color-ring: var(--focus-ring);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Armenian", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --spacing: 0.25rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+  --shadow-raised: 0 1px 2px 0 rgb(0 0 0 / 0.06), 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-overlay: 0 10px 30px -5px rgb(0 0 0 / 0.2);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+}

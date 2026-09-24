@@ -11,6 +11,12 @@ rather than assembled.
 `packages/ui-tokens/` exports: colour, typography scale, spacing scale, radius, shadow,
 **motion durations and easings**, z-index scale, breakpoints.
 
+Built in T-091 — how it works is `docs/architecture/app-web.md`. In short: `src/tokens.ts` is the
+source; `tokens.css` is generated and committed (a test catches drift); Tailwind's own palette and
+scales are reset, so only token utilities exist (`bg-surface-raised`, `text-text-muted`,
+`rounded-md`, `shadow-raised`); tokens without a Tailwind namespace are used through their variable
+(`z-(--z-nav)`, `duration-(--duration-fast)`). The lint rule is in the root `eslint.config.js`.
+
 ## Three rules
 
 1. **Every adopted component is re-tokenised before merge.** A component that keeps its own

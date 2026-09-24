@@ -134,6 +134,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The application's initial JavaScript, per route, against the frontend-performance budget
+      # (≤ 250 kB gzipped). Measured on the build just made, so a heavy dependency fails the PR
+      # that adds it rather than being noticed later (T-091).
+      - name: App bundle budget
+        run: pnpm --filter app-web budget
+
       # The pipeline itself, against the database migrated from empty, as the runtime role: a
       # document the validator passed but the sync cannot ingest fails here, and so does a new
       # unreviewed conflict between two current documents (T-016). Run twice: the second must

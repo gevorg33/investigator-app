@@ -1,0 +1,34 @@
+{
+  "name": "@investigator/ui-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Design tokens: one source for every surface, web and mobile (design-system skill)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./tokens.css"
+  },
+  "files": [
+    "dist",
+    "tokens.css"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "typecheck:specs": "tsc -p tsconfig.spec.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "tokens:css": "tsx scripts/write-css.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.9.2",
+    "@vitest/coverage-v8": "4.1.11",
+    "tsx": "4.23.13",
+    "vitest": "4.1.11"
+  }
+}

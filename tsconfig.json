@@ -23,10 +23,10 @@
       "path": "packages/ui"
     },
     {
-      "path": "apps/api"
+      "path": "packages/ui-tokens"
     },
     {
-      "path": "apps/app-web"
+      "path": "apps/api"
     },
     {
       "path": "apps/admin-web"

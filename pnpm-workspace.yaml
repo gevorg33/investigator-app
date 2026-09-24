@@ -25,3 +25,10 @@ overrides:
   # the ~2-week bar CLAUDE.md applies, and a security patch in the same minor line. Remove
   # this once platform-express depends on >=2.3.0 itself.
   multer: 2.3.0
+  # GHSA-6g55-p6wh-862q and GHSA-r28c-9q8g-f849 (HIGH: arbitrary file read, and path traversal via
+  # source-map auto-loading), plus GHSA-qx2v-qp2m-jg93 and GHSA-fxqj-rqcc-2cmp (moderate), all
+  # fixed in postcss >=8.5.23. Every next 15.x release pins postcss to exactly 8.4.31, so no bump
+  # within the pinned 15.5 line reaches the fix (T-091). Scoped to next's own copy, and pinned to
+  # 8.5.23 — the version next 16 itself ships, 61 days old when chosen, same major. Remove this
+  # when the app moves to a next release that depends on >=8.5.23 itself.
+  'next>postcss': 8.5.23
