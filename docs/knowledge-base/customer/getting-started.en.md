@@ -4,7 +4,7 @@ title: What the platform does and how to get started
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
 updated: 2026-09-24
 source_of_truth: docs
@@ -12,6 +12,7 @@ implementation_status: specified
 related_code:
   - apps/api/src/modules/auth
   - apps/app-web
+  - packages/i18n
 tags: [getting-started, account, roles, overview]
 ---
 
@@ -47,8 +48,9 @@ you access to your customer missions' data in that role, and the reverse is also
 
 ## What languages are supported?
 
-English, Russian and Armenian. You choose your language in the app, and the interface,
-notifications and the assistant all follow that choice.
+English, Russian and Armenian. You choose your language under **Account → Language**, and the
+interface, notifications and the assistant all follow that choice. Until you choose, the platform
+uses the language your browser asks for, and English if it asks for none of the three.
 
 Investigators list the languages they work in, and you can require a specific language
 when looking for one. The language you use in the app and the language an investigator

@@ -2,11 +2,14 @@ import { MessagesSquare } from 'lucide-react';
 import type { Metadata } from 'next';
 import { EmptyState } from '@/components/empty-state';
 import { Page } from '@/components/page';
-import { t } from '@/i18n/messages';
+import { getT } from '@/i18n/server';
 
-export const metadata: Metadata = { title: t('nav.messages') };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT())('nav.messages') };
+}
 
-export default function MessagesPage() {
+export default async function MessagesPage() {
+  const t = await getT();
   return (
     <Page title={t('nav.messages')}>
       <EmptyState

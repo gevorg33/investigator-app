@@ -1,7 +1,5 @@
-// Translation catalogues for en/ru/hy
-// Scaffolded by T-001. Implementation follows in later tasks.
-
-// No runtime code yet, so nothing for the coverage gate to measure (T-042). The placeholder
-// constant that stood here named the package and was imported by nothing; a package must earn
-// its own coverage script the moment it exports something that runs.
-export {};
+// Translation catalogs and locale formatting for en/ru/hy (T-128). Framework-free, so the web
+// apps and — if it resumes — the mobile companion share one source.
+export * from './format.js';
+export * from './locales.js';
+export * from './messages/index.js';

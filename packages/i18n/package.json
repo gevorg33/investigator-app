@@ -2,7 +2,7 @@
   "name": "@investigator/i18n",
   "version": "0.0.0",
   "private": true,
-  "description": "Translation catalogues for en/ru/hy",
+  "description": "Translation catalogs and locale formatting for en/ru/hy (T-128)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +14,15 @@
   },
   "scripts": {
     "build": "tsc --build",
-    "typecheck": "tsc --build"
+    "typecheck": "tsc --build",
+    "typecheck:specs": "tsc -p tsconfig.spec.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "24.9.2",
+    "@vitest/coverage-v8": "4.1.11",
+    "intl-messageformat": "11.2.14",
+    "vitest": "4.1.11"
   }
 }
