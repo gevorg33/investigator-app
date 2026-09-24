@@ -4,14 +4,15 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-23
+updated: 2026-09-24
 source_of_truth: docs
-implementation_status: specified
+implementation_status: partial
 related_code:
   - apps/api/src/modules/ai
   - apps/api/src/modules/ai-sessions
+  - apps/api/src/modules/knowledge
 tags: [assistant, ai, help, limitations]
 ---
 
@@ -65,6 +66,40 @@ contains the answer, it says so.
 This is deliberate. An assistant that produces a plausible answer when it has no source is
 worse than one that admits the gap — particularly on questions about money, evidence or
 what is legally permitted.
+
+## Which documentation does it answer from?
+
+Only the guidance written for you. As a customer, that is the customer guidance and the public
+policies. An investigator's assistant answers from investigator guidance, and staff procedures are
+never used to answer anyone but staff, however a question is worded.
+
+If you have switched to acting as one role, the assistant answers as that role only.
+
+## Where do the sources in an answer come from?
+
+Every answer lists the documents and sections it used, by title: the platform's own guidance that
+the answer was written from, and nothing else.
+
+If the assistant cannot point to a page that answers your question, it tells you it does not have
+the answer rather than replying without a source.
+
+## Can it answer in my language?
+
+It answers in the language you choose. Where a help page has not been translated into that language
+yet, it answers from the English page and says so.
+
+## What happens to the question I ask?
+
+To write an answer, the assistant sends your question, together with the guidance it found, to
+the AI service that composes the reply. The privacy policy names the services that process your
+data and governs how they may use it. Where this answer and the privacy policy differ, the privacy
+policy is correct.
+
+The platform keeps a record that a question was answered and which pages were used. It does not keep
+the question or the answer in that record.
+
+Do not include personal details in a question about how the platform works. The assistant does not
+need them to explain a rule.
 
 ## Can I rely on what it tells me?
 

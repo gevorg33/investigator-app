@@ -73,7 +73,9 @@ describe('the error filter', () => {
   });
 
   it('carries field issues on a domain validation error', () => {
-    const details = [{ field: 'email', code: 'INVALID', messageKey: 'error.validation.email.invalid' }];
+    const details = [
+      { field: 'email', code: 'INVALID', messageKey: 'error.validation.email.invalid' },
+    ];
     const { status, body } = respond(AppError.validation(details));
     expect(status).toBe(422);
     expect(body.error['details']).toEqual(details);
@@ -94,7 +96,8 @@ describe('the error filter', () => {
     [409, 'STATE_CONFLICT'],
     [429, 'RATE_LIMITED'],
     [418, 'INTERNAL_ERROR'],
-    [503, 'INTERNAL_ERROR'],
+    [503, 'SERVICE_UNAVAILABLE'],
+    [502, 'INTERNAL_ERROR'],
   ])('maps a framework %i to %s', (httpStatus, code) => {
     const { status, body } = respond(new HttpException('x', httpStatus));
     expect(status).toBe(httpStatus);
@@ -131,7 +134,9 @@ describe('the error filter', () => {
   });
 
   it('adds no details when a 400 body has no messages', () => {
-    expect(respond(new HttpException({ reason: 'x' }, 400)).body.error).not.toHaveProperty('details');
+    expect(respond(new HttpException({ reason: 'x' }, 400)).body.error).not.toHaveProperty(
+      'details',
+    );
     expect(respond(new HttpException('plain text', 400)).body.error).not.toHaveProperty('details');
   });
 

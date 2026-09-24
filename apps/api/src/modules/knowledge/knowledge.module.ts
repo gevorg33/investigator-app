@@ -1,12 +1,19 @@
 import { Module } from '@nestjs/common';
+import { EMBEDDER, embedderFromEnv } from './embedder';
+import { KnowledgeRetrievalService } from './knowledge-retrieval.service';
 import { KnowledgeSyncService } from './knowledge-sync.service';
 
 /**
- * The knowledge base, ingested for retrieval (T-016). Retrieval itself is T-017, which will import
- * this module; the sync runs as a command, `knowledge:sync`.
+ * The knowledge base: ingested by the `knowledge:sync` command (T-016), retrieved with the
+ * caller's permissions (T-017). The embedder is null without an OpenAI key, and retrieval then
+ * runs on text alone.
  */
 @Module({
-  providers: [KnowledgeSyncService],
-  exports: [KnowledgeSyncService],
+  providers: [
+    KnowledgeSyncService,
+    KnowledgeRetrievalService,
+    { provide: EMBEDDER, useFactory: () => embedderFromEnv(process.env) },
+  ],
+  exports: [KnowledgeSyncService, KnowledgeRetrievalService],
 })
 export class KnowledgeModule {}

@@ -40,6 +40,9 @@ export const LIMITS = {
   // Provisional: generous for a customer with genuine work in several places, tight enough
   // that one account cannot flood the queue faster than people can read it.
   missionSubmitPerAccount: { max: 10, windowSeconds: 86_400 },
+  // Every question is a paid model call. Provisional: far more than a person asking about the
+  // platform needs, few enough that one account cannot run up the bill (T-017).
+  assistantQuestionPerAccount: { max: 60, windowSeconds: 3600 },
 } as const;
 
 /**

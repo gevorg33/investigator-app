@@ -40,6 +40,7 @@ One shape for every error, from every module.
 | `410` | Gone permanently |
 | `422` | Well-formed but semantically invalid — validation failures |
 | `429` | Rate limited; `Retry-After` set |
+| `503` | `SERVICE_UNAVAILABLE`: a dependency (a model provider) is not configured or not answering. Retry later |
 | `5xx` | Our fault. Never carries actionable detail |
 
 ## Choosing 403 vs 404

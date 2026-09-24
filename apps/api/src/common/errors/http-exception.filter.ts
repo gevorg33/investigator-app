@@ -56,6 +56,8 @@ function mapStatus(status: number): ErrorCodeValue {
       return ErrorCode.STATE_CONFLICT;
     case 429:
       return ErrorCode.RATE_LIMITED;
+    case 503:
+      return ErrorCode.SERVICE_UNAVAILABLE;
     default:
       return ErrorCode.INTERNAL_ERROR;
   }

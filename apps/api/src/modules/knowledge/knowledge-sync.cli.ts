@@ -5,8 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { AuditModule } from '../../common/audit/audit.module';
 import { PlatformContext } from '../../common/context/platform-context';
 import { DatabaseModule } from '../../database/database.module';
-import { EMBEDDING_DIMENSIONS } from '../../database/schema';
-import { type Embedder, OpenAiEmbedder } from './embedder';
+import { type Embedder, embedderFromEnv } from './embedder';
 import { KnowledgeSourceError, readKnowledgeBase, readReviewedOverlaps } from './knowledge-source';
 import { KnowledgeSyncService } from './knowledge-sync.service';
 import { gitLastChanged, staleDocuments } from './staleness';
@@ -64,16 +63,7 @@ export async function runKnowledgeSync(opts: CliOptions): Promise<number> {
     return 1;
   }
 
-  const key = opts.env['OPENAI_API_KEY'];
-  const embedder =
-    opts.embedder ??
-    (key
-      ? new OpenAiEmbedder(
-          key,
-          opts.env['OPENAI_EMBEDDING_MODEL'] ?? 'text-embedding-3-small',
-          EMBEDDING_DIMENSIONS,
-        )
-      : undefined);
+  const embedder = opts.embedder ?? embedderFromEnv(opts.env) ?? undefined;
   if (embedder === undefined) {
     opts.out('knowledge: no OPENAI_API_KEY — ingesting without embeddings; they stay pending');
   }

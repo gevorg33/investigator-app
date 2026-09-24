@@ -24,6 +24,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
 import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
+import { AiModule } from './modules/ai/ai.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
@@ -62,6 +63,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     InvestigationSourcesModule,
     AiSessionsModule,
     KnowledgeModule,
+    AiModule,
     HealthModule,
   ],
 })

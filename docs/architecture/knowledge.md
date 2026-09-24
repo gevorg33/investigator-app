@@ -1,4 +1,4 @@
-# Knowledge ingestion
+# Knowledge ingestion and retrieval
 
 The knowledge base in `docs/knowledge-base/` is the Assistant's source for prose knowledge
 (CLAUDE.md non-negotiables 6 and 7). T-016 copies it into PostgreSQL so retrieval (T-017) can search
@@ -89,8 +89,7 @@ the sync:
 - Only the sync writes. RLS admits writes only under `app_platform_access()`, and the application
   role has no DELETE on documents or conflicts.
 - Any context reads the platform's rows. **Visibility is not enforced by RLS.** It is stored on
-  every chunk for retrieval (T-017) to filter on in every query, and T-017 carries the test that a
-  customer cannot reach staff content.
+  every chunk, and retrieval enforces it (below).
 - A chunk's visibility, locale and tenant are **copied from its document** by trigger, whatever the
   insert says. A writer cannot widen who sees an answer.
 - Only a current document has chunks. A document cannot stop being current while it still has
@@ -99,6 +98,66 @@ the sync:
 - A document's `source_path` is under `docs/knowledge-base/`. Nothing from `docs/operations/` gets
   in by any route.
 - There is one current version per `id` and locale.
+
+## Retrieval (T-017)
+
+`KnowledgeRetrievalService.retrieve(reader, question, locale)` in `knowledge-retrieval.service.ts`.
+
+**Who reads what** (`knowledge-reader.ts`). Public guidance goes to everyone. CUSTOMER reads
+`customer`, INVESTIGATOR reads `investigator`, STAFF reads `staff`, and an agency workspace adds
+`agency`. The roles used are the ones in force, so someone who has narrowed themselves to one role
+(`X-Active-Role`) reads as that role. Visibility `authenticated` is open to every caller, `staff` to
+STAFF only, and `participant` to nobody yet: a knowledge question names no mission to be a party to.
+
+```
+scope (reader, workspace, locale) ─→ lexical leg ─┐
+                                   ─→ vector leg  ─┴─ RRF ─→ load by id ─→ mayRead ─→ top 8
+```
+
+- **Scope.** Both legs run inside the reader's scope: current documents, the reader's audiences and
+  visibilities, the platform's or this workspace's own, in the requested locale, or in English where
+  a document has no translation. The legs return ids only.
+- **The gate.** Rows are loaded by id and each one passes `mayRead` again before it is returned. The
+  scope is a pre-filter and the gate is the authorization. A test replaces the scope with `true` and
+  shows that the gate alone keeps staff, participant and investigator content from a customer. The
+  scope still matters: without it, hidden sections take the 40 candidate slots, and a test covers
+  that as well.
+- **Lexical leg.** Each question word is weighted by how rare it is among the chunks this reader may
+  see (an IDF computed in SQL, since `ts_rank` has none). A word found in more than half of those
+  chunks counts for nothing, which works as a stop-word list in any language. A word in the section's
+  heading counts twice, because headings are written the way people ask.
+- **Vector leg.** Only vectors made by this embedder's model and version are compared. Chunks below
+  cosine 0.3 (provisional, tuned to the model) are not candidates.
+- **Fusion.** Reciprocal rank fusion with k = 60. Up to 40 candidates per leg go in, and at most 8
+  chunks come out.
+
+Without an embedder, only the lexical leg runs.
+
+## Answering (T-017)
+
+`POST /api/v1/ai/knowledge/answer` with body `{ question, locale? }`, for signed-in callers only.
+The response is `{ status: 'answered' | 'no_answer', answer, citations, locale, fallback }`.
+
+1. Checks: the account is active, the request is in a workspace, a model is configured (otherwise
+   **503 `SERVICE_UNAVAILABLE`**), and the rate limit allows 60 questions per account per hour.
+2. **Locale.** The one asked for, else the user's saved locale, else English. `fallback` is true when
+   a cited source is in English because it has no translation.
+3. **Nothing retrieved means no model call:** the response is `no_answer`.
+4. **Prompt** (`knowledge-answer.prompt.ts`, version `knowledge-answer-v1`). The instructions
+   contain behaviour only, never platform facts. Sources are numbered `S1…S8`, and both the sources
+   and the question are escaped inside their delimiters, so no text can close them. The model has
+   no tools.
+5. **Validation.** The reply must be JSON with a non-empty answer that cites at least one source it
+   was given. Anything else is `no_answer`, including a reply that cites one source it was **not**
+   given, even if its other citations are real.
+6. **Audit.** One entry, `assistant.knowledge_answered`, records the outcome, the documents cited
+   (`en/kb-…@v`), the model and the prompt version. It never records the question or the answer.
+   Request logs record only method and path.
+7. A provider failure (`ProviderError`) becomes a 503. Any other error is a 500.
+
+The endpoint is stateless. Conversation history (T-046) and session wiring (T-056) come later.
+Configuration: `OPENAI_API_KEY` and `OPENAI_CHAT_MODEL`, which has no default because choosing the
+model is the owner's decision (ACTIONS-FOR-ME #6).
 
 ## Where it runs
 

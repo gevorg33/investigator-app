@@ -192,6 +192,16 @@ larger than expected.
 **Where it goes:** `.env.local` → `OPENAI_API_KEY`. Optional: `OPENAI_EMBEDDING_MODEL`
 (default `text-embedding-3-small`, at 1536 dimensions).
 
+**Also choose the chat model: `OPENAI_CHAT_MODEL` (T-017).** This one has no default on purpose.
+The model you pick answers users' questions about the platform, which is a trade-off between cost
+and quality, and it should be your call rather than something an unset variable decides. Until it
+is set, `POST /api/v1/ai/knowledge/answer` answers 503.
+
+**Before you set a key in production:** the assistant sends each question, together with the
+guidance it retrieved, to this provider. The privacy policy must name the provider as a processor
+before that happens. That is a counsel item (#0, #20), and the help article on the assistant already
+defers to the privacy policy on this point.
+
 **What is waiting on it (T-016):** the knowledge base is ingested, but its 360 chunks have no
 embeddings. They are searchable by text only. With the key set, the next
 `pnpm --filter api knowledge:sync` embeds them. The whole knowledge base is a few hundred short

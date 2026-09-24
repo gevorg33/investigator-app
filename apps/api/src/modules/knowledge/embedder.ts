@@ -1,3 +1,6 @@
+import { ProviderError } from '../../common/errors/provider-error';
+import { EMBEDDING_DIMENSIONS } from '../../database/schema';
+
 /** DI token: an interface does not exist at runtime, so Nest cannot inject one. */
 export const EMBEDDER = Symbol('EMBEDDER');
 
@@ -48,7 +51,7 @@ export class OpenAiEmbedder implements Embedder {
     });
     if (!res.ok) {
       // The status and nothing else: an error body can echo the request, and the request is ours.
-      throw new Error(`embedding request failed: HTTP ${res.status}`);
+      throw new ProviderError(`embedding request failed: HTTP ${res.status}`);
     }
     const json = (await res.json()) as { data: Array<{ index: number; embedding: number[] }> };
     const byIndex = [...json.data].sort((a, b) => a.index - b.index);
@@ -56,8 +59,24 @@ export class OpenAiEmbedder implements Embedder {
       byIndex.length !== texts.length ||
       byIndex.some((d) => d.embedding.length !== this.dimensions)
     ) {
-      throw new Error('embedding response did not match the request');
+      throw new ProviderError('embedding response did not match the request');
     }
     return byIndex.map((d) => d.embedding);
   }
+}
+
+/**
+ * The embedder the environment configures, or null without `OPENAI_API_KEY` — in which case the
+ * sync leaves embeddings pending and retrieval runs on text alone (T-016, T-017).
+ */
+export function embedderFromEnv(
+  env: Readonly<Record<string, string | undefined>>,
+): Embedder | null {
+  const key = env['OPENAI_API_KEY'];
+  if (!key) return null;
+  return new OpenAiEmbedder(
+    key,
+    env['OPENAI_EMBEDDING_MODEL'] ?? 'text-embedding-3-small',
+    EMBEDDING_DIMENSIONS,
+  );
 }
