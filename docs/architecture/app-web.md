@@ -70,11 +70,27 @@ Full height is `dvh`; the viewport is `viewport-fit=cover`.
 state saying what will appear there; the screens are built by their own tasks (T-127 account,
 T-056 assistant, the core-loop hiring and messaging tasks).
 
-## Strings
+## Strings and locale
 
-Keys only, even here (localization skill). `src/i18n/messages.ts` holds the shell's English strings
-behind typed keys — an unknown key is a type error. T-128 replaces the module with the en/ru/hy
-catalogs and the parity check; the keys carry over.
+Every user-facing string is a key in `packages/i18n` (ADR-0013). Server components translate with
+`getT()` from `src/i18n/server.ts`; client components with `useTranslations` under the provider the
+root layout mounts, which receives only `CLIENT_NAMESPACES` (today `nav`). Keys are typed against the
+catalog shape — `t('nav.misions')` is a compile error.
+
+The locale is the `locale` cookie (set by the Account page's language choice: host-only, HTTP-only,
+`Secure`, a year), else `Accept-Language`, else English. A link into the app may carry `?lang=ru` (the
+marketing site's handoff): `src/middleware.ts` turns it into the reader's choice and redirects to
+the URL without it. `<html lang>` and every title follow it. No
+locale in the URL: the app is never indexed. A message that fails to format is reported and shown in
+English — never as its key.
+
+ESLint refuses JSX text, string children and literal `aria-label` / `title` / `alt` /
+`placeholder` in `apps/app-web/src/**` (specs excepted). Numbers, dates and money go through the
+formatters in `@investigator/i18n`, which require a time zone.
+
+**Bottom-bar labels must fit a 75px tab at 12px** (about 60px of text) in every language. Russian
+«Сообщения» and Armenian «Պատվերներ» did not; the catalogs use «Чаты» and «Գործեր». Check any new
+or changed nav label at 375px. Product terms in each language: `docs/product/translation-glossary.md`.
 
 ## Never indexed
 
@@ -97,7 +113,9 @@ Budget (frontend-performance): initial JS ≤ 250 kB gzipped per route, LCP ≤ 
 INP ≤ 200 ms. `pnpm --filter app-web budget` measures every route's initial JavaScript from the
 build manifest and fails over budget; CI runs it after the build.
 
-Recorded at T-091 on the production build, at 375px with Slow 4G and a 4× CPU slowdown:
+Recorded at T-091 on the production build, at 375px with Slow 4G and a 4× CPU slowdown (T-128 then
+added `use-intl`: 131 kB, still static-sized chunks, but routes now render per request because they
+read the reader's language):
 
 | Route | Initial JS (gzip) | LCP | CLS |
 |---|---|---|---|
@@ -119,5 +137,6 @@ pnpm --filter @investigator/app-web dev       # http://localhost:3000
 
 - A theme toggle — the system setting decides until a user asks otherwise.
 - An app icon: the favicon request 404s until there is a brand mark to use.
+- The reader's time zone — the formatters require one; accounts (T-127) store it.
 - Authentication, the workspace switcher and every real screen — T-127, T-092 and the core-loop
   tasks.

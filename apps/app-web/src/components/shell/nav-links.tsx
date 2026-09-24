@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { t } from '@/i18n/messages';
+import { useTranslations } from 'use-intl';
 import { cn } from '@/lib/utils';
 import { DESTINATIONS, isCurrent } from './destinations';
 
@@ -30,6 +30,7 @@ const LAYOUT = {
  */
 export function NavLinks({ layout }: { layout: keyof typeof LAYOUT }) {
   const pathname = usePathname();
+  const t = useTranslations('nav');
   const styles = LAYOUT[layout];
   return (
     <ul className={styles.list}>

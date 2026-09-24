@@ -117,6 +117,15 @@ owner, never inferred by code.
 7. Any obligation to report suspected unlawful requests to authorities, and in which
    jurisdictions?
 
+7a. **Armenia specifically.** A press report (Hraparak, «Մասնավոր խուզարկուներն արգելված են
+   Հայաստանում, բայց գործում են») states that following another person to uncover facts about
+   them is criminally punishable in Armenia as unlawful interference in private life, and that
+   the one registered detective bureau declines private-life work. It cites no statute. Is any
+   form of private surveillance or private-life investigation lawful in Armenia — for anyone, or
+   for a licensed investigator? Is there a licensing regime at all? Which of the platform's
+   categories (records research, OSINT, due diligence, surveillance, partner investigation —
+   ADR-0009) could be offered there? Engineering has changed nothing on the strength of the report.
+
 ### Data protection
 8. Is the platform controller, processor, or joint controller for evidence content? The
    investigator determines what is collected; the platform determines storage, access and

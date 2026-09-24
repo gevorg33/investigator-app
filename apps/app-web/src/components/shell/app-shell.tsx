@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { t } from '@/i18n/messages';
+import { getT } from '@/i18n/server';
 import { NavLinks } from './nav-links';
 
 /**
@@ -8,7 +8,8 @@ import { NavLinks } from './nav-links';
  * destinations move to a sidebar and the bar goes. Full height is `dvh`, so mobile browser
  * chrome never cuts off the bottom.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export async function AppShell({ children }: { children: ReactNode }) {
+  const t = await getT();
   return (
     <div className="min-h-dvh md:flex">
       <a

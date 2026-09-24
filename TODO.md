@@ -1415,6 +1415,7 @@ Full SEO for the marketing domain per `.claude/skills/domain-and-seo/SKILL.md`.
 - [ ] Every entry has a real `lastModified`; regenerates on deploy and on content revalidation
 - [ ] `app/robots.ts` generated, referencing the sitemap
 - [ ] Self-referencing canonical on every public page
+- [ ] Every link into the app carries the page's locale as `?lang=<locale>` (ADR-0013), so a reader of `/ru/…` arrives in a Russian app whatever their browser asks for
 - [ ] Reciprocal `hreflang` for en/ru/hy plus `x-default`; no cross-locale canonicalisation
 - [ ] Unique title and description per page — no repeated boilerplate
 - [ ] Open Graph and Twitter metadata with image, dimensions and alt
@@ -5653,6 +5654,8 @@ Google sign-in joins with T-062.
 - [ ] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
 - [ ] Every auth error is privacy-preserving, and never reveals whether an email is registered
 - [ ] Session cookie behaviour matches T-025; the flows are tested end to end against the API
+- [ ] The language choice (T-128's `locale` cookie, **Account → Language**) is saved to the account, and a signed-in user's saved language is written to the cookie at sign-in — the API's assistant reads `users.locale`, so the two must agree
+- [ ] The reader's time zone is stored and passed to `formatDateTime`, which requires one (T-128)
 
 **Validation**
 ```bash
@@ -5662,7 +5665,7 @@ pnpm --filter app-web test auth
 ---
 
 ### T-128 — App translation catalogs (en, ru, hy)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P0 — screens are written against keys from the first one
 - **Depends on:** T-091
 - **Risk:** LOW
@@ -5677,14 +5680,71 @@ This moves the Backlog item into the core loop, because the launch market's lang
 optional.
 
 **Acceptance criteria**
-- [ ] A missing key in any locale fails the build
-- [ ] No user-facing string literal in feature code (lint rule)
-- [ ] Replaces T-091's interim `apps/app-web/src/i18n/messages.ts` (English, typed keys); the keys it defines carry over, and `<html lang>` follows the reader's locale
+- [x] A missing key in any locale fails the build
+- [x] No user-facing string literal in feature code (lint rule)
+- [x] Replaces T-091's interim `apps/app-web/src/i18n/messages.ts` (English, typed keys); the keys it defines carry over, and `<html lang>` follows the reader's locale
 
 **Validation**
 ```bash
 pnpm --filter app-web test i18n && pnpm --filter app-web build
 ```
+
+**DONE — 2026-09-24**
+
+*What exists.* `packages/i18n`: catalogs (`en.ts` source; `ru.ts`, `hy.ts` typed against it),
+`resolveLocale` and the formatters (date/time with a required time zone, numbers, money from minor
+units, relative time). app-web translates through `use-intl` (ADR-0013 — not `next-intl`, whose
+extraction tooling ships native install scripts): `getT()` on the server, `useTranslations` for
+client components, which receive only the `nav` namespace. The locale is the reader's choice (a
+cookie set from **Account → Language**), else `Accept-Language`, else English; `<html lang>` and
+titles follow it.
+
+*Criteria.*
+- Missing key fails the build: seen — deleting a Russian key and adding an Armenian one each fail
+  `pnpm build` with a type error, and an unknown key in a page fails the typecheck. A test adds
+  ICU validity, identical arguments to English and full plural categories per language (Russian's
+  four), and tests itself on six kinds of broken catalog.
+- Lint: JSX text, string children, and literal `aria-label`/`title`/`alt`/`placeholder` refused in
+  app-web (probed: six violations in three scripts caught; keys, numbers, punctuation pass).
+- T-091's module is gone; its keys carried over, nested.
+
+*Found along the way.* (1) **Russian «Сообщения» and Armenian «Պատվերներ» were clipped in the 75px
+phone tabs** — seen in the browser, not the tests. 12px is the smallest type token, so the words
+changed: «Чаты», «Գործեր» (Armenian empty states follow, so a screen uses one term). The rule is in
+`app-web.md` and ACTIONS #22. (2) A malformed `q=` weight in `Accept-Language` was read as weight 1 —
+a test caught it; now the entry is dropped. (3) 50 more iCloud conflict copies (`css.spec 2.ts`,
+an empty `src/app 2/`) broke `tsc`; quarantined to the session scratchpad, not deleted, after
+checking they were older copies. Three more sit inside `.git/` and were left alone — **the
+repository should move off iCloud Desktop** (ACTIONS #23, added here: it was referenced but missing).
+
+*Negative controls* (each broken on purpose, seen to fail, restored byte-for-byte): Russian key
+removed (build); Armenian key added (build); unknown key in a page (typecheck); an English argument
+the translations lack; the cookie ignored; fallback showing the key; `<html lang>` fixed to `en`;
+the whole catalog sent to the browser; the cookie scoped to every subdomain; any string accepted as
+a locale.
+
+*Verified.* Production build in a browser at 375px: Russian and Armenian browsers get their
+language, German falls back to English; choosing Русский on Account switches every page without
+JavaScript and outlasts an Armenian browser; the cookie is host-only, HTTP-only, `Secure`, Lax,
+365 days; every tab label fits in all three languages. 131 kB initial JS (budget 250).
+**Translations are not native-reviewed** — ACTIONS #22.
+
+*Follow-up, same task (2026-09-25), on the two points left for the owner to confirm.*
+- **Cookie vs locale URLs — one gap found and closed.** The marketing site keeps its locale in the
+  URL and cannot set the app's host-only cookie, so a reader of the Russian marketing site with an
+  English browser would have landed in English. `src/middleware.ts` now accepts `?lang=<locale>` on
+  any link into the app, records it as the reader's choice and 303-redirects to the clean URL
+  (other parameters kept; unknown values dropped). One cookie-options constant now serves both
+  writers. Verified in the browser; T-024 carries the matching criterion.
+- **Word choices — checked against real usage**, recorded in
+  `docs/product/translation-glossary.md` for the native reviewer. Armenian now says «դետեկտիվ»,
+  not «խուզարկու»: the lawful registered business uses «դետեկտիվ բյուրո», the press uses
+  «մասնավոր խուզարկու» for unlicensed surveillance. Russian «детектив» matches its law.
+- **Legal lead, not acted on:** the same search found a press report that private surveillance
+  of individuals is criminally punishable in Armenia. Recorded as a CLAIM under ACTIONS #2 and as
+  counsel question 7a — it bears on ADR-0009 for a launch locale, and is not engineering's call.
+- 19 more iCloud conflict copies (build and coverage output only) quarantined.
+
 
 ---
 
@@ -5916,6 +5976,7 @@ founds.
 - [ ] The assistant's discovery reason codes (`matched.*`, `not_matched.specialty`), clarification
       codes and `location.anywhere` (T-018) — the API sends codes and data, never sentences
 - [ ] A test fails when an API error key has no entry in every locale
+- [ ] The entries live in `packages/i18n` beside the UI catalogs (T-128), so the typed parity check covers them for free
 - [ ] ru and hy reviewed by a native speaker before they are marked current
 
 **Validation**

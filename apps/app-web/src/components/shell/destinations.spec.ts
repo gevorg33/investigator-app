@@ -1,13 +1,15 @@
+import { catalogs, LOCALES } from '@investigator/i18n';
 import { describe, expect, it } from 'vitest';
-import { t } from '@/i18n/messages';
 import { DESTINATIONS, isCurrent } from './destinations';
 
 describe('primary destinations', () => {
-  it('keeps to three to five, each with its own place and a label that exists', () => {
+  it('keeps to three to five, each with its own place and a label in every language', () => {
     expect(DESTINATIONS.length).toBeGreaterThanOrEqual(3);
     expect(DESTINATIONS.length).toBeLessThanOrEqual(5);
     expect(new Set(DESTINATIONS.map((d) => d.href)).size).toBe(DESTINATIONS.length);
-    for (const d of DESTINATIONS) expect(t(d.label)).not.toBe('');
+    for (const locale of LOCALES) {
+      for (const d of DESTINATIONS) expect(catalogs[locale].nav[d.label]).not.toBe('');
+    }
   });
 
   it.each([

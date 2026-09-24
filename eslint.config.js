@@ -4,6 +4,62 @@ import nextPlugin from '@next/eslint-plugin-next';
 import importX from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
 
+/**
+ * Two content rules for web feature code (design-system, localization), as `no-restricted-syntax`
+ * selectors. ESLint does not merge that rule across config blocks — a later block replaces an
+ * earlier one's list — so the lists live here and each block spreads the ones it wants.
+ *
+ * RAW_VALUES: every colour, length and duration is a token (packages/ui-tokens), the only place
+ * one may be written. `tokens.css` resets Tailwind's palette, so `bg-red-500` does not exist; this
+ * catches what a stylesheet cannot — a hex, an arbitrary `w-[13px]`, a `200ms`.
+ *
+ * UI_LITERALS: a user-facing string is a key in the catalogs (packages/i18n), never text in a
+ * component — JSX text, a string child, or the attributes a reader hears or sees (T-128).
+ */
+const RAW_VALUES = ['Literal', 'TemplateElement'].flatMap((node) => {
+  const value = node === 'Literal' ? 'value' : 'value.raw';
+  return [
+    {
+      selector: `${node}[${value}=/#[0-9a-fA-F]{3,8}\\b/]`,
+      message: 'Raw colour. Use a colour token (design-system).',
+    },
+    {
+      selector: `${node}[${value}=/\\b(rgba?|hsla?|oklch|oklab)\\(/]`,
+      message: 'Raw colour. Use a colour token (design-system).',
+    },
+    {
+      selector: `${node}[${value}=/-\\[[^\\]]*\\d[^\\]]*\\]/]`,
+      message:
+        'Arbitrary Tailwind value. Use a token utility, or `(--token)` for a token without one (design-system).',
+    },
+    {
+      selector: `${node}[${value}=/\\b(duration|delay)-\\d+\\b/]`,
+      message: 'Raw duration. Use a motion token: `duration-(--duration-fast)` (animation).',
+    },
+    {
+      selector: `${node}[${value}=/\\b\\d+m?s\\b/]`,
+      message: 'Raw duration. Use a motion token: `duration-(--duration-fast)` (animation).',
+    },
+  ];
+});
+
+/** Any letter a reader could read, in the launch scripts. */
+const LETTER = '[A-Za-zÀ-ÿЀ-ӿԱ-֏]';
+const LITERAL_MESSAGE =
+  'User-facing text belongs in the catalogs: use t("…") (localization, T-128).';
+const UI_LITERALS = [
+  { selector: `JSXText[value=/${LETTER}/]`, message: LITERAL_MESSAGE },
+  { selector: `JSXExpressionContainer > Literal[value=/${LETTER}/]`, message: LITERAL_MESSAGE },
+  {
+    selector: `JSXExpressionContainer > TemplateLiteral > TemplateElement[value.raw=/${LETTER}/]`,
+    message: LITERAL_MESSAGE,
+  },
+  {
+    selector: `JSXAttribute[name.name=/^(aria-label|aria-description|aria-roledescription|aria-valuetext|title|alt|placeholder)$/] > Literal`,
+    message: LITERAL_MESSAGE,
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -99,10 +155,7 @@ export default tseslint.config(
   },
 
   // The web apps: Next.js's own rules (the core-web-vitals set catches `<img>` without sizes,
-  // synchronous scripts and the like), and the design-system rule that feature code carries no
-  // raw values. Every colour, length and duration is a token (packages/ui-tokens), which is the
-  // only place one may be written. `tokens.css` resets Tailwind's palette, so `bg-red-500` does
-  // not exist; this catches what a stylesheet cannot: a hex, an arbitrary `w-[13px]`, a `200ms`.
+  // synchronous scripts and the like) and two content rules. See `webContentRules` above.
   {
     files: ['apps/app-web/src/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin },
@@ -110,38 +163,13 @@ export default tseslint.config(
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
-      'no-restricted-syntax': [
-        'error',
-        ...['Literal', 'TemplateElement'].flatMap((node) => {
-          const value = node === 'Literal' ? 'value' : 'value.raw';
-          return [
-            {
-              selector: `${node}[${value}=/#[0-9a-fA-F]{3,8}\\b/]`,
-              message: 'Raw colour. Use a colour token (design-system).',
-            },
-            {
-              selector: `${node}[${value}=/\\b(rgba?|hsla?|oklch|oklab)\\(/]`,
-              message: 'Raw colour. Use a colour token (design-system).',
-            },
-            {
-              selector: `${node}[${value}=/-\\[[^\\]]*\\d[^\\]]*\\]/]`,
-              message:
-                'Arbitrary Tailwind value. Use a token utility, or `(--token)` for a token without one (design-system).',
-            },
-            {
-              selector: `${node}[${value}=/\\b(duration|delay)-\\d+\\b/]`,
-              message:
-                'Raw duration. Use a motion token: `duration-(--duration-fast)` (animation).',
-            },
-            {
-              selector: `${node}[${value}=/\\b\\d+m?s\\b/]`,
-              message:
-                'Raw duration. Use a motion token: `duration-(--duration-fast)` (animation).',
-            },
-          ];
-        }),
-      ],
+      'no-restricted-syntax': ['error', ...RAW_VALUES, ...UI_LITERALS],
     },
+  },
+  // Tests assert on rendered text, so literals are theirs to use; raw values are still not.
+  {
+    files: ['apps/app-web/src/**/*.spec.{ts,tsx}'],
+    rules: { 'no-restricted-syntax': ['error', ...RAW_VALUES] },
   },
 
   // NestJS dependency injection reads constructor parameter types at runtime from

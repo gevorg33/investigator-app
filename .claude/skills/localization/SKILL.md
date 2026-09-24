@@ -7,6 +7,11 @@ description: Working with translation keys and locale formatting for en/ru/hy â€
 
 Launch locales: `en`, `ru`, `hy`. Adding a fourth must not touch the domain model.
 
+Built in T-128 (ADR-0013): catalogs in `packages/i18n/src/messages/` (`en.ts` is the source; `ru.ts`
+and `hy.ts` are typed against it, so a missing key fails the build), `use-intl` in the web apps,
+and `formatDateTime` / `formatMoney` / `formatNumber` / `formatRelativeTime` in `@investigator/i18n`.
+A new string: add the key to all three catalogs, then `t('â€¦')`.
+
 ## Rules
 
 1. **No hardcoded user-facing strings.** Keys only. A literal in a component is a defect,

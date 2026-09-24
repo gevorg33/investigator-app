@@ -6,11 +6,12 @@ import {
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
-import type { MessageKey } from '@/i18n/messages';
+import type { Catalog } from '@investigator/i18n';
 
 export interface Destination {
   href: string;
-  label: MessageKey;
+  /** A key in the `nav` namespace. */
+  label: keyof Catalog['nav'];
   icon: LucideIcon;
 }
 
@@ -23,11 +24,11 @@ export interface Destination {
  * then its route says what will be there.
  */
 export const DESTINATIONS: readonly Destination[] = [
-  { href: '/', label: 'nav.home', icon: House },
-  { href: '/missions', label: 'nav.missions', icon: BriefcaseBusiness },
-  { href: '/messages', label: 'nav.messages', icon: MessagesSquare },
-  { href: '/assistant', label: 'nav.assistant', icon: Bot },
-  { href: '/account', label: 'nav.account', icon: UserRound },
+  { href: '/', label: 'home', icon: House },
+  { href: '/missions', label: 'missions', icon: BriefcaseBusiness },
+  { href: '/messages', label: 'messages', icon: MessagesSquare },
+  { href: '/assistant', label: 'assistant', icon: Bot },
+  { href: '/account', label: 'account', icon: UserRound },
 ];
 
 /** Whether `href` is where the reader is: itself, or anywhere beneath it. Home only exactly. */
