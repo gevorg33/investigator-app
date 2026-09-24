@@ -793,7 +793,7 @@ pnpm --filter api test verification
 ---
 
 ### T-014 — Initialize shadcn/ui in admin-web
-- **Status:** TODO — unblocked by T-013 (API) on 2026-09-18
+- **Status:** DONE — 2026-09-25
 - **Priority:** P2
 - **Depends on:** T-001, T-013
 - **Risk:** LOW
@@ -810,22 +810,54 @@ Procedure and conventions: `.claude/skills/component-discovery/SKILL.md`.
 **Tenancy (ADR-0011).** Admin-web is the **platform staff** console. Agency owners and admins use `app-web` (T-091 to T-094), never admin-web — their authority is tenant permissions, not a platform staff scope.
 
 **Acceptance criteria**
-- [ ] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn`
-- [ ] Tailwind and CSS variables wired; light and dark themes both render
-- [ ] Registries configured per app: `@shadcn`, `@react-bits`
+- [x] `apps/admin-web/components.json` exists; `get_project_registries` returns `@shadcn` — called over JSON-RPC against `shadcn@4.21.0 mcp` run in the app: `@shadcn`, `@cult-ui`, `@react-bits`
+- [x] Tailwind and CSS variables wired; light and dark themes both render — measured in the browser: every colour resolves to its token in each theme
+- [x] Registries configured per app: `@shadcn`, `@react-bits`
       (`https://reactbits.dev/r/{name}.json`), `@cult-ui`
-- [ ] The **root `components.json` is removed** once per-app configs exist — it exists only so
-      registry search works before any app does
-- [ ] Only allowlisted registry namespaces present; no token committed
-- [ ] Agents take `-TS-TW` variants from React Bits, never `-JS-`
-- [ ] One component added end-to-end (`button`) to prove the pipeline
-- [ ] `components/ui/**` is web-only and not imported by `apps/mobile`
-- [ ] Follows the pattern T-091 set (`docs/architecture/app-web.md`): tokens from `@investigator/ui-tokens/tokens.css`, the raw-value lint rule extended to `apps/admin-web/src/**`, the bundle budget script, and the per-app `components.json` with `@cult-ui` — then the root `components.json` goes
+- [x] The **root `components.json` is removed** once per-app configs exist — `.mcp.json` now starts the MCP inside `apps/app-web`, since `--cwd` is ignored
+- [x] Only allowlisted registry namespaces present; no token committed
+- [x] Agents take `-TS-TW` variants from React Bits, never `-JS-` — the rule stands in `component-discovery`; nothing from React Bits was added here
+- [x] One component added end-to-end (`button`) to prove the pipeline
+- [x] `components/ui/**` is web-only and not imported by `apps/mobile` — now lint-enforced (it was not; see below)
+- [x] Follows the pattern T-091 set (`docs/architecture/app-web.md`): tokens from `@investigator/ui-tokens/tokens.css`, the raw-value lint rule extended to `apps/admin-web/src/**`, the bundle budget script, and the per-app `components.json` with `@cult-ui` — then the root `components.json` goes
 
 **Validation**
 ```bash
 pnpm --filter admin-web build
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* admin-web is a Next.js 15.5.25 app on port 3002 (`docs/architecture/admin-web.md`):
+Tailwind 4 on `@investigator/ui-tokens`, `components.json` with the three registries, `@shadcn/button`
+adopted and re-tokenised, one landing route with a **disabled** Sign in (staff sign-in arrives with
+T-070), never indexed. 26 tests, 100% coverage; `/` is 102.7 kB initial JS against the 250 kB budget,
+which CI now checks for admin-web too.
+
+*Pattern shared, not copied.* The bundle-budget script moved to `scripts/check-bundle-budget.mjs` and
+reads the app from its working directory; both apps' `budget` scripts call it. The raw-value and
+Next.js lint block covers both apps. admin-web left the root `tsc --build` graph, as app-web did.
+
+*Found along the way.* (1) **`shadcn mcp --cwd` is ignored** — the tools read the process's own
+directory. With the root `components.json` gone, `get_project_registries` from the root returned
+nothing; `.mcp.json` now starts the MCP inside `apps/app-web` (`sh -c 'cd … && exec npx -y
+shadcn@4.21.0 mcp'`, pinned), verified from the root. (2) The CLI again installed the third-party
+`cn` package, and the `radix-ui` umbrella unpinned (73 packages) for one `Slot`; replaced by our `cn`
+and `@radix-ui/react-slot` 1.3.3 (2 packages). (3) **`apps/mobile` had lost T-001's deep-import rule**:
+its `no-restricted-imports` block replaced the generic one, so `../../../packages/validation/src` and
+any web app's `components/ui` were importable. The pattern is now shared and repeated in the mobile
+block, which also names both web apps; probed — four violations fail, the tokens import passes.
+(4) Upstream's button drew no app focus outline (`outline-none`), drew dark on dark with `dark:`
+overrides the tokens already handle, and had sizes under 44px; all changed (component inventory).
+
+*Browser* (production build): 375 light and dark, 768, 1280 — no horizontal scroll; button 44px;
+keyboard focus shows the focus-ring token at 2px offset; hover applies only where the device can
+hover; theme-color metas for both schemes; `X-Robots-Tag`, robots meta, no `X-Powered-By`; no console
+output. *Negative controls* (broken, seen to fail, restored byte-for-byte): `h-9`, `outline-none`,
+`text-white`, sign-in enabled, caller class dropped.
+
+*Not run locally.* The API suite needs PostgreSQL and this machine has no container runtime; nothing
+in `apps/api` changed, and CI runs it.
 
 ---
 
@@ -1462,7 +1494,7 @@ pnpm --filter api test auth-cookies
 ---
 
 ### T-026 — Knowledge base translation into ru and hy
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25. 72 translations, all `draft` until native-speaker review (ACTIONS-FOR-ME #22)
 - **Priority:** P2
 - **Depends on:** T-019
 - **Risk:** LOW
@@ -1479,23 +1511,54 @@ Excludes the legal documents in `docs/compliance/`, which are T-027 and must not
 agent-translated.
 
 **Acceptance criteria**
-- [ ] 64 files: every `en` document has a `ru` and an `hy` counterpart
-- [ ] Same `id`, differing `locale`; version tracks the English source it was translated from
-- [ ] `python3 scripts/validate-knowledge-base.py` reports full parity and zero orphans
-- [ ] Headings stay user-voice in the target language — translated as how a speaker would
-      actually ask, not word-for-word from English
-- [ ] Sections remain self-contained; no chunk depends on an English neighbour
-- [ ] Russian plurals use ICU `one/few/many/other`; Armenian plural rules applied correctly
-- [ ] No `source_of_truth: database` document lists values in any locale
-- [ ] Public policy summaries state, in the target language, that the authoritative legal
-      text governs
-- [ ] **Native-speaker review before any translated document is set `status: current`**
-- [ ] A retrieval test confirms locale preference and reported `en` fallback
+- [x] 64 files: every `en` document has a `ru` and an `hy` counterpart — 72: the knowledge base had grown to 36
+- [x] Same `id`, differing `locale`; version tracks the English source it was translated from — now enforced (newer is an error; a lagging current translation warns)
+- [x] `python3 scripts/validate-knowledge-base.py` reports full parity and zero orphans — `ru 36/36 (36 draft)  hy 36/36 (36 draft)`, 0 errors, 0 warnings
+- [x] Headings stay user-voice in the target language — translated as how a speaker would
+      actually ask, not word-for-word from English — the validator now recognises Armenian `՞` and ru/hy first-person symptoms
+- [x] Sections remain self-contained; no chunk depends on an English neighbour — the real parser, run over all 72 as if current, gives each the same chunk count as its source
+- [x] Russian plurals use ICU `one/few/many/other`; Armenian plural rules applied correctly — N/A to prose: the knowledge base has no count templates; forms are written grammatically
+- [x] No `source_of_truth: database` document lists values in any locale — the three are rule-only, as in English
+- [x] Public policy summaries state, in the target language, that the authoritative legal
+      text governs — all three `policies/` translations keep the notice
+- [x] **Native-speaker review before any translated document is set `status: current`** — held: every translation is `draft`; the review is ACTIONS-FOR-ME #22
+- [x] A retrieval test confirms locale preference and reported `en` fallback — exists since T-017 (`knowledge-retrieval.service.spec.ts`, `describe('language')`); needs PostgreSQL, so it ran in CI, not locally
 
 **Validation**
 ```bash
 python3 scripts/validate-knowledge-base.py
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* A Russian and an Armenian version of every knowledge-base document, `status: draft`,
+same `id`, `version` and `tags` as the English. One glossary throughout (mission задание/առաջադրանք,
+quote предложение/գնառաջարկ, assignment заказ/պատվեր, investigator детектив/խուզարկու). Identifiers,
+paths and audit event names left untranslated.
+
+*The validator, extended* (`scripts/validate-knowledge-base.py`, 7 new cases in
+`apps/api/test/knowledge-base-validator.spec.ts`). (1) A translation draft is counted in the coverage
+line, not warned per file: the repository test demands zero warnings, and the task requires drafts,
+so without this the task could not pass CI honestly. An English draft still warns. (2) A translation
+newer than its source is an error; a current one that lags is a warning; a lagging draft is counted.
+(3) Armenian `՞` and ru/hy first-person headings count as user voice — without it all 31 Armenian
+files that phrase questions the Armenian way warned.
+
+*Verified.* No browser surface — documentation and a CI script. Validator: 0 errors, 0 warnings.
+Structural parity script: every translation has the same frontmatter fields, `##` sections, table
+rows, code spans and legal notice as its source. The real parser (`parseDocument`), run over all 72
+with `status` swapped to current, chunked each exactly as its English. `knowledge-source.spec.ts`,
+which reads the real knowledge base, passes (drafts skipped). *Negative controls* (validator broken,
+seen to fail, restored byte-for-byte): Armenian mark unrecognised (2 tests, 31 real warnings); drafts
+warned again; newer-than-source allowed; lagging draft warned.
+
+*Found along the way.* Reviewed overlaps are matched by question text, and conflicts are detected per
+locale, so the three reviewed English privacy overlaps will be flagged again in each language when the
+translations are promoted. Documented in the README's promotion procedure and ACTIONS-FOR-ME #22 —
+not a defect today, since drafts are not ingested.
+
+*Not done.* Native-speaker review — a person's job (ACTIONS-FOR-ME #22). The API suite, which needs
+PostgreSQL, was not run locally; only the knowledge-base validator and source specs were.
 
 ---
 
@@ -5711,11 +5774,11 @@ titles follow it.
 *Found along the way.* (1) **Russian «Сообщения» and Armenian «Պատվերներ» were clipped in the 75px
 phone tabs** — seen in the browser, not the tests. 12px is the smallest type token, so the words
 changed: «Чаты», «Գործեր» (Armenian empty states follow, so a screen uses one term). The rule is in
-`app-web.md` and ACTIONS #22. (2) A malformed `q=` weight in `Accept-Language` was read as weight 1 —
+`app-web.md` and ACTIONS #23. (2) A malformed `q=` weight in `Accept-Language` was read as weight 1 —
 a test caught it; now the entry is dropped. (3) 50 more iCloud conflict copies (`css.spec 2.ts`,
 an empty `src/app 2/`) broke `tsc`; quarantined to the session scratchpad, not deleted, after
 checking they were older copies. Three more sit inside `.git/` and were left alone — **the
-repository should move off iCloud Desktop** (ACTIONS #23, added here: it was referenced but missing).
+repository should move off iCloud Desktop** (ACTIONS #24, added here: it was referenced but missing).
 
 *Negative controls* (each broken on purpose, seen to fail, restored byte-for-byte): Russian key
 removed (build); Armenian key added (build); unknown key in a page (typecheck); an English argument
@@ -5727,7 +5790,7 @@ a locale.
 language, German falls back to English; choosing Русский on Account switches every page without
 JavaScript and outlasts an Armenian browser; the cookie is host-only, HTTP-only, `Secure`, Lax,
 365 days; every tab label fits in all three languages. 131 kB initial JS (budget 250).
-**Translations are not native-reviewed** — ACTIONS #22.
+**Translations are not native-reviewed** — ACTIONS #23.
 
 *Follow-up, same task (2026-09-25), on the two points left for the owner to confirm.*
 - **Cookie vs locale URLs — one gap found and closed.** The marketing site keeps its locale in the
@@ -6009,6 +6072,32 @@ takes, and `packages/api-client` cannot be generated from it.
 **Validation**
 ```bash
 pnpm --filter api test openapi
+```
+
+---
+
+### T-137 — Pin the Playwright MCP version
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .mcp.json, .claude/skills/visual-qa/SKILL.md
+
+**Description**
+`.mcp.json` starts the Playwright MCP as `@playwright/mcp@latest`, so every session runs whatever
+was published most recently — the unpinned-dependency risk CLAUDE.md's version policy exists to
+avoid. T-014 pinned the shadcn MCP (`shadcn@4.21.0`); this one was out of that task's scope. Pin
+the newest version that has been out long enough, per CLAUDE.md, and note it in `visual-qa`.
+
+**Acceptance criteria**
+- [ ] `.mcp.json` names an exact `@playwright/mcp` version, chosen by release date and changelog
+- [ ] The MCP starts and a browser snapshot works on the pinned version
+
+**Validation**
+```bash
+npx -y @playwright/mcp@<version> --help
 ```
 
 ---

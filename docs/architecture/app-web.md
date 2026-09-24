@@ -100,6 +100,8 @@ from `next.config.ts`. Browser source maps are off (T-028's check runs on the bu
 ## Components
 
 `components.json` sets the registries in ADR-0003's order: `@shadcn`, `@cult-ui`, `@react-bits`.
+It is per app — the root file was removed in T-014, and the shadcn MCP is started inside this app
+(`component-discovery`).
 Adopted components live in `src/components/ui/` and are recorded in
 `docs/product/component-inventory.md`. After every `shadcn add`, read the diff: CLI 4.21 wrote
 `import { cn } from "cn"` and installed shadcn's new two-day-old `cn` npm package instead of using
@@ -111,7 +113,8 @@ checking that across upgrades.
 
 Budget (frontend-performance): initial JS ≤ 250 kB gzipped per route, LCP ≤ 2.5 s, CLS ≤ 0.1,
 INP ≤ 200 ms. `pnpm --filter app-web budget` measures every route's initial JavaScript from the
-build manifest and fails over budget; CI runs it after the build.
+build manifest and fails over budget; CI runs it after the build. The script is shared with
+admin-web (`scripts/check-bundle-budget.mjs`, run from the app's directory).
 
 Recorded at T-091 on the production build, at 375px with Slow 4G and a 4× CPU slowdown (T-128 then
 added `use-intl`: 131 kB, still static-sized chunks, but routes now render per request because they

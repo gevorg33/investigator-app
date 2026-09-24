@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+/* Every colour, size, radius, shadow, easing and breakpoint the console may use — and nothing
+   else: the tokens reset Tailwind's own palette and scales (packages/ui-tokens). The same file
+   app-web imports, so staff and customers see one visual language. */
+@import '@investigator/ui-tokens/tokens.css';
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface text-text font-sans text-base antialiased;
+  }
+
+  /* One visible focus style for everything focusable, from the focus-ring token. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-focus-ring;
+  }
+}

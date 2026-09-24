@@ -28,12 +28,19 @@ Use the shadcn MCP: `search_items_in_registries` → `view_items_in_registries` 
 
 ### Registries, verified working
 
-`@shadcn`, `@cult-ui` and `@react-bits` (684 items) are configured in `apps/app-web/components.json`
-and in the root file the MCP reads (T-091). `@cult-ui`'s URL was taken from shadcn's official
+`@shadcn`, `@cult-ui` and `@react-bits` (684 items) are configured per app, in
+`apps/app-web/components.json` and `apps/admin-web/components.json`. There is **no root
+`components.json`** (removed in T-014). `@cult-ui`'s URL was taken from shadcn's official
 registry index (`https://ui.shadcn.com/r/registries.json`). `cult-ui.com` answers HTTP 429 to the
 MCP and to `curl` from some networks; its catalogue is also listed at `https://cult-ui.com/docs`.
 There is no separate MCP per library — registries are configured in `components.json` and one
 MCP reads them all.
+
+**The MCP reads the `components.json` of the directory it runs in.** `shadcn mcp --cwd <dir>` is
+accepted and ignored (4.21.0 — verified in T-014 by calling `get_project_registries`), so
+`.mcp.json` starts it inside `apps/app-web` with `sh -c 'cd … && exec …'`. Both apps carry the same
+registries, so search results are the same for either. Adds are run by hand, with `-c` naming the
+app: `pnpm dlx shadcn@4.21.0 add @shadcn/button -c apps/admin-web`.
 
 **React Bits ships every component in four variants:** `-JS-CSS`, `-JS-TW`, `-TS-CSS`,
 `-TS-TW`. A search returns all four, so 684 items is really ~171 components.
@@ -48,7 +55,9 @@ bug. Run the add manually: `npx shadcn@latest add @react-bits/ComponentName-TS-T
 `import { cn } from "cn"` into `@shadcn/empty` and installed shadcn's new `cn` npm package —
 unpinned and two days old — instead of using the `utils` alias. Point the import at
 `@/lib/utils`, remove the package, and add any dependency the CLI assumed was present
-(`class-variance-authority`). Pin the CLI version: `pnpm dlx shadcn@4.21.0 add …`.
+(`class-variance-authority`). Pin the CLI version: `pnpm dlx shadcn@4.21.0 add …`. The same add
+also installs the `radix-ui` umbrella unpinned — 73 packages — where a component needs one
+primitive; depend on the single `@radix-ui/react-*` package, pinned (T-014, `@shadcn/button`).
 
 ## Reviewing what you add
 

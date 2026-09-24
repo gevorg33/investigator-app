@@ -1,18 +1,20 @@
 # Translation glossary — en / ru / hy
 
-The words the product uses for its own concepts, in each launch language, so every screen says the
-same thing the same way (T-128, ADR-0013). Catalogs: `packages/i18n/src/messages/`.
+The words the product uses for its own concepts, in each launch language, so every screen **and
+every help article** says the same thing the same way (T-128, ADR-0013; T-026). Catalogs:
+`packages/i18n/src/messages/`. Knowledge base: `docs/knowledge-base/**/*.{ru,hy}.md`.
 
-**Status: written by an agent, not yet reviewed by native speakers** (ACTIONS-FOR-ME #22). The
-choices below are reasoned and sourced, not final. A reviewer changes the catalog and this table
-together.
+**Status: written by agents, not yet reviewed by native speakers** (ACTIONS-FOR-ME #23 for the
+app, #22 for the knowledge base). The choices below are reasoned and sourced, not final. A reviewer
+changes the catalog, the articles and this table together.
 
 ## Terms
 
 | Concept | English | Russian | Armenian | Why, and the alternatives |
 |---|---|---|---|---|
-| Investigator (the professional) | investigator | **детектив** | **դետեկտիվ** | Russian: «частный детектив» is the everyday word and the legal one (Law No. 2487-1, «О частной детективной и охранной деятельности»). Armenian: the registered, lawful business in Armenia calls itself «դետեկտիվ բյուրո», while press coverage uses «մասնավոր խուզարկու» for unlicensed private surveillance; «խուզարկել» also means a police search. Rejected: «խուզարկու», «следователь» (a state investigator) |
-| Mission (what a customer asks for) | mission | **заказ** | **գործ** | A customer's request for an investigation. Russian «заказ» is the marketplace word (an order; «мои заказы»). **Alternative: «заявка»** — agencies ask customers to «подать заявку», and it fits the tab. Armenian «գործ» (a case) fits investigation work and the phone tab; «պատվեր» (order) is the literal marketplace word but is clipped in the tab (see below). Rejected: «миссия», «առաքելություն» (literal, reads oddly) |
+| Investigator (the professional) | investigator | **детектив** | **դետեկտիվ** in the app · «խուզարկու» in the knowledge base — **open conflict**, below | Russian: «частный детектив» is the everyday word and the legal one (Law No. 2487-1, «О частной детективной и охранной деятельности»); both sides agree. Rejected: «следователь» (a state investigator) |
+| Mission (what a customer asks for) | mission | **задание** | «գործ» in the app · **առաջադրանք** in the knowledge base — **open conflict**, below | Russian «задание» in both, and the navigation label «Задания» fits the tab. Not «заказ», which means the assignment (next row). **Alternative for both: «заявка»** — agencies ask customers to «подать заявку». Rejected: «миссия», «առաքելություն» (literal, reads oddly) |
+| Assignment (a hired investigator's engagement) | assignment | **заказ** | **պատվեր** | The knowledge base's words. The app says «обновления по заказам» for assignment updates |
 | Messages (the conversations area) | Messages | **Чаты** | **Զրույցներ** | Navigation label. «Сообщения» is the fuller Russian word but is clipped in the phone tab; «Чаты» is common in Russian apps. Armenian «Զրույցներ» (conversations). Body text may use the fuller words: «переписка», «հաղորդագրություններ» |
 | Assistant | Assistant | **Ассистент** | **Օգնական** | Russian «Помощник» is an alternative; «Ассистент» matches how AI assistants are commonly named |
 | Account | Account | **Аккаунт** | **Հաշիվ** | Russian «Профиль» is an alternative, but the page will hold sign-in and privacy settings, not only a profile |
@@ -20,6 +22,21 @@ together.
 | Quote (an investigator's price for a mission) | quote | **предложение** | **գնառաջարկ** | Russian «коммерческое предложение» shortened; «смета» is an estimate, not an offer. Armenian «գնառաջարկ» is the procurement word for a price offer |
 | Customer | customer | **заказчик** | **պատվիրատու** | The party ordering the work |
 | Product name | Investigator | Investigator | Investigator | A name, untranslated until there is a brand |
+
+## Open conflicts between the app and the knowledge base
+
+Both sides are unreviewed drafts and neither is shown to a reader yet (the app is not deployed; the
+translated articles are `draft` and not ingested). The reviewer settles each once, and the other
+side is then changed to match.
+
+1. **Investigator, Armenian: «դետեկտիվ» (app) or «խուզարկու» (knowledge base).** Evidence for
+   «դետեկտիվ»: the one lawful, registered business in Armenia calls itself «դետեկտիվ բյուրո»; a
+   Hraparak article uses «մասնավոր խուզարկու» for unlicensed private surveillance of individuals;
+   classified listings use both («Մասնավոր դետեկտիվ/խուզարկու»); «խուզարկել» also means a police
+   search. If «դետեկտիվ» wins, 36 Armenian articles change; if «խուզարկու» wins, three app strings.
+2. **Mission, Armenian: «գործ» (app) or «առաջադրանք» (knowledge base).** The navigation tab holds
+   about 60px at 12px; «Առաջադրանքներ» does not fit. Either both use «գործ», or the app keeps a
+   short navigation label beside the knowledge base's term in body text.
 
 ## Constraints a translation must meet
 

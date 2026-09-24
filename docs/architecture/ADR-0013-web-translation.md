@@ -83,7 +83,7 @@ reader; correct Russian plurals by construction; no native install scripts.
 **Accepted:** pages read a cookie, so they render per request rather than statically — the app is
 per-user anyway. `use-intl`'s client code adds about 11 kB gzipped (app-web: 131 kB of the 250 kB
 budget). Translations are written by an agent and **not yet reviewed by native speakers**
-(ACTIONS-FOR-ME #22); the catalogs are usable, not final.
+(ACTIONS-FOR-ME #23); the catalogs are usable, not final.
 
 **Not decided here:** per-user time zone storage (T-127 — the formatters require a time zone and
 default to none); translating API error codes (T-135 adds them to these catalogs).

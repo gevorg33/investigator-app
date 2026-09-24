@@ -4,6 +4,15 @@ import nextPlugin from '@next/eslint-plugin-next';
 import importX from 'eslint-plugin-import-x';
 import tseslint from 'typescript-eslint';
 
+// T-001's deep-import pattern. Declared once because flat config does not merge a rule's options:
+// a later block that sets `no-restricted-imports` replaces this pattern for its files, so that
+// block has to repeat it (the mobile block does — T-014 found mobile had silently lost it).
+const deepRelativeImport = {
+  group: ['../**/src/**'],
+  message:
+    'Deep relative import into another package. Depend on the workspace package (@investigator/*) and its public entry point instead — T-001.',
+};
+
 /**
  * Two content rules for web feature code (design-system, localization), as `no-restricted-syntax`
  * selectors. ESLint does not merge that rule across config blocks — a later block replaces an
@@ -109,13 +118,7 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          patterns: [
-            {
-              group: ['../**/src/**'],
-              message:
-                'Deep relative import into another package. Depend on the workspace package (@investigator/*) and its public entry point instead — T-001.',
-            },
-          ],
+          patterns: [deepRelativeImport],
         },
       ],
     },
@@ -137,9 +140,22 @@ export default tseslint.config(
             },
           ],
           patterns: [
+            deepRelativeImport,
             {
               group: ['@investigator/ui/*', 'react-dom', 'react-dom/*', 'next', 'next/*'],
               message: 'Web-only dependency. Not importable from the mobile companion (ADR-0004).',
+            },
+            {
+              // The web apps' own `components/ui` — shadcn, Cult UI and React Bits copies — are DOM.
+              group: [
+                '@investigator/app-web',
+                '@investigator/app-web/*',
+                '@investigator/admin-web',
+                '@investigator/admin-web/*',
+                '**/app-web/**',
+                '**/admin-web/**',
+              ],
+              message: 'Web app code. Not importable from the mobile companion (ADR-0004).',
             },
           ],
         },
@@ -147,19 +163,19 @@ export default tseslint.config(
     },
   },
 
-  // Plain Node scripts beside an app (`apps/*/scripts/*.mjs`, e.g. the bundle budget). Not
+  // Plain Node scripts (`scripts/*.mjs`, e.g. the bundle budget both Next.js apps run). Not
   // TypeScript, so nothing declares Node's globals for them.
   {
-    files: ['apps/*/scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs'],
     languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
   },
 
   // The web apps: Next.js's own rules (the core-web-vitals set catches `<img>` without sizes,
-  // synchronous scripts and the like) and two content rules. See `webContentRules` above.
+  // synchronous scripts and the like) and two content rules: RAW_VALUES and UI_LITERALS, above.
   {
-    files: ['apps/app-web/src/**/*.{ts,tsx}'],
+    files: ['apps/app-web/src/**/*.{ts,tsx}', 'apps/admin-web/src/**/*.{ts,tsx}'],
     plugins: { '@next/next': nextPlugin },
-    settings: { next: { rootDir: 'apps/app-web/' } },
+    settings: { next: { rootDir: ['apps/app-web/', 'apps/admin-web/'] } },
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
@@ -168,7 +184,7 @@ export default tseslint.config(
   },
   // Tests assert on rendered text, so literals are theirs to use; raw values are still not.
   {
-    files: ['apps/app-web/src/**/*.spec.{ts,tsx}'],
+    files: ['apps/app-web/src/**/*.spec.{ts,tsx}', 'apps/admin-web/src/**/*.spec.{ts,tsx}'],
     rules: { 'no-restricted-syntax': ['error', ...RAW_VALUES] },
   },
 

@@ -6,6 +6,12 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["-u", "NODE_ENV", "pnpm", "--filter", "@investigator/app-web", "start"],
       "port": 3000
+    },
+    {
+      "name": "admin-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["-u", "NODE_ENV", "pnpm", "--filter", "@investigator/admin-web", "start"],
+      "port": 3002
     }
   ]
 }

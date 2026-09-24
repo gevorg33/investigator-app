@@ -1,5 +1,6 @@
 // Fails the build when a route's initial JavaScript exceeds the application budget
-// (frontend-performance: ≤ 250 kB gzipped). Run after `next build`: `pnpm --filter app-web budget`.
+// (frontend-performance: ≤ 250 kB gzipped). Run after `next build`, from the app's own directory —
+// each Next.js app's `budget` script calls it: `pnpm --filter app-web budget`.
 //
 // A route loads its own entry plus the entry of every layout above it. Those chunk lists are in
 // .next/app-build-manifest.json; each file is gzipped here and the union summed, so a chunk two
@@ -9,7 +10,7 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const BUDGET_BYTES = 250_000;
-const next = join(import.meta.dirname, '..', '.next');
+const next = join(process.cwd(), '.next');
 const { pages } = JSON.parse(readFileSync(join(next, 'app-build-manifest.json'), 'utf8'));
 
 const gzipped = (file) => gzipSync(readFileSync(join(next, file))).length;

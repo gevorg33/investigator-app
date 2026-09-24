@@ -553,7 +553,34 @@ flag it until the other document is corrected.
 
 ---
 
-### 22. Native-speaker review of the app's Russian and Armenian text — before launch (T-128)
+### 22. Native-speaker review of the Russian and Armenian knowledge base — for T-026
+
+**Why:** The whole knowledge base (36 documents) is translated into Russian and Armenian — 72 files,
+all `status: draft`. Drafts are not ingested, so today the Assistant still answers Russian and
+Armenian users from the English and tells them so. A translation reaches users only after a native
+speaker has read it: the Assistant reads these pages to customers as the platform's own word, and an
+agent's Armenian in particular will have phrasing a native speaker would not use.
+
+**What is needed:** one native Russian and one native Armenian reviewer, ideally familiar with
+private-investigation or legal vocabulary. For each file, check that it says what the English says and
+reads naturally. The glossary used throughout is worth confirming first, because it repeats in every
+file: mission — задание / առաջադրանք, quote — предложение / գնառաջարկ, investigator — детектив /
+խուզարկու, assignment — заказ / պատվեր, payout — выплата / վճարահանում. Corrections can be made in the
+files directly. Priority order if time is short: `policies/` (public), then `customer/`, then
+`investigator/`, `agency/`, `staff/`.
+
+The app's words, and the two places they still differ from these, are in
+[`docs/product/translation-glossary.md`](docs/product/translation-glossary.md) — settle them with #23.
+
+**Then (agent work, no longer yours):** flip reviewed files to `current` and run the sync — see
+"Promoting a reviewed translation" in `docs/knowledge-base/README.md`. The three privacy overlaps from
+#21 will need recording again in each language.
+
+**Status:** ⬜ Pending — not blocking launch in English; blocks serving ru/hy knowledge.
+
+---
+
+### 23. Native-speaker review of the app's Russian and Armenian text — before launch (T-128)
 
 **Why:** Every word the application shows is now in `packages/i18n/src/messages/` — `ru.ts` and
 `hy.ts` beside the English source. I wrote both translations. They are complete (the build fails
@@ -562,16 +589,19 @@ something to launch on: it reads as unfinished software to exactly the market th
 
 **What is needed:** a native speaker of each language reads their file — about 20 strings today,
 five minutes — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
-beside it: every product term, the word chosen, the alternatives and why. Word choices to confirm,
-two of them made so the labels fit a 75px phone tab:
+beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
+app and the knowledge base must use the same words, and the glossary lists the two places they
+still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:
 
 - Russian navigation says **«Чаты»** for Messages (the full «Сообщения» is clipped on a phone)
-  and **«Заказы»** for Missions.
-- Armenian navigation says **«Գործեր»** (cases) for Missions, where «Պատվերներ» (orders) did not
-  fit, and **«Զրույցներ»** (conversations) for Messages.
-- Armenian says **«դետեկտիվ»** for investigator, not «խուզարկու»: the lawful registered business
-  in Armenia calls itself «դետեկտիվ բյուրո», and the press uses «մասնավոր խուզարկու» for
-  unlicensed private surveillance. Russian says «детектив», as its law does.
+  and **«Задания»** for Missions — the knowledge base's word; «заказ» means an assignment.
+- Armenian navigation says **«Գործեր»** (cases) for Missions, where «Պատվերներ» and the knowledge
+  base's «Առաջադրանքներ» do not fit — **open conflict**: pick one word for both, or a short
+  navigation label beside the knowledge base's term.
+- Armenian says **«դետեկտիվ»** for investigator where the knowledge base says «խուզարկու» — **open
+  conflict**. The evidence favours «դետեկտիվ»: the lawful registered business in Armenia calls
+  itself «դետեկտիվ բյուրո», and the press uses «մասնավոր խուզարկու» for unlicensed private
+  surveillance. Russian says «детектив» in both, as its law does.
 
 A change is an edit to the file; the build checks the keys and a test checks every message is
 valid. A nav label longer than about 60px at 12px will clip — check a replacement at 375px wide.
@@ -580,7 +610,7 @@ valid. A nav label longer than about 60px at 12px will clip — check a replacem
 
 ---
 
-### 23. Move the repository off iCloud Desktop — recurring breakage (T-011, T-128)
+### 24. Move the repository off iCloud Desktop — recurring breakage (T-011, T-128)
 
 **Why:** The repository lives in `~/Desktop`, which iCloud syncs. iCloud keeps making conflict
 copies — `css.spec 2.ts`, `package 2.json`, a whole `src/app 2/`, and three inside `.git/`
