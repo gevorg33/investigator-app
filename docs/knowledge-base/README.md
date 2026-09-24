@@ -94,6 +94,29 @@ Every translation needs its English source: a `ru` or `hy` file whose `id` has n
 an orphan and fails validation, since it would serve content with no authoritative original.
 Missing translations are reported as coverage, not as errors.
 
+### Translations (T-026)
+
+- **A translation carries the `version` of the English it was translated from.** A version newer
+  than the source fails validation. When the English moves on, a *current* translation that lags
+  is a warning — it would answer from superseded text — and a *draft* that lags is counted in the
+  coverage line (`ru 36/36 (36 draft, 2 behind English)`).
+- **Every translation starts as `draft`, and stays there until a native speaker has reviewed it.**
+  Drafts are not ingested, so until then the Assistant answers from the English and says so.
+  Translation drafts are counted in the coverage line rather than warned per file; an English
+  draft is still a warning.
+- **Headings stay in the user's voice in the target language** — how a speaker would actually ask.
+  Armenian marks a question with `՞` on the stressed word, not `?` at the end; the validator
+  accepts it anywhere in the heading, and accepts first-person symptoms in Russian and Armenian
+  (`Я не могу…`, `Չեմ կարողանում…`).
+- **Identifiers are not translated:** `id`, `tags`, audit event names, file paths, skill paths.
+- **Legal summaries keep their notice** that the legal text governs, in the target language.
+
+**Promoting a reviewed translation** is: set `status: current` and `updated`, run
+`pnpm --filter api knowledge:sync --fail-on-conflict`, and resolve what it reports. Conflicts are
+detected per locale and reviewed overlaps are matched by their question, so a pair already
+reviewed in English (`overlaps-reviewed.yml`) is flagged again in each language under its translated
+question until someone records it for that language too.
+
 ## Ingestion
 
 `pnpm --filter api knowledge:sync` copies this folder into PostgreSQL, one chunk per `## `

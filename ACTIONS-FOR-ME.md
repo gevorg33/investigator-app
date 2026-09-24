@@ -540,6 +540,30 @@ flag it until the other document is corrected.
 
 ---
 
+### 22. Native-speaker review of the Russian and Armenian knowledge base — for T-026
+
+**Why:** The whole knowledge base (36 documents) is translated into Russian and Armenian — 72 files,
+all `status: draft`. Drafts are not ingested, so today the Assistant still answers Russian and
+Armenian users from the English and tells them so. A translation reaches users only after a native
+speaker has read it: the Assistant reads these pages to customers as the platform's own word, and an
+agent's Armenian in particular will have phrasing a native speaker would not use.
+
+**What is needed:** one native Russian and one native Armenian reviewer, ideally familiar with
+private-investigation or legal vocabulary. For each file, check that it says what the English says and
+reads naturally. The glossary used throughout is worth confirming first, because it repeats in every
+file: mission — задание / առաջադրանք, quote — предложение / գնառաջարկ, investigator — детектив /
+խուզարկու, assignment — заказ / պատվեր, payout — выплата / վճարահանում. Corrections can be made in the
+files directly. Priority order if time is short: `policies/` (public), then `customer/`, then
+`investigator/`, `agency/`, `staff/`.
+
+**Then (agent work, no longer yours):** flip reviewed files to `current` and run the sync — see
+"Promoting a reviewed translation" in `docs/knowledge-base/README.md`. The three privacy overlaps from
+#21 will need recording again in each language.
+
+**Status:** ⬜ Pending — not blocking launch in English; blocks serving ru/hy knowledge.
+
+---
+
 ## Already handled — do not do these
 
 | | |
