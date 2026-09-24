@@ -4,7 +4,7 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
 updated: 2026-09-24
 source_of_truth: docs
@@ -13,6 +13,7 @@ related_code:
   - apps/api/src/modules/ai
   - apps/api/src/modules/ai-sessions
   - apps/api/src/modules/knowledge
+  - apps/api/src/modules/search
 tags: [assistant, ai, help, limitations]
 ---
 
@@ -28,17 +29,38 @@ It answers in your selected language.
 
 ## How does it find investigators for me?
 
-It queries live investigator data using the requirements you give — location, specialty,
-services, availability, language — and returns those who genuinely match. It then tells you
-which of your requirements each one met, and which they did not.
+It turns your request into search requirements — place, distance, specialty, languages, the weekly
+hours you need — and searches live investigator data with them, with your permissions. Only
+verified investigators who are accepting work can appear. It then tells you which of your
+requirements each one met, and which of the specialties you asked for they do not offer.
 
-It does not guess. If an investigator does not offer a service you asked for, it says so
-rather than omitting it.
+It does not guess, and it does not write about investigators in its own words. Every reason it
+gives comes from what the investigator declared on their profile, so it cannot claim a price, an
+availability or a skill that is not there. It also shows you what it searched for, so you can
+correct it.
+
+How matching works in detail: see "How investigators are matched to your mission".
+
+## Does it use my location?
+
+Only if you share one, and only to search. Your location is not sent to the AI service that reads
+your request, and distances shown to you are rounded to whole kilometres.
+
+## Why did it refuse to search?
+
+Some requests describe something the platform does not allow — for example getting into another
+person's accounts or devices, tracking them covertly, or intercepting their communications. Those
+are checked by fixed rules, not by the AI, and a request that matches them is not searched. The
+lawful use policy explains what is not allowed.
+
+If you believe your request is lawful, describe it as a mission instead: every mission is reviewed
+by a person before any investigator sees it.
 
 ## Can it tell me what an investigation will cost?
 
-No. Investigators price each mission individually, and there is no rate list for the
-assistant to read. Any figure it produced would be invented.
+No. Investigators price each mission individually, in a quote. The assistant does not state
+rates, even where an investigator shows one on their profile, and any estimate it produced would
+be invented.
 
 Request quotes to get real prices.
 
@@ -91,12 +113,15 @@ yet, it answers from the English page and says so.
 ## What happens to the question I ask?
 
 To write an answer, the assistant sends your question, together with the guidance it found, to
-the AI service that composes the reply. The privacy policy names the services that process your
+the AI service that composes the reply. When you ask it to find investigators, it sends your
+request — and your answer, if it asked what the search is for — together with the list of
+investigation specialties, so the AI service can turn it into search requirements. The privacy policy names the services that process your
 data and governs how they may use it. Where this answer and the privacy policy differ, the privacy
 policy is correct.
 
-The platform keeps a record that a question was answered and which pages were used. It does not keep
-the question or the answer in that record.
+The platform keeps a record that a question was answered and which pages were used, or, for a
+search, which kinds of requirements were used and how many investigators were found. It does not
+keep the question, the answer, the places or the results in that record.
 
 Do not include personal details in a question about how the platform works. The assistant does not
 need them to explain a rule.
@@ -112,11 +137,18 @@ outside what it can answer.
 
 ## Why does it ask me questions?
 
-Only when the answer genuinely depends on something it does not know — most often a
-location, when you have asked for investigators nearby.
+Only when the answer genuinely depends on something it does not know, and never more than one
+question at a time:
 
-If it can give you a useful answer with a stated assumption, it should do that instead of
-interrogating you. You can always narrow afterwards.
+- **Where** — when you ask for someone near you but have not shared a location or named a place.
+- **Which specialty** — when your request could mean more than one, and the choice changes who is
+  listed. If everyone found offers all of them, it does not ask.
+- **What it is for** — when a request could be for something the platform does not allow and does
+  not say. Your answer is checked by the same fixed rules as your request.
+
+If it can give you a useful answer with a stated assumption, it does that instead — for example,
+searching every area when you have not mentioned one, and saying so. You can always narrow
+afterwards.
 
 ## Who can see my conversations with the assistant?
 

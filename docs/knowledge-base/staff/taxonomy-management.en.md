@@ -4,9 +4,9 @@ title: Maintaining the taxonomy
 audience: staff
 visibility: staff
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-23
+updated: 2026-09-24
 source_of_truth: database
 implementation_status: implemented
 related_code:
@@ -76,6 +76,13 @@ if you are unsure, the node is not ready to add.
 
 Customers and investigators see the English label instead, and the application knows it is
 showing English. A node cannot be added without an English label for exactly this reason.
+
+## Where else does a label appear?
+
+In the assistant. When it finds investigators, it matches a customer's request against the labels
+and descriptions of the live tree, and it names the specialties an investigator matched, or does
+not offer, by their labels in the customer's language. A clear, distinct label is what lets it tell
+two categories apart — and a vague one is what makes it ask the customer which they meant.
 
 ## What does the reason I write get used for?
 

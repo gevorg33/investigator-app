@@ -108,6 +108,21 @@ export class TaxonomyService {
     return view(row, labels, locale);
   }
 
+  /**
+   * What each node is called in `locale`, falling back to English, ACTIVE or not — a specialty an
+   * investigator declared before its node was retired still has a name. A node with no label, or
+   * no row, is absent from the map rather than given a slug nobody should read.
+   */
+  async labels(
+    ids: readonly string[],
+    locale: TaxonomyLocale = 'en',
+  ): Promise<Map<string, string>> {
+    const found = await this.labelsFor([...new Set(ids)], [locale, 'en']);
+    const named = new Map<string, string>();
+    for (const [id, rows] of found) named.set(id, resolve(rows, locale).label!);
+    return named;
+  }
+
   async createNode(
     actor: Actor,
     dto: CreateTaxonomyNodeDto,

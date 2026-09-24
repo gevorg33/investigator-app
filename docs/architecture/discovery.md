@@ -24,7 +24,8 @@ availability, price and distance still does not appear if it is unverified.
 Every fact discovery filters on is a column. Similarity search cannot answer "who speaks
 Armenian" (an exact question), cannot know kilometres, and cannot enforce verification — an
 unverified investigator whose profile text reads well would surface. Free-text relevance may
-only reorder an already-eligible set, and it arrives with the assistant's tools (T-018).
+only reorder an already-eligible set; the assistant's `searchInvestigators` tool does exactly that
+over this service's results (T-018, `assistant-tools.md`).
 
 The request DTO therefore has **no free-text field** and **no verification filter**. Verification
 is not a preference a customer expresses; the only value it could take is `VERIFIED`, and
@@ -112,3 +113,12 @@ add a reason that is not there; that is how invented qualifications reach a cust
 
 `matchedOn` reports only what was asked for. A search with no language filter reports no
 language match rather than listing every language the investigator speaks.
+
+Each result also carries `notMatched.taxonomyNodeIds` (T-018): the **requested** specialties this
+investigator does not reach through the tree. Specialties are alternatives, so someone offering one
+of two requested services is listed, with the other stated as a gap rather than left unsaid. No
+other filter can have a gap — every one of them must be met, or the investigator is not listed. A
+requested node that does not exist is not reported as missing.
+
+The assistant finds investigators through this same service, as a registered tool:
+`assistant-tools.md`.

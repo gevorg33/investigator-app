@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
@@ -9,7 +8,7 @@ import { ErrorCode } from '../../common/errors/error-codes';
 import { ProviderError } from '../../common/errors/provider-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
-import { KNOWLEDGE_LOCALES, users, type KnowledgeLocale } from '../../database/schema';
+import type { KnowledgeLocale } from '../../database/schema';
 import { RateLimitService } from '../auth/rate-limit.service';
 import { knowledgeReader } from '../knowledge/knowledge-reader';
 import {
@@ -18,6 +17,7 @@ import {
 } from '../knowledge/knowledge-retrieval.service';
 import { CHAT_MODEL, type ChatModel } from './chat-model';
 import { KNOWLEDGE_PROMPT_VERSION, knowledgePrompt, parseAnswer } from './knowledge-answer.prompt';
+import { savedLocale } from './user-locale';
 
 /** A source an answer used: enough for the reader to find it, and for support to find the text. */
 export interface Citation {
@@ -82,7 +82,7 @@ export class KnowledgeAnswerService {
     if (this.model === null) throw new AppError(ErrorCode.SERVICE_UNAVAILABLE);
     await this.limits.consume('assistantQuestionPerAccount', actor.userId);
 
-    const locale = input.locale ?? (await this.localeOf(actor.userId));
+    const locale = input.locale ?? (await savedLocale(this.db, actor.userId));
     const reader = knowledgeReader(actor, context!);
     try {
       const found = await this.retrieval.retrieve(reader, input.question, locale);
@@ -105,19 +105,6 @@ export class KnowledgeAnswerService {
       if (e instanceof ProviderError) throw new AppError(ErrorCode.SERVICE_UNAVAILABLE);
       throw e;
     }
-  }
-
-  /** The locale the user chose, read now rather than trusted from anything older. */
-  private async localeOf(userId: string): Promise<KnowledgeLocale> {
-    const rows = await this.db
-      .select({ locale: users.locale })
-      .from(users)
-      .where(eq(users.id, userId));
-    // A saved language the knowledge base is not written in answers in English.
-    const known = rows
-      .map((r) => r.locale)
-      .find((l): l is KnowledgeLocale => (KNOWLEDGE_LOCALES as readonly string[]).includes(l));
-    return known ?? 'en';
   }
 
   private async noAnswer(
