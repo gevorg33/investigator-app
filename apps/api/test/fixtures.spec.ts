@@ -67,6 +67,10 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the refusal service, which records one only as the consequence of a refusal or a review (T-050)',
   ai_messages:
     'the session service, which numbers each message under a lock on its session (T-045)',
+  reviews:
+    'the reviews service, which writes one only for a completed assignment; the database rules are driven by direct writes in test/isolation/reviews.spec.ts (T-037)',
+  review_texts:
+    'the reviews service, alongside the review or as the one response; always PENDING when written (T-037)',
   knowledge_documents:
     'the knowledge sync, from docs/knowledge-base — a document nobody wrote is one retrieval would trust (T-016)',
   knowledge_chunks: 'the knowledge sync, which chunks only a current document (T-016)',

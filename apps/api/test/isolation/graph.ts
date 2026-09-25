@@ -75,6 +75,44 @@ export async function seedApplicant(
   return { workspace: workspace_, profileId: profile!.id, requestId: request!.id };
 }
 
+/**
+ * A customer, an investigator and one assignment between them, and nothing hanging off it — for a
+ * test that needs its own assignment in a given state (T-037). The profile's visibility decides
+ * whether anything about it may be public.
+ */
+export async function seedAssignment(
+  owner: postgres.Sql,
+  input: { status?: string; profileVisibility?: 'DRAFT' | 'PUBLISHED' } = {},
+): Promise<{
+  customer: SeededWorkspace;
+  supplier: SeededWorkspace;
+  profileId: string;
+  assignmentId: string;
+}> {
+  const { workspace: customer, missionId } = await seedMission(owner);
+  const supplier = await workspace(owner);
+  const [profile] = await owner<{ id: string }[]>`
+    INSERT INTO investigator_profiles (user_id, visibility)
+    VALUES (${supplier.userId}, ${input.profileVisibility ?? 'PUBLISHED'}) RETURNING id`;
+  const [quote] = await owner<{ id: string }[]>`
+    INSERT INTO quotes (mission_id, investigator_profile_id, price_minor, currency,
+                        estimated_duration_days, scope, deliverables, cancellation_terms, expires_at)
+    VALUES (${missionId}, ${profile!.id}, 1000, 'AMD', 3, 'Scope', 'Report', 'Refund',
+            now() + interval '2 days')
+    RETURNING id`;
+  const status = input.status ?? 'COMPLETED';
+  const [assignment] = await owner<{ id: string }[]>`
+    INSERT INTO assignments (mission_id, quote_id, customer_id, investigator_profile_id, accepted_scope,
+                             deliverables, cancellation_terms, price_minor, currency,
+                             estimated_duration_days, payment_reference, payment_authorized_at,
+                             acceptance_due_at, status, accepted_at)
+    VALUES (${missionId}, ${quote!.id}, ${customer.userId}, ${profile!.id}, 'Scope', 'Report', 'Refund',
+            1000, 'AMD', 3, ${`pi_${randomUUID()}`}, now(), now() + interval '2 days',
+            ${status}, ${status === 'PENDING_ACCEPTANCE' ? null : new Date()})
+    RETURNING id`;
+  return { customer, supplier, profileId: profile!.id, assignmentId: assignment!.id };
+}
+
 export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const customer = await workspace(owner);
   const supplier = await workspace(owner);
@@ -169,6 +207,16 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${assignment}, ${review}, 'HOLD', 'AMD', 'Held while the halt is reviewed', ${supplier.userId})
     RETURNING id`);
 
+  // The work finished and was reviewed (T-037) — last, so everything above was written while the
+  // assignment was live. The profile is a DRAFT, so no workspace but the parties can read the
+  // rating, and the text is PENDING, so nobody else could read it even if the profile were public.
+  await owner`UPDATE assignments SET status = 'COMPLETED', accepted_at = now() WHERE id = ${assignment}`;
+  const rating = await id(owner`
+    INSERT INTO reviews (assignment_id, rating) VALUES (${assignment}, 4) RETURNING id`);
+  const words = await id(owner`
+    INSERT INTO review_texts (review_id, kind, body, author_id)
+    VALUES (${rating}, 'REVIEW', 'Thorough, and on time.', ${customer.userId}) RETURNING id`);
+
   // Knowledge that belongs to one workspace — an agency's own (T-097), the case the matrix can test:
   // the platform's rows, with no tenant, are meant to be readable everywhere (T-016).
   const knowledgeDoc = async (key: string) =>
@@ -236,6 +284,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       ai_messages: said,
       policy_reviews: review,
       money_decisions: money,
+      reviews: rating,
+      review_texts: words,
       knowledge_documents: docA!,
       knowledge_chunks: chunk,
       knowledge_conflicts: conflict,

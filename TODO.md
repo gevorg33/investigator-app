@@ -1966,32 +1966,64 @@ pnpm --filter api test notifications
 ---
 
 ### T-037 — Reviews
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25. Approved by the owner 2026-09-25 (design, pre-moderation, discovery ordering unchanged)
 - **Priority:** P2
 - **Depends on:** T-012
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** No on the task — but it adds RLS policies, a PlatformContext route and authorization rules, each an AGENTS.md gate; approved 2026-09-25
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/reviews/**, migrations
+- **Affected:** apps/api/src/modules/reviews/**, migrations (0022), table registry, isolation tests, docs
 
 **Description**
 `ReviewsModule` per plan.md §8 — the second uncovered module. Reviews feed investigator
 ranking in discovery, so they are a manipulation surface.
 
 **Acceptance criteria**
-- [ ] Only the assignment's customer, only after `COMPLETED`, exactly once — enforced by a
-      unique constraint, not a read-then-write check
-- [ ] Rating plus optional text; text is moderated and reportable
-- [ ] A review is not a dispute route — the UI and copy say so (`kb-customer-disputes-revisions`)
-- [ ] Investigator may respond once; responses are also moderated
-- [ ] Ranking input is computed, never client-supplied
-- [ ] Removing a review is audited with a reason
+- [x] Only the assignment's customer, only after `COMPLETED`, exactly once — enforced by a
+      unique constraint, not a read-then-write check — plus RLS `customer_writes` and trigger `review_after_completion`; a concurrent second submission gets 409
+- [x] Rating plus optional text; text is moderated and reportable — pre-moderated (`PENDING` until staff publish); the other party reports published words back to `PENDING`
+- [x] A review is not a dispute route — the UI and copy say so (`kb-customer-disputes-revisions`) — the create route's description and `kb-customer-reviews`; there is no UI yet (T-120, T-122)
+- [x] Investigator may respond once; responses are also moderated
+- [x] Ranking input is computed, never client-supplied — count and average computed in SQL per read; the DTOs refuse `average`, `count` and every server-set field. Not used by discovery ordering yet: T-140
+- [x] Removing a review is audited with a reason — `review.removed` carries it; removal is once, staff-only, under PlatformContext
 
 **Validation**
 ```bash
 pnpm --filter api test reviews
 ```
 
+
+**DONE — 2026-09-25**
+
+*What exists.* `ReviewsModule` (`docs/architecture/reviews.md`): migration 0022 with `reviews` (the
+rating) and `review_texts` (the review's words and the one response), both two-party tables with a
+public projection. Rating and words are separate so that row-level security, not a SELECT list, keeps
+unmoderated words from other workspaces. Every rule is held by the database — triggers, constraints,
+policies — and the service refuses early and shapes the views. Routes for the customer, the
+investigator, anyone reading a published profile, and moderation staff.
+
+*Tests.* `test/isolation/reviews.spec.ts` (27) drives every rule with direct writes as the runtime
+role; the isolation matrix picks both tables up from the registry; `reviews.service.spec.ts` (18),
+`reviews.authz.spec.ts` (6, the seven cases) and `reviews.controller.spec.ts` (20). API suite: 2,230
+tests, 100% coverage. *Negative controls*, each broken on the live test databases or in the source,
+seen to fail and restored: the text policy opened to every workspace (5 tests, including the matrix);
+the completion check disabled (6); the public list's "published only" filter removed, for the words
+and for the response (1 each — this control first **passed**, exposing a gap: a party reading the
+public list sees its own unmoderated words through its own policy; the test was added and now fails
+without the filter); removed reviews shown (1). The service's staff-scope check is backed by
+`PlatformContext.asStaff`, which refuses the same actor — removing either alone still refuses.
+
+*No browser surface.* API only; verified through the service against a real database, the HTTP
+layer through the routes, and the knowledge base synced like CI — no conflicts, idempotent.
+
+*Found along the way.* (1) `SELECT … FOR UPDATE` is subject to UPDATE policies, so a party's locked
+read of a row only staff may update finds nothing — the first draft 404'd every response; party
+paths read without a lock and let the unique index or a conditional UPDATE decide. (2) Drizzle's 0021
+snapshot was stale — 0021 hand-wrote four knowledge-table objects the snapshot never recorded —
+so `drizzle-kit generate` proposed recreating them; they were removed from 0022, whose snapshot is now
+accurate. (3) An edited migration is never re-applied to existing test databases (Drizzle records it
+as applied), so a negative control on a migration must alter the live databases. (4) The project's
+`settings.json` sets `NODE_ENV=development`, which breaks `next build` — T-141.
 ---
 
 ### T-038 — Search within an investigation
@@ -6200,6 +6232,60 @@ browser, time zone saved, a role added, another session ended, sign out, reset a
 **Validation**
 ```bash
 pnpm --filter app-web test:e2e
+
+### T-140 — Order discovery by rating
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-037
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes who customers see first (as T-071, T-103)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/search, apps/api/src/modules/ai/discovery, docs/architecture/discovery.md, kb-customer-finding-investigator, kb-investigator-reviews
+
+**Description**
+Reviews exist and a profile's rating summary is computed from standing reviews (T-037), but discovery
+still orders by distance, or by experience without a location (`discovery.md`, "Quality ranking is a
+stage with nothing in it yet"). Decide how rating enters the order — and how a profile with two
+reviews compares with one with fifty, so a single early rating does not dominate — then build it
+behind the hard filters, never as one.
+
+**Acceptance criteria**
+- [ ] The ordering rule is decided by the owner and written down, including how few reviews count
+- [ ] Rating ranks only among investigators who already meet every hard requirement
+- [ ] Computed from standing reviews at query time; never client-supplied, never cached across workspaces
+- [ ] The knowledge-base articles that now say "ratings do not change the order" are superseded in the same task
+
+**Validation**
+```bash
+pnpm --filter api test search discovery
+```
+
+---
+
+### T-141 — `next build` fails in agent shells, and so does `scripts/setup.sh`
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .claude/settings.json, scripts/setup.sh, docs/architecture/app-web.md
+
+**Description**
+`.claude/settings.json` sets `NODE_ENV=development` for every agent shell. Next.js then fails
+`next build` with "<Html> should not be imported outside of pages/_document" on the 404 prerender, in
+both web apps — so `pnpm build`, and the build step of `scripts/setup.sh`, fail for an agent while
+passing in CI and in a plain terminal (found in T-037; `env -u NODE_ENV pnpm build` passes). The
+launch configuration already works around it with `env -u NODE_ENV`. Decide whether the setting is
+needed at all; if it is, make the build scripts immune to it rather than every caller remembering.
+
+**Acceptance criteria**
+- [ ] `pnpm build` and `./scripts/setup.sh` pass in an agent shell with no workaround
+- [ ] Whatever needed `NODE_ENV=development` still gets it
+
+**Validation**
+```bash
+pnpm build && ./scripts/setup.sh
 ```
 
 ---

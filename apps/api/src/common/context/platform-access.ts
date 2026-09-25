@@ -26,7 +26,10 @@ export type RoutePurpose =
   | 'taxonomy.update_node'
   | 'taxonomy.set_label'
   | 'policy_review.queue'
-  | 'policy_review.resolve';
+  | 'policy_review.resolve'
+  | 'review.queue'
+  | 'review.moderate'
+  | 'review.remove';
 
 /** A purpose with no fixed route behind it. These must say why, in words, every time. */
 export type AdHocPurpose = 'support.lookup';

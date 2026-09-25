@@ -10,6 +10,8 @@ import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
 import { missions } from './missions';
 import { moneyDecisions, policyReviews } from './policy-reviews';
+import { investigatorProfiles } from './profiles';
+import { reviewTexts, reviews } from './reviews';
 import { userRoles, users, userSessions } from './users';
 
 /**
@@ -142,6 +144,52 @@ describe('policy reviews and money decisions (T-050)', () => {
         { columns: ['assignment_id'], target: assignments, onDelete: 'restrict' },
         { columns: ['policy_review_id'], target: policyReviews, onDelete: 'restrict' },
         { columns: ['decided_by'], target: users, onDelete: 'restrict' },
+      ]),
+    );
+  });
+});
+
+describe('reviews (T-037)', () => {
+  const fks = (t: PgTable) =>
+    getTableConfig(t).foreignKeys.map((f) => ({
+      columns: f.reference().columns.map((c) => c.name),
+      target: f.reference().foreignTable,
+      onDelete: f.onDelete,
+    }));
+
+  it('keep a rating with its assignment, both its parties, the investigator and who removed it', () => {
+    // Restrict throughout: a review is part of an investigator's standing, and a removed one is
+    // kept with who removed it and why.
+    expect(fks(reviews)).toEqual(
+      expect.arrayContaining([
+        { columns: ['assignment_id'], target: assignments, onDelete: 'restrict' },
+        {
+          columns: ['assignment_id', 'customer_tenant_id', 'supplier_tenant_id'],
+          target: assignments,
+          onDelete: 'restrict',
+        },
+        {
+          columns: ['investigator_profile_id'],
+          target: investigatorProfiles,
+          onDelete: 'restrict',
+        },
+        { columns: ['removed_by'], target: users, onDelete: 'restrict' },
+      ]),
+    );
+  });
+
+  it('keep words with their review, its parties, their author and who moderated or reported them', () => {
+    expect(fks(reviewTexts)).toEqual(
+      expect.arrayContaining([
+        { columns: ['review_id'], target: reviews, onDelete: 'restrict' },
+        {
+          columns: ['review_id', 'customer_tenant_id', 'supplier_tenant_id'],
+          target: reviews,
+          onDelete: 'restrict',
+        },
+        { columns: ['author_id'], target: users, onDelete: 'restrict' },
+        { columns: ['moderated_by'], target: users, onDelete: 'restrict' },
+        { columns: ['reported_by'], target: users, onDelete: 'restrict' },
       ]),
     );
   });

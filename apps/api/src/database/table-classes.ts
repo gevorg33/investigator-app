@@ -119,11 +119,22 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['customer_tenant_id', 'supplier_tenant_id'],
     note: 'both parties read; the supplier records only FULL_REFUND or HOLD; staff record the rest and payments marks execution (T-050)',
   },
+  reviews: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'public projection: any workspace reads a standing rating once the profile is PUBLISHED; the customer writes, staff remove (T-037)',
+  },
+  review_texts: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'public projection: others read a text only while PUBLISHED and its review is readable; pre-moderated by staff; the non-author party may report one back (T-037)',
+  },
   knowledge_documents: {
     class: 'tenant_owned',
     columns: ['tenant_id'],
     nullable: {
-      tenant_id: 'NULL is the platform knowledge base, readable in every workspace; an agency’s own documents carry theirs (T-097)',
+      tenant_id:
+        'NULL is the platform knowledge base, readable in every workspace; an agency’s own documents carry theirs (T-097)',
     },
     note: 'written only by the sync, under platform access; retrieval filters on visibility (T-016)',
   },
