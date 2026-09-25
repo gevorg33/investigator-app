@@ -122,9 +122,69 @@ export const en = {
     },
   },
   assistant: {
+    label: 'Assistant',
+    new: 'New conversation',
+    close: 'Close the assistant',
+    untitled: 'New conversation',
+    workspace: {
+      personal: 'Personal workspace',
+    },
     empty: {
-      title: 'The assistant is on its way',
-      body: 'Ask how the platform works, or describe what you need and it will find investigators who match.',
+      title: 'Ask how the platform works',
+      body: 'Answers come from the help articles, with the sources they used. Each question is answered on its own, and the assistant cannot see your missions or act for you yet.',
+      suggestions: 'Try asking',
+      customer: {
+        mission: 'What happens after I submit a mission?',
+        quote: 'How long does a quote stay valid?',
+        evidence: 'Who else can see my evidence?',
+      },
+      public: {
+        work: 'What kind of work can I ask for?',
+        training: 'Is my data used to train AI?',
+        responsibilities: 'What am I responsible for as a customer?',
+      },
+      no_role: 'For answers about missions, quotes and payments, add a role to your account.',
+      no_role_link: 'Go to your account',
+      investigator: {
+        start: 'What do I need before I can receive work?',
+        paid: 'How do I actually get paid?',
+        missions: 'Which missions can I see?',
+      },
+    },
+    composer: {
+      label: 'Your question',
+      placeholder: 'Ask about missions, quotes, payments or privacy',
+      hint: 'Enter to send · Shift+Enter for a new line',
+      send: 'Send',
+      stop: 'Stop',
+    },
+    speaker: {
+      you: 'You',
+      assistant: 'Assistant',
+    },
+    step: {
+      sending: 'Sending your question',
+      searching: 'Searching the help articles',
+      writing: '{sources, plural, one {Writing an answer from # source} other {Writing an answer from # sources}}',
+    },
+    reply: {
+      sources: 'Sources',
+      fallback: 'Some of these sources are only in English.',
+      no_answer: 'The help articles do not cover that. Try other words, or ask about missions, quotes, payments or privacy.',
+    },
+    tool: {
+      call: 'Used {tool}',
+      result: 'Result from {tool}',
+    },
+    turn: {
+      stopped: 'Stopped before an answer.',
+      unsent: 'Not sent.',
+      unanswered: 'This question has no answer yet.',
+      unavailable: 'The assistant cannot answer right now. Try again in a moment.',
+      retry: 'Try again',
+    },
+    load: {
+      failed: 'The conversation could not be opened.',
     },
   },
   account: {

@@ -11,9 +11,12 @@ import { NavLinks } from './nav-links';
 export async function AppShell({
   children,
   notices,
+  beside,
 }: {
   children: ReactNode;
   notices?: ReactNode;
+  /** What docks beside the content from `lg` up — the assistant (T-056). */
+  beside?: ReactNode;
 }) {
   const t = await getT();
   return (
@@ -36,6 +39,8 @@ export async function AppShell({
         {notices}
         {children}
       </main>
+
+      {beside}
 
       <nav
         aria-label={t('shell.nav.label')}

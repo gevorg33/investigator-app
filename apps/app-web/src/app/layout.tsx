@@ -10,6 +10,7 @@ import './globals.css';
 export const CLIENT_NAMESPACES = [
   'nav',
   'missions',
+  'assistant',
   'auth',
   'account',
   'legal',

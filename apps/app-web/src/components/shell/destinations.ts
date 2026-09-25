@@ -8,12 +8,14 @@ import {
 } from 'lucide-react';
 import type { Catalog } from '@investigator/i18n';
 
-export interface Destination {
-  href: string;
-  /** A key in the `nav` namespace. */
-  label: keyof Catalog['nav'];
-  icon: LucideIcon;
-}
+/**
+ * A place to go, or — the assistant — something that opens beside where the reader already is
+ * (T-056): docked from `lg` up, a full-screen sheet below. It has no page of its own.
+ */
+export type Destination = { label: keyof Catalog['nav']; icon: LucideIcon } & (
+  | { href: string; opens?: undefined }
+  | { opens: 'assistant'; href?: undefined }
+);
 
 /**
  * The primary destinations: the bottom navigation on a phone and the sidebar from tablet up
@@ -27,7 +29,7 @@ export const DESTINATIONS: readonly Destination[] = [
   { href: '/', label: 'home', icon: House },
   { href: '/missions', label: 'missions', icon: BriefcaseBusiness },
   { href: '/messages', label: 'messages', icon: MessagesSquare },
-  { href: '/assistant', label: 'assistant', icon: Bot },
+  { opens: 'assistant', label: 'assistant', icon: Bot },
   { href: '/account', label: 'account', icon: UserRound },
 ];
 

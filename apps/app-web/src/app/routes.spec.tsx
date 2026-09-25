@@ -1,6 +1,7 @@
 import { catalogs } from '@investigator/i18n';
 import { colors } from '@investigator/ui-tokens';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import nextConfig from '../../next.config';
@@ -12,7 +13,6 @@ import { Redirected } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
 import AccountPage, { generateMetadata as accountMeta } from './(workspace)/account/page';
-import AssistantPage, { generateMetadata as assistantMeta } from './(workspace)/assistant/page';
 import WorkspaceLayout from './(workspace)/layout';
 import MessagesPage, { generateMetadata as messagesMeta } from './(workspace)/messages/page';
 import MissionsPage, { generateMetadata as missionsMeta } from './(workspace)/missions/page';
@@ -57,8 +57,17 @@ describe('the application routes', () => {
     expect(html.props.lang).toBe('ru');
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
-    // Client components translate navigation, the auth and account forms, legal text and errors.
-    expect(CLIENT_NAMESPACES).toEqual(['nav', 'missions', 'auth', 'account', 'legal', 'error']);
+    // Client components translate navigation, the browse, the assistant, the auth and account
+    // forms, legal text and errors.
+    expect(CLIENT_NAMESPACES).toEqual([
+      'nav',
+      'missions',
+      'assistant',
+      'auth',
+      'account',
+      'legal',
+      'error',
+    ]);
     expect(provider.props.messages).toEqual(
       Object.fromEntries(CLIENT_NAMESPACES.map((ns) => [ns, catalogs.ru[ns]])),
     );
@@ -74,7 +83,7 @@ describe('the application routes', () => {
     api.on('GET /legal/outstanding', 200, [legalDocument()]);
     const tree = await resolveServer(await WorkspaceLayout({ children: 'inside' }));
     render(
-      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav }}>
+      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}>
         {tree}
       </I18nProvider>,
     );
@@ -88,12 +97,54 @@ describe('the application routes', () => {
     api.on('GET /me', 200, account());
     api.on('GET /legal/outstanding', 200, []);
     render(
-      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav }}>
+      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}>
         {await resolveServer(await WorkspaceLayout({ children: 'inside' }))}
       </I18nProvider>,
     );
     expect(screen.getByRole('main')).toHaveTextContent('inside');
     expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  describe('the assistant, beside every workspace page (T-056)', () => {
+    const open = async (over: Parameters<typeof account>[0]) => {
+      api.on('GET /me', 200, account(over));
+      api.on('GET /legal/outstanding', 200, []);
+      api.on('GET /workspaces', 200, []);
+      api.on('GET /ai/sessions?limit=1', 200, { items: [], pageInfo: { nextCursor: null, hasNextPage: false } });
+      renderIntl(await resolveServer(await WorkspaceLayout({ children: 'inside' })));
+      await userEvent.click(screen.getAllByRole('button', { name: 'Assistant' })[0]!);
+      return screen.findByRole('heading', { name: catalogs.en.assistant.empty.title });
+    };
+
+    it('offers a customer what a customer asks, and says nothing about roles it was not told', async () => {
+      await open({ roles: ['CUSTOMER'] });
+      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.quote })).toBeInTheDocument();
+      const ask = api.calls.find((c) => c.path === '/ai/sessions?limit=1')!;
+      expect(ask.headers['x-active-role']).toBeUndefined();
+    });
+
+    it('offers an account with no role yet only what the public policies answer, and where to add one', async () => {
+      await open({ roles: [] });
+      expect(
+        screen.getByRole('button', { name: catalogs.en.assistant.empty.public.training }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: catalogs.en.assistant.empty.customer.quote })).toBeNull();
+      expect(
+        screen.getByRole('link', { name: catalogs.en.assistant.empty.no_role_link }),
+      ).toHaveAttribute('href', '/account#roles');
+    });
+
+    it('offers an investigator what an investigator asks', async () => {
+      await open({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
+      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.investigator.paid })).toBeInTheDocument();
+    });
+
+    it('talks to an investigator who chose to act as a customer as a customer, and tells the API so', async () => {
+      await open({ roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: 'CUSTOMER' });
+      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.mission })).toBeInTheDocument();
+      const ask = api.calls.find((c) => c.path === '/ai/sessions?limit=1')!;
+      expect(ask.headers['x-active-role']).toBe('CUSTOMER');
+    });
   });
 
   it.each([
@@ -109,7 +160,6 @@ describe('the application routes', () => {
   it.each([
     ['Home', HomePage, undefined, 'Nothing needs you yet'],
     ['Messages', MessagesPage, messagesMeta, 'No conversations yet'],
-    ['Assistant', AssistantPage, assistantMeta, 'The assistant is on its way'],
   ])('%s says what it is and what will appear there', async (title, Page, meta, empty) => {
     render(await resolveServer(await Page()));
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();

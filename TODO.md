@@ -2949,13 +2949,19 @@ pnpm --filter api test mission-tags
 ---
 
 ### T-056 — Assistant shell and conversation UI
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P1
 - **Depends on:** T-017, T-045, T-039, T-091
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/**, packages/ui/**
+- **Affected:** apps/app-web/**, packages/ui/**; apps/api/src/modules/ai/**, apps/api/src/modules/ai-sessions/** (owner decision 2026-09-25)
+- **Owner decisions (2026-09-25):** (1) the turn route is built here — `POST /ai/sessions/:id/turns`
+  appends the user's message, answers it through T-017's knowledge answering, and appends the
+  reply; this extends T-017's stateless approval to questions stored in the caller's own session.
+  No intent routing, discovery or write tools. (2) "Progressive" means **streamed steps**
+  (server-sent events) with a validated answer delivered whole — never unvalidated tokens.
+  (3) Titles come from the first user message, trimmed, no model. (4) `@shadcn` primitives.
 
 **Description**
 The conversation interface. Six backend tasks build a full assistant engine with no way to
@@ -2964,24 +2970,65 @@ reach it; this is the surface.
 **Tenancy (ADR-0011).** Needs the app-web foundation (T-091). The assistant shows the active workspace and opens that workspace's sessions.
 
 **Acceptance criteria**
-- [ ] Generated session titles never expose evidence content — moved here from T-045, since this is
+- [x] Generated session titles never expose evidence content — moved here from T-045, since this is
       where titles are first generated; `AiSessionsService.rename` is the only title writer today
-- [ ] Docked panel on desktop; **full-screen sheet on mobile** (`responsive-design`)
-- [ ] **Responses render progressively as they stream — never a spinner.** Progressive rendering
+- [x] Docked panel on desktop; **full-screen sheet on mobile** (`responsive-design`)
+- [x] **Responses render progressively as they stream — never a spinner.** Progressive rendering
       is information; a spinner is an apology (`animation`)
-- [ ] Message roles visually distinct: user, assistant, tool/command events as structured
+- [x] Message roles visually distinct: user, assistant, tool/command events as structured
       blocks rather than prose (`ai-session-context`)
-- [ ] Stop generation; retry a failed turn without losing the conversation
-- [ ] Composer: multiline, keyboard submit, attachment entry point
-- [ ] **Minimal chrome.** A conversation is already the simplest interface — wrapping it in
+- [x] Stop generation; retry a failed turn without losing the conversation
+- [~] Composer: multiline, keyboard submit — **attachment entry point not built** (T-144: there is
+      nowhere for a session attachment to go yet, and a control that does nothing fails the
+      subtraction test)
+- [x] **Minimal chrome.** A conversation is already the simplest interface — wrapping it in
       controls makes it worse (`interaction-design`)
-- [ ] Empty state teaches what the assistant can do for that role, not "No messages"
-- [ ] Keyboard operable end to end; new content announced to screen readers
+- [x] Empty state teaches what the assistant can do for that role, not "No messages"
+- [x] Keyboard operable end to end; new content announced to screen readers
 
 **Validation**
 ```bash
 pnpm --filter app-web test assistant
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* API: `POST /ai/sessions/:id/turns` and `…/turns/retry` (`AssistantTurnController`,
+`AssistantTurnService`) — refusals store nothing; once stored the question stays; the response is
+server-sent events (`message`, `session`, `step`, `message`, `done` | `error`); Stop is the client
+closing the stream, which aborts retrieval and the model call and stores no reply. T-017's service
+is split into `admit` (checks + allowance) and `respond` (reports `searching` / `writing from N`),
+and `ChatModel.complete` takes an abort signal. `append` names an untitled session from its user's
+first message (`titleFrom`, 60 chars at a word boundary) — only a `USER` message, so never evidence.
+app-web: the assistant is a nav toggle, docked from `lg`, a full-screen handle-less sheet below,
+loaded on first open (+4 kB per route, not +30); `/assistant` removed. Adopted and re-tokenised
+`@shadcn/message`, `bubble`, `marker`, `textarea`; `message-scroller` declined (its package is 0.x
+and 25 days old). Owner decisions in the header.
+
+*Found along the way.* (1) A newly registered account has **no role**, so the API reads it only
+the public policies; the empty state had offered it customer questions it could not answer — seen
+in the owner's browser check (a mission question cited the prohibited-requests policy). Role-less
+accounts now get three public-policy questions and a link to add a role; all nine suggestions were
+checked to retrieve their own section first on the dev database. (2) A retry that hit a 409 and
+then failed to read the conversation back left the turn running forever; now it fails visibly.
+(3) The shell's Node is 20 while `.nvmrc` pins 24, and two API specs fail on it (T-146).
+
+*Negative controls* (each seen to fail, then restored): reply stored after Stop; any role names a
+session; allowance spent before the session check; no abort on disconnect; retry after an answer;
+stale events from a left conversation believed; retry re-sends a stored question; read-back after
+every Stop; a spinner instead of steps; the docked panel ignoring Escape; role-less treated as a
+customer.
+
+*Verified.* Lint, typecheck, build, bundle budget (all routes under 250 kB); API 2371 tests and
+app-web 292 at 100% coverage (API on Node 24); knowledge-base validator 0/0 and the sync twice with
+no change and 0 conflicts. In the browser, by the owner (their own browser, signed in — the agent
+may not enter a password), against the real API and database with a scratchpad stand-in for OpenAI:
+suggestions, streamed steps, the answer with sources, titles, and the role-less fix. **Not run by
+the agent:** the Playwright pass at 375/768/1440 and reduced motion — covered by specs (sheet vs
+dock, focus, Escape, `motion-safe` pulse, roles) but not seen at those widths.
+
+*Filed:* T-144 (attachment entry point), T-145 (browser calls do not send the chosen role),
+T-146 (agent shells on Node 20).
 
 ---
 
@@ -6393,6 +6440,90 @@ country, languages and availability become eligibility, applied to **both** brow
 **Validation**
 ```bash
 pnpm --filter api test mission-browse
+```
+
+---
+
+### T-144 — Assistant composer: attachment entry point
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-056, T-066
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — an attachment the assistant reads is content sent to a model
+  provider, and may be evidence (`cloudinary-media`, `evidence-integrity`)
+- **Owner agent:** frontend + ai-rag
+- **Affected:** apps/app-web/src/components/assistant/**, apps/api/src/modules/ai/**, apps/api/src/modules/media/**
+
+**Description**
+From T-056. Its acceptance criteria ask for an attachment entry point in the composer; it was not
+built, because a conversation has nowhere to attach to — no media purpose for an assistant session,
+no rule for what the model may read of a file, and nothing in `SESSION_CONTENT` to erase it with the
+session. A paperclip that does nothing fails the subtraction test. `@shadcn/attachment` was
+reviewed and is the component to adopt when there is.
+
+**Acceptance criteria**
+- [ ] A media purpose for session attachments, private, erased with the session (`SESSION_CONTENT`)
+- [ ] What of an attachment reaches a model is decided with the owner, and documented
+- [ ] The composer offers the entry point on a phone and a desktop; `@shadcn/attachment` re-tokenised
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant && pnpm --filter api test ai
+```
+
+---
+
+### T-145 — Browser calls do not say which role the reader acts as
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No — the API only ever narrows by the header
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/lib/api/browser.ts, its callers
+
+**Description**
+From T-056. Server-side reads forward the `active_role` cookie as `X-Active-Role`
+(`lib/api/server.ts`); browser calls (`callApi`) do not, so a person with both roles who chose to act
+as a customer is their full self for every mutation made from the browser. Nothing role-sensitive is
+reachable that way today (saved searches are only shown to investigators), and the API narrows, never
+widens. The assistant sends the header itself (`assistantApi(role)`). Make `callApi` send it too, so
+the rule holds in one place.
+
+**Acceptance criteria**
+- [ ] Every browser call carries the chosen role when there is one; a spec asserts it
+- [ ] `assistantApi` uses the shared path rather than its own header
+
+**Validation**
+```bash
+pnpm --filter app-web test
+```
+
+---
+
+### T-146 — Agent shells run Node 20, and two API specs fail on it
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .claude/settings.json or .claude/hooks/**, scripts/setup.sh
+
+**Description**
+From T-056. The agent shell's `node` is nvm's default, v20.20.2, while `.nvmrc` pins 24. On it
+`pnpm test:coverage` fails in `test/supply-chain.spec.ts` and `test/workspace-scripts.spec.ts` with
+`globSync is not a function` (`node:fs` has it from Node 22) — the suite passes on 24. An agent that
+does not notice reports a failure that is not the code's. Related to T-141 (the same shells'
+`NODE_ENV`). Make agent shells use the pinned version (the `.nvmrc`), or fail loudly when they do not.
+
+**Acceptance criteria**
+- [ ] `node -v` in an agent shell matches `.nvmrc`, or the session start says it does not
+- [ ] `pnpm test:coverage` passes in an agent shell with no PATH workaround
+
+**Validation**
+```bash
+node -v && pnpm test:coverage
 ```
 
 ---

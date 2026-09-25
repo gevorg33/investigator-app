@@ -18,8 +18,12 @@ export interface ChatPrompt {
  */
 export interface ChatModel {
   readonly model: string;
-  /** The model's reply, which should be a JSON object — and is checked, never trusted to be. */
-  complete(prompt: ChatPrompt): Promise<string>;
+  /**
+   * The model's reply, which should be a JSON object — and is checked, never trusted to be.
+   * `signal` abandons the call: a person who pressed Stop is not kept waiting for, or charged
+   * for, an answer nobody will read (T-056).
+   */
+  complete(prompt: ChatPrompt, signal?: AbortSignal): Promise<string>;
 }
 
 /** OpenAI's chat completions endpoint, called with `fetch` like the embedder (T-016). */
@@ -30,9 +34,10 @@ export class OpenAiChatModel implements ChatModel {
     private readonly http: typeof fetch = fetch,
   ) {}
 
-  async complete(prompt: ChatPrompt): Promise<string> {
+  async complete(prompt: ChatPrompt, signal?: AbortSignal): Promise<string> {
     const res = await this.http('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      ...(signal === undefined ? {} : { signal }),
       headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
         model: this.model,

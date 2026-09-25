@@ -210,14 +210,17 @@ The model you pick answers users' questions about the platform, which is a trade
 and quality, and it should be your call rather than something an unset variable decides. Until it
 is set, `POST /api/v1/ai/knowledge/answer` answers 503 — and so does
 `POST /api/v1/ai/discovery/answer` (T-018), which uses the same model to turn a request to find
-investigators into search filters.
+investigators into search filters, and so does the assistant panel in the app (T-056): every
+question there is refused with "The assistant cannot answer right now", and nothing is stored.
 
 **Before you set a key in production:** the assistant sends each question, together with the
 guidance it retrieved, to this provider. A request to find investigators is sent too, with any
 purpose the customer states and the list of taxonomy categories — never their location, and never
 any investigator's profile. The privacy policy must name the provider as a processor
-before that happens. That is a counsel item (#0, #20), and the help article on the assistant already
-defers to the privacy policy on this point.
+before that happens. **From T-056 the questions and answers are also kept**, in the user's own
+conversation, until they delete it (`ai_messages` in `docs/compliance/retention.md`) — the privacy
+policy should say that too. That is a counsel item (#0, #20), and the help article on the assistant
+already defers to the privacy policy on this point.
 
 **What is waiting on it (T-016):** the knowledge base is ingested, but its 360 chunks have no
 embeddings. They are searchable by text only. With the key set, the next
@@ -591,8 +594,9 @@ if a key is missing) and read correctly to me, but an agent's Armenian in partic
 something to launch on: it reads as unfinished software to exactly the market this is for.
 
 **What is needed:** a native speaker of each language reads their file — about 200 strings since
-T-127 added sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`) and T-054
-the investigator's open-missions screen (`missions.browse`), under an hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+T-127 added sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), T-054
+the investigator's open-missions screen (`missions.browse`) and T-056 the assistant (`assistant`,
+about 45, including six suggested questions — Armenian questions end «՞ … ։»), under an hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:
