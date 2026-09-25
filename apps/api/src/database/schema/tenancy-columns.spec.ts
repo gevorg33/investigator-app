@@ -248,7 +248,9 @@ describe('owner-column references', () => {
   ] as Array<[string, PgTable, string]>)(
     '%s points its owner column at the workspace, and cannot outlive it',
     (_name, table, column) => {
-      expect(tenantRef(table)).toEqual([{ columns: [column], target: tenants, onDelete: 'restrict' }]);
+      expect(tenantRef(table)).toEqual([
+        { columns: [column], target: tenants, onDelete: 'restrict' },
+      ]);
     },
   );
 });

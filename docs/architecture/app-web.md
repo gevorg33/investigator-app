@@ -38,6 +38,9 @@ committed; a test fails when the two disagree. The stylesheet:
 Tokens without a Tailwind namespace are used through their variable: `z-(--z-nav)`,
 `duration-(--duration-fast)`.
 
+`scrim` (T-054) dims the page behind a sheet — dark in both themes, always used with an opacity
+(`bg-scrim/50`), never as text; the contrast test treats it as a background.
+
 **Contrast is tested, not asserted.** `CONTRAST_PAIRS` lists every foreground/background pairing
 the UI makes, and a test measures each against WCAG AA in both themes (4.5:1 text, 3:1 control
 boundaries and focus). A new pairing is added there first.
@@ -66,9 +69,9 @@ core loop's places. The current one is marked with `aria-current="page"` and vis
 colour (an indicator bar on phones, a tinted shape in the sidebar). A skip link leads to `main`.
 Full height is `dvh`; the viewport is `viewport-fit=cover`.
 
-**Every destination except Account is a placeholder.** Each route renders its title and an empty
-state saying what will appear there; the screens are built by their own tasks (T-056 assistant, the
-core-loop hiring and messaging tasks). Above every screen the shell shows what the account still
+**Account and, for investigators, Missions are real; the rest are placeholders.** Each placeholder
+renders its title and an empty state saying what will appear there; the screens are built by their
+own tasks (T-056 assistant, the core-loop hiring and messaging tasks). Above every screen the shell shows what the account still
 owes — an unconfirmed address, documents to accept — as notices linking to where each is settled
 (`AccountNotices`). Notices, never blocks.
 
@@ -148,6 +151,51 @@ role, locale, time zone), `PATCH /me/preferences` (`locale`, `timezone`; audited
 **Tested** in Vitest against a stand-in for the API behind `fetch` (`src/test/api.ts`, which
 fails any request a spec did not expect), and in the browser against the real API — every flow in
 the table, at 375, 768 and 1280px. There is no automated browser run in CI yet.
+
+## Missions: open missions for investigators (T-054)
+
+`/missions` shows an investigator — anyone holding the role who has not chosen to see the platform
+as a customer — the published missions they could quote on (`POST /search/missions`, described in
+`discovery.md`). A customer sees the empty state until their own mission screens arrive.
+
+**Built from the registries** (`component-discovery`; searched through the shadcn MCP — `@cult-ui`
+answered 429, `@react-bits` has only decorative motion pieces): `card`, `badge`, `drawer`, `command`,
+`input-group`, `native-select`, `toggle-group`, `skeleton`, each re-tokenised
+(`docs/product/component-inventory.md`). A first version hand-built every piece as native controls in
+a `<details>`; it worked and looked like a form, not a product.
+
+- **The address is the browse.** Every filter is a URL parameter (`components/missions/
+  browse-query.ts` reads and writes them); the page renders from it, so a filtered list reloads,
+  bookmarks and saves as it is. Anything malformed in the URL is dropped before the API sees it.
+  Amounts are whole units in the URL and minor units at the API. **The language filter is
+  `language`, never `lang`**: the middleware takes `?lang=` as the whole app's language (ADR-0013).
+- **Toolbar:** a search field (words order the list, never hide), a Filters button carrying the
+  count of what is on, and the order as a native select — shortened labels ("Deadline", "Budget")
+  so it fits half a phone's width. With words to look for, the order is theirs and the control
+  says so instead.
+- **Filter sheet** (`Drawer`): from the bottom on a phone, from the right from `md`. Category is a
+  searchable, indented list (`Command`) because a real taxonomy is long and deep; languages, posted
+  and distance are chips (`ToggleGroup`); currency and area are native selects. Choices are held in
+  the sheet until "Show missions", then pushed as the address; "Reset" clears what narrows and keeps
+  the words and the order.
+- **Active filters** are chips under the toolbar, each named in words ("AMD 1,500–2,000", "Due by
+  Oct 31", "Inside the area") and each a link to the same browse without it.
+- **Cards** (`MissionCard` on `Card`): category badge and freshness; title; two lines of
+  description; place, distance and languages; then the budget, prominent, and the deadline — a
+  deadline within 7 days is a `warning` badge that says "Due in 3 days". Budgets drop ".00" when both
+  ends are whole (`formatMoneyRange`), and both ends always share one precision.
+- **Loading** is a skeleton of the controls and three cards (`missions/loading.tsx`).
+- Refused by the API: 403 says what opens browsing; 422 names the filter to change. Saved searches
+  are chips above the list; "Save this search" opens a name field and appears only when something
+  is filtered or searched.
+
+**Bundle:** `/missions` is 165 kB (vaul and cmdk), within the 250 kB budget. `Button` takes `Slot`
+from `@radix-ui/react-slot` — the `radix-ui` barrel, which the shadcn CLI installs, became a 78 kB
+client boundary when a server component rendered Button. Single `@radix-ui/react-*` packages only,
+pinned, as admin-web does.
+
+**Tests** stub what jsdom lacks and these components use (`vitest.setup.ts`: `matchMedia`,
+`scrollIntoView`, `setPointerCapture`, `ResizeObserver`).
 
 ## Never indexed
 

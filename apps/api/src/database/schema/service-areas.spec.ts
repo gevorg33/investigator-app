@@ -7,15 +7,16 @@ import { serviceAreas } from './service-areas';
 import { users } from './users';
 import { testPool } from '../../../test/db';
 
-
 describe('service_areas', () => {
   let sql: postgres.Sql;
   let profileId: string;
 
   beforeAll(async () => {
     sql = testPool({ max: 2, role: 'owner' });
-    const [u] = await sql`insert into users (email) values (${`sa-schema-${randomUUID()}@example.test`}) returning id`;
-    const [p] = await sql`insert into investigator_profiles (user_id) values (${u?.['id']}) returning id`;
+    const [u] =
+      await sql`insert into users (email) values (${`sa-schema-${randomUUID()}@example.test`}) returning id`;
+    const [p] =
+      await sql`insert into investigator_profiles (user_id) values (${u?.['id']}) returning id`;
     profileId = String(p?.['id']);
   });
 
@@ -30,7 +31,9 @@ describe('service_areas', () => {
   });
 
   it('indexes the searched area with GIST', () => {
-    const idx = getTableConfig(serviceAreas).indexes.find((i) => i.config.name === 'service_areas_area_gist');
+    const idx = getTableConfig(serviceAreas).indexes.find(
+      (i) => i.config.name === 'service_areas_area_gist',
+    );
     expect(idx?.config.method).toBe('gist');
   });
 
@@ -38,7 +41,9 @@ describe('service_areas', () => {
     // The criterion that home location is not discoverable starts with not storing one.
     for (const table of [users, investigatorProfiles, customerProfiles, serviceAreas]) {
       for (const col of getTableConfig(table).columns) {
-        expect(col.name, `${getTableConfig(table).name}.${col.name}`).not.toMatch(/home|address|residen|street|postcode|zip/i);
+        expect(col.name, `${getTableConfig(table).name}.${col.name}`).not.toMatch(
+          /home|address|residen|street|postcode|zip/i,
+        );
       }
     }
   });
@@ -49,7 +54,9 @@ describe('service_areas', () => {
 
   /** 23514 is Postgres's check_violation; the constraint name says which rule refused. */
   const refused = async (run: Promise<unknown>, constraint: string) => {
-    const err = await run.then(() => null).catch((e: { code?: string; constraint_name?: string }) => e);
+    const err = await run
+      .then(() => null)
+      .catch((e: { code?: string; constraint_name?: string }) => e);
     expect(err, 'expected the database to refuse').not.toBeNull();
     expect((err as { code?: string }).code).toBe('23514');
     expect((err as { constraint_name?: string }).constraint_name).toBe(constraint);

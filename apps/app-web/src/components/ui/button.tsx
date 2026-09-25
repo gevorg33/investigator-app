@@ -1,8 +1,10 @@
 // @shadcn/button, adopted in T-127 and re-tokenised (design-system): colours through the token
 // mapping; every size at least 44px (responsive-design), so shadcn's xs/sm/icon-sm sizes are gone;
 // focus is the app's one outline, not a per-component ring; motion from the duration token.
+// `Slot` comes from `@radix-ui/react-slot`, as in admin-web, never the `radix-ui` barrel: a server
+// component rendering Button made the whole barrel a client boundary, 78 kB gzipped (T-054).
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Slot } from 'radix-ui';
+import { Slot } from '@radix-ui/react-slot';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +38,7 @@ function Button({
   asChild = false,
   ...props
 }: ComponentProps<'button'> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : 'button';
+  const Comp = asChild ? Slot : 'button';
   return (
     <Comp
       data-slot="button"

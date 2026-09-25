@@ -58,6 +58,12 @@ succeeds, and the loser leaves nothing behind — no second screening row, no se
 Customers' own writes carry the version they last read, so two browser tabs cannot silently
 overwrite each other either.
 
+### When a mission was published
+
+`published_at` is not written by the transition service: the trigger `missions_published_at` sets
+it on every entry into QUOTED and refuses any other write to it (T-054). It is what investigator
+browse orders "newest" by (`discovery.md`).
+
 ## Screening: deterministic, and never a decision
 
 `mission-policy/` screens every submission inside the submitting transaction. It answers one

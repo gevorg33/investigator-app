@@ -4,12 +4,13 @@ title: Finding missions you can quote on
 audience: investigator
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-19
+updated: 2026-09-25
 source_of_truth: docs
-implementation_status: specified
+implementation_status: partial
 related_code:
+  - apps/app-web
   - apps/api/src/modules/missions
   - apps/api/src/modules/search
 tags: [missions, discovery, eligibility, work]
@@ -19,19 +20,23 @@ tags: [missions, discovery, eligibility, work]
 
 ## Which missions can I see?
 
-Missions you are eligible to quote on — those matching your verified specialties, your
-service areas, the languages you work in, and your availability.
+Every published mission you could quote on, under **Missions → Open missions**. You see them once
+your investigator profile is published, verified and accepting work — the same conditions a quote
+has to meet — and your own missions, if you also hire investigators, are never among them.
 
-You do not see every mission on the platform. Eligibility is applied before anything
-reaches you, which is why keeping your profile accurate directly determines your workflow.
+The list does not narrow itself to your specialties, areas or languages; you choose that with the
+filters. Whatever you choose, the list never shows a mission you could not quote on: filters only
+ever narrow it.
 
 ## What information does a mission show me before I quote?
 
-The category, the description, the area, the timeframe, the budget range, the languages
-required, and any attachments the customer provided.
+The category, the title and description, where it is (a place name, and how far it is from your
+service area when you ask), the deadline, the budget range, the languages the work needs, and
+when it was published.
 
-You see the customer by first name only: no surname, email, phone number or photo. What the
-assignment requires becomes available once your quote has been accepted and paid.
+Nothing about the customer: no name, email, phone number or photo. Nor their reasons for the
+request — those are for the moderator who published it. What the assignment requires becomes
+available once your quote has been accepted and paid.
 
 ## Can I talk to the customer before quoting?
 
@@ -94,3 +99,28 @@ conversation record is what protects you in a dispute.
 
 A customer asking you to move off-platform, particularly regarding payment, should be
 reported.
+
+## How do I narrow the list?
+
+Open **Filters**. You can choose a category (a broader category includes the narrower ones inside
+it), the languages you work in, a budget range in one currency, a latest deadline, how recently
+the mission was published, and how far it may be from one of your service areas — or only missions
+inside the area.
+
+The languages filter keeps missions whose **every** required language you tick: a mission needing
+Armenian and English is not shown if you tick only English. The number next to **Filters** says how
+many are on; **Clear filters** removes them all.
+
+## How do I sort the list?
+
+Newest first, closest first (to your service areas), highest budget first (choose a currency —
+budgets in different currencies do not compare), or soonest deadline first.
+
+**Words to look for** put the missions that match them first. They never hide anything: a mission
+that does not mention your words is still in the list, lower down.
+
+## Can I save a search?
+
+Yes. Once you have chosen some filters or words, name the search under the list and save it. Your
+saved searches appear as buttons above the filters; one tap runs the search again from the top. You
+can keep up to 20, each with its own name, and delete any of them. They are private to you.

@@ -78,7 +78,9 @@ export const verificationRequests = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     // The queue: open requests, oldest first. An unreviewed application is an investigator
@@ -119,7 +121,9 @@ export const verificationRequestDocuments = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('verification_request_documents_unique').on(t.requestId, t.mediaAssetId),
@@ -164,7 +168,9 @@ export const verificationDecisions = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     // A request is decided once. Two reviewers acting at the same instant produce one decision

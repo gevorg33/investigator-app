@@ -290,12 +290,8 @@
           "name": "user_identities_user_id_users_id_fk",
           "tableFrom": "user_identities",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -399,12 +395,8 @@
           "name": "user_tokens_user_id_users_id_fk",
           "tableFrom": "user_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -481,12 +473,8 @@
           "name": "user_roles_user_id_users_id_fk",
           "tableFrom": "user_roles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -617,12 +605,8 @@
           "name": "user_sessions_user_id_users_id_fk",
           "tableFrom": "user_sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -756,36 +740,22 @@
     "public.identity_provider": {
       "name": "identity_provider",
       "schema": "public",
-      "values": [
-        "GOOGLE"
-      ]
+      "values": ["GOOGLE"]
     },
     "public.user_token_purpose": {
       "name": "user_token_purpose",
       "schema": "public",
-      "values": [
-        "EMAIL_VERIFICATION",
-        "PASSWORD_RESET"
-      ]
+      "values": ["EMAIL_VERIFICATION", "PASSWORD_RESET"]
     },
     "public.account_status": {
       "name": "account_status",
       "schema": "public",
-      "values": [
-        "PENDING_VERIFICATION",
-        "ACTIVE",
-        "SUSPENDED",
-        "DELETED"
-      ]
+      "values": ["PENDING_VERIFICATION", "ACTIVE", "SUSPENDED", "DELETED"]
     },
     "public.user_role_name": {
       "name": "user_role_name",
       "schema": "public",
-      "values": [
-        "CUSTOMER",
-        "INVESTIGATOR",
-        "STAFF"
-      ]
+      "values": ["CUSTOMER", "INVESTIGATOR", "STAFF"]
     }
   },
   "schemas": {},

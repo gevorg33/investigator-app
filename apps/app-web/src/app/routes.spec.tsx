@@ -58,7 +58,7 @@ describe('the application routes', () => {
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
     // Client components translate navigation, the auth and account forms, legal text and errors.
-    expect(CLIENT_NAMESPACES).toEqual(['nav', 'auth', 'account', 'legal', 'error']);
+    expect(CLIENT_NAMESPACES).toEqual(['nav', 'missions', 'auth', 'account', 'legal', 'error']);
     expect(provider.props.messages).toEqual(
       Object.fromEntries(CLIENT_NAMESPACES.map((ns) => [ns, catalogs.ru[ns]])),
     );
@@ -108,7 +108,6 @@ describe('the application routes', () => {
 
   it.each([
     ['Home', HomePage, undefined, 'Nothing needs you yet'],
-    ['Missions', MissionsPage, missionsMeta, 'No missions yet'],
     ['Messages', MessagesPage, messagesMeta, 'No conversations yet'],
     ['Assistant', AssistantPage, assistantMeta, 'The assistant is on its way'],
   ])('%s says what it is and what will appear there', async (title, Page, meta, empty) => {
@@ -120,12 +119,54 @@ describe('the application routes', () => {
 
   it('renders every page in the reader’s chosen language', async () => {
     request.cookies.set('locale', 'hy');
-    render(await MissionsPage());
+    api.on('GET /me', 200, account());
+    render(await MissionsPage({ searchParams: Promise.resolve({}) }));
     expect(
       screen.getByRole('heading', { level: 1, name: catalogs.hy.nav.missions }),
     ).toBeInTheDocument();
     expect(screen.getByText(catalogs.hy.missions.empty.body)).toBeInTheDocument();
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
+  });
+
+  describe('the missions page', () => {
+    const missions = async (over: Parameters<typeof account>[0]) => {
+      api.on('GET /me', 200, account(over));
+      return renderIntl(
+        await resolveServer(
+          await MissionsPage({ searchParams: Promise.resolve({ sort: 'deadline' }) }),
+        ),
+      );
+    };
+
+    it('says what will appear there to a customer', async () => {
+      await missions({ roles: ['CUSTOMER'] });
+      expect(screen.getByRole('heading', { level: 1, name: 'Missions' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'No missions yet' }),
+      ).toBeInTheDocument();
+      expect((await missionsMeta()).title).toBe('Missions');
+      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+    });
+
+    it('shows an investigator the open missions, with the filters from the address', async () => {
+      api.on('POST /search/missions', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
+      await missions({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
+      expect(api.calls.at(-1)).toMatchObject({
+        path: '/search/missions',
+        body: { sort: 'deadline' },
+      });
+      expect(
+        screen.getByRole('heading', { name: catalogs.en.missions.browse.unavailable.title }),
+      ).toBeInTheDocument();
+    });
+
+    it('keeps to the customer’s view for someone showing the platform as a customer', async () => {
+      await missions({ roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: 'CUSTOMER' });
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'No missions yet' }),
+      ).toBeInTheDocument();
+      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+    });
   });
 
   describe('the account page', () => {

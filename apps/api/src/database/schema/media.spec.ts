@@ -10,7 +10,6 @@ import { tenants } from './tenants';
 import { users } from './users';
 import { testPool } from '../../../test/db';
 
-
 describe('media_assets', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -51,7 +50,10 @@ describe('media_assets', () => {
   });
 
   const seed = async () => {
-    const [user] = await db.insert(users).values({ email: `ma-${randomUUID()}@example.test` }).returning();
+    const [user] = await db
+      .insert(users)
+      .values({ email: `ma-${randomUUID()}@example.test` })
+      .returning();
     const [row] = await db
       .insert(mediaAssets)
       .values({
@@ -105,7 +107,9 @@ describe('media_assets', () => {
     const id = await seed();
     const app = testPool({ max: 1, role: 'app' });
     try {
-      const err = await app`delete from media_assets where id = ${id}`.then(() => null).catch((e: { code?: string }) => e);
+      const err = await app`delete from media_assets where id = ${id}`
+        .then(() => null)
+        .catch((e: { code?: string }) => e);
       // 42501: insufficient_privilege.
       expect((err as { code?: string } | null)?.code).toBe('42501');
     } finally {

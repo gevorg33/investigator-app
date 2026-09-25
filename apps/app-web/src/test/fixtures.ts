@@ -1,5 +1,5 @@
 import type { Account } from '@/lib/api/server';
-import type { LegalDocument, SessionSummary } from '@/lib/api/types';
+import type { LegalDocument, MissionListing, SessionSummary } from '@/lib/api/types';
 
 /** A published legal document, as `GET /legal/...` returns it. */
 export const legalDocument = (over: Partial<LegalDocument> = {}): LegalDocument => ({
@@ -38,5 +38,24 @@ export const session = (over: Partial<SessionSummary> = {}): SessionSummary => (
   lastUsedAt: '2026-09-25T00:00:00.000Z',
   expiresAt: '2026-10-25T00:00:00.000Z',
   current: false,
+  ...over,
+});
+
+/** A published mission as the browse lists it (T-054). */
+export const listing = (over: Partial<MissionListing> = {}): MissionListing => ({
+  id: 'm-1',
+  title: 'Supplier background before a distribution deal',
+  description: 'Ownership, registered directors, court cases and public filings.',
+  taxonomyNodeId: '5f51f336-5c7a-442a-909f-8d54d5abf81b',
+  countryCode: 'AM',
+  locationLabel: 'Yerevan, Kentron',
+  distanceKm: null,
+  startBy: null,
+  deadline: '2026-10-16',
+  budgetMinMinor: 20_000_000,
+  budgetMaxMinor: 45_000_000,
+  currency: 'AMD',
+  languages: ['hy', 'en'],
+  publishedAt: '2026-09-25T08:00:00.000Z',
   ...over,
 });

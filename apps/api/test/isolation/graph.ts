@@ -248,6 +248,12 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     INSERT INTO ai_messages (session_id, sequence, role, content)
     VALUES (${conversation}, 1, 'USER', 'What does a due-diligence mission cover?') RETURNING id`);
 
+  // A browse saved by the supplier's investigator, their own (T-054).
+  const savedSearch = await id(owner`
+    INSERT INTO saved_mission_searches (tenant_id, user_id, name, filters)
+    VALUES (${supplier.tenantId}, ${supplier.userId}, 'Yerevan work', '{"languages":["hy"]}'::jsonb)
+    RETURNING id`);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -282,6 +288,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       investigation_sources: source,
       ai_sessions: conversation,
       ai_messages: said,
+      saved_mission_searches: savedSearch,
       policy_reviews: review,
       money_decisions: money,
       reviews: rating,

@@ -144,7 +144,9 @@ export const geographyPolygon = customType<{ data: PolygonCoordinates; driverDat
     return 'geography(Polygon, 4326)';
   },
   toDriver(value) {
-    const rings = value.rings.map((ring) => `(${ring.map(([lon, lat]) => `${lon} ${lat}`).join(',')})`);
+    const rings = value.rings.map(
+      (ring) => `(${ring.map(([lon, lat]) => `${lon} ${lat}`).join(',')})`,
+    );
     return `SRID=4326;POLYGON(${rings.join(',')})`;
   },
   fromDriver(value) {

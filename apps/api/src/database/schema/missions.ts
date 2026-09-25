@@ -129,6 +129,12 @@ export const missions = pgTable(
      */
     lawfulPurposeConfirmedAt: timestamp('lawful_purpose_confirmed_at', { withTimezone: true }),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    /**
+     * When the mission last became visible to investigators — entered QUOTED (T-054). Set by the
+     * database (trigger `missions_published_at`) on every entry into QUOTED, so no writer can
+     * forget it or back-date it; kept afterwards, so a hired mission still says when it was posted.
+     */
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     /**
@@ -147,6 +153,44 @@ export const missions = pgTable(
     index('missions_taxonomy_node_idx').on(t.taxonomyNodeId),
     unique('missions_id_customer_tenant_unique').on(t.id, t.customerTenantId),
     index('missions_customer_tenant_idx').on(t.customerTenantId, t.status),
+    // Investigator browse (T-054): the published set, newest first.
+    index('missions_published_idx')
+      .on(t.publishedAt, t.id)
+      .where(sql`${t.status} = 'QUOTED'`),
+    // Distance filters use ST_DWithin, which needs a spatial index to avoid a scan.
+    index('missions_location_gist')
+      .using('gist', t.location)
+      .where(sql`${t.status} = 'QUOTED'`),
+  ],
+);
+
+/**
+ * A browse an investigator saved, to run again without rebuilding it (T-054).
+ *
+ * **One user, one workspace**, like an assistant conversation: row-level security admits the
+ * saving user in the workspace they saved it in, and nobody else. `filters` holds the browse
+ * request's filters and sort as the API validated them — never a cursor or a limit — and is
+ * validated again every time it is run, so a saved search can never do what a fresh one could not.
+ */
+export const savedMissionSearches = pgTable(
+  'saved_mission_searches',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`)
+      .references(() => tenants.id, { onDelete: 'restrict' }),
+    userId: uuid('user_id')
+      .notNull()
+      .default(sql`app_current_user()`)
+      .references(() => users.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    filters: jsonb('filters').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('saved_mission_searches_owner_idx').on(t.tenantId, t.userId, t.createdAt),
+    unique('saved_mission_searches_owner_name_unique').on(t.tenantId, t.userId, t.name),
   ],
 );
 
@@ -177,7 +221,9 @@ export const missionStatusHistory = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     index('mission_status_history_mission_idx').on(t.missionId, t.occurredAt),
@@ -232,7 +278,9 @@ export const missionScreenings = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     index('mission_screenings_mission_idx').on(t.missionId, t.createdAt),

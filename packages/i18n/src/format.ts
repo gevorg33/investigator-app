@@ -47,6 +47,42 @@ export function formatMoney(minorUnits: number, currency: string, locale: Locale
   return format.format(minorUnits / 10 ** digits);
 }
 
+/**
+ * The number format for budget amounts (T-054): a budget is usually a round figure, so when every
+ * amount is whole the ".00" is dropped as noise — and all of them share one precision, so a range
+ * never reads "$500.50 – $1,500".
+ */
+function budgetFormat(currency: string, locale: Locale, minors: readonly number[]) {
+  const digits = new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions()
+    .maximumFractionDigits!;
+  const unit = 10 ** digits;
+  const fraction = minors.every((m) => m % unit === 0) ? 0 : digits;
+  const format = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: fraction,
+    maximumFractionDigits: fraction,
+  });
+  return { format, unit };
+}
+
+/** One budget amount, "AMD 150,000", by the rule above. */
+export function formatBudget(minor: number, currency: string, locale: Locale): string {
+  const { format, unit } = budgetFormat(currency, locale, [minor]);
+  return format.format(minor / unit);
+}
+
+/** A budget range, "֏500 – ֏1,500", by the locale's own range rules — its dash and spacing. */
+export function formatMoneyRange(
+  minMinor: number,
+  maxMinor: number,
+  currency: string,
+  locale: Locale,
+): string {
+  const { format, unit } = budgetFormat(currency, locale, [minMinor, maxMinor]);
+  return format.formatRange(minMinor / unit, maxMinor / unit);
+}
+
 const UNITS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [
   ['year', 365 * 24 * 3600],
   ['month', 30 * 24 * 3600],

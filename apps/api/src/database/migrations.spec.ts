@@ -28,12 +28,20 @@ describe('migration files', () => {
 
   it('index geography columns with GIST, never btree', () => {
     const service = migrations.find((m) => m.file.startsWith('0006_') && !m.file.includes('.down'));
-    expect(service?.sql).toMatch(/CREATE INDEX "service_areas_area_gist" ON "service_areas" USING gist \("area"\)/);
+    expect(service?.sql).toMatch(
+      /CREATE INDEX "service_areas_area_gist" ON "service_areas" USING gist \("area"\)/,
+    );
   });
 
   it('pair every migration with a down path', () => {
-    const ups = migrations.filter((m) => !m.file.endsWith('.down.sql')).map((m) => m.file.replace(/\.sql$/, ''));
-    const downs = new Set(migrations.filter((m) => m.file.endsWith('.down.sql')).map((m) => m.file.replace(/\.down\.sql$/, '')));
+    const ups = migrations
+      .filter((m) => !m.file.endsWith('.down.sql'))
+      .map((m) => m.file.replace(/\.sql$/, ''));
+    const downs = new Set(
+      migrations
+        .filter((m) => m.file.endsWith('.down.sql'))
+        .map((m) => m.file.replace(/\.down\.sql$/, '')),
+    );
     for (const up of ups) expect(downs.has(up), `${up} has no .down.sql`).toBe(true);
   });
 });

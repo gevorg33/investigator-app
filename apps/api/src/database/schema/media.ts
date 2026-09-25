@@ -42,7 +42,12 @@ export const mediaUploadStatus = pgEnum('media_upload_status', [
 ]);
 
 /** PENDING until a scanner reports. Only CLEAN is ever served — failing closed. */
-export const mediaScanStatus = pgEnum('media_scan_status', ['PENDING', 'CLEAN', 'INFECTED', 'FAILED']);
+export const mediaScanStatus = pgEnum('media_scan_status', [
+  'PENDING',
+  'CLEAN',
+  'INFECTED',
+  'FAILED',
+]);
 
 export const mediaAssets = pgTable(
   'media_assets',

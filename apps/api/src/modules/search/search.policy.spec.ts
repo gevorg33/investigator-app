@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   clampLimit,
   decodeCursor,
+  decodeKeyset,
+  encodeKeyset,
   DEFAULT_LIMIT,
   encodeCursor,
   fingerprint,
@@ -125,6 +127,42 @@ describe('cursors', () => {
     ).toString('base64url');
     expect(() => decodeCursor(filters, forged)).toThrowError(
       expect.objectContaining({ code: 'VALIDATION_FAILED' }),
+    );
+  });
+});
+
+describe('keyset cursors (T-054)', () => {
+  const filters = { sort: 'deadline' };
+  const ID = '5f2fa585-07bb-4514-94f1-981e74b48242';
+  const raw = (payload: unknown) =>
+    Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+
+  it('round-trips the sort keys and the id, bound to the filters', () => {
+    const cursor = encodeKeyset(filters, { keys: [1_790_000_000, -1_789_000_000.5], id: ID });
+    expect(decodeKeyset(filters, cursor, 2)).toEqual({
+      keys: [1_790_000_000, -1_789_000_000.5],
+      id: ID,
+    });
+  });
+
+  it.each([
+    ['not base64 JSON', '%%%'],
+    ['JSON that is not an object', raw(null)],
+    ['a number', raw(7)],
+    ['another browse’s cursor', raw({ f: fingerprint({ sort: 'newest' }), k: [1, 2], i: ID })],
+    ['no fingerprint', raw({ k: [1, 2], i: ID })],
+    ['an id that is not one', raw({ f: fingerprint(filters), k: [1, 2], i: 'x' })],
+    ['no id', raw({ f: fingerprint(filters), k: [1, 2] })],
+    ['the wrong number of keys', raw({ f: fingerprint(filters), k: [1], i: ID })],
+    ['keys that are not a list', raw({ f: fingerprint(filters), k: 1, i: ID })],
+    ['a key that is not a number', raw({ f: fingerprint(filters), k: [1, '2'], i: ID })],
+  ])('refuses %s, as every other bad cursor is refused', (_, cursor) => {
+    expect(() => decodeKeyset(filters, cursor, 2)).toThrowError(
+      expect.objectContaining({
+        details: [
+          { field: 'cursor', code: 'INVALID', messageKey: 'error.validation.cursor.invalid' },
+        ],
+      }),
     );
   });
 });

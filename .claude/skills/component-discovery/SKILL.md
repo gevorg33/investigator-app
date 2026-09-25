@@ -26,6 +26,15 @@ and a duplicate that will drift.
 Use the shadcn MCP: `search_items_in_registries` → `view_items_in_registries` →
 `get_item_examples_from_registries` → `get_add_command_for_items`.
 
+**Name the registries in every search** (found in T-054): `search_items_in_registries` with no
+`registries` argument searched only `@cult-ui` and `@react-bits` — `@shadcn` silently dropped out,
+and a search for "card" returned 428 animated React Bits cards and not `@shadcn/card`. Pass
+`registries: ["@shadcn"]` (then the others) explicitly, or list `@shadcn` with
+`list_items_in_registries` and `types: ["registry:ui"]`.
+
+**`shadcn add` of several items stops at the first overwrite prompt** and adds nothing after it.
+Pipe `yes n |` so existing, re-tokenised files are never overwritten and the rest still arrive.
+
 ### Registries, verified working
 
 `@shadcn`, `@cult-ui` and `@react-bits` (684 items) are configured per app, in

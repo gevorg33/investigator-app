@@ -75,6 +75,8 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the knowledge sync, from docs/knowledge-base — a document nobody wrote is one retrieval would trust (T-016)',
   knowledge_chunks: 'the knowledge sync, which chunks only a current document (T-016)',
   knowledge_conflicts: 'the knowledge sync`s conflict detection (T-016)',
+  saved_mission_searches:
+    'the mission browse service, which saves one only after checking it as a browse would (T-054)',
 };
 
 const domainTables = (): string[] => {
