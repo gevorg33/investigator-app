@@ -634,6 +634,30 @@ describe('where the investigator works', () => {
     expect(screen.getByRole('textbox', { name: en.areas.label })).toHaveValue('Home');
   });
 
+  it('says what to do about a refused area, not only that something needs correcting (T-135)', async () => {
+    device(position(44.5, 40.2));
+    api.on(
+      'POST /service-areas/me',
+      422,
+      apiError('VALIDATION_FAILED', 'error.common.validation_failed', {
+        details: [
+          {
+            field: 'kind',
+            code: 'LIMIT_REACHED',
+            messageKey: 'error.validation.service_area.limit_reached',
+          },
+        ],
+      }),
+    );
+    areas([]);
+    await locate();
+    await user().type(screen.getByRole('textbox', { name: en.areas.label }), 'One too many');
+    await user().click(screen.getByRole('button', { name: en.areas.add }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      catalogs.en.error.validation.service_area.limit_reached,
+    );
+  });
+
   it.each([
     [1, en.areas.denied],
     [2, en.areas.failed],

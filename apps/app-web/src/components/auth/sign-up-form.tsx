@@ -39,17 +39,11 @@ export function SignUpForm({ documents }: { documents: readonly LegalDocument[] 
     () => router.push('/check-email'),
   );
   const fields = fieldErrorKeys(error, tl);
-  const other = Object.entries(fields).filter(([f]) => f !== 'email' && f !== 'password');
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      <FormError error={error} />
-      {other.length > 0 && (
-        <ul className="grid gap-1 text-sm text-danger">
-          {other.map(([field, key]) => (
-            <li key={field}>{tl(key)}</li>
-          ))}
-        </ul>
-      )}
+      {/* Email and password are refused beside their fields; the rest, such as a document
+          still to accept, under the error's title (T-135). */}
+      <FormError error={error} shown={['email', 'password']} />
       <Field
         label={t('auth.email')}
         name="email"

@@ -108,7 +108,7 @@ export function SaveSearch({ current }: { current: BrowseFilters }) {
       onSubmit={onSubmit}
       className="mt-3 grid gap-2 rounded-lg border border-border bg-surface-raised p-4"
     >
-      {nameError === undefined && <FormError error={error} />}
+      {nameError === undefined && <FormError error={error} shown={['name']} />}
       <label htmlFor="saved-name" className="text-sm font-medium">
         {t('missions.browse.saved.name')}
       </label>

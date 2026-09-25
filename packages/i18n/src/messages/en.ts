@@ -848,7 +848,11 @@ export const en = {
         relevance_needs_text: 'Enter words to order by.',
         text_orders_only: 'Words to look for set the order themselves.',
       },
-      service_area: { unknown: 'That is not one of your service areas.' },
+      service_area: {
+        unknown: 'That is not one of your service areas.',
+        limit_reached: 'You can have up to 10 service areas. Remove one to add another.',
+        shape: 'This area is too small, its outline crosses itself, or it has too many points. Draw a larger, simpler shape.',
+      },
       saved_search: {
         name_taken: 'You already have a saved search with this name.',
         limit: 'You can keep up to 20 saved searches. Delete one to save another.',
@@ -867,6 +871,49 @@ export const en = {
         required: 'Confirm that your request is for a lawful purpose.',
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
+      assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
+      coverage: { range: 'Choose a distance and a number of results within the limits.' },
+      idempotency_key: {
+        required: 'This request could not be sent safely. Reload the page and try again.',
+      },
+      investigation_source: {
+        rationale_required: 'Say why you rate this source as you do.',
+      },
+      media: {
+        rejected: 'This file is not what it says it is, or is too large. Choose another.',
+        too_large: 'This file is too large.',
+        type_not_allowed: 'This kind of file cannot be uploaded here.',
+      },
+      platform: { reason: 'Say why you need this access, in a few words.' },
+      policy: { ground_required: 'Describe the policy concern in at least a sentence.' },
+      policy_review: {
+        only_unsubstantiated: 'Bad faith can only be found when the refusal was not substantiated.',
+        not_for_decline: 'This outcome cannot be chosen when the investigator declined.',
+        required: 'Choose this before deciding.',
+        not_for_resume: 'No refund applies when the assignment resumes.',
+        exceeds_price: 'The investigator cannot be paid more than the agreed price.',
+      },
+      quote: {
+        already_quoted: 'You have already quoted on this mission. Withdraw that quote to send a new one.',
+        expiry_range: 'Choose an expiry between an hour and 90 days from now.',
+      },
+      review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
+      taxonomy: {
+        locale: 'Choose English, Russian or Armenian.',
+        parent_unknown: 'That parent specialty does not exist.',
+        parent_deprecated: 'That parent specialty is retired. Choose a current one.',
+        slug_taken: 'Another specialty already uses this address. Choose another.',
+        children_active: 'Retire the specialties under this one first.',
+      },
+      taxonomy_node: {
+        unknown: 'One of these specialties does not exist. Choose from the list.',
+        deprecated: 'One of these specialties is retired and cannot be added. Choose a current one.',
+      },
+      verification: {
+        document_not_found: 'One of these documents could not be found. Upload it again.',
+        document_not_ready: 'One of these documents is still being checked, or failed the check. Try again in a moment, or upload it again.',
+        reason_required: 'Give the reason for this decision. The investigator sees it.',
+      },
       legal: {
         privacy_policy: 'Accept the privacy policy to continue.',
         terms_of_service: 'Accept the terms of service to continue.',
