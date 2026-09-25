@@ -1,10 +1,12 @@
 import { colors } from '@investigator/ui-tokens';
-import { render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { Redirected } from '@/test/navigation';
 import nextConfig from '../../next.config';
 import RootLayout, { metadata, viewport } from './layout';
 import HomePage from './page';
+
+vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextNavigation);
 
 describe('the staff console routes', () => {
   it('is never indexed — by metadata and by header, so neither can be forgotten alone', async () => {
@@ -31,11 +33,13 @@ describe('the staff console routes', () => {
     expect(html.props.lang).toBe('en');
   });
 
-  it('says what the console is, and that sign-in is not open yet', () => {
-    render(<HomePage />);
-    expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Staff console' })).toBeInTheDocument();
-    expect(screen.getByText(/Staff sign-in opens with the verification console/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+  it('opens on its one queue', () => {
+    expect(() => HomePage()).toThrow(new Redirected('/verification'));
+  });
+
+  it('reaches the API same-origin at /api, as Caddy routes it in every deployed environment', async () => {
+    expect(await nextConfig.rewrites!()).toEqual([
+      { source: '/api/:path*', destination: 'http://localhost:3001/api/:path*' },
+    ]);
   });
 });

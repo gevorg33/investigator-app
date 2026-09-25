@@ -74,6 +74,13 @@ regression test times a submission an hour ahead of the deciding transaction.
 
 Every denial is audited by `AuthzService`, as everywhere else.
 
+## The console (T-070)
+
+The reviewer screens are in admin-web (`admin-web.md`, "Verification"): the queue, one application
+with the recorded declaration and the trail, documents opened only through the audited per-application
+route, and the decision form. Nothing in the console decides who may review: every screen shows what
+the API answers, and 403 is shown as a missing scope.
+
 ## Not built — and filed
 
 - **Scope-level verification (T-071).** Verification is profile-wide. Partial approval, review of
