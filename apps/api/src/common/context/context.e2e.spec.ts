@@ -75,7 +75,7 @@ describe('the execution context, end to end', () => {
       controllers: [ProbeController],
     }).compile();
     app = mod.createNestApplication();
-    configureApp(app);
+    await configureApp(app);
     await listenOnce(app);
   });
 
