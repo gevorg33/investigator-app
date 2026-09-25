@@ -14,16 +14,16 @@
   documents: [kb-customer-privacy-data@3, kb-policy-privacy-summary@1]
   reviewed: 2026-09-25
   by: Claude (agent), for the owner's confirmation
-  finding: consistent — both say only the parties see evidence by default and staff access needs a recorded reason. Re-read at @3 (T-054): v3 changed only who can see a published mission, not this answer
+  finding: 'consistent — both say only the parties see evidence by default and staff access needs a recorded reason. Re-read at @3 (T-054): v3 changed only who can see a published mission, not this answer'
 
 - subject: what data does the platform hold about me
   documents: [kb-customer-privacy-data@3, kb-policy-privacy-summary@1]
   reviewed: 2026-09-25
   by: Claude (agent), for the owner's confirmation
-  finding: consistent — the same list; the public summary adds what investigators have held. Re-read at @3 (T-054): unchanged
+  finding: 'consistent — the same list; the public summary adds what investigators have held. Re-read at @3 (T-054): unchanged'
 
 - subject: how long is my data kept
   documents: [kb-customer-privacy-data@3, kb-policy-privacy-summary@1]
   reviewed: 2026-09-25
   by: Claude (agent), for the owner's confirmation
-  finding: consistent — both say retention differs by type and nothing is kept indefinitely. Re-read at @3 (T-054): unchanged
+  finding: 'consistent — both say retention differs by type and nothing is kept indefinitely. Re-read at @3 (T-054): unchanged'
