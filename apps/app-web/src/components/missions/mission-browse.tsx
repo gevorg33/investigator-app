@@ -53,11 +53,17 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
 
   if (refused?.status === 403) {
     return (
-      <EmptyState
-        icon={ShieldCheck}
-        title={t('missions.browse.unavailable.title')}
-        body={t('missions.browse.unavailable.body')}
-      />
+      <>
+        <EmptyState
+          icon={ShieldCheck}
+          title={t('missions.browse.unavailable.title')}
+          body={t('missions.browse.unavailable.body')}
+        />
+        {/* What opens browsing is all on one page: say where. */}
+        <Button asChild className="mt-4 w-full sm:w-auto">
+          <Link href="/account/investigator">{t('investigator.link')}</Link>
+        </Button>
+      </>
     );
   }
 

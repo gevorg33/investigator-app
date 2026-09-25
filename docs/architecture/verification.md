@@ -1,7 +1,8 @@
 # Investigator verification
 
 How an investigator comes to be verified. Built in T-013 (API only), per plan.md §23. The
-staff console that uses these endpoints is T-070. The KB articles are
+staff console that uses these endpoints is T-070; the investigator's side — upload, apply, history —
+is the Verification section of app-web's profile page (T-123). The KB articles are
 `kb-investigator-verification` and `kb-staff-verification-review`.
 
 ## The flow
@@ -40,6 +41,7 @@ who is staff and an investigator, working as the investigator, is not a reviewer
 |---|---|
 | `investigator_profiles.verification_status` changes only here | `verification-status-writes.spec.ts` scans the source for any other writer |
 | The declaration a reviewer checks against does not move | Snapshotted into `declared_scope` at submission; read from the profile, never from the client |
+| The name a reviewer checks against does not move | `PATCH /profiles/investigator/me` refuses a changed `displayName` while `PENDING` or `VERIFIED` (`profiles.md`) |
 | One open application per profile | Partial unique index `verification_requests_one_open_per_profile`; the profile row is locked during submission |
 | A request is decided once | Row lock + an UPDATE matching status and version; unique `verification_decisions_one_per_request` |
 | Nobody decides their own application | `stateAllows` in `decide` (403) |
@@ -70,6 +72,7 @@ regression test times a submission an hour ahead of the deciding transaction.
 | `verification.submitted` | Application created (actor INVESTIGATOR) |
 | `verification.approved` / `verification.rejected` | Decision recorded, same transaction (actor STAFF) |
 | `verification.document_opened` | A reviewer opened a document; `resource_id` is the application, `reason` the asset |
+| `profile.display_name_changed` | The investigator renamed themselves — possible only before applying, or after a rejection |
 | `media.delivered` | Written by the media module for the same opening |
 
 Every denial is audited by `AuthzService`, as everywhere else.
@@ -89,4 +92,6 @@ the API answers, and 403 is shown as a missing scope.
   without review; the KB says review of additions is not built.
 - **Document expiry and lapse, renewal reminders, required documents per jurisdiction (T-072).**
 - **Decision notifications** — no notification channel exists yet.
+- **Changing a verified name** — locked while `PENDING` or `VERIFIED`; a support path that
+  re-verifies is T-148.
 - **The staff console (T-070)**, with T-014's component library.

@@ -1,5 +1,6 @@
 import type { Locale } from '@investigator/i18n';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { chooseActiveRole } from '@/app/(workspace)/account/actions';
 import { getT } from '@/i18n/server';
 import type { Account } from '@/lib/api/server';
@@ -49,6 +50,18 @@ export async function RolesSection({ account, locale }: { account: Account; loca
             </li>
           ))}
         </ul>
+      )}
+      {account.roles.includes('INVESTIGATOR') && (
+        <Link
+          href="/account/investigator"
+          className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-4 py-3 hover:bg-surface-sunken"
+        >
+          <span className="grid gap-0.5">
+            <span className="font-medium">{t('investigator.link')}</span>
+            <span className="text-sm text-text-muted">{t('investigator.link_body')}</span>
+          </span>
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
+        </Link>
       )}
       {held.length === ROLES.length && (
         <form action={chooseActiveRole} className="grid gap-2">

@@ -80,15 +80,66 @@ export interface TaxonomyNode {
   children: TaxonomyNode[];
 }
 
+/** A point, longitude first, as PostGIS and the API take it. */
+export interface LonLat {
+  lon: number;
+  lat: number;
+}
+
 /** One of the investigator's own service areas (T-008). */
 export interface OwnServiceArea {
   id: string;
   label: string;
+  kind: 'RADIUS' | 'POLYGON';
+  countryCode: string | null;
+  region: string | null;
+  city: string | null;
+  centre: LonLat | null;
+  radiusKm: number | null;
 }
 
-/** The parts of the investigator's own profile these screens read. */
-export interface OwnInvestigatorProfile {
-  languages: Array<{ languageCode: string }>;
+export type PricingModel = 'HOURLY' | 'FIXED_FEE' | 'RETAINER' | 'MIXED';
+export type Proficiency = 'BASIC' | 'CONVERSATIONAL' | 'FLUENT' | 'NATIVE';
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+export interface AvailabilityWindow {
+  /** 0 = Monday (ISO 8601) through 6 = Sunday. */
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+}
+
+/** An investigator profile as anyone may see it — the public projection (T-007). */
+export interface PublicInvestigatorProfile {
+  id: string;
+  displayName: string | null;
+  headline: string | null;
+  bio: string | null;
+  yearsExperience: number | null;
+  pricingModel: PricingModel | null;
+  hourlyRateMinor: number | null;
+  currency: string | null;
+  acceptingWork: boolean;
+  languages: Array<{ languageCode: string; proficiency: Proficiency }>;
+  specialtyNodeIds: string[];
+  availability: AvailabilityWindow[];
+}
+
+/** The investigator's own profile: the public fields and the ones only they see (T-123). */
+export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
+  contactPhone: string | null;
+  visibility: 'DRAFT' | 'PUBLISHED';
+  verificationStatus: VerificationStatus;
+}
+
+/** One of the investigator's own verification applications, with its decision's reason (T-013). */
+export interface VerificationApplication {
+  id: string;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  decidedAt: string | null;
+  documentIds: string[];
+  decision: { outcome: 'APPROVED' | 'REJECTED'; reason: string; decidedAt: string } | null;
 }
 
 /** A help article, as `GET /knowledge/documents/:docKey` gives it to a reader who may read it (T-059). */

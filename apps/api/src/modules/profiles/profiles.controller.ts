@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/authz/actor.decorator';
@@ -51,6 +61,17 @@ export class ProfilesController {
     @Req() req: Request,
   ): Promise<OwnInvestigatorProfile> {
     return this.profiles.getMyInvestigatorProfile(actor, requestContext(req));
+  }
+
+  @Get('investigator/me/preview')
+  @ApiOperation({
+    summary: 'The caller’s own profile exactly as customers see it, whether published or not.',
+  })
+  async previewMyInvestigator(
+    @CurrentActor() actor: Actor,
+    @Req() req: Request,
+  ): Promise<PublicInvestigatorProfile> {
+    return this.profiles.previewMyInvestigatorProfile(actor, requestContext(req));
   }
 
   @Patch('investigator/me')
