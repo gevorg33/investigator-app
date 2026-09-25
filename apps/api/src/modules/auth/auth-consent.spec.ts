@@ -175,12 +175,10 @@ describe('the acceptance gate', () => {
       const privacy = await publish('PRIVACY_POLICY');
       await publish('TERMS_OF_SERVICE');
 
-      const refusal = await auth
-        .register(email(), PASSWORD, ctx(), [privacy.id])
-        .then(
-          () => ({}) as { details?: Array<{ messageKey: string }> },
-          (e: unknown) => e as { details?: Array<{ messageKey: string }> },
-        );
+      const refusal = await auth.register(email(), PASSWORD, ctx(), [privacy.id]).then(
+        () => ({}) as { details?: Array<{ messageKey: string }> },
+        (e: unknown) => e as { details?: Array<{ messageKey: string }> },
+      );
 
       expect(refusal.details?.map((d) => d.messageKey)).toEqual([
         'error.validation.legal.terms_of_service',
@@ -216,6 +214,16 @@ describe('the acceptance gate', () => {
       const user = await userByEmail(address);
       expect(user).toBeDefined();
       expect(await consentsOf(user!.id)).toEqual([]);
+    });
+
+    it('keeps the language and time zone the sign-up screen was shown in, else English and UTC', async () => {
+      const shown = email();
+      await auth.register(shown, PASSWORD, ctx(), [], { locale: 'hy', timezone: 'Asia/Yerevan' });
+      expect(await userByEmail(shown)).toMatchObject({ locale: 'hy', timezone: 'Asia/Yerevan' });
+
+      const unsaid = email();
+      await auth.register(unsaid, PASSWORD, ctx(), []);
+      expect(await userByEmail(unsaid)).toMatchObject({ locale: 'en', timezone: 'UTC' });
     });
 
     it('requires only what is published, not the whole list', async () => {

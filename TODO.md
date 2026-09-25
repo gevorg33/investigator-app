@@ -1447,6 +1447,7 @@ Full SEO for the marketing domain per `.claude/skills/domain-and-seo/SKILL.md`.
 - [ ] Every entry has a real `lastModified`; regenerates on deploy and on content revalidation
 - [ ] `app/robots.ts` generated, referencing the sitemap
 - [ ] Self-referencing canonical on every public page
+- [ ] Every link into the app carries the page's locale as `?lang=<locale>` (ADR-0013), so a reader of `/ru/…` arrives in a Russian app whatever their browser asks for
 - [ ] Reciprocal `hreflang` for en/ru/hy plus `x-default`; no cross-locale canonicalisation
 - [ ] Unique title and description per page — no repeated boilerplate
 - [ ] Open Graph and Twitter metadata with image, dimensions and alt
@@ -1983,7 +1984,7 @@ ranking in discovery, so they are a manipulation surface.
 - [x] Rating plus optional text; text is moderated and reportable — pre-moderated (`PENDING` until staff publish); the other party reports published words back to `PENDING`
 - [x] A review is not a dispute route — the UI and copy say so (`kb-customer-disputes-revisions`) — the create route's description and `kb-customer-reviews`; there is no UI yet (T-120, T-122)
 - [x] Investigator may respond once; responses are also moderated
-- [x] Ranking input is computed, never client-supplied — count and average computed in SQL per read; the DTOs refuse `average`, `count` and every server-set field. Not used by discovery ordering yet: T-138
+- [x] Ranking input is computed, never client-supplied — count and average computed in SQL per read; the DTOs refuse `average`, `count` and every server-set field. Not used by discovery ordering yet: T-140
 - [x] Removing a review is audited with a reason — `review.removed` carries it; removal is once, staff-only, under PlatformContext
 
 **Validation**
@@ -2022,7 +2023,7 @@ snapshot was stale — 0021 hand-wrote four knowledge-table objects the snapshot
 so `drizzle-kit generate` proposed recreating them; they were removed from 0022, whose snapshot is now
 accurate. (3) An edited migration is never re-applied to existing test databases (Drizzle records it
 as applied), so a negative control on a migration must alter the live databases. (4) The project's
-`settings.json` sets `NODE_ENV=development`, which breaks `next build` — T-139.
+`settings.json` sets `NODE_ENV=development`, which breaks `next build` — T-141.
 ---
 
 ### T-038 — Search within an investigation
@@ -5731,7 +5732,7 @@ pnpm --filter app-web test earnings
 ---
 
 ### T-127 — Sign-up, sign-in and account screens (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P0 — every other screen starts here
 - **Depends on:** T-091, T-128, T-022
 - **Risk:** MEDIUM
@@ -5745,9 +5746,43 @@ reset, the session and device list, and role switching between customer and inve
 Google sign-in joins with T-062.
 
 **Acceptance criteria**
-- [ ] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
-- [ ] Every auth error is privacy-preserving, and never reveals whether an email is registered
-- [ ] Session cookie behaviour matches T-025; the flows are tested end to end against the API
+- [x] **Acceptance is part of these screens** (from T-022): sign-up shows the text or a link to it and posts `acceptedDocumentIds`; the account area shows what is outstanding (`GET /legal/outstanding`) and clears it (`POST /legal/acceptances`). The locale shown is what gets recorded, so the screen must pass the locale it rendered. Blocking a specific action on outstanding acceptance belongs here too — never a blanket block, which would cut off read access to an active assignment's existing obligations
+      — documents come from the new `GET /legal/required?for=registration|CUSTOMER|INVESTIGATOR&locale=`
+      (policy stays single-sourced in `legal.policy.ts`), are read in full in place, and their ids —
+      the exact version and locale shown — are posted back. Checked in the browser: a Russian sign-up
+      shown English documents recorded `locale_shown = en`, context `REGISTRATION`. Outstanding
+      documents are a notice on every screen and a section on the account page; the one action held
+      back is adding a role, which shows and requires that role's documents in the same form
+- [x] Every auth error is privacy-preserving, and never reveals whether an email is registered
+      — one sign-in message for wrong password, unknown address and malformed field; register,
+      resend and reset answer the same for every address; reference ids only on 5xx and network
+      failures
+- [x] Session cookie behaviour matches T-025; the flows are tested end to end against the API
+      — the API alone sets and clears the cookie (browser calls to same-origin `/api/v1`); checked
+      in the browser as HTTP-only, `SameSite=Strict`, host-only. Every flow was run by hand against
+      the real API at 375, 768 and 1280px, and in Vitest against a stand-in API that fails any
+      unexpected request. An automated browser run in CI is **T-139**
+- [x] The language choice (T-128's `locale` cookie, **Account → Language**) is saved to the account, and a signed-in user's saved language is written to the cookie at sign-in — the API's assistant reads `users.locale`, so the two must agree
+      — `chooseLocale` saves via the new `PATCH /me/preferences` (audited); `/session/start` writes
+      the account's language into the cookie; sign-up saves the screen's language. Checked: `hy`
+      saved, restored on a fresh English browser with no cookie
+- [x] The reader's time zone is stored and passed to `formatDateTime`, which requires one (T-128)
+      — `users.timezone`, set from the device at sign-up, editable on the account page (IANA names
+      only; offsets refused); session times are formatted in it
+
+**Evidence**
+- app-web: 22 spec files, 184 tests, 100% statements/branches/functions/lines;
+  `pnpm --filter app-web test auth` 38 tests. API: 2179 tests, 100%. Mutation check: removing the
+  double-submit guard fails its test
+- `pnpm lint`, `pnpm typecheck`, `pnpm build` (with `NODE_ENV` unset, as CI), bundle budget (largest
+  route `/account` 137.7 kB of 250), no public source maps, `pnpm audit --audit-level=high` clean,
+  knowledge-base validator 0 errors / 0 warnings
+- Docs: `docs/architecture/app-web.md` (accounts section), component inventory, `legal-consent`
+  skill note, KB `account-access-and-security`, `getting-started`, `troubleshooting` in en/ru/hy
+- Found and filed: **T-138** (API has no `trust proxy`: per-IP limits and audit IPs are the
+  proxy's), **T-139** (browser flows in CI); T-135 progress noted. Fixed in passing: legal document
+  responses carried no `id`, so no client could accept a published document (regression test seen
+  failing first)
 
 **Validation**
 ```bash
@@ -5757,7 +5792,7 @@ pnpm --filter app-web test auth
 ---
 
 ### T-128 — App translation catalogs (en, ru, hy)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-24
 - **Priority:** P0 — screens are written against keys from the first one
 - **Depends on:** T-091
 - **Risk:** LOW
@@ -5772,14 +5807,71 @@ This moves the Backlog item into the core loop, because the launch market's lang
 optional.
 
 **Acceptance criteria**
-- [ ] A missing key in any locale fails the build
-- [ ] No user-facing string literal in feature code (lint rule)
-- [ ] Replaces T-091's interim `apps/app-web/src/i18n/messages.ts` (English, typed keys); the keys it defines carry over, and `<html lang>` follows the reader's locale
+- [x] A missing key in any locale fails the build
+- [x] No user-facing string literal in feature code (lint rule)
+- [x] Replaces T-091's interim `apps/app-web/src/i18n/messages.ts` (English, typed keys); the keys it defines carry over, and `<html lang>` follows the reader's locale
 
 **Validation**
 ```bash
 pnpm --filter app-web test i18n && pnpm --filter app-web build
 ```
+
+**DONE — 2026-09-24**
+
+*What exists.* `packages/i18n`: catalogs (`en.ts` source; `ru.ts`, `hy.ts` typed against it),
+`resolveLocale` and the formatters (date/time with a required time zone, numbers, money from minor
+units, relative time). app-web translates through `use-intl` (ADR-0013 — not `next-intl`, whose
+extraction tooling ships native install scripts): `getT()` on the server, `useTranslations` for
+client components, which receive only the `nav` namespace. The locale is the reader's choice (a
+cookie set from **Account → Language**), else `Accept-Language`, else English; `<html lang>` and
+titles follow it.
+
+*Criteria.*
+- Missing key fails the build: seen — deleting a Russian key and adding an Armenian one each fail
+  `pnpm build` with a type error, and an unknown key in a page fails the typecheck. A test adds
+  ICU validity, identical arguments to English and full plural categories per language (Russian's
+  four), and tests itself on six kinds of broken catalog.
+- Lint: JSX text, string children, and literal `aria-label`/`title`/`alt`/`placeholder` refused in
+  app-web (probed: six violations in three scripts caught; keys, numbers, punctuation pass).
+- T-091's module is gone; its keys carried over, nested.
+
+*Found along the way.* (1) **Russian «Сообщения» and Armenian «Պատվերներ» were clipped in the 75px
+phone tabs** — seen in the browser, not the tests. 12px is the smallest type token, so the words
+changed: «Чаты», «Գործեր» (Armenian empty states follow, so a screen uses one term). The rule is in
+`app-web.md` and ACTIONS #23. (2) A malformed `q=` weight in `Accept-Language` was read as weight 1 —
+a test caught it; now the entry is dropped. (3) 50 more iCloud conflict copies (`css.spec 2.ts`,
+an empty `src/app 2/`) broke `tsc`; quarantined to the session scratchpad, not deleted, after
+checking they were older copies. Three more sit inside `.git/` and were left alone — **the
+repository should move off iCloud Desktop** (ACTIONS #24, added here: it was referenced but missing).
+
+*Negative controls* (each broken on purpose, seen to fail, restored byte-for-byte): Russian key
+removed (build); Armenian key added (build); unknown key in a page (typecheck); an English argument
+the translations lack; the cookie ignored; fallback showing the key; `<html lang>` fixed to `en`;
+the whole catalog sent to the browser; the cookie scoped to every subdomain; any string accepted as
+a locale.
+
+*Verified.* Production build in a browser at 375px: Russian and Armenian browsers get their
+language, German falls back to English; choosing Русский on Account switches every page without
+JavaScript and outlasts an Armenian browser; the cookie is host-only, HTTP-only, `Secure`, Lax,
+365 days; every tab label fits in all three languages. 131 kB initial JS (budget 250).
+**Translations are not native-reviewed** — ACTIONS #23.
+
+*Follow-up, same task (2026-09-25), on the two points left for the owner to confirm.*
+- **Cookie vs locale URLs — one gap found and closed.** The marketing site keeps its locale in the
+  URL and cannot set the app's host-only cookie, so a reader of the Russian marketing site with an
+  English browser would have landed in English. `src/middleware.ts` now accepts `?lang=<locale>` on
+  any link into the app, records it as the reader's choice and 303-redirects to the clean URL
+  (other parameters kept; unknown values dropped). One cookie-options constant now serves both
+  writers. Verified in the browser; T-024 carries the matching criterion.
+- **Word choices — checked against real usage**, recorded in
+  `docs/product/translation-glossary.md` for the native reviewer. Armenian now says «դետեկտիվ»,
+  not «խուզարկու»: the lawful registered business uses «դետեկտիվ բյուրո», the press uses
+  «մասնավոր խուզարկու» for unlicensed surveillance. Russian «детектив» matches its law.
+- **Legal lead, not acted on:** the same search found a press report that private surveillance
+  of individuals is criminally punishable in Armenia. Recorded as a CLAIM under ACTIONS #2 and as
+  counsel question 7a — it bears on ADR-0009 for a launch locale, and is not engineering's call.
+- 19 more iCloud conflict copies (build and coverage output only) quarantined.
+
 
 ---
 
@@ -6005,12 +6097,18 @@ turn one into a sentence, so none of the nine codes can be shown to a user in an
 including `SERVICE_UNAVAILABLE`, added in T-017. The catalogs belong to the web app, which T-091
 founds.
 
+**Progress (T-127):** `packages/i18n` now has en, ru and hy entries for all nine
+`ERROR_MESSAGE_KEY` keys and for the validation keys the auth and account forms meet (email,
+password, time zone, each legal document); app-web renders them by key. Still open: every other
+validation `messageKey`, the assistant codes, and the test below.
+
 **Acceptance criteria**
 - [ ] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
       `messageKey` a validation error can carry
 - [ ] The assistant's discovery reason codes (`matched.*`, `not_matched.specialty`), clarification
       codes and `location.anywhere` (T-018) — the API sends codes and data, never sentences
 - [ ] A test fails when an API error key has no entry in every locale
+- [ ] The entries live in `packages/i18n` beside the UI catalogs (T-128), so the typed parity check covers them for free
 - [ ] ru and hy reviewed by a native speaker before they are marked current
 
 **Validation**
@@ -6073,7 +6171,69 @@ npx -y @playwright/mcp@<version> --help
 
 ---
 
-### T-138 — Order discovery by rating
+### T-138 — The API behind Caddy sees the proxy's address, not the client's
+- **Status:** TODO
+- **Priority:** P1 — per-IP rate limits and audit IPs are wrong in every deployed environment
+- **Depends on:** —
+- **Risk:** MEDIUM — changes which address rate limits and audit rows record
+- **Human approval required:** Yes — it touches a security control (rate limiting)
+- **Owner agent:** infra-devops + backend-domain
+- **Affected:** apps/api/src/bootstrap.ts, infrastructure/caddy/Caddyfile, apps/app-web/src/lib/api/server.ts
+
+**Description**
+Found in T-127. The API never sets Express's `trust proxy`, so behind Caddy `req.ip` is Caddy's
+container address for every request. `request-context.ts` passes it to the auth rate limits
+(`loginPerIp`: 20 per five minutes) — one limit shared by every user of the platform, so a handful
+of failed sign-ins anywhere locks out everyone — and to every audit row and consent record that
+stores an IP. Caddy already sends `X-Real-IP` and `X-Forwarded-For`; nothing reads them.
+
+A second hop arrives with T-127: app-web's server components call the API directly
+(`serverApi`), so those requests carry app-web's address. They are reads today, but the client's
+address should travel with them once the API trusts the proxy.
+
+**Acceptance criteria**
+- [ ] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
+      internal calls) — never `true`, which would let any client choose its own address
+- [ ] A spoofed `X-Forwarded-For` from a client is not believed
+- [ ] Per-IP rate limits key on the client's address; audit and consent rows record it
+- [ ] `docs/operations` says which headers each hop sets and trusts
+
+**Validation**
+```bash
+pnpm --filter api test request-context
+```
+
+---
+
+### T-139 — Browser flows for sign-up, sign-in and the account page in CI
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-127
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend + infra-devops
+- **Affected:** apps/app-web/e2e/**, .github/workflows/**
+
+**Description**
+Found in T-127. Its flows are tested in Vitest against a stand-in for the API, and were checked by
+hand in a browser against the real API at 375, 768 and 1280px — but no automated run drives a
+browser through the real stack, so a change to a cookie attribute, the dev rewrite or
+`/session/start` would pass CI. T-098 plans `apps/app-web/e2e/`; this starts it with the flows
+every other screen depends on: sign up (with a published document), confirm the address from the
+emailed link, sign in and land on the page asked for, the saved language restored on a fresh
+browser, time zone saved, a role added, another session ended, sign out, reset a password.
+
+**Acceptance criteria**
+- [ ] The flows above run in CI against the API and a migrated database, at 375 and 1280px
+- [ ] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
+      the browser, not the API's unit tests
+- [ ] Accessibility checks pass on each signed-out screen and the account page
+
+**Validation**
+```bash
+pnpm --filter app-web test:e2e
+
+### T-140 — Order discovery by rating
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-037
@@ -6102,7 +6262,7 @@ pnpm --filter api test search discovery
 
 ---
 
-### T-139 — `next build` fails in agent shells, and so does `scripts/setup.sh`
+### T-141 — `next build` fails in agent shells, and so does `scripts/setup.sh`
 - **Status:** TODO
 - **Priority:** P3
 - **Depends on:** —

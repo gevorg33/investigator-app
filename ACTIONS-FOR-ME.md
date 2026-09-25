@@ -94,6 +94,19 @@ licence, and how to verify one is genuine. Six open questions are listed at the 
 
 **Verify:** Every `high` and `restricted` node has a stated licensing requirement per country.
 
+**A lead for Armenia, found in T-128 — a CLAIM, not a verified fact.** A Hraparak article,
+[«Մասնավոր խուզարկուներն արգելված են Հայաստանում, բայց գործում են»](https://hraparak.am/post/e1754420828e46e64d08b287d2fcaf51)
+("Private investigators are banned in Armenia, but they operate"), states that Armenian law makes
+following another person to uncover things "a criminally punishable act, unlawful interference in a
+person's private life". It reports that the one registered detective bureau does corporate security
+and fraud work and refuses private-life and romantic cases as illegal, and cites a 2012 conviction
+of a former security officer who revealed affairs for money. It names no article of the Criminal
+Code and the publication date was not visible. **What it does not establish:** which law, whether
+licensed surveillance exists at all, or whether records and OSINT work is affected. **Why it
+matters:** ADR-0009 puts surveillance and partner investigation in scope, and Armenia is a launch
+locale. Counsel (#0) should answer this before T-068's jurisdiction gate is designed and before
+the first launch market is chosen (#18). Nothing in the product was changed on the strength of it.
+
 **Status:** ⬜ Pending
 
 ---
@@ -516,7 +529,8 @@ policy, a customer for the terms and conditions. **Counsel confirms or corrects 
 legal position, not an engineering one, and changing it is a one-line change with a test.
 
 **Status:** ⬜ Pending — blocked on counsel (#0). The gates are built and require nothing until
-a version is published: registration behaves exactly as it always has (T-022), while **creating
+a version is published: registration behaves exactly as it always has (T-022) — the sign-up screen
+(T-127) shows whatever is published, in full, and records its acceptance — while **creating
 an agency is refused until `AGENCY_AGREEMENT` is published** (T-083) — the gate working as
 intended, but it does mean that endpoint is unusable in production until this is done
 
@@ -556,11 +570,64 @@ file: mission — задание / առաջադրանք, quote — предло�
 files directly. Priority order if time is short: `policies/` (public), then `customer/`, then
 `investigator/`, `agency/`, `staff/`.
 
+The app's words, and the two places they still differ from these, are in
+[`docs/product/translation-glossary.md`](docs/product/translation-glossary.md) — settle them with #23.
+
 **Then (agent work, no longer yours):** flip reviewed files to `current` and run the sync — see
 "Promoting a reviewed translation" in `docs/knowledge-base/README.md`. The three privacy overlaps from
 #21 will need recording again in each language.
 
 **Status:** ⬜ Pending — not blocking launch in English; blocks serving ru/hy knowledge.
+
+---
+
+### 23. Native-speaker review of the app's Russian and Armenian text — before launch (T-128)
+
+**Why:** Every word the application shows is now in `packages/i18n/src/messages/` — `ru.ts` and
+`hy.ts` beside the English source. I wrote both translations. They are complete (the build fails
+if a key is missing) and read correctly to me, but an agent's Armenian in particular is not
+something to launch on: it reads as unfinished software to exactly the market this is for.
+
+**What is needed:** a native speaker of each language reads their file — about 150 strings since
+T-127 added sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), half an
+hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
+app and the knowledge base must use the same words, and the glossary lists the two places they
+still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:
+
+- Russian navigation says **«Чаты»** for Messages (the full «Сообщения» is clipped on a phone)
+  and **«Задания»** for Missions — the knowledge base's word; «заказ» means an assignment.
+- Armenian navigation says **«Գործեր»** (cases) for Missions, where «Պատվերներ» and the knowledge
+  base's «Առաջադրանքներ» do not fit — **open conflict**: pick one word for both, or a short
+  navigation label beside the knowledge base's term.
+- Armenian says **«դետեկտիվ»** for investigator where the knowledge base says «խուզարկու» — **open
+  conflict**. The evidence favours «դետեկտիվ»: the lawful registered business in Armenia calls
+  itself «դետեկտիվ բյուրո», and the press uses «մասնավոր խուզարկու» for unlicensed private
+  surveillance. Russian says «детектив» in both, as its law does.
+
+A change is an edit to the file; the build checks the keys and a test checks every message is
+valid. A nav label longer than about 60px at 12px will clip — check a replacement at 375px wide.
+
+**Status:** ⬜ Pending — not blocking development; blocking launch.
+
+---
+
+### 24. Move the repository off iCloud Desktop — recurring breakage (T-011, T-128)
+
+**Why:** The repository lives in `~/Desktop`, which iCloud syncs. iCloud keeps making conflict
+copies — `css.spec 2.ts`, `package 2.json`, a whole `src/app 2/`, and three inside `.git/`
+(`index 2`, `index 3`, `index 4`). They are gitignored, so they never reach a commit, but
+TypeScript and Vitest see them: T-011 quarantined 135, T-128 another 50 and T-127 eleven
+knowledge-base articles, each time because `tsc`, the test run or the knowledge-base validator
+broke. Copies inside `.git/` are the worrying ones — iCloud is syncing a live git
+index.
+
+**What is needed:** move the folder somewhere iCloud does not sync, e.g.
+`mv ~/Desktop/Investigator-app ~/code/Investigator-app`, then reopen it there. Nothing in the
+repository depends on its path. The quarantined copies are in the agent's session scratchpad and
+can be discarded.
+
+**Status:** ⬜ Pending — not blocking, but it will keep breaking builds until done.
 
 ---
 

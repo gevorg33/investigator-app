@@ -4,14 +4,16 @@ title: What the platform does and how to get started
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 5
 status: current
-updated: 2026-09-24
+updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/api/src/modules/account
   - apps/api/src/modules/auth
   - apps/app-web
+  - packages/i18n
 tags: [getting-started, account, roles, overview]
 ---
 
@@ -39,16 +41,24 @@ the lawful use policy for what cannot be requested.
 
 ## Do I need separate accounts to hire and to work as an investigator?
 
-No. One account holds both roles. If you are also a working investigator, you can switch
-roles inside the app without registering again or signing out.
+No. One account holds both roles. Under **Account → How you use the platform** you can add the
+other one — **Also work as an investigator** or **Also hire investigators** — without registering
+again or signing out. Adding a role needs a confirmed email address, and adding the investigator
+role asks you to accept the investigator agreement first.
+
+With both roles, **Show the platform as** chooses what you see: **Both**, **Customer** or
+**Investigator**. It narrows what is shown and lasts until you close the browser.
 
 Each role sees only what belongs to it. Switching to your investigator role does not give
 you access to your customer missions' data in that role, and the reverse is also true.
 
 ## What languages are supported?
 
-English, Russian and Armenian. You choose your language in the app, and the interface,
-notifications and the assistant all follow that choice.
+English, Russian and Armenian. You choose your language under **Account → Language**, or at the
+bottom of the sign-in screen before you have an account. The interface, notifications and the
+assistant all follow that choice, and it is saved to your account, so signing in on another device
+brings it back. Until you choose, the platform uses the language your browser asks for, and English
+if it asks for none of the three.
 
 Investigators list the languages they work in, and you can require a specific language
 when looking for one. The language you use in the app and the language an investigator

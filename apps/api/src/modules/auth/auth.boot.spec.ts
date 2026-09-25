@@ -78,13 +78,11 @@ describe('auth wiring survives the container', () => {
   it('still rejects an unknown field on the body', async () => {
     // Passes with a 201/202 rather than 400 if the DTO metatype was erased —
     // the silent mass-assignment hole.
-    const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/register')
-      .send({
-        email: 'probe@example.test',
-        password: 'a-sufficiently-long-password',
-        role: 'admin',
-      });
+    const res = await request(app.getHttpServer()).post('/api/v1/auth/register').send({
+      email: 'probe@example.test',
+      password: 'a-sufficiently-long-password',
+      role: 'admin',
+    });
     expect(res.status).toBe(400);
     expect(JSON.stringify(res.body)).toContain('role');
   });

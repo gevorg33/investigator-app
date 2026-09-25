@@ -52,7 +52,7 @@ itself, because a party reading it would otherwise see their own unmoderated wor
 are the ranking input reviews provide, and no request can supply them — the DTOs refuse the fields.
 
 **Discovery does not order by them yet.** Changing the order changes who customers see first, which
-is gated like T-071 and T-103; it is T-138.
+is gated like T-071 and T-103; it is T-140.
 
 ## Routes
 
@@ -79,7 +79,7 @@ moderation reasons are kept on the row, for the moderator and the author respect
 
 ## Not built here
 
-- Using the rating in discovery ordering — T-138.
+- Using the rating in discovery ordering — T-140.
 - The screens: leaving and reading reviews (T-120, T-122), responding (T-124), the moderation
   console (with T-070's staff console).
 - Notifications that a review, response or moderation decision happened — T-036.

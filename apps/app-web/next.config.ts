@@ -15,6 +15,17 @@ const config: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }];
   },
+  // The API is same-origin at `/api` (ADR-0002): Caddy routes it in every deployed environment,
+  // before a request reaches this app. In development nothing does, so this stands in for Caddy —
+  // the browser still sees one origin, and the session cookie stays host-only (T-127).
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env['API_INTERNAL_URL'] ?? 'http://localhost:3001'}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default config;

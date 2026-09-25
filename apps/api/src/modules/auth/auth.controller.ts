@@ -15,8 +15,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { requestContext } from '../../common/http/request-context';
-import { CredentialsDto,
-  RegisterDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
+import { CredentialsDto, RegisterDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
 import type { SessionSummary } from './auth.service';
 import { ActorGuard } from '../../common/authz/actor.guard';
 import { CurrentActor } from '../../common/authz/actor.decorator';
@@ -51,6 +50,7 @@ export class AuthController {
       dto.password,
       requestContext(req),
       dto.acceptedDocumentIds ?? [],
+      { locale: dto.locale, timezone: dto.timezone },
     );
     // Identical response whether or not the address was already registered.
     return { status: 'accepted' };

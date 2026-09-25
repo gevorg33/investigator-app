@@ -7,6 +7,7 @@ import { AuditModule } from './common/audit/audit.module';
 import { MailModule } from './common/mail/mail.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthzModule } from './common/authz/authz.module';
+import { AccountModule } from './modules/account/account.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { LegalModule } from './modules/legal/legal.module';
 import { HealthModule } from './modules/health/health.module';
@@ -49,6 +50,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     AuthzModule,
     IdempotencyModule,
     AuthModule,
+    AccountModule,
     LegalModule,
     ProfilesModule,
     MediaModule,

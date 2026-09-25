@@ -1,4 +1,5 @@
 import { Module, ValidationPipe } from '@nestjs/common';
+import { AppError } from '../../common/errors/app-error';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -70,6 +71,9 @@ describe('GET /api/v1/legal/documents/:type', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
+      // The id is what registration and re-acceptance post back (T-127 found it missing): a
+      // client that cannot name the version it showed cannot accept it.
+      id: '00000000-0000-4000-8000-000000000001',
       type: 'TERMS_OF_SERVICE',
       version: 3,
       locale: 'en',
@@ -120,6 +124,66 @@ describe('GET /api/v1/legal/documents/:type', () => {
 
     expect(res.status).toBe(404);
   });
+  describe('GET /api/v1/legal/required (T-127)', () => {
+    it('lists what registration requires, in the locale asked for, leaving out what is not published', async () => {
+      const privacy = published({
+        id: '00000000-0000-4000-8000-0000000000a1',
+        type: 'PRIVACY_POLICY',
+        locale: 'hy',
+      });
+      const currentDocument = vi.fn((type: string) =>
+        type === 'PRIVACY_POLICY' ? Promise.resolve(privacy) : Promise.reject(AppError.notFound()),
+      );
+      app = await make({ currentDocument });
+      const res = await request(app.getHttpServer()).get(
+        '/api/v1/legal/required?for=registration&locale=hy',
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.map((d: { id: string; type: string }) => [d.id, d.type])).toEqual([
+        ['00000000-0000-4000-8000-0000000000a1', 'PRIVACY_POLICY'],
+      ]);
+      expect(currentDocument.mock.calls).toEqual([
+        ['PRIVACY_POLICY', 'hy'],
+        ['TERMS_OF_SERVICE', 'hy'],
+      ]);
+    });
+
+    it.each([
+      ['INVESTIGATOR', ['INVESTIGATOR_AGREEMENT', 'LAWFUL_USE_POLICY']],
+      ['CUSTOMER', ['TERMS_AND_CONDITIONS']],
+    ])(
+      'lists what activating %s requires — the policy in one place, the API',
+      async (step, types) => {
+        const currentDocument = vi.fn((type: string) =>
+          Promise.resolve(published({ type: type as never })),
+        );
+        app = await make({ currentDocument });
+        const res = await request(app.getHttpServer()).get(`/api/v1/legal/required?for=${step}`);
+        expect(res.body.map((d: { type: string }) => d.type)).toEqual(types);
+      },
+    );
+
+    it('answers an empty list while nothing is published, and needs no session', async () => {
+      app = await make({ currentDocument: vi.fn().mockRejectedValue(AppError.notFound()) });
+      const res = await request(app.getHttpServer()).get('/api/v1/legal/required?for=registration');
+      expect([res.status, res.body]).toEqual([200, []]);
+    });
+
+    it.each([['STAFF'], ['everything'], ['']])(
+      'refuses a step that does not exist (%j)',
+      async (step) => {
+        app = await make({ currentDocument: vi.fn() });
+        const res = await request(app.getHttpServer()).get(`/api/v1/legal/required?for=${step}`);
+        expect(res.status).toBe(422);
+      },
+    );
+
+    it('lets any other failure through as the fault it is', async () => {
+      app = await make({ currentDocument: vi.fn().mockRejectedValue(new Error('database down')) });
+      const res = await request(app.getHttpServer()).get('/api/v1/legal/required?for=registration');
+      expect(res.status).toBe(500);
+    });
+  });
 });
 
 describe('what an account still has to accept', () => {
@@ -130,7 +194,10 @@ describe('what an account still has to accept', () => {
     app = undefined;
   });
 
-  const withRoles = async (roles: ReadonlyArray<'CUSTOMER' | 'INVESTIGATOR' | 'STAFF'>, legal: Partial<LegalService>) => {
+  const withRoles = async (
+    roles: ReadonlyArray<'CUSTOMER' | 'INVESTIGATOR' | 'STAFF'>,
+    legal: Partial<LegalService>,
+  ) => {
     const who = testActor({ userId: actor.userId, roles });
     const moduleRef = await Test.createTestingModule({
       controllers: [LegalController],

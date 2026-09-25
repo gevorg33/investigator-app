@@ -102,7 +102,7 @@ An oversized `limit` is **clamped, not rejected**, which is why the DTO carries 
 With a location, results are ordered by distance. Without one, by declared experience. Rating,
 review count, response time and completion rate belong in this stage. Reviews exist since T-037,
 and a profile's rating summary is computed from them (`reviews.md`), but the order does not use it
-yet: changing who customers see first is gated, and is T-138. Response time and completion rate are
+yet: changing who customers see first is gated, and is T-140. Response time and completion rate are
 not collected. Ordering by a quality signal the platform has not collected would be inventing one,
 so the stage stays empty rather than filled with a proxy.
 

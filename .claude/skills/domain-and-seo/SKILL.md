@@ -79,6 +79,11 @@ back. One-way alternates are ignored.
 
 Never canonicalise across locales to a single language. That de-indexes the translations.
 
+**Links from the marketing site into the app carry the reader's locale as `?lang=<locale>`**
+(ADR-0013). The app keeps language in a host-only cookie the apex cannot set; the app's
+middleware turns the parameter into that cookie and redirects to the clean URL. A Russian reader
+of `/ru/pricing` who taps "Sign up" arrives in a Russian app, whatever their browser asks for.
+
 ## Metadata
 
 Every public page has a unique `title` and `description`. Generated boilerplate repeated
