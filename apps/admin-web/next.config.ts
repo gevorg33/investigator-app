@@ -15,6 +15,18 @@ const config: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }];
   },
+  // The API is same-origin at `/api` here too (ADR-0002): Caddy routes `admin.<domain>/api/*` to
+  // it in every deployed environment, and a staff session is a cookie on this host only. In
+  // development nothing does, so this stands in for Caddy (T-070). Note that `localhost` cookies
+  // ignore the port: in development the console and the app share one session; deployed, they never.
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env['API_INTERNAL_URL'] ?? 'http://localhost:3001'}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default config;

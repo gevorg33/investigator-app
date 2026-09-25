@@ -4,13 +4,14 @@ title: Reviewing investigator verification
 audience: staff
 visibility: staff
 locale: en
-version: 3
+version: 4
 status: current
 updated: 2026-09-24
 source_of_truth: docs
-implementation_status: specified
+implementation_status: implemented
 related_code:
   - apps/api/src/modules/verification
+  - apps/admin-web/src/app/(console)/verification
 tags: [staff, verification, review, queue]
 ---
 
@@ -33,6 +34,33 @@ documents actually cover.
 The mismatch between declaration and document is the finding that matters most, and it is
 the one most easily missed by reading the documents alone without re-reading what was
 declared.
+
+## Where do I review applications?
+
+In the staff console, under **Verification** — sign in there with your staff account; it is a
+separate site from the customer application, with its own session. You need the VERIFICATION staff
+scope: without it, the console says so rather than showing an empty queue.
+
+The queue lists applications waiting for a decision, oldest first. Open one to see, in order: the
+applicant's profile headline, **what they declared as recorded on the application**, the documents,
+the decision, and the trail of every earlier application from the same profile with its decision
+and reason.
+
+## How do I open a document?
+
+With its **Open document** button. The document opens in a new tab through a link that lasts five
+minutes; the link itself is never shown, and each opening is recorded against the application. A
+document still being scanned, or flagged by the scan, cannot be opened — the console says which.
+If your browser blocks the new tab, allow pop-ups for the console and open it again.
+
+## How do I record a decision?
+
+**Record a decision**, choose Approve or Reject, write the reason, and record it. The console will
+not send a decision without a reason. On a phone the form opens as a sheet from the bottom. If
+someone else decided the application while you were deciding, the console says so; reload to see
+their decision in the trail.
+
+Your own application is marked as such, and no decision is offered on it.
 
 ## What reason do I give for a rejection?
 

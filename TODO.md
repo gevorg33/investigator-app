@@ -3703,7 +3703,7 @@ cd apps/api && for i in $(seq 1 10); do pnpm exec vitest run || break; done
 ---
 
 ### T-070 — Staff verification console (admin-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P2
 - **Depends on:** T-013, T-014, T-079
 - **Risk:** MEDIUM
@@ -3721,18 +3721,52 @@ Endpoints and rules: `docs/architecture/verification.md`.
 **Tenancy (ADR-0011).** Reviewer routes run inside `PlatformContext` (T-079) once it lands.
 
 **Acceptance criteria**
-- [ ] Every screen reachable only with the VERIFICATION scope; the API refuses regardless
-- [ ] Documents open only through `/verification/requests/:id/documents/:assetId/delivery-url`;
+- [x] Every screen reachable only with the VERIFICATION scope; the API refuses regardless
+- [x] Documents open only through `/verification/requests/:id/documents/:assetId/delivery-url`;
       the link is never cached, stored or shown as text
-- [ ] The declaration shown is the one recorded on the application, not the live profile
-- [ ] The decision form cannot submit without a reason; the refusal of one's own application is
+- [x] The declaration shown is the one recorded on the application, not the live profile
+- [x] The decision form cannot submit without a reason; the refusal of one's own application is
       shown as such
-- [ ] admin-web has a `test` script, and it runs in CI
+- [x] admin-web has a `test` script, and it runs in CI
 
 **Validation**
 ```bash
 pnpm --filter admin-web test && pnpm --filter admin-web build
 ```
+
+**DONE — 2026-09-26**
+
+*What exists.* admin-web gains staff sign-in (the API's own login, same-origin at `/api`, so the
+session cookie is this host's — no auth code changed), a console layout (no session → sign-in with
+`next`; not STAFF → "staff only"), a one-bar shell, the queue (cards, oldest first, cursor pages,
+403 shown as the missing scope) and one application: the declaration **as recorded**, specialties
+named from the taxonomy (a retired one shown as such), documents (only CLEAN ones openable; PENDING,
+INFECTED and FAILED say why), the full trail, and the decision in a sheet (bottom on a phone, right
+from `md`). Documents open through the audited route into a tab opened on the click and cut off from
+the console; the link is never rendered, kept or cached; a blocked tab asks for no link. Your own
+application shows a notice instead of the form. No API changes. Components copied from app-web,
+already re-tokenised.
+
+*Found along the way.* (1) `pattern` does nothing on a `<textarea>`, so a reason of spaces would
+have reached the API; the form refuses it itself. (2) A blocked tab would still have fetched a link —
+an audited opening of a document nobody saw. (3) Nothing grants STAFF or a staff scope except SQL:
+filed as T-147 (approval — authorization); the dev-only SQL is in `admin-web.md`.
+
+*Negative controls* (each seen to fail, then restored): the opened tab able to reach back; a link
+asked for when the tab was blocked; a reason of spaces sent; a decision offered on one's own
+application; non-staff let into the console; any `next` followed after sign-in; a document opened
+whatever its scan.
+
+*Verified.* Lint, typecheck, `pnpm --filter admin-web test && build` (88 tests, 100%), budget (all
+5 routes < 250 kB; the application page 147.6 kB). CI runs it (`pnpm test:coverage`). In the browser:
+the signed-out path only (`/` → `/sign-in?next=/verification`, no console errors) — **the signed-in
+screens were not seen in a browser**: the agent cannot sign in, and the owner closed the task before
+trying them. Dev data for trying them is seeded (see the handoff). Specs cover sheet direction,
+focus, and every state.
+
+*Docs.* `admin-web.md` (sign-in, shell, verification, dev cookie note, granting access), 
+`verification.md` (the console), staff article `kb-staff-verification-review` v4 (ru/hy drafts in
+step), component inventory, T-147.
 
 ---
 
@@ -6671,6 +6705,35 @@ does not notice reports a failure that is not the code's. Related to T-141 (the 
 **Validation**
 ```bash
 node -v && pnpm test:coverage
+```
+
+---
+
+### T-147 — Staff access: grant and revoke STAFF and staff scopes
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-070
+- **Risk:** HIGH
+- **Human approval required:** Yes — it is authorization: who may review, moderate, pay out
+- **Owner agent:** backend-domain + admin-web
+- **Affected:** apps/api/src/modules/** (a staff-access module), apps/admin-web/**, docs/operations/**
+
+**Description**
+From T-070. The verification console works for anyone holding `STAFF` and the `VERIFICATION` scope —
+and nothing grants either except a SQL insert as the database owner. `user_staff_scopes` already
+records who granted a scope and keeps revoked rows (`authorization.md`); what is missing is the way
+to write them: who may grant (a bootstrap for the first administrator, then a scope for granting),
+with a reason, audited, revocable, and never self-granted.
+
+**Acceptance criteria**
+- [ ] The rule for who may grant and revoke, decided with the owner and written into `authorization.md`
+- [ ] Grants and revocations through the API, audited with who and why; no one grants themselves
+- [ ] A bootstrap for the first staff account that is not a standing back door
+- [ ] The console screen for it, if the owner wants one
+
+**Validation**
+```bash
+pnpm --filter api test staff-access
 ```
 
 ---
