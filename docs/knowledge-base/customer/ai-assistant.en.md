@@ -4,7 +4,7 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 5
+version: 6
 status: current
 updated: 2026-09-25
 source_of_truth: docs
@@ -201,19 +201,28 @@ to another workspace, you see that workspace's conversations and not these.
 Yes. If you open the assistant within about half an hour of your last question, it continues that
 conversation; after that, it starts a new one. **New conversation** starts a new one at any time.
 
-Earlier conversations are kept. A list to reopen, rename, archive and search them is on its way to
-the app. When you return to a conversation, the assistant works from what is true now — the state of
-your missions and quotes today — rather than from what it told you last time.
+Every conversation is kept. **Your conversations** (the list button at the top of the assistant)
+shows them, most recent first; choose one to open it. A long conversation opens at its latest
+messages, and **Show earlier messages** reaches further back, a page at a time. When you return to a
+conversation, the assistant works from what is true now — the state of your missions and quotes
+today — rather than from what it told you last time.
+
+## Can I rename, tidy away or bring back a conversation?
+
+Yes, from the options button (⋯) at the top of a conversation. **Rename** gives it a name of your
+own. **Archive** takes it out of your list — it is kept, under **Archived** — and **Bring back from
+the archive** returns it. Asking something in an archived conversation also brings it back.
 
 ## What happens when I delete a conversation?
 
-Deleting arrives in the app with the list of conversations. When you delete one, everything you and the assistant said in it is erased at once, and cannot be recovered. What
+Choose **Delete** in its options; the assistant asks first. When you delete one, everything you and the assistant said in it is erased at once, and cannot be recovered. What
 remains is only a record that a conversation existed and when you deleted it, with no title and no
 content.
 
 ## Can I search my conversations?
 
-Not in the app yet — searching arrives with the list of conversations. It will find a conversation by
-words in its name or in anything said in it, in English, Russian and Armenian, matching words as you
-type them.
+Yes: type at least two characters in the search box of **Your conversations**. It finds a
+conversation by words in its name or in anything said in it, in English, Russian and Armenian,
+matching words as you type them. Opening a result shows the conversation where the words first
+appear, marked.
 

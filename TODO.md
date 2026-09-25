@@ -3033,30 +3033,68 @@ T-146 (agent shells on Node 20).
 ---
 
 ### T-057 — Session management UI
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P1
 - **Depends on:** T-045, T-056
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/**
+- **Affected:** apps/app-web/**; apps/api/src/modules/ai-sessions/** — `GET …/messages?order=newest`,
+  read-only and scoped as before, so a conversation opens at its end and reaches back on demand
 
 **Tenancy (ADR-0011).** Session lists are per workspace; switching workspace switches the list.
 
 **Acceptance criteria**
-- [ ] Session list with create, open, rename, archive, delete — and search across sessions
-- [ ] Resume loads summary, structured state and recent messages; **not the whole history**
-      (`ai-session-context`)
-- [ ] Older messages load on demand or through search, never all at once
-- [ ] Generated titles are editable and **never expose evidence content** (`plan.md` §50)
-- [ ] Delete warns that session memory goes with it
-- [ ] Mobile: sessions are a sheet, not a squeezed sidebar
-- [ ] A test proves another user's session is unreachable from the UI by any route
+- [x] Session list with create, open, rename, archive, delete — and search across sessions
+- [~] Resume loads summary, structured state and recent messages; **not the whole history**
+      (`ai-session-context`) — **recent messages only, never the whole history**; summaries and
+      structured state do not exist until T-046, which should load them here
+- [x] Older messages load on demand or through search, never all at once
+- [x] Generated titles are editable and **never expose evidence content** (`plan.md` §50)
+- [x] Delete warns that session memory goes with it
+- [x] Mobile: sessions are a sheet, not a squeezed sidebar
+- [x] A test proves another user's session is unreachable from the UI by any route
 
 **Validation**
 ```bash
 pnpm --filter app-web test assistant-sessions
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* API: `GET …/messages?order=newest` — the same route and scoping, paging from the end
+backwards; the cursor carries its direction and is refused the other way; added (with T-056's
+`last`) to the authz spec's every-path list. app-web: **Your conversations** swaps into the panel —
+the phone's full-screen sheet, the desktop dock — with search (two characters, 250 ms pause),
+Current/Archived, pages of 20, "Open now" marked in words and `aria-current`. A conversation opens at
+its newest 30 messages; "Show earlier messages" keeps the reader's place; a search result reaches
+back (at most ten pages) to its first match and marks it. The header's options
+(`@shadcn/dropdown-menu`) rename in place, archive, bring back and delete — after
+`@shadcn/alert-dialog` asks (a bottom sheet on a phone, Cancel first). Any 404 — deleted elsewhere, or
+someone else's — replaces the conversation with a fresh one saying it is no longer available.
+
+*Found by the tests.* (1) Escape while renaming closed the whole sheet: Radix hears Escape on the
+document as it travels down, before the field; the rename now catches it on the window. (2) After a
+confirmed delete, focus fell to the sheet's container or not, by timing: the dialog handed it to the
+options just before the fresh conversation removed them. (3) While a chosen conversation loaded, the
+list still called the previous one open, and choosing it did nothing — the one chosen is now open
+from the moment it is chosen. (4) Two `if`s after an `await` reported negative v8 branch counts;
+rewritten as early returns.
+
+*Negative controls* (each seen to fail, then restored): pages not reversed into reading order; a
+match not reached back to; no limit on reaching back; the chosen one not open while it loads; Escape
+reaching the sheet; delete without asking; a vanished conversation shown as an error. API: cursor
+direction ignored (policy spec).
+
+*Verified.* Lint, typecheck (specs too), build, budget (all routes < 250 kB), source maps, audit
+(one moderate, pre-existing: esbuild under drizzle-kit); app-web 332 tests, API 2373, both 100%
+(API on Node 24, T-146); `pnpm --filter app-web test assistant-sessions` 39; knowledge base 0/0.
+In the owner's browser against the real API and database: the list, search, opening, rename,
+archive/bring back and delete. The agent did not run the 375/768/1440 Playwright pass (it cannot
+sign in); the specs cover sheet vs dock and focus.
+
+*Docs.* Customer assistant article v6 (ru/hy drafts in step), investigator article v2,
+`ai-sessions.md` (newest-first paging), `app-web.md` (conversations), component inventory, ACTIONS #23.
 
 ---
 

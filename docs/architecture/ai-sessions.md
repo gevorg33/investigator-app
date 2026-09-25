@@ -42,6 +42,16 @@ application holds DELETE on messages only, and none on sessions.
 `SESSION_CONTENT` cannot fall behind: a spec compares it with every foreign key into `ai_sessions`,
 so summaries (T-046), memory (T-047) and embeddings (T-133) fail it until they are added.
 
+## Reading a conversation from its end (T-057)
+
+`GET …/messages?order=newest` pages from the end backwards, newest first, so a client opens a
+conversation where it stands and reaches back only on request — never the whole history at once
+(`ai-session-context`). The default, `oldest`, reads forwards as before. A cursor carries its
+direction (`{ s, o: 'n' }` for newest) and is refused in the other one, as the session list's cursor
+is refused on the other shelf; a cursor from before T-057 has no direction and is oldest-first. Same
+route, same scoping — the caller's own session, under row-level security — and a spec in
+`ai-sessions.authz.spec.ts`'s list of every path.
+
 ## Search
 
 PostgreSQL full-text over titles and message content, `simple` configuration — Armenian has no

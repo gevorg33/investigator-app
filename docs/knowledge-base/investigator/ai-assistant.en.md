@@ -4,7 +4,7 @@ title: The AI assistant, for investigators
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
 updated: 2026-09-25
 source_of_truth: docs
@@ -68,10 +68,16 @@ agency's owner.
 A conversation is named from the first words of your first question in it — never from anything the
 assistant wrote or looked up.
 
+## Can I find an earlier conversation?
+
+Yes. **Your conversations** (the list button at the top of the assistant) shows every conversation,
+most recent first, and searches them by name or by anything said in them. A result opens where the
+words first appear. From a conversation's options (⋯) you can rename it, archive it — it stays under
+**Archived** and can be brought back — or delete it, which asks first and cannot be undone.
+
 ## Is what I ask kept?
 
-Your questions and the assistant's answers are kept in your conversation — until you delete it,
-once deleting arrives in the app with the list of conversations. To write an answer, your question
-is sent, together with the guidance found for it, to the AI service that composes the reply; the
-privacy policy names that service. Do not put a customer's personal details in a question about how
+Your questions and the assistant's answers are kept in your conversation until you delete it. To
+write an answer, your question is sent, together with the guidance found for it, to the AI service
+that composes the reply; the privacy policy names that service. Do not put a customer's personal details in a question about how
 the platform works — the assistant does not need them to explain a rule.

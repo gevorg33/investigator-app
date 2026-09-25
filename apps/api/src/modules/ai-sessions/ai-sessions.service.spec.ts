@@ -191,6 +191,37 @@ describe('assistant sessions (ADR-0006, T-045)', () => {
       ).rejects.toMatchObject({ status: 422 });
     });
 
+    it('opens from the end, newest first, and reaches back a page at a time (T-057)', async () => {
+      const session = await start();
+      for (const words of ['one', 'two', 'three', 'four', 'five']) await say(session.id, words);
+      const latest = await service.messages(me, session.id, { limit: 2, order: 'newest' }, req());
+      expect(latest.items.map((m) => [m.sequence, m.content])).toEqual([
+        [5, 'five'],
+        [4, 'four'],
+      ]);
+      const earlier = await service.messages(
+        me,
+        session.id,
+        { limit: 2, order: 'newest', cursor: latest.pageInfo.nextCursor! },
+        req(),
+      );
+      expect(earlier.items.map((m) => m.sequence)).toEqual([3, 2]);
+      const first = await service.messages(
+        me,
+        session.id,
+        { limit: 2, order: 'newest', cursor: earlier.pageInfo.nextCursor! },
+        req(),
+      );
+      expect([first.items.map((m) => m.sequence), first.pageInfo]).toEqual([
+        [1],
+        { hasNextPage: false, nextCursor: null },
+      ]);
+      // A cursor is read only in the direction it was made for.
+      await expect(
+        service.messages(me, session.id, { cursor: latest.pageInfo.nextCursor! }, req()),
+      ).rejects.toMatchObject({ status: 422 });
+    });
+
     it('never gives two messages the same place, however they arrive', async () => {
       const session = await start();
       await Promise.all(Array.from({ length: 6 }, (_, i) => say(session.id, `m${i}`)));

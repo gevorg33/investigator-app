@@ -39,6 +39,11 @@ export class SearchSessionsQuery {
 }
 
 export class ListMessagesQuery {
+  /** `newest`: from the end of the conversation backwards, newest first (T-057). */
+  @IsOptional()
+  @IsIn(['oldest', 'newest'])
+  order?: 'oldest' | 'newest';
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

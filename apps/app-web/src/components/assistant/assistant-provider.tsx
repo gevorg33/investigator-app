@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
-import { assistantApi } from '@/lib/api/assistant';
+import { assistantApi, type AssistantApi } from '@/lib/api/assistant';
 import { useConversation, type Conversation } from './use-conversation';
 
 /** The panel's id, for the controls that open it. Here, not with the panel, which loads later. */
@@ -21,6 +21,7 @@ interface AssistantValue {
   /** Closes, and gives focus back to whatever opened it — the docked panel has no dialog to. */
   close: () => void;
   audience: AssistantAudience;
+  api: AssistantApi;
   conversation: Conversation;
 }
 
@@ -66,8 +67,8 @@ export function AssistantProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ open, setOpen, toggle, close, audience, conversation }),
-    [open, setOpen, toggle, close, audience, conversation],
+    () => ({ open, setOpen, toggle, close, audience, api, conversation }),
+    [open, setOpen, toggle, close, audience, api, conversation],
   );
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }

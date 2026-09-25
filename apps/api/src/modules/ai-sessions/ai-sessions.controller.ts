@@ -99,7 +99,9 @@ export class AiSessionsController {
   }
 
   @Get(':id/messages')
-  @ApiOperation({ summary: 'The conversation in order, a page at a time' })
+  @ApiOperation({
+    summary: 'The conversation a page at a time — from the start, or newest first (`order=newest`)',
+  })
   messages(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
@@ -109,7 +111,7 @@ export class AiSessionsController {
     return this.sessions.messages(
       actor,
       id,
-      { limit: query.limit, cursor: query.cursor },
+      { limit: query.limit, cursor: query.cursor, order: query.order },
       requestContext(req),
     );
   }
