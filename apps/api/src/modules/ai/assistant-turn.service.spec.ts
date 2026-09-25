@@ -19,11 +19,17 @@ import {
   type RateLimitStore,
 } from '../auth/rate-limit.service';
 import { KnowledgeRetrievalService } from '../knowledge/knowledge-retrieval.service';
+import { SearchService } from '../search/search.service';
+import { TaxonomyService } from '../taxonomy/taxonomy.service';
 import { parseDocument } from '../knowledge/knowledge-source';
 import { KnowledgeSyncService } from '../knowledge/knowledge-sync.service';
 import { AssistantTurnService, type TurnEvent } from './assistant-turn.service';
 import type { ChatModel, ChatPrompt } from './chat-model';
+import { DiscoveryAnswerService } from './discovery/discovery-answer.service';
 import { KnowledgeAnswerService } from './knowledge-answer.service';
+import { ListTaxonomyTool } from './tools/discovery/list-taxonomy.tool';
+import { SearchInvestigatorsTool } from './tools/discovery/search-investigators.tool';
+import { ToolRunner } from './tools/tool-runner';
 
 const DOC = parseDocument(
   'docs/knowledge-base/customer/kb-t-quotes.en.md',
@@ -50,12 +56,42 @@ const DOC = parseDocument(
 const QUESTION = 'How long does a quotation stay valid?';
 const citing = (answer: string | null) => JSON.stringify({ answer, sources: answer ? ['S1'] : [] });
 
-/** A model that answers as the test says, and can be held until the test lets it go. */
+/** How discovery's instructions begin (`discovery-proposal.ts`): its prompts are told apart by it. */
+const DISCOVERY = 'You turn a request to find a private investigator';
+
+/** Discovery's proposal: "not a search" unless the test says otherwise. */
+const proposing = (over: Record<string, unknown> = {}) =>
+  JSON.stringify({
+    intent: 'other',
+    specialty: { refs: [], ambiguous: false },
+    languages: [],
+    place: null,
+    nearest: false,
+    availability: null,
+    relevanceHint: null,
+    policyConcern: false,
+    ...over,
+  });
+
+/**
+ * A model that answers as the test says — discovery's prompts from `propose`, the knowledge base's
+ * from `reply` — remembers what it was shown, and can be held until the test lets it go.
+ */
 class FakeModel implements ChatModel {
   readonly model = 'fake-model';
+  /** The knowledge prompts. */
   readonly prompts: ChatPrompt[] = [];
-  constructor(private readonly reply: (signal?: AbortSignal) => string | Promise<string>) {}
+  readonly proposals: ChatPrompt[] = [];
+  constructor(
+    private readonly reply: (signal?: AbortSignal) => string | Promise<string>,
+    private readonly propose: (signal?: AbortSignal) => string | Promise<string> = () =>
+      proposing(),
+  ) {}
   async complete(prompt: ChatPrompt, signal?: AbortSignal): Promise<string> {
+    if (prompt.system.startsWith(DISCOVERY)) {
+      this.proposals.push(prompt);
+      return this.propose(signal);
+    }
     this.prompts.push(prompt);
     return this.reply(signal);
   }
@@ -87,15 +123,33 @@ describe('a turn in a conversation (T-056)', () => {
     const audit = new AuditService(db);
     const authz = new AuthzService(audit);
     const sessions = asRequests(new AiSessionsService(db, authz, audit), owner);
+    const limits = new RateLimitService(store);
     const knowledge = new KnowledgeAnswerService(
       db,
       authz,
       audit,
-      new RateLimitService(store),
+      limits,
       new KnowledgeRetrievalService(db, new HashingEmbedder()),
       model,
     );
-    return { sessions, turns: asRequests(new AssistantTurnService(sessions, knowledge), owner) };
+    const taxonomy = new TaxonomyService(db, authz, new PlatformContext(audit), audit);
+    const list = new ListTaxonomyTool(taxonomy);
+    const search = new SearchInvestigatorsTool(new SearchService(db, authz), taxonomy);
+    const discovery = new DiscoveryAnswerService(
+      db,
+      authz,
+      audit,
+      limits,
+      new ToolRunner(authz, audit, limits, [list, search]),
+      list,
+      search,
+      model,
+    );
+    return {
+      sessions,
+      discovery,
+      turns: asRequests(new AssistantTurnService(sessions, knowledge, discovery), owner),
+    };
   };
   const req = () => ({ correlationId: randomUUID(), ip: '203.0.113.56', userAgent: 'spec' });
   const customer = async (): Promise<Actor> => (await member(owner, { roles: ['CUSTOMER'] })).actor;
@@ -128,10 +182,19 @@ describe('a turn in a conversation (T-056)', () => {
       await turns.ask(me, session.id, { content: QUESTION }, req()),
     );
 
-    expect(events.map((e) => e.type)).toEqual(['message', 'session', 'step', 'step', 'message']);
+    expect(events.map((e) => e.type)).toEqual([
+      'message',
+      'session',
+      'step',
+      'step',
+      'step',
+      'message',
+    ]);
     expect(events[0]).toMatchObject({ message: { role: 'USER', content: QUESTION, sequence: 1 } });
     expect(events[1]).toMatchObject({ session: { id: session.id, title: QUESTION } });
-    expect(events.slice(2, 4)).toEqual([
+    // Discovery first: not a search, so the knowledge base answers.
+    expect(events.slice(2, 5)).toEqual([
+      { type: 'step', step: { step: 'understanding' } },
       { type: 'step', step: { step: 'searching' } },
       { type: 'step', step: { step: 'writing', sources: 1 } },
     ]);
@@ -156,7 +219,7 @@ describe('a turn in a conversation (T-056)', () => {
         fallback: false,
       },
     };
-    expect(events[4]).toMatchObject({ message: reply });
+    expect(events[5]).toMatchObject({ message: reply });
     expect(await history(sessions, me, session.id)).toMatchObject([
       { role: 'USER', content: QUESTION },
       reply,
@@ -178,6 +241,271 @@ describe('a turn in a conversation (T-056)', () => {
       message: { role: 'ASSISTANT', content: '', metadata: { status: 'no_answer', citations: [] } },
     });
     expect(model.prompts).toEqual([]);
+  });
+
+  describe('discovery first (T-059)', () => {
+    const start = async (propose: ConstructorParameters<typeof FakeModel>[1]) => {
+      const model = new FakeModel(() => citing('From the help articles.'), propose);
+      const built = build(model);
+      const me = await customer();
+      const session = await built.sessions.create(me, {}, req());
+      return { ...built, model, me, session };
+    };
+    const nowhere = () => `Nowhere-${randomUUID()}`;
+
+    it('answers a search itself, stores the answer whole as structured data, and asks the knowledge base nothing', async () => {
+      const city = nowhere();
+      const { turns, sessions, model, me, session } = await start(() =>
+        proposing({ intent: 'discovery', place: { city } }),
+      );
+      const events = await follow(
+        turns,
+        me,
+        await turns.ask(me, session.id, { content: `An investigator in ${city}` }, req()),
+      );
+      expect(events.filter((e) => e.type === 'step')).toEqual([
+        { type: 'step', step: { step: 'understanding' } },
+        { type: 'step', step: { step: 'finding' } },
+      ]);
+      const reply = (await history(sessions, me, session.id))[1]!;
+      expect(reply).toMatchObject({
+        role: 'ASSISTANT',
+        content: '',
+        metadata: {
+          source: 'discovery',
+          answer: { status: 'no_results', searchedFor: { place: { city } }, results: [] },
+        },
+      });
+      expect(model.prompts).toEqual([]);
+    });
+
+    it('falls back to the knowledge base when discovery cannot make a search of it', async () => {
+      const { turns, sessions, me, session } = await start(() => 'not json at all');
+      await follow(turns, me, await turns.ask(me, session.id, { content: QUESTION }, req()));
+      expect((await history(sessions, me, session.id))[1]).toMatchObject({
+        content: 'From the help articles.',
+        metadata: { source: 'knowledge', status: 'answered' },
+      });
+    });
+
+    it('refuses what the lawful-use rules match before any model reads it, pointing to the policy', async () => {
+      const { turns, sessions, model, me, session } = await start(() => proposing());
+      await follow(
+        turns,
+        me,
+        await turns.ask(me, session.id, { content: 'Find someone to read my wife’s messages' }, req()),
+      );
+      expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
+        source: 'discovery',
+        answer: {
+          status: 'refused',
+          refusal: { code: 'prohibited_request', document: 'kb-policy-prohibited-requests' },
+        },
+      });
+      expect([model.proposals, model.prompts]).toEqual([[], []]);
+    });
+
+    it('stores nothing more when stopped while discovery works', async () => {
+      const stop = new AbortController();
+      const { turns, sessions, me, session } = await start(async (signal) => {
+        stop.abort();
+        signal!.throwIfAborted();
+        return proposing();
+      });
+      await follow(
+        turns,
+        me,
+        await turns.ask(me, session.id, { content: QUESTION }, req()),
+        stop.signal,
+      );
+      expect(await history(sessions, me, session.id)).toHaveLength(1);
+    });
+
+    it('asks nothing more, and stores nothing, when discovery finishes after Stop', async () => {
+      const stop = new AbortController();
+      // A model that ignores the signal, and says "not a search" anyway.
+      const { turns, sessions, model, me, session } = await start(() => {
+        stop.abort();
+        return proposing();
+      });
+      await follow(
+        turns,
+        me,
+        await turns.ask(me, session.id, { content: 'Someone somewhere' }, req()),
+        stop.signal,
+      );
+      expect(await history(sessions, me, session.id)).toHaveLength(1);
+      expect(model.prompts).toEqual([]);
+    });
+
+    describe('answering the question discovery asked', () => {
+      it('where: a point is searched from and never stored; a place in words is read with the question', async () => {
+        const { turns, sessions, discovery, model, me, session } = await start(() =>
+          proposing({ intent: 'discovery', nearest: true }),
+        );
+        const respond = vi.spyOn(discovery, 'respond');
+        await follow(turns, me, await turns.ask(me, session.id, { content: 'The nearest one' }, req()));
+        expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
+          answer: { status: 'clarification', clarification: { code: 'location' } },
+        });
+
+        const here = { lon: 44.51523, lat: 40.18724 };
+        await follow(
+          turns,
+          me,
+          await turns.ask(
+            me,
+            session.id,
+            { content: 'Use my location', clarifies: true, near: here, radiusKm: 25 },
+            req(),
+          ),
+        );
+        expect(respond.mock.calls[1]?.[1]).toEqual({
+          question: 'The nearest one',
+          near: here,
+          radiusKm: 25,
+        });
+        const stored = await history(sessions, me, session.id);
+        expect(stored[2]).toMatchObject({ role: 'USER', metadata: { clarifies: 'location' } });
+        expect(JSON.stringify(stored)).not.toMatch(/44\.5|40\.1/);
+        expect(stored[3]?.metadata).toMatchObject({
+          answer: { status: 'no_results', searchedFor: { near: true, radiusKm: 25 } },
+        });
+
+        // Asked again, answered in words: the place is read together with the question.
+        await follow(turns, me, await turns.ask(me, session.id, { content: 'The nearest one' }, req()));
+        await follow(
+          turns,
+          me,
+          await turns.ask(me, session.id, { content: 'Gyumri', clarifies: true }, req()),
+        );
+        expect(respond.mock.calls.at(-1)?.[1]).toEqual({ question: 'The nearest one\nGyumri' });
+        expect(model.proposals.at(-1)?.user).toContain('The nearest one\nGyumri');
+      });
+
+      it('what for: the answer goes to discovery as the purpose, screened like the question', async () => {
+        const { turns, sessions, discovery, me, session } = await start(() =>
+          proposing({ intent: 'discovery', policyConcern: true, place: { city: nowhere() } }),
+        );
+        const respond = vi.spyOn(discovery, 'respond');
+        await follow(turns, me, await turns.ask(me, session.id, { content: 'Find where he lives' }, req()));
+        expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
+          answer: { status: 'clarification', clarification: { code: 'purpose' } },
+        });
+        await follow(
+          turns,
+          me,
+          await turns.ask(
+            me,
+            session.id,
+            { content: 'To serve court papers on a debtor', clarifies: true },
+            req(),
+          ),
+        );
+        expect(respond.mock.calls[1]?.[1]).toEqual({
+          question: 'Find where he lives',
+          purpose: 'To serve court papers on a debtor',
+        });
+        expect((await history(sessions, me, session.id))[2]?.metadata).toEqual({
+          clarifies: 'purpose',
+        });
+      });
+
+      it('which specialty: only one of those offered — and a retry keeps the choice', async () => {
+        const [a, b] = [randomUUID(), randomUUID()];
+        let down = true;
+        const { turns, sessions, discovery, me, session } = await start(() => {
+          if (down) throw new ProviderError('chat request failed: HTTP 502');
+          return proposing();
+        });
+        // Discovery asked which of two it meant.
+        await sessions.append(me, session.id, { role: 'USER', content: 'Someone for due diligence' }, req());
+        await sessions.append(
+          me,
+          session.id,
+          {
+            role: 'ASSISTANT',
+            content: '',
+            metadata: {
+              source: 'discovery',
+              answer: {
+                status: 'clarification',
+                clarification: {
+                  code: 'specialty',
+                  options: [
+                    { id: a, label: 'Corporate' },
+                    { id: b, label: 'Asset tracing' },
+                  ],
+                },
+              },
+            },
+          },
+          req(),
+        );
+        for (const picked of [undefined, [], [randomUUID()], [a, randomUUID()]]) {
+          await expect(
+            turns.ask(
+              me,
+              session.id,
+              { content: 'That one', clarifies: true, taxonomyNodeIds: picked },
+              req(),
+            ),
+          ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+        }
+        const respond = vi.spyOn(discovery, 'respond');
+        const failed = await follow(
+          turns,
+          me,
+          await turns.ask(
+            me,
+            session.id,
+            { content: 'Corporate', clarifies: true, taxonomyNodeIds: [a] },
+            req(),
+          ),
+        );
+        expect(failed.at(-1)).toMatchObject({ type: 'error' });
+        expect((await history(sessions, me, session.id))[2]?.metadata).toEqual({
+          clarifies: 'specialty',
+          taxonomyNodeIds: [a],
+        });
+
+        down = false;
+        await follow(turns, me, await turns.retry(me, session.id, {}, req()));
+        expect(respond.mock.calls.map((c) => c[1])).toEqual([
+          { question: 'Someone for due diligence', taxonomyNodeIds: [a] },
+          { question: 'Someone for due diligence', taxonomyNodeIds: [a] },
+        ]);
+      });
+
+      it('refuses an answer to a question nobody asked, and an answer with no question flag', async () => {
+        const { turns, sessions, me, session } = await start(() => proposing());
+        // Discovery's last word was results, not a question: nothing to answer.
+        await sessions.append(me, session.id, { role: 'USER', content: 'Someone in Gyumri' }, req());
+        await sessions.append(
+          me,
+          session.id,
+          {
+            role: 'ASSISTANT',
+            content: '',
+            metadata: { source: 'discovery', answer: { status: 'no_results', clarification: null } },
+          },
+          req(),
+        );
+        await expect(
+          turns.ask(me, session.id, { content: 'Corporate', clarifies: true }, req()),
+        ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+        const fresh = await sessions.create(me, {}, req());
+        await expect(
+          turns.ask(me, fresh.id, { content: 'Corporate', clarifies: true }, req()),
+        ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+        await expect(
+          turns.ask(me, session.id, { content: 'Near me', near: { lon: 1, lat: 1 } }, req()),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+        await expect(
+          turns.ask(me, session.id, { content: 'That one', taxonomyNodeIds: [randomUUID()] }, req()),
+        ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      });
+    });
   });
 
   describe('refusals store nothing', () => {
@@ -258,7 +586,7 @@ describe('a turn in a conversation (T-056)', () => {
       down = false;
       const retried = await follow(turns, me, await turns.retry(me, session.id, {}, req()));
       // No second copy of the question: a retry answers the one already there.
-      expect(retried.map((e) => e.type)).toEqual(['step', 'step', 'message']);
+      expect(retried.map((e) => e.type)).toEqual(['step', 'step', 'step', 'message']);
       expect((await history(sessions, me, session.id)).map((m) => [m.role, m.content])).toEqual([
         ['USER', QUESTION],
         ['ASSISTANT', 'Until its validity period ends.'],
@@ -301,7 +629,7 @@ describe('a turn in a conversation (T-056)', () => {
         await turns.ask(me, session.id, { content: QUESTION }, req()),
         stop.signal,
       );
-      expect(events.map((e) => e.type)).toEqual(['message', 'session', 'step', 'step']);
+      expect(events.map((e) => e.type)).toEqual(['message', 'session', 'step', 'step', 'step']);
       expect((await history(sessions, me, session.id)).map((m) => m.role)).toEqual(['USER']);
     });
 

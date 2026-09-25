@@ -1,4 +1,9 @@
-import type { AiMessage, AiSession } from '@/lib/api/assistant';
+import type {
+  AiMessage,
+  AiSession,
+  DiscoveryAnswer,
+  InvestigatorMatch,
+} from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
 import type {
   LegalDocument,
@@ -164,3 +169,62 @@ export const application = (
   decision: null,
   ...over,
 });
+
+/** An investigator a search found, as discovery returns one (T-018): the public projection. */
+export const investigatorMatch = (over: Partial<InvestigatorMatch> = {}): InvestigatorMatch => ({
+  investigatorId: 'inv-1',
+  displayName: 'Ani Hakobyan',
+  headline: 'Corporate due diligence across the South Caucasus',
+  yearsExperience: 9,
+  verificationStatus: 'VERIFIED',
+  languages: [
+    { code: 'hy', proficiency: 'NATIVE' },
+    { code: 'en', proficiency: 'FLUENT' },
+  ],
+  specialties: [
+    { id: 'n-fraud', label: 'Fraud investigation' },
+    { id: 'n-dd', label: 'Due diligence' },
+  ],
+  availability: [{ dayOfWeek: 0, startMinute: 540, endMinute: 1020 }],
+  distanceKm: 4,
+  explanation: [
+    { code: 'matched.specialty', specialties: [{ id: 'n-dd', label: 'Due diligence' }] },
+    { code: 'matched.languages', languages: ['hy'] },
+    { code: 'matched.place', place: { city: 'Yerevan', countryCode: 'AM' } },
+    { code: 'matched.distance', km: 4 },
+    { code: 'matched.availability', window: { dayOfWeek: 0, startMinute: 540, endMinute: 1020 } },
+    { code: 'not_matched.specialty', specialties: [{ id: 'n-surv', label: 'Surveillance' }] },
+  ],
+  ...over,
+});
+
+/** What discovery answered: results for the given matches unless told otherwise. */
+export const discoveryAnswer = (over: Partial<DiscoveryAnswer> = {}): DiscoveryAnswer => ({
+  status: 'results',
+  searchedFor: {
+    place: { city: 'Yerevan', countryCode: 'AM' },
+    near: false,
+    radiusKm: null,
+    specialties: [{ id: 'n-dd', label: 'Due diligence' }],
+    languages: ['hy'],
+    availability: null,
+  },
+  assumptions: [],
+  orderedBy: 'relevance',
+  results: [investigatorMatch(), investigatorMatch({ investigatorId: 'inv-2', displayName: null, headline: null, yearsExperience: null, explanation: [] })],
+  hasMore: false,
+  clarification: null,
+  refusal: null,
+  ...over,
+});
+
+/** The assistant's reply carrying a discovery answer, as it is stored (T-059). */
+export const aiDiscoveryReply = (answer: DiscoveryAnswer, over: Partial<AiMessage> = {}): AiMessage =>
+  aiMessage({
+    id: 'msg-d',
+    sequence: 2,
+    role: 'ASSISTANT',
+    content: '',
+    metadata: { source: 'discovery', answer },
+    ...over,
+  });

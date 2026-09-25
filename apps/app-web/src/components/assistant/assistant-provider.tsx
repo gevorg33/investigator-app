@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
-import { assistantApi } from '@/lib/api/assistant';
+import { breakpoints } from '@investigator/ui-tokens';
+import { assistantApi, type AssistantApi } from '@/lib/api/assistant';
 import { useConversation, type Conversation } from './use-conversation';
 
 /** The panel's id, for the controls that open it. Here, not with the panel, which loads later. */
@@ -20,7 +21,13 @@ interface AssistantValue {
   toggle: () => void;
   /** Closes, and gives focus back to whatever opened it — the docked panel has no dialog to. */
   close: () => void;
+  /**
+   * Closes the assistant if it covers the page — the phone's sheet — before following a link out
+   * of it (a citation, the policy). Docked beside the page, it stays: the page opens next to it.
+   */
+  closeIfCovering: () => void;
   audience: AssistantAudience;
+  api: AssistantApi;
   conversation: Conversation;
 }
 
@@ -65,9 +72,13 @@ export function AssistantProvider({
     opener.current?.focus();
   }, []);
 
+  const closeIfCovering = useCallback(() => {
+    if (!window.matchMedia(`(min-width: ${breakpoints.lg})`).matches) setOpenState(false);
+  }, []);
+
   const value = useMemo(
-    () => ({ open, setOpen, toggle, close, audience, conversation }),
-    [open, setOpen, toggle, close, audience, conversation],
+    () => ({ open, setOpen, toggle, close, closeIfCovering, audience, api, conversation }),
+    [open, setOpen, toggle, close, closeIfCovering, audience, api, conversation],
   );
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }

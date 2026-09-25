@@ -216,7 +216,10 @@ and quality, and it should be your call rather than something an unset variable 
 is set, `POST /api/v1/ai/knowledge/answer` answers 503 — and so does
 `POST /api/v1/ai/discovery/answer` (T-018), which uses the same model to turn a request to find
 investigators into search filters, and so does the assistant panel in the app (T-056): every
-question there is refused with "The assistant cannot answer right now", and nothing is stored.
+question there is refused with "The assistant cannot answer right now", and nothing is stored. In
+the app, every question now goes to discovery first (T-059) — two model calls for a help question
+instead of one; the discovery prompt carries the whole taxonomy (a few hundred categories once T-131
+seeds it).
 
 **Before you set a key in production:** the assistant sends each question, together with the
 guidance it retrieved, to this provider. A request to find investigators is sent too, with any
@@ -600,9 +603,10 @@ something to launch on: it reads as unfinished software to exactly the market th
 
 **What is needed:** a native speaker of each language reads their file — the strings
 T-127 added for sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), T-054
-the investigator's open-missions screen (`missions.browse`), T-056 the assistant (`assistant`,
-about 45, including six suggested questions — Armenian questions end «՞ … ։») and T-123 the
-investigator profile page (`investigator`, about 120) — about 320 in all, an hour or so — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+the investigator's open-missions screen (`missions.browse`), T-056/T-057 the assistant
+(`assistant`, about 140, including nine suggested questions and the investigator cards — Armenian
+questions end «՞ … ։») and T-123 the investigator profile page (`investigator`, about 120) — about
+400 in all, an hour or two — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:

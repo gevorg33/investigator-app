@@ -85,6 +85,8 @@ describe('assistant session routes', () => {
     expect((await http.get(`${base}/${ID}`)).status).toBe(200);
     expect((await http.post(`${base}/${ID}/resume`)).status).toBe(200);
     expect((await http.get(`${base}/${ID}/messages?limit=5`)).status).toBe(200);
+    expect((await http.get(`${base}/${ID}/messages?order=newest`)).status).toBe(200);
+    expect((await http.get(`${base}/${ID}/messages?order=sideways`)).status).toBe(400);
     expect((await http.patch(`${base}/${ID}`).send({ title: 'Renamed' })).status).toBe(200);
     expect((await http.post(`${base}/${ID}/archive`)).status).toBe(200);
     expect((await http.delete(`${base}/${ID}`)).status).toBe(204);
@@ -92,7 +94,16 @@ describe('assistant session routes', () => {
     expect(s.create.mock.calls[0]?.slice(0, 2)).toEqual([me, { title: 'Planning' }]);
     expect(s.list.mock.calls[0]?.[1]).toEqual({ archived: true, limit: 10, cursor: undefined });
     expect(s.search.mock.calls[0]?.[1]).toBe('screening');
-    expect(s.messages.mock.calls[0]?.slice(1, 3)).toEqual([ID, { limit: 5, cursor: undefined }]);
+    expect(s.messages.mock.calls[0]?.slice(1, 3)).toEqual([
+      ID,
+      { limit: 5, cursor: undefined, order: undefined },
+    ]);
+    expect(s.messages.mock.calls[1]?.[2]).toEqual({
+      limit: undefined,
+      cursor: undefined,
+      order: 'newest',
+    });
+    expect(s.messages).toHaveBeenCalledTimes(2);
     expect(s.rename.mock.calls[0]?.slice(1, 3)).toEqual([ID, 'Renamed']);
     // "search" is its own route, never read as a session id.
     expect(s.open).toHaveBeenCalledTimes(1);

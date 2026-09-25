@@ -7,6 +7,13 @@ export class Redirected extends Error {
   }
 }
 
+/** What `notFound()` throws in a spec. */
+export class NotFound extends Error {
+  constructor() {
+    super('not found');
+  }
+}
+
 /** A stand-in for Next's router, for specs that mock `next/navigation` with `nextNavigation`. */
 export const router = {
   pathname: '/',
@@ -24,5 +31,8 @@ export const nextNavigation = {
   useRouter: () => router,
   redirect: (url: string) => {
     throw new Redirected(url);
+  },
+  notFound: () => {
+    throw new NotFound();
   },
 };
