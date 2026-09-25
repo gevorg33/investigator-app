@@ -250,6 +250,71 @@ describe('answering from the knowledge base (T-017)', () => {
     expect(answer.citations[0]?.docKey).toBe('kb-a-staff');
   });
 
+  describe('as it happens (T-056)', () => {
+    it('reports each stage as it starts: searching, then writing from however many it found', async () => {
+      const steps: unknown[] = [];
+      const model = new FakeModel(() => {
+        // The model is asked only after the client was told it would be.
+        expect(steps.at(-1)).toMatchObject({ step: 'writing' });
+        return citing('Until its validity period ends.', 'S1')();
+      });
+      await asked(model).answer(
+        await as(),
+        { question: 'How long does a quote stay valid?' },
+        req(),
+        { onStep: (s) => steps.push(s) },
+      );
+      expect(steps[0]).toEqual({ step: 'searching' });
+      expect(steps[1]).toEqual({ step: 'writing', sources: model.prompts[0]!.user.split('<source ').length - 1 });
+      expect(steps).toHaveLength(2);
+    });
+
+    it('never says it is writing when it found nothing to write from', async () => {
+      const steps: unknown[] = [];
+      await asked(new FakeModel(citing(null)), { embedder: null }).answer(
+        await as(),
+        { question: 'qqqq' },
+        req(),
+        { onStep: (s) => steps.push(s) },
+      );
+      expect(steps).toEqual([{ step: 'searching' }]);
+    });
+
+    it('stops before the model when stopped during the search, and records no answer', async () => {
+      const stop = new AbortController();
+      const model = new FakeModel(citing('Too late.', 'S1'));
+      const r = req();
+      const answering = asked(model).answer(
+        await as(),
+        { question: 'How long does a quote stay valid?' },
+        r,
+        { onStep: (s) => s.step === 'searching' && stop.abort(), signal: stop.signal },
+      );
+      await expect(answering).rejects.toMatchObject({ name: 'AbortError' });
+      expect(model.prompts).toEqual([]);
+      expect(await auditOf(r.correlationId)).toEqual([]);
+    });
+
+    it('hands the model the signal, so a call under way is abandoned too', async () => {
+      const stop = new AbortController();
+      let given: AbortSignal | undefined;
+      const model: ChatModel = {
+        model: 'fake-model',
+        complete: async (_prompt, signal) => {
+          given = signal;
+          return citing(null)();
+        },
+      };
+      await asked(model).answer(
+        await as(),
+        { question: 'How long does a quote stay valid?' },
+        req(),
+        { signal: stop.signal },
+      );
+      expect(given).toBe(stop.signal);
+    });
+  });
+
   describe('a document that tries to give orders', () => {
     it('reaches the model as escaped material inside its source, never as an instruction', async () => {
       const model = new FakeModel(citing(null));

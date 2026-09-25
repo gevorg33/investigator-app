@@ -1,3 +1,4 @@
+import type { AiMessage, AiSession } from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
 import type { LegalDocument, MissionListing, SessionSummary } from '@/lib/api/types';
 
@@ -59,3 +60,54 @@ export const listing = (over: Partial<MissionListing> = {}): MissionListing => (
   publishedAt: '2026-09-25T08:00:00.000Z',
   ...over,
 });
+
+/** A conversation with the assistant, as `/ai/sessions` returns it (T-045, T-056). */
+export const aiSession = (over: Partial<AiSession> = {}): AiSession => ({
+  id: '00000000-0000-4000-8000-00000000a001',
+  title: null,
+  status: 'ACTIVE',
+  lastActivityAt: '2026-09-25T10:00:00.000Z',
+  createdAt: '2026-09-25T09:58:00.000Z',
+  ...over,
+});
+
+/** One stored message; a question from the person unless told otherwise. */
+export const aiMessage = (over: Partial<AiMessage> = {}): AiMessage => ({
+  id: `msg-${over.sequence ?? 1}`,
+  sequence: 1,
+  role: 'USER',
+  kind: 'TEXT',
+  content: 'How long does a quote stay valid?',
+  event: null,
+  metadata: {},
+  createdAt: '2026-09-25T10:00:00.000Z',
+  ...over,
+});
+
+/** The assistant's reply from the knowledge base, with the source it used. */
+export const aiReply = (over: Partial<AiMessage> = {}): AiMessage =>
+  aiMessage({
+    id: 'msg-2',
+    sequence: 2,
+    role: 'ASSISTANT',
+    content: 'Until the validity period its investigator set.',
+    metadata: {
+      source: 'knowledge',
+      status: 'answered',
+      citations: [
+        {
+          docKey: 'kb-customer-quotes',
+          version: 2,
+          title: 'Quotes and expiry',
+          section: 'How long does a quote stay valid?',
+          locale: 'en',
+        },
+      ],
+      locale: 'en',
+      fallback: false,
+    },
+    ...over,
+  });
+
+/** An empty page, as every list route returns one. */
+export const emptyPage = { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };

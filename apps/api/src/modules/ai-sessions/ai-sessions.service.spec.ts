@@ -228,6 +228,55 @@ describe('assistant sessions (ADR-0006, T-045)', () => {
       ]);
     });
 
+    it('names an untitled session from its user’s first words, and only from them (T-056)', async () => {
+      const session = await start();
+      // The assistant speaking first — a greeting, a tool — never names it.
+      await service.append(
+        me,
+        session.id,
+        { role: 'ASSISTANT', content: 'Evidence item 7 shows the plate AB-123' },
+        req(),
+      );
+      await service.append(
+        me,
+        session.id,
+        {
+          role: 'TOOL',
+          kind: 'TOOL_RESULT',
+          event: { tool: 'searchInvestigators', resultId: 'res_2' },
+          content: 'Evidence summary',
+        },
+        req(),
+      );
+      expect((await service.open(me, session.id, req())).title).toBeNull();
+
+      await say(session.id, '  How long does\na quote   stay valid?  ');
+      expect((await service.open(me, session.id, req())).title).toBe(
+        'How long does a quote stay valid?',
+      );
+      await say(session.id, 'And after that?');
+      expect((await service.open(me, session.id, req())).title).toBe(
+        'How long does a quote stay valid?',
+      );
+    });
+
+    it('keeps a title its user gave, whatever they say first', async () => {
+      const session = await start('Refund question');
+      await say(session.id, 'Can I get my money back?');
+      expect((await service.open(me, session.id, req())).title).toBe('Refund question');
+    });
+
+    it('reads the latest message, or nothing before the first', async () => {
+      const session = await start();
+      expect(await service.last(me, session.id, req())).toBeNull();
+      for (const words of ['one', 'two']) await say(session.id, words);
+      expect(await service.last(me, session.id, req())).toMatchObject({
+        sequence: 2,
+        role: 'USER',
+        content: 'two',
+      });
+    });
+
     it('brings an archived session back when a message arrives', async () => {
       const session = await start();
       await service.archive(me, session.id, req());

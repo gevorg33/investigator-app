@@ -15,6 +15,7 @@ import {
   encodeMessageCursor,
   encodeSessionCursor,
   statusOf,
+  titleFrom,
   type SessionStatus,
 } from './ai-sessions.policy';
 
@@ -91,8 +92,8 @@ export const SESSION_CONTENT: ReadonlyArray<{ table: PgTable; sessionId: PgColum
  * is the same 404 as one that does not exist. The service adds what policy cannot: a workspace to
  * be in at all, a live account, and the lifecycle rules.
  *
- * Nothing here writes a title the user did not type. When titles are generated (T-056), they must
- * never carry evidence content.
+ * Nothing here writes a title the user did not type: an untitled session takes its user's first
+ * message as one (T-056), and never anything the assistant or a tool wrote — so never evidence.
  */
 @Injectable()
 export class AiSessionsService {
@@ -216,6 +217,20 @@ export class AiSessionsService {
     };
   }
 
+  /** The conversation's latest message, or null before the first — what a retry answers. */
+  async last(actor: Actor, sessionId: string, req: RequestContext): Promise<MessageView | null> {
+    const c = ctx('ai_session.last', req, sessionId);
+    await this.enter(actor, c);
+    await this.find(actor, sessionId, c);
+    const [row] = await this.db
+      .select()
+      .from(aiMessages)
+      .where(eq(aiMessages.sessionId, sessionId))
+      .orderBy(desc(aiMessages.sequence))
+      .limit(1);
+    return row === undefined ? null : messageView(row);
+  }
+
   async rename(
     actor: Actor,
     sessionId: string,
@@ -321,7 +336,7 @@ export class AiSessionsService {
   /**
    * Adds a message at the end of the conversation. For the assistant itself (T-056), not a route:
    * a user's words reach a session through the assistant, which records its own reply and tool
-   * events beside them.
+   * events beside them. A user's message to an untitled session also names it ({@link titleFrom}).
    *
    * The session row is locked while its next sequence is taken, so two messages arriving together
    * are numbered one after the other rather than colliding. A message to an archived session
@@ -358,6 +373,10 @@ export class AiSessionsService {
           lastActivityAt: now,
           archivedAt: null,
           updatedAt: now,
+          // An untitled session is named by its user's first words, under the same lock.
+          ...(session.title === null && message.role === 'USER'
+            ? { title: titleFrom(message.content) }
+            : {}),
         })
         .where(eq(aiSessions.id, sessionId));
       return messageView(row!);

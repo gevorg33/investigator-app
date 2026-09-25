@@ -17,6 +17,7 @@ changes the catalog, the articles and this table together.
 | Assignment (a hired investigator's engagement) | assignment | **заказ** | **պատվեր** | The knowledge base's words. The app says «обновления по заказам» for assignment updates |
 | Messages (the conversations area) | Messages | **Чаты** | **Զրույցներ** | Navigation label. «Сообщения» is the fuller Russian word but is clipped in the phone tab; «Чаты» is common in Russian apps. Armenian «Զրույցներ» (conversations). Body text may use the fuller words: «переписка», «հաղորդագրություններ» |
 | Assistant | Assistant | **Ассистент** | **Օգնական** | Russian «Помощник» is an alternative; «Ассистент» matches how AI assistants are commonly named |
+| Conversation with the assistant (T-056) | conversation | **разговор** | **զրույց** | Russian «разговор», kept apart from «чат», which names the Messages area. Armenian has no such pair in the app yet: «զրույց» is also the Messages label («Զրույցներ»). They are different screens, so it reads, but a reviewer may prefer «խոսակցություն» here |
 | Account | Account | **Аккаунт** | **Հաշիվ** | Russian «Профиль» is an alternative, but the page will hold sign-in and privacy settings, not only a profile |
 | Home | Home | **Главная** | **Գլխավոր** | Standard in both |
 | Quote (an investigator's price for a mission) | quote | **предложение** | **գնառաջարկ** | Russian «коммерческое предложение» shortened; «смета» is an estimate, not an offer. Armenian «գնառաջարկ» is the procurement word for a price offer |

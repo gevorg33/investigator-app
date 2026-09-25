@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'use-intl';
+import { PANEL_ID, useAssistant } from '@/components/assistant/assistant-provider';
 import { cn } from '@/lib/utils';
 import { DESTINATIONS, isCurrent } from './destinations';
 
@@ -26,30 +27,48 @@ const LAYOUT = {
 
 /**
  * The primary destinations as links, laid out for a phone's bottom bar or a sidebar. The page
- * the reader is on is marked for assistive technology (`aria-current`) as well as visibly.
+ * the reader is on is marked for assistive technology (`aria-current`) as well as visibly. The
+ * assistant is a button that opens and closes it where the reader is, marked as expanded while open.
  */
 export function NavLinks({ layout }: { layout: keyof typeof LAYOUT }) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const assistant = useAssistant();
   const styles = LAYOUT[layout];
   return (
     <ul className={styles.list}>
-      {DESTINATIONS.map(({ href, label, icon: Icon }) => {
-        const current = isCurrent(pathname, href);
+      {DESTINATIONS.map(({ href, opens, label, icon: Icon }) => {
+        const current = href === undefined ? assistant.open : isCurrent(pathname, href);
+        const className = cn(
+          'text-text-muted font-medium transition-colors duration-(--duration-fast) ease-standard',
+          // A button, unlike a link, only fills its cell when told to.
+          'w-full',
+          styles.link,
+          current && styles.current,
+        );
+        const inner = (
+          <>
+            <Icon aria-hidden className="size-5 shrink-0" />
+            <span className="max-w-full truncate">{t(label)}</span>
+          </>
+        );
         return (
-          <li key={href}>
-            <Link
-              href={href}
-              aria-current={current ? 'page' : undefined}
-              className={cn(
-                'text-text-muted font-medium transition-colors duration-(--duration-fast) ease-standard',
-                styles.link,
-                current && styles.current,
-              )}
-            >
-              <Icon aria-hidden className="size-5 shrink-0" />
-              <span className="max-w-full truncate">{t(label)}</span>
-            </Link>
+          <li key={href ?? opens}>
+            {href === undefined ? (
+              <button
+                type="button"
+                onClick={assistant.toggle}
+                aria-expanded={assistant.open}
+                aria-controls={assistant.open ? PANEL_ID : undefined}
+                className={className}
+              >
+                {inner}
+              </button>
+            ) : (
+              <Link href={href} aria-current={current ? 'page' : undefined} className={className}>
+                {inner}
+              </Link>
+            )}
           </li>
         );
       })}

@@ -2,6 +2,9 @@ import { catalogs, type Locale } from '@investigator/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/i18n/provider';
+import userEvent from '@testing-library/user-event';
+import { AssistantProvider } from '@/components/assistant/assistant-provider';
+import { api } from '@/test/api';
 import { request } from '@/test/request';
 import { AppShell } from './app-shell';
 import { DESTINATIONS } from './destinations';
@@ -11,17 +14,29 @@ vi.mock('next/navigation', () => ({ usePathname: () => pathname.current }));
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 
 describe('the app shell', () => {
-  beforeEach(() => request.reset());
+  beforeEach(() => {
+    request.reset();
+    api.install();
+  });
 
   const shell = async (locale: Locale = 'en') => {
     request.cookies.set('locale', locale);
-    const frame = await AppShell({ children: <p>Screen content</p> });
+    const frame = await AppShell({
+      children: <p>Screen content</p>,
+      beside: <aside>Beside the content</aside>,
+    });
     return render(
-      <I18nProvider locale={locale} messages={{ nav: catalogs[locale].nav }}>
-        {frame}
+      <I18nProvider
+        locale={locale}
+        messages={{ nav: catalogs[locale].nav, assistant: catalogs[locale].assistant }}
+      >
+        <AssistantProvider audience="CUSTOMER" activeRole={null}>
+          {frame}
+        </AssistantProvider>
       </I18nProvider>,
     );
   };
+  const places = DESTINATIONS.filter((d) => d.href !== undefined);
 
   it('offers every destination in a bottom bar for phones and a sidebar from tablet up', async () => {
     await shell();
@@ -37,8 +52,42 @@ describe('the app shell', () => {
         within(nav)
           .getAllByRole('link')
           .map((a) => a.getAttribute('href')),
-      ).toEqual(DESTINATIONS.map((d) => d.href));
+      ).toEqual(places.map((d) => d.href));
+      // The assistant is in its place in the order, as a button: it opens beside the page.
+      expect(within(nav).getAllByRole('listitem')[3]).toHaveTextContent('Assistant');
+      expect(within(nav).getByRole('button', { name: 'Assistant' })).toBeInTheDocument();
     }
+    expect(screen.getByText('Beside the content').previousElementSibling).toBe(
+      screen.getByRole('main'),
+    );
+  });
+
+  it('opens and closes the assistant from either navigation, saying which it is', async () => {
+    api.on('GET /workspaces', 200, []);
+    api.on('GET /ai/sessions?limit=1', 200, {
+      items: [],
+      pageInfo: { nextCursor: null, hasNextPage: false },
+    });
+    await shell();
+    const [inRail, inBar] = screen.getAllByRole('button', { name: 'Assistant' }) as [
+      HTMLElement,
+      HTMLElement,
+    ];
+    for (const b of [inRail, inBar]) {
+      expect(b).toHaveAttribute('aria-expanded', 'false');
+      expect(b).not.toHaveAttribute('aria-controls');
+    }
+    await userEvent.click(inBar);
+    for (const b of [inRail, inBar]) {
+      expect(b).toHaveAttribute('aria-expanded', 'true');
+      expect(b).toHaveAttribute('aria-controls', 'assistant-panel');
+    }
+    // Open is marked beyond colour too, as the current page is.
+    expect(inRail).toHaveClass('bg-primary-subtle', 'font-semibold');
+    expect(inBar).toHaveClass('before:bg-primary', 'font-semibold');
+    expect(inBar).not.toHaveAttribute('aria-current');
+    await userEvent.click(inRail);
+    expect(inBar).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('marks where the reader is, in both, for assistive technology too', async () => {
@@ -80,9 +129,10 @@ describe('the app shell', () => {
 
   it('gives every navigation target at least 44px, and hides icons from screen readers', async () => {
     await shell();
-    for (const link of screen
-      .getAllByRole('link')
-      .filter((a) => a.getAttribute('href') !== '#content')) {
+    for (const link of [
+      ...screen.getAllByRole('link').filter((a) => a.getAttribute('href') !== '#content'),
+      ...screen.getAllByRole('button', { name: 'Assistant' }),
+    ]) {
       // min-h-16 in the bar (64px) and min-h-11 in the rail (44px).
       expect(link.className).toMatch(/\bmin-h-(16|11)\b/);
       expect(link.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');

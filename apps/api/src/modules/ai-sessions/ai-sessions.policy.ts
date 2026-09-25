@@ -30,6 +30,27 @@ export function statusOf(
   return now.getTime() - session.lastActivityAt.getTime() >= IDLE_AFTER_MS ? 'IDLE' : 'ACTIVE';
 }
 
+/** The longest title taken from a message; a person's own titles may run to 120 (the DTO). */
+export const TITLE_FROM_MESSAGE_MAX = 60;
+
+/**
+ * A title for an untitled session, from the first thing its user wrote (owner decision,
+ * 2026-09-25): whitespace collapsed, and cut at a word boundary with an ellipsis when long.
+ *
+ * Only ever the user's own words. Nothing the assistant wrote, and nothing a tool returned, can
+ * reach a title — so no evidence content can either (T-056). No model is asked.
+ */
+export function titleFrom(text: string): string | null {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length === 0) return null;
+  const chars = [...flat];
+  if (chars.length <= TITLE_FROM_MESSAGE_MAX) return flat;
+  const cut = chars.slice(0, TITLE_FROM_MESSAGE_MAX - 1).join('');
+  const space = cut.lastIndexOf(' ');
+  // A first word longer than half the limit is cut where it stands, not dropped.
+  return `${(space >= TITLE_FROM_MESSAGE_MAX / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}
+
 /** Where a list of sessions left off, bound to whether it was the archived list. */
 interface SessionCursor {
   archived: boolean;

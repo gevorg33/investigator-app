@@ -50,9 +50,50 @@ accepts anything a person types. Ranked by the better of the title match and the
 match; the first matching message is returned so a client can jump to it. The vector half of the
 specified hybrid search is T-133's, once an embedding provider exists (T-016).
 
+## Turns — talking in a session (T-056)
+
+`POST /api/v1/ai/sessions/:id/turns` `{ content, locale? }` is how a person's words reach a session:
+`AssistantTurnService` (ai module) checks, stores, answers and stores again.
+
+```
+own session (404 otherwise) → admitted (live, workspace, model, allowance — T-017's checks)
+  → question appended → steps → answer (T-017, citations checked) → reply appended → done
+```
+
+- **Refusals store nothing** and come back as the usual JSON error: a stranger's session (404, and
+  none of anyone's allowance spent), no model configured (503), a spent allowance (429).
+- **Once stored, the question stays**, whatever follows. The response is then a stream of
+  server-sent events: `message` (the question as stored), `session` (its title may just have been
+  set), `step` (`searching`; `writing` from N sources), `message` (the reply as stored), `done` — or
+  `error` `{ code, messageKey, correlationId }` in place of the reply. Headers: `text/event-stream`,
+  `no-cache, no-transform`, `X-Accel-Buffering: no`.
+- **Progress, never unchecked words** (owner decision, 2026-09-25). The model returns one JSON
+  answer whose citations are checked before anyone sees it (T-017); streaming its tokens would show
+  text the check could still turn into "not covered". So what streams is the pipeline's stages, and
+  the reply arrives whole.
+- **Stop is the client closing the stream.** The controller aborts the turn: retrieval stops before
+  the model, the model call is abandoned (`ChatModel.complete` takes the signal), and no reply is
+  stored — even one that arrives after Stop. A conversation never holds half an answer.
+- **Retry** — `POST …/turns/retry` `{ locale? }` answers the last message when it is the person's
+  (a failed or stopped turn), without storing it again. Anything else is `409 STATE_CONFLICT`.
+- **The reply** is an `ASSISTANT` `TEXT` message with `metadata`
+  `{ source: 'knowledge', status, citations, locale, fallback }`. "Not covered" (`no_answer`) is
+  stored with empty content: the client says it, in the reader's language, from `status`.
+- **No history reaches the model yet.** Each question is answered on its own; what earlier turns may
+  contribute is the Context Builder's decision (T-046). The help articles say so.
+- A failure that is not an `AppError` is logged by kind and correlation id only — a database
+  error's detail can quote the row, and the row is the question (`logging.md`).
+
+**Titles.** An untitled session is named by its user's first message, in `append`, under the same
+row lock: whitespace collapsed, cut at a word boundary to 60 characters with an ellipsis
+(`titleFrom`). Only a `USER` message names a session — never the assistant's words or a tool's —
+so a generated title cannot carry evidence content. No model is asked (owner decision). A title the
+user gave is kept.
+
+The client is the assistant panel in app-web (`app-web.md`).
+
 ## Not yet
 
-- **Title generation** — T-056. Titles today are only what the user typed; a generated one must
-  never carry evidence content.
 - **Summaries, memory, embeddings** — T-046, T-047, T-133; each joins `SESSION_CONTENT`.
-- **A route to post messages** — the assistant appends (T-056); `append` is a service method.
+- **Other capabilities in a conversation** — discovery (T-018) answers at its own endpoint; routing
+  a turn to it, and tool events in a session, arrive with the intent pipeline.

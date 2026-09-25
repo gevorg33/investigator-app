@@ -66,12 +66,14 @@ pass. Next.js's `core-web-vitals` rules run on the same files.
 
 The destinations are data (`destinations.ts`): Home, Missions, Messages, Assistant, Account — the
 core loop's places. The current one is marked with `aria-current="page"` and visibly by more than
-colour (an indicator bar on phones, a tinted shape in the sidebar). A skip link leads to `main`.
+colour (an indicator bar on phones, a tinted shape in the sidebar). The Assistant is not a page: it
+is a button that opens the assistant where the reader is (`aria-expanded`, marked like the current
+page while open) — see "The assistant" below. A skip link leads to `main`.
 Full height is `dvh`; the viewport is `viewport-fit=cover`.
 
-**Account and, for investigators, Missions are real; the rest are placeholders.** Each placeholder
-renders its title and an empty state saying what will appear there; the screens are built by their
-own tasks (T-056 assistant, the core-loop hiring and messaging tasks). Above every screen the shell shows what the account still
+**Account, the assistant and, for investigators, Missions are real; the rest are placeholders.**
+Each placeholder renders its title and an empty state saying what will appear there; the screens are
+built by their own tasks (the core-loop hiring and messaging tasks). Above every screen the shell shows what the account still
 owes — an unconfirmed address, documents to accept — as notices linking to where each is settled
 (`AccountNotices`). Notices, never blocks.
 
@@ -79,8 +81,8 @@ owes — an unconfirmed address, documents to accept — as notices linking to w
 
 Every user-facing string is a key in `packages/i18n` (ADR-0013). Server components translate with
 `getT()` from `src/i18n/server.ts`; client components with `useTranslations` under the provider the
-root layout mounts, which receives only `CLIENT_NAMESPACES` (`nav`, `auth`, `account`, `legal`,
-`error`). Keys are typed against the catalog shape — `t('nav.misions')` is a compile error.
+root layout mounts, which receives only `CLIENT_NAMESPACES` (`nav`, `missions`, `assistant`,
+`auth`, `account`, `legal`, `error`). Keys are typed against the catalog shape — `t('nav.misions')` is a compile error.
 
 The locale is the `locale` cookie (set by the language choice: host-only, HTTP-only, `Secure`, a
 year), else `Accept-Language`, else English. Signed in, choosing a language also saves it to the
@@ -196,6 +198,58 @@ pinned, as admin-web does.
 
 **Tests** stub what jsdom lacks and these components use (`vitest.setup.ts`: `matchMedia`,
 `scrollIntoView`, `setPointerCapture`, `ResizeObserver`).
+
+## The assistant (T-056)
+
+`src/components/assistant/`. Mounted by the workspace layout above every page
+(`AssistantProvider`), so a conversation survives moving between pages and closing the panel.
+
+| Width | The assistant |
+|---|---|
+| below `lg` | A **full-screen sheet** (`Drawer`, `h-dvh`, no handle, `handleOnly`): a dialog that holds focus and returns it on close. Never dragged — scrolling a conversation must not close it. Close and Escape do |
+| `lg` and up | **Docked** beside the page, 24rem (`aside`, `complementary`), not modal: the page stays usable. Escape inside it closes it and focus returns to what opened it |
+
+Narrowing the window while it is open moves the same conversation from dock to sheet.
+
+**Loaded on first open.** `AssistantBeside` renders nothing until the assistant is first opened,
+then imports the panel (`next/dynamic`) and keeps it mounted — the panel, vaul and the conversation
+are not in any page's initial JavaScript (+4 kB per workspace route for the provider and the
+navigation button, instead of +30 kB).
+
+**Opening** reads `GET /workspaces` (the header names the workspace — "Personal workspace", or the
+agency's name) and `GET /ai/sessions?limit=1`: an `ACTIVE` session (a message in the last 30
+minutes) is continued, its messages read page by page; otherwise the conversation starts empty.
+**A session is created with the first question**, not on opening, so looking leaves nothing behind.
+"New conversation" appears once there is one to leave.
+
+**A turn** is `POST /ai/sessions/:id/turns`, read as server-sent events with `fetch` and a stream
+reader (`EventSource` cannot `POST`); `lib/api/assistant.ts` parses the frames however the network
+cuts them. The panel shows, in order: the question (from the stream once stored), a polite status —
+"Sending your question", "Searching the help articles", "Writing an answer from N sources", with a
+pulse only under `motion-safe` — then the answer with its sources, or "not covered" as a state of
+its own. Tool calls and results render as structured blocks (tool, then each argument), never as
+prose. The conversation is a `role="log"`, so what is added is read out; a failure is an alert.
+
+**Stop and Try again.** While an answer forms, Send becomes Stop, which aborts the request (the API
+stops the turn and stores no reply). A turn that ends without an answer leaves a Try again: a
+question the server never confirmed is sent again (after reading the conversation back to find out
+whether it arrived); a stored one is answered by `…/turns/retry`; a retry the server calls a
+conflict (answered in another tab) reads the conversation back instead. A stream cut off without
+`done` counts as a failure. What a conversation that was left says afterwards is ignored.
+
+**The composer:** Enter sends, Shift+Enter adds a line, never while an input method composes;
+`enterkeyhint="send"`; the keyboard hint shows from `md`; Send is disabled below the API's three
+characters and while the conversation is read. **The empty state** teaches the role (investigator
+unless acting as a customer — the missions page's reading): what the assistant does today and
+cannot yet, and three questions the help articles answer, sent with one tap. **An account with no
+role yet** (registration grants none) is answered from the public policies only (T-017, audience by
+role), so it is offered three questions those answer, and a link to add a role (`/account#roles`,
+closing the assistant on the way). Each suggestion was checked to retrieve its own section first. The role the reader
+acts as is sent as `X-Active-Role`, so answers come from that role's guidance.
+
+**Not here yet:** the attachment entry point (T-144 — nothing to attach to); the session list,
+rename, archive, delete and search (T-057); confirmations (T-058); structured results and linked
+citations (T-059).
 
 ## Never indexed
 

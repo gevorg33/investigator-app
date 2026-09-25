@@ -5,6 +5,8 @@ import {
   decodeSessionCursor,
   encodeMessageCursor,
   encodeSessionCursor,
+  TITLE_FROM_MESSAGE_MAX,
+  titleFrom,
 } from './ai-sessions.policy';
 
 const b64 = (value: unknown) => Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
@@ -48,5 +50,36 @@ describe('session and message cursors', () => {
     expect([clampLimit(undefined), clampLimit(0), clampLimit(250), clampLimit(10.7)]).toEqual([
       25, 1, 100, 10,
     ]);
+  });
+});
+
+describe('a title from a first message (T-056)', () => {
+  it('keeps a short message whole, with its whitespace collapsed', () => {
+    expect(titleFrom('  Is my\n\tpayment   held?  ')).toBe('Is my payment held?');
+    expect(titleFrom('x'.repeat(TITLE_FROM_MESSAGE_MAX))).toBe('x'.repeat(TITLE_FROM_MESSAGE_MAX));
+  });
+
+  it('has no title for a message with no words', () => {
+    expect(titleFrom(' \n\t ')).toBeNull();
+  });
+
+  it('cuts a long one at a word boundary, and says it was cut', () => {
+    const title = titleFrom(
+      'How long does a quote stay valid after the investigator sends it to me, and can they change it?',
+    )!;
+    expect(title).toBe('How long does a quote stay valid after the investigator…');
+    expect([...title].length).toBeLessThanOrEqual(TITLE_FROM_MESSAGE_MAX);
+  });
+
+  it('cuts a word that runs past half the limit where it stands', () => {
+    const title = titleFrom(`Hi ${'a'.repeat(80)}`)!;
+    expect(title).toBe(`Hi ${'a'.repeat(TITLE_FROM_MESSAGE_MAX - 4)}…`);
+    expect([...title]).toHaveLength(TITLE_FROM_MESSAGE_MAX);
+  });
+
+  it('counts characters, not UTF-16 units, so Armenian and emoji are never split in half', () => {
+    const title = titleFrom('😀'.repeat(70))!;
+    expect([...title]).toHaveLength(TITLE_FROM_MESSAGE_MAX);
+    expect(title.endsWith('😀…')).toBe(true);
   });
 });

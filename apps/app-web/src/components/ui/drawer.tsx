@@ -3,7 +3,8 @@
 // @shadcn/drawer (vaul), adopted in T-054 and re-tokenised: the scrim token behind it, the raised
 // surface, the page's own radius; `max-h-sheet` instead of an arbitrary `80vh`; a handle sized from
 // the spacing scale. Bottom on a phone, right from `md` — the direction is the caller's.
-// Top and left directions dropped: nothing opens that way.
+// Top and left directions dropped: nothing opens that way. `handle={false}` (T-056) leaves the
+// handle out for a sheet that is not dragged, where a handle would promise what it cannot do.
 import type { ComponentProps } from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
 import { cn } from '@/lib/utils';
@@ -23,8 +24,9 @@ function DrawerClose(props: ComponentProps<typeof DrawerPrimitive.Close>) {
 function DrawerContent({
   className,
   children,
+  handle = true,
   ...props
-}: ComponentProps<typeof DrawerPrimitive.Content>) {
+}: ComponentProps<typeof DrawerPrimitive.Content> & { handle?: boolean }) {
   return (
     <DrawerPrimitive.Portal>
       <DrawerPrimitive.Overlay
@@ -41,7 +43,9 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="mx-auto mt-3 hidden h-1.5 w-12 shrink-0 rounded-full bg-border group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        {handle && (
+          <div className="mx-auto mt-3 hidden h-1.5 w-12 shrink-0 rounded-full bg-border group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        )}
         {children}
       </DrawerPrimitive.Content>
     </DrawerPrimitive.Portal>

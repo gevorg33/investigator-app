@@ -4,9 +4,9 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
-updated: 2026-09-24
+updated: 2026-09-25
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -14,6 +14,7 @@ related_code:
   - apps/api/src/modules/ai-sessions
   - apps/api/src/modules/knowledge
   - apps/api/src/modules/search
+  - apps/app-web/src/components/assistant
 tags: [assistant, ai, help, limitations]
 ---
 
@@ -21,15 +22,51 @@ tags: [assistant, ai, help, limitations]
 
 ## What can the assistant help me with?
 
-Answering questions about how the platform works, finding investigators who match what you
-need, explaining your missions, quotes, assignments and payment status, helping you draft a
-mission description, and explaining platform policies.
+In the app today, it answers questions about how the platform works — missions, quotes, payments,
+evidence, privacy and the platform's policies — from the platform's help articles, and shows which
+ones it used.
+
+More is being added: finding investigators who match what you need, explaining your own missions,
+quotes, assignments and payment status, and helping you draft a mission description. Until then it
+cannot see your missions or do anything for you.
 
 It answers in your selected language.
 
+## How do I open the assistant?
+
+Choose **Assistant** in the navigation. On a phone it opens over the screen you are on; on a wider
+screen it opens beside the page, so you can keep reading while you ask. Closing it keeps your
+conversation for when you open it again, even if you move to another page meanwhile.
+
+## Does it remember what I asked earlier in the conversation?
+
+Not yet. Each question is answered on its own, from the help articles, so a follow-up such as "and
+after that?" is answered without the question before it. Ask each question in full. The
+conversation itself is kept, so you can read back what was said.
+
+## What does it show while it works?
+
+What it is doing, as it happens: sending your question, searching the help articles, then writing an
+answer from the sections it found. The answer appears once its sources have been checked, and
+never before — so you are never shown words it could not back up.
+
+## What if I stop it, or it cannot answer?
+
+You can stop an answer at any time. Your question stays in the conversation, and **Try again**
+answers it.
+
+If the assistant is unavailable, or the connection drops, it says so. A question that reached the
+platform is kept, and Try again answers it; a question that never arrived is shown as not sent, and
+Try again sends it.
+
+## How does a conversation get its name?
+
+From the first words of your first question in it. Nothing the assistant writes, and nothing it
+looks up, ever becomes a conversation's name.
+
 ## How does it find investigators for me?
 
-It turns your request into search requirements — place, distance, specialty, languages, the weekly
+This is coming to the app. When it does: it turns your request into search requirements — place, distance, specialty, languages, the weekly
 hours you need — and searches live investigator data with them, with your permissions. Only
 verified investigators who are accepting work can appear. It then tells you which of your
 requirements each one met, and which of the specialties you asked for they do not offer.
@@ -95,7 +132,9 @@ Only the guidance written for you. As a customer, that is the customer guidance 
 policies. An investigator's assistant answers from investigator guidance, and staff procedures are
 never used to answer anyone but staff, however a question is worded.
 
-If you have switched to acting as one role, the assistant answers as that role only.
+If you have switched to acting as one role, the assistant answers as that role only. An account
+with no role yet is answered from the public policies alone, and the assistant says where to add a
+role.
 
 ## Where do the sources in an answer come from?
 
@@ -119,9 +158,10 @@ investigation specialties, so the AI service can turn it into search requirement
 data and governs how they may use it. Where this answer and the privacy policy differ, the privacy
 policy is correct.
 
-The platform keeps a record that a question was answered and which pages were used, or, for a
-search, which kinds of requirements were used and how many investigators were found. It does not
-keep the question, the answer, the places or the results in that record.
+Your questions and the assistant's answers are kept in your conversation, which only you can open,
+until you delete it. Separately, the platform keeps a record that a question was answered and which
+pages were used, or, for a search, which kinds of requirements were used and how many investigators
+were found. That record does not contain the question, the answer, the places or the results.
 
 Do not include personal details in a question about how the platform works. The assistant does not
 need them to explain a rule.
@@ -158,18 +198,22 @@ to another workspace, you see that workspace's conversations and not these.
 
 ## Can I come back to a conversation later?
 
-Yes. Conversations are kept, and you can reopen one, rename it, archive it to tidy your list, or
-bring an archived one back. When you return, the assistant works from what is true now — the state
-of your missions and quotes today — rather than from what it told you last time.
+Yes. If you open the assistant within about half an hour of your last question, it continues that
+conversation; after that, it starts a new one. **New conversation** starts a new one at any time.
+
+Earlier conversations are kept. A list to reopen, rename, archive and search them is on its way to
+the app. When you return to a conversation, the assistant works from what is true now — the state of
+your missions and quotes today — rather than from what it told you last time.
 
 ## What happens when I delete a conversation?
 
-Everything you and the assistant said in it is erased at once, and cannot be recovered. What
+Deleting arrives in the app with the list of conversations. When you delete one, everything you and the assistant said in it is erased at once, and cannot be recovered. What
 remains is only a record that a conversation existed and when you deleted it, with no title and no
 content.
 
 ## Can I search my conversations?
 
-Yes, by words in a conversation's title or in anything said in it. Search works in English, Russian
-and Armenian, and matches words as you type them.
+Not in the app yet — searching arrives with the list of conversations. It will find a conversation by
+words in its name or in anything said in it, in English, Russian and Armenian, matching words as you
+type them.
 

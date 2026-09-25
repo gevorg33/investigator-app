@@ -10,7 +10,7 @@ import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
 import type { KnowledgeLocale } from '../../database/schema';
 import { RateLimitService } from '../auth/rate-limit.service';
-import { knowledgeReader } from '../knowledge/knowledge-reader';
+import { knowledgeReader, type KnowledgeReader } from '../knowledge/knowledge-reader';
 import {
   KnowledgeRetrievalService,
   type RetrievedChunk,
@@ -37,6 +37,25 @@ export interface KnowledgeAnswer {
   locale: KnowledgeLocale;
   /** True when a cited source is in English because it has no version in `locale`. */
   fallback: boolean;
+}
+
+/** A stage of answering, as it starts: finding sources, then writing from however many were found. */
+export type AnswerStep = { step: 'searching' } | { step: 'writing'; sources: number };
+
+export interface AnswerOptions {
+  /** Told as each stage starts, so a person sees what is happening rather than a spinner (T-056). */
+  onStep?: (step: AnswerStep) => void;
+  /** Abandons the answer; whatever is under way rejects with the signal's reason. */
+  signal?: AbortSignal;
+}
+
+const ADMITTED: unique symbol = Symbol('admitted');
+
+/** A question {@link KnowledgeAnswerService.admit} let through: only it makes one. */
+export interface Admitted {
+  locale: KnowledgeLocale;
+  reader: KnowledgeReader;
+  readonly [ADMITTED]: true;
 }
 
 /**
@@ -68,7 +87,22 @@ export class KnowledgeAnswerService {
     actor: Actor,
     input: { question: string; locale?: KnowledgeLocale | undefined },
     req: RequestContext,
+    options: AnswerOptions = {},
   ): Promise<KnowledgeAnswer> {
+    const admitted = await this.admit(actor, input.locale, req);
+    return this.respond(actor, input.question, admitted, req, options);
+  }
+
+  /**
+   * Everything that can refuse a question before any work is done on it: a live account, a
+   * workspace, a configured model, and the caller's allowance. Separate from {@link respond} so a
+   * conversation (T-056) can be refused before it records the question it would not answer.
+   */
+  async admit(
+    actor: Actor,
+    locale: KnowledgeLocale | undefined,
+    req: RequestContext,
+  ): Promise<Admitted> {
     const c: AuthzContext = {
       action: 'assistant.knowledge_answer',
       resourceType: 'knowledge',
@@ -81,15 +115,31 @@ export class KnowledgeAnswerService {
     // Before the rate limit: an unconfigured assistant should not spend anyone's allowance.
     if (this.model === null) throw new AppError(ErrorCode.SERVICE_UNAVAILABLE);
     await this.limits.consume('assistantQuestionPerAccount', actor.userId);
+    return {
+      locale: locale ?? (await savedLocale(this.db, actor.userId)),
+      reader: knowledgeReader(actor, context!),
+      [ADMITTED]: true,
+    };
+  }
 
-    const locale = input.locale ?? (await savedLocale(this.db, actor.userId));
-    const reader = knowledgeReader(actor, context!);
+  /** The answer to a question {@link admit} let through, reporting each stage as it starts. */
+  async respond(
+    actor: Actor,
+    question: string,
+    { locale, reader }: Admitted,
+    req: RequestContext,
+    { onStep, signal }: AnswerOptions = {},
+  ): Promise<KnowledgeAnswer> {
+    const model = this.model!;
     try {
-      const found = await this.retrieval.retrieve(reader, input.question, locale);
+      onStep?.({ step: 'searching' });
+      const found = await this.retrieval.retrieve(reader, question, locale);
       if (found.chunks.length === 0) return await this.noAnswer(actor, locale, 'no_sources', req);
 
-      const prompt = knowledgePrompt(input.question, found.chunks, locale);
-      const reply = parseAnswer(await this.model.complete(prompt), prompt.sources);
+      signal?.throwIfAborted();
+      onStep?.({ step: 'writing', sources: found.chunks.length });
+      const prompt = knowledgePrompt(question, found.chunks, locale);
+      const reply = parseAnswer(await model.complete(prompt, signal), prompt.sources);
       if (reply === null) return await this.noAnswer(actor, locale, 'unsupported', req);
 
       await this.record(actor, `answered: ${reply.cited.map(ref).join(', ')}`, req);

@@ -28,6 +28,17 @@ describe('the OpenAI chat model (T-017)', () => {
       ],
       response_format: { type: 'json_object' },
     });
+    expect(init?.signal).toBeUndefined();
+  });
+
+  it('abandons the call when the signal it was given is aborted (T-056)', async () => {
+    const http = reply(200, { choices: [{ message: { content: '{}' } }] });
+    const stop = new AbortController();
+    await new OpenAiChatModel('sk-test', 'm', http).complete(
+      { system: 's', user: 'u' },
+      stop.signal,
+    );
+    expect(http.mock.calls[0]![1]?.signal).toBe(stop.signal);
   });
 
   it('reports a failure by its status alone, as a provider failure', async () => {
