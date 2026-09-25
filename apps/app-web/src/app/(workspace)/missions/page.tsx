@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { actsAsInvestigator, MissionsViews } from '@/components/discovery/missions-views';
 import { EmptyState } from '@/components/empty-state';
 import { MissionBrowse } from '@/components/missions/mission-browse';
+import { OwnMissions } from '@/components/missions/own-missions';
 import type { SearchParams } from '@/components/missions/browse-query';
 import { Page } from '@/components/page';
 import { getLocale, getT } from '@/i18n/server';
@@ -14,8 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * Missions. An investigator — unless they chose to see the platform as a customer — gets the open
- * missions they could quote on (T-054). A customer gets two views: their own missions, listed here
- * when the mission screens arrive (T-119; until then the empty state says what will appear), and
+ * missions they could quote on (T-054). Everyone else gets two views: their own missions (T-119 —
+ * a customer's, with a way to start one; anyone without the role is told what will appear), and
  * finding investigators (T-120).
  */
 export default async function MissionsPage({
@@ -36,11 +37,15 @@ export default async function MissionsPage({
       ) : (
         <>
           <MissionsViews current="mine" />
-          <EmptyState
-            icon={BriefcaseBusiness}
-            title={t('missions.empty.title')}
-            body={t('missions.empty.body')}
-          />
+          {account !== null && account.roles.includes('CUSTOMER') ? (
+            <OwnMissions locale={locale} now={new Date()} />
+          ) : (
+            <EmptyState
+              icon={BriefcaseBusiness}
+              title={t('missions.empty.title')}
+              body={t('missions.empty.body')}
+            />
+          )}
         </>
       )}
     </Page>

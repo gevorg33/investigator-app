@@ -2655,6 +2655,9 @@ and prioritises the queue; it never publishes. Per plan.md §10 and
 - [ ] Moderator can open mission attachments; **every attachment access is audited**
 - [ ] AI classification shown as an input, clearly labelled, never pre-selecting the outcome
 - [ ] Rejection and change-request reasons are shown to the customer and are actionable
+      — **the customer side exists (T-119)**: `review.reason` on the customer's mission is
+      `mission_status_history.reason` of the moderator's move, shown **as written**. Label the field as
+      customer-facing in the console, and keep any internal note elsewhere (`missions.md`)
 - [ ] Requires the `mission_moderation` staff scope — not `isStaff` (`authorization`)
 - [ ] A moderator cannot decide a mission they are party to
 - [ ] Gate configurable per category and risk band, defaulting to **closed** (everything reviewed)
@@ -3750,7 +3753,7 @@ already re-tokenised.
 *Found along the way.* (1) `pattern` does nothing on a `<textarea>`, so a reason of spaces would
 have reached the API; the form refuses it itself. (2) A blocked tab would still have fetched a link —
 an audited opening of a document nobody saw. (3) Nothing grants STAFF or a staff scope except SQL:
-filed as T-147 (approval — authorization); the dev-only SQL is in `admin-web.md`.
+filed as T-152 (approval — authorization); the dev-only SQL is in `admin-web.md`.
 
 *Negative controls* (each seen to fail, then restored): the opened tab able to reach back; a link
 asked for when the tab was blocked; a reason of spaces sent; a decision offered on one's own
@@ -3766,7 +3769,7 @@ focus, and every state.
 
 *Docs.* `admin-web.md` (sign-in, shell, verification, dev cookie note, granting access), 
 `verification.md` (the console), staff article `kb-staff-verification-review` v4 (ru/hy drafts in
-step), component inventory, T-147.
+step), component inventory, T-152.
 
 ---
 
@@ -5768,7 +5771,7 @@ pnpm --filter api test disputes
 ---
 
 ### T-119 — Guided mission intake (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26 (browser pass outstanding, below)
 - **Priority:** P1
 - **Depends on:** T-091, T-128, T-010
 - **Risk:** MEDIUM
@@ -5785,13 +5788,49 @@ it may draft the brief, and the customer confirms it.
 
 **Acceptance criteria**
 - [ ] Completable on a 375px phone in one hand; no investigation vocabulary required
-- [ ] Screening outcomes (rejected, needs changes) explained in plain language, with what to fix
-- [ ] Playwright flow; accessibility checks; component-discovery log
+- [x] Screening outcomes (rejected, needs changes) explained in plain language, with what to fix
+- [ ] Playwright flow; accessibility checks; component-discovery log — **only the discovery log is done** (component inventory, `app-web.md`)
 
 **Validation**
 ```bash
 pnpm --filter app-web test mission-intake
 ```
+
+**DONE — 2026-09-26 — committed at the owner's request before the browser pass.** The first and
+third criteria stay unticked: neither was checked in a browser.
+
+*What exists.* **API** (owner's choice, asked): `review` on the customer's own mission —
+`{ outcome: REJECTED | CHANGES_REQUESTED, reason, decidedAt }` from the mission's latest move, only
+when a STAFF move out of `UNDER_REVIEW`; never screening's SYSTEM move (`missions.md`). **app-web:** a
+customer's `/missions` (their missions; "Changes requested" on a returned draft), `/missions/new` and
+`/missions/[id]`: nine plain screens (need, kind, where, when, budget, languages, who, why, brief),
+one per screen at every width, saving themselves — serially, versioned, 800 ms after typing, and
+before every move; opening creates nothing. The brief ends with the lawful-purpose tick, which is
+only ever the customer's. A returned draft carries the reviewer's note on every screen; a rejection
+shows the reason and "Start a new mission from this one". `@shadcn/progress`, `radio-group`,
+`checkbox` adopted and re-tokenised.
+
+*Found along the way.* (1) Three draft rules exist only as CHECK constraints — inverted budget,
+inverted dates, empty text — and answer 500: the intake never sends them; filed as T-153. (2) The
+first cut of "hold an inverted pair" still sent the last valid keystroke ("90" while typing "900"
+against a maximum of 500); a held pair now withdraws its queued keys. (3) Cancelling has an API and a
+KB answer but no screen: T-154. (4) The KB article promised attachments and per-category questions
+that do not exist; corrected. (5) T-051 is told the rejection reason is customer-facing.
+
+*Negative controls* (each seen to fail, then restored): API — an older outcome treated as standing;
+a draft edit dropping the review; screening's reason passed on. Web — a held pair still sending what
+was queued; an inverted budget sent; emptied text sent as ""; saves racing; Continue with an answer
+missing; sending without the tick; a returned draft hiding the note; a draft created on opening; the
+tick copied into a revision.
+
+*Verified.* API `test:coverage` 2,423 passing, 100%; app-web 495 passing, 100%; i18n parity;
+lint; typecheck; build (with `env -u NODE_ENV`, T-141); budget — intake routes 181 kB. In the
+browser: only the signed-out redirect (`/missions/new` → `/sign-in?next=…`). **Not done:** the
+375/1280 pass through the intake, the returned and rejected views, and axe checks — the agent cannot
+sign in, and the dev account has no Customer role. Dev data has one taxonomy node.
+
+*Docs.* `app-web.md`, `missions.md`, KB `kb-customer-creating-a-mission` v2 (ru/hy drafts in step),
+component inventory, glossary terms used as written (задание, գործ).
 
 ---
 
@@ -6730,53 +6769,6 @@ node -v && pnpm test:coverage
 
 ---
 
-### T-147 — Staff access: grant and revoke STAFF and staff scopes
-- **Status:** TODO
-- **Priority:** P2
-- **Depends on:** T-070
-- **Risk:** HIGH
-- **Human approval required:** Yes — it is authorization: who may review, moderate, pay out
-- **Owner agent:** backend-domain + admin-web
-- **Affected:** apps/api/src/modules/** (a staff-access module), apps/admin-web/**, docs/operations/**
-
-**Description**
-From T-070. The verification console works for anyone holding `STAFF` and the `VERIFICATION` scope —
-and nothing grants either except a SQL insert as the database owner. `user_staff_scopes` already
-records who granted a scope and keeps revoked rows (`authorization.md`); what is missing is the way
-to write them: who may grant (a bootstrap for the first administrator, then a scope for granting),
-with a reason, audited, revocable, and never self-granted.
-
-**Acceptance criteria**
-- [ ] The rule for who may grant and revoke, decided with the owner and written into `authorization.md`
-- [ ] Grants and revocations through the API, audited with who and why; no one grants themselves
-- [ ] A bootstrap for the first staff account that is not a standing back door
-- [ ] The console screen for it, if the owner wants one
-
-**Validation**
-```bash
-pnpm --filter api test staff-access
-```
-
----
-
-## Backlog
-
-Captured, not yet scheduled. Move into a phase when a dependency lands.
-
-- Agencies' own off-platform clients and cases — later, under their own ADR; lawful-use screening
-  must cover them too (plan.md §30, owner decision 2026-09-19)
-- AI gateway and tool registry (Phase 7) — see T-017, T-018 (tool contract and runner shipped), T-095
-- Prometheus/Grafana dashboards and alert runbooks (Phase 8)
-- Encrypted backups with a tested restore drill (Phase 8)
-
----
-
-## Done
-
-_(nothing yet)_
-
----
-
 ### T-147 — Service areas by place search or map
 - **Status:** TODO
 - **Priority:** P2
@@ -6914,3 +6906,105 @@ back (Home, and the list it came from where known).
 ```bash
 pnpm --filter app-web test routes
 ```
+
+---
+
+### T-152 — Staff access: grant and revoke STAFF and staff scopes
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-070
+- **Risk:** HIGH
+- **Human approval required:** Yes — it is authorization: who may review, moderate, pay out
+- **Owner agent:** backend-domain + admin-web
+- **Affected:** apps/api/src/modules/** (a staff-access module), apps/admin-web/**, docs/operations/**
+
+**Description**
+From T-070. The verification console works for anyone holding `STAFF` and the `VERIFICATION` scope —
+and nothing grants either except a SQL insert as the database owner. `user_staff_scopes` already
+records who granted a scope and keeps revoked rows (`authorization.md`); what is missing is the way
+to write them: who may grant (a bootstrap for the first administrator, then a scope for granting),
+with a reason, audited, revocable, and never self-granted.
+
+**Acceptance criteria**
+- [ ] The rule for who may grant and revoke, decided with the owner and written into `authorization.md`
+- [ ] Grants and revocations through the API, audited with who and why; no one grants themselves
+- [ ] A bootstrap for the first staff account that is not a standing back door
+- [ ] The console screen for it, if the owner wants one
+
+**Validation**
+```bash
+pnpm --filter api test staff-access
+```
+
+---
+
+### T-153 — Draft saves that break a CHECK answer 500, not a field error
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-010
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/missions/**
+
+**Description**
+Found in T-119. `PATCH /missions/me/:id` (and `POST /missions/me`) passes three rules only to the
+database: a budget minimum above its maximum (`missions_budget_range`), a start after the deadline
+(`missions_timeline_order`) and an empty text field (`missions_text_lengths`). Each reaches the
+client as a 500 with a reference, not as the field error it is. The intake never sends them (it
+holds an inverted pair and sends an emptied field as `null`), but any other client, and the assistant
+later, will. Map them as `service-areas.service.ts` maps its shape violations, or validate first.
+
+**Acceptance criteria**
+- [ ] Each of the three answers 422 `VALIDATION_FAILED` naming the field, with a translated `messageKey`
+- [ ] The CHECK constraints stay, as the last line
+
+**Validation**
+```bash
+pnpm --filter api test missions
+```
+
+---
+
+### T-154 — Cancel a mission from the app
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-119
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/missions/**
+
+**Description**
+Found in T-119. `POST /missions/me/:id/cancel` exists and the knowledge base says a customer can
+cancel before accepting a quote, but no screen offers it: a draft can only be left, and a mission
+under review cannot be withdrawn. Add it to a draft and to a sent mission the transition map lets the
+customer cancel, confirmed in an `AlertDialog` that says what closes. A `QUOTED` mission closes its
+open quotes — decide with T-121 whether that belongs here.
+
+**Acceptance criteria**
+- [ ] A draft and a mission under review can be cancelled, after a confirmation; the list says so
+- [ ] A 409 (it moved on meanwhile) says so and reloads
+
+**Validation**
+```bash
+pnpm --filter app-web test missions
+```
+
+---
+
+## Backlog
+
+Captured, not yet scheduled. Move into a phase when a dependency lands.
+
+- Agencies' own off-platform clients and cases — later, under their own ADR; lawful-use screening
+  must cover them too (plan.md §30, owner decision 2026-09-19)
+- AI gateway and tool registry (Phase 7) — see T-017, T-018 (tool contract and runner shipped), T-095
+- Prometheus/Grafana dashboards and alert runbooks (Phase 8)
+- Encrypted backups with a tested restore drill (Phase 8)
+
+---
+
+## Done
+
+_(nothing yet)_

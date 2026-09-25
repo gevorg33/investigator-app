@@ -4,6 +4,7 @@ import type {
   LegalDocument,
   MissionListing,
   OwnInvestigatorProfile,
+  OwnMission,
   OwnServiceArea,
   SessionSummary,
   VerificationApplication,
@@ -51,6 +52,32 @@ export const session = (over: Partial<SessionSummary> = {}): SessionSummary => (
 });
 
 /** A published mission as the browse lists it (T-054). */
+/** One of the customer's own missions, as `GET /missions/me/:id` returns it: a complete draft. */
+export const ownMission = (over: Partial<OwnMission> = {}): OwnMission => ({
+  id: 'b7d3f0c2-5a61-4c1e-9f0a-3e2d1c4b5a69',
+  status: 'DRAFT',
+  version: 3,
+  taxonomyNodeId: '5f51f336-5c7a-442a-909f-8d54d5abf81b',
+  title: 'Check a supplier before we sign',
+  description: 'Who owns it, and whether it has been in court.',
+  countryCode: 'AM',
+  locationLabel: 'Yerevan',
+  startBy: null,
+  deadline: '2026-10-16',
+  budgetMinMinor: 20_000_000,
+  budgetMaxMinor: 45_000_000,
+  currency: 'AMD',
+  languages: ['hy', 'en'],
+  purpose: 'We are about to sign a distribution contract.',
+  subjectRelationship: 'BUSINESS_RELATIONSHIP',
+  protectiveOrderDeclared: null,
+  submittedAt: null,
+  createdAt: '2026-09-24T09:00:00.000Z',
+  updatedAt: '2026-09-25T08:00:00.000Z',
+  review: null,
+  ...over,
+});
+
 export const listing = (over: Partial<MissionListing> = {}): MissionListing => ({
   id: 'm-1',
   title: 'Supplier background before a distribution deal',

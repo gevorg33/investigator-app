@@ -248,11 +248,12 @@ describe('the application routes', () => {
   it('renders every page in the reader’s chosen language', async () => {
     request.cookies.set('locale', 'hy');
     api.on('GET /me', 200, account());
+    api.on('GET /missions/me', 200, []);
     render(await resolveServer(await MissionsPage({ searchParams: Promise.resolve({}) })));
     expect(
       screen.getByRole('heading', { level: 1, name: catalogs.hy.nav.missions }),
     ).toBeInTheDocument();
-    expect(screen.getByText(catalogs.hy.missions.empty.body)).toBeInTheDocument();
+    expect(screen.getByText(catalogs.hy.missions.own.empty.body)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: catalogs.hy.missions.views.find })).toBeInTheDocument();
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
   });
@@ -267,13 +268,25 @@ describe('the application routes', () => {
       );
     };
 
-    it('says what will appear there to a customer', async () => {
+    it('lists a customer’s own missions, with a way to start one (T-119)', async () => {
+      api.on('GET /missions/me', 200, []);
       await missions({ roles: ['CUSTOMER'] });
       expect(screen.getByRole('heading', { level: 1, name: 'Missions' })).toBeInTheDocument();
       expect(
         screen.getByRole('heading', { level: 2, name: 'No missions yet' }),
       ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'New mission' })).toHaveAttribute(
+        'href',
+        '/missions/new',
+      );
       expect((await missionsMeta()).title).toBe('Missions');
+      expect(api.calls.map((c) => c.path)).toEqual(['/me', '/missions/me']);
+    });
+
+    it('says what will appear there to someone who is neither customer nor investigator', async () => {
+      await missions({ roles: ['STAFF'] });
+      expect(screen.getByText(catalogs.en.missions.empty.body)).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'New mission' })).toBeNull();
       expect(api.calls.map((c) => c.path)).toEqual(['/me']);
     });
 
@@ -290,11 +303,12 @@ describe('the application routes', () => {
     });
 
     it('keeps to the customer’s view for someone showing the platform as a customer', async () => {
+      api.on('GET /missions/me', 200, []);
       await missions({ roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: 'CUSTOMER' });
       expect(
         screen.getByRole('heading', { level: 2, name: 'No missions yet' }),
       ).toBeInTheDocument();
-      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+      expect(api.calls.map((c) => c.path)).toEqual(['/me', '/missions/me']);
     });
   });
 

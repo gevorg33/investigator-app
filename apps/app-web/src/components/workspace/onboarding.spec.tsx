@@ -186,10 +186,12 @@ describe('the create-an-agency page', () => {
     await page();
     expect(screen.getByRole('heading', { level: 1, name: en.title })).toBeVisible();
     expect(screen.getByText(en.intro)).toBeVisible();
-    expect(screen.getByRole('combobox', { name: en.country })).toContainElement(
-      screen.getByRole('option', { name: 'Armenia' }),
-    );
-    expect(screen.getByRole('option', { name: 'USD' })).toBeInTheDocument();
+    // Each option found in its own select by value: asking every one of the page's ~1,000 options
+    // for its role and name took this test past CI's timeout under coverage.
+    const country = screen.getByRole('combobox', { name: en.country });
+    expect(country.querySelector('option[value="AM"]')).toHaveTextContent('Armenia');
+    const currency = screen.getByRole('combobox', { name: en.currency });
+    expect(currency.querySelector('option[value="USD"]')).toHaveTextContent('USD');
     expect(screen.getByRole('combobox', { name: en.timezone })).toHaveValue('Asia/Yerevan');
     expect((await generateMetadata()).title).toBe(en.title);
   });

@@ -123,6 +123,18 @@ article is explicit that a customer is told the policy position, never the detec
 projection simply has no such fields, and a test asserts the serialised response contains
 neither a flag id nor an outcome.
 
+**What a moderator decided** is on the mission as `review` (T-119): `{ outcome: 'REJECTED' |
+'CHANGES_REQUESTED', reason, decidedAt }`, or `null`. It is read from `mission_status_history` —
+the mission's **latest** move only, and only when it is a STAFF move out of `UNDER_REVIEW` to
+`REJECTED` or `DRAFT`. So it disappears once the customer resubmits or cancels, stays while a
+returned draft is edited (an edit is not a move), and can never be screening's own move into
+review, whose reason (`PRIORITY_REVIEW:HIGH`) is SYSTEM-written and internal. `GET /missions/me`,
+`GET /missions/me/:id` and `PATCH` return it; creating, submitting and cancelling are themselves the
+latest move, so they return `null`.
+
+**The reason a moderator writes on a rejection or a return is shown to the customer as written.**
+T-051 must present that field as customer-facing, and keep any internal note elsewhere.
+
 ## The lawful-purpose confirmation
 
 Required before submission, recorded with its timestamp, and **cleared when a mission returns
