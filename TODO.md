@@ -3138,7 +3138,14 @@ pnpm --filter app-web test assistant-confirmation
 ### T-059 — Structured result and citation rendering
 - **Status:** DONE — 2026-09-25
 - **Priority:** P1
-- **Depends on:** T-018, T-056
+- **Depends on:** T-018, T-056, T-048, and a task that routes discovery through assistant turns
+  (not yet filed — it needs an owner decision: T-056 kept turns to knowledge answers)
+- **Blocked (2026-09-25, owner decision):** only two of the seven criteria have data behind them.
+  Discovery results never reach a conversation — turns answer knowledge questions only, and a stored
+  `TOOL_RESULT` points at the result store T-048 builds; nothing yet produces mission, quote,
+  assignment or payment references, or AI-drafted text. Building the renderers first would be UI
+  against data that does not exist (CLAUDE.md #8). Linked, openable citations and the "not covered"
+  state are buildable now and can go first when this resumes.
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
@@ -5737,6 +5744,8 @@ Discovery filters per plan.md §9: a map and list view on desktop, and a list wi
 demand on phones. The public investigator profile page shows verification, specialties, areas,
 languages and reviews (T-037), and the agency once T-087 exists. Matches (T-107) reuse the same
 card.
+`PublicProfileCard` (T-123) already renders the public projection, and is what the investigator's
+own preview shows — reuse it for the profile page.
 
 **Acceptance criteria**
 - [ ] Filters are the typed, closed set the API accepts; an empty result suggests widening, not a dead end
@@ -5804,7 +5813,7 @@ pnpm --filter app-web test report-review
 ---
 
 ### T-123 — Investigator profile, service areas and verification (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P1
 - **Depends on:** T-091, T-128, T-013
 - **Risk:** MEDIUM
@@ -5818,13 +5827,37 @@ phones), languages, availability, and the verification application. The applicat
 documents through the private flow and shows its status and the decision reasons (T-013).
 
 **Acceptance criteria**
-- [ ] The profile preview is exactly the public projection customers see
-- [ ] Verification history shows each decision's reason, never the reviewer
+- [x] The profile preview is exactly the public projection customers see
+- [x] Verification history shows each decision's reason, never the reviewer
 
 **Validation**
 ```bash
 pnpm --filter app-web test investigator-profile verification
 ```
+
+**DONE — 2026-09-25**
+
+*App.* `/account/investigator`: a status card (checklist linking to each section, verification
+badge, publish and accepting switches, "Preview as a customer" in a drawer), then one form per
+section — about you, languages with levels, specialties (searchable taxonomy), availability windows,
+service areas, verification (history with reasons; documents uploaded through the private flow,
+then the application). Linked from Account's roles section and from Missions' "cannot quote yet"
+state. `@shadcn/switch` adopted and re-tokenised; language, country and currency lists come from
+`Intl` on the server (`lib/codes.ts`), not a list in the codebase.
+
+*API.* `GET /profiles/investigator/me/preview` (the public projection of the own row);
+`verificationStatus` on the own profile; `displayName` editable through the profile PATCH until
+verification — refused as `LOCKED` while PENDING or VERIFIED (owner decision), audited as
+`profile.display_name_changed`. Documented in `docs/architecture/profiles.md`.
+
+*Scope, decided with the owner.* Areas are "use my location" + radius, not a map or place search:
+no provider is chosen and either sends locations to a third party (T-147). The upload was not
+driven end to end — Cloudinary is not configured locally (ACTIONS #4); the page's failure path was.
+Changing a verified name is T-148.
+
+*Found in verification and fixed:* language rows overflowed a phone; availability's remove button
+sat alone on a row; the uploading state stuck after a failed upload; a selected specialty's
+accessible name read "Due diligenceselected" (caught by the spec).
 
 ---
 
@@ -6626,3 +6659,59 @@ Captured, not yet scheduled. Move into a phase when a dependency lands.
 ## Done
 
 _(nothing yet)_
+
+---
+
+### T-147 — Service areas by place search or map
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-123
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — choosing a map or geocoding provider sends locations to a third party
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/investigator/**, possibly apps/api/src/modules/service-areas/**
+
+**Description**
+From T-123. An investigator can add a service area only from where their device is, with a
+5–100 km radius. The API already takes any centre, radii of 5–300 km and drawn polygons
+(`service-areas.md`), but the app offers none of that: no map or place-search provider has been
+chosen, and either would send typed places or map views to a third party. Owner decides the
+provider (and its privacy terms); then add "search a place" + radius on phones and drawing on a
+map from `md`, keeping the centre rounded on the device.
+
+**Acceptance criteria**
+- [ ] An area can be added for a place the investigator is not at
+- [ ] Nothing more precise than the stored ~1 km centre reaches the provider or the API
+- [ ] The provider is recorded in the privacy documentation before it ships
+
+**Validation**
+```bash
+pnpm --filter app-web test investigator-profile
+```
+
+---
+
+### T-148 — Changing a verified investigator's name
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-123, T-070
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — changes a verification rule
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/profiles/**, apps/api/src/modules/verification/**
+
+**Description**
+From T-123. The display name is locked while verification is PENDING or VERIFIED, because the
+documents were checked against it; the page and the KB say "contact support". There is no support
+path: a legal name change, or a typo found after approval, cannot be fixed. Decide what a change
+requires (a new application with the new name's document? a staff edit with a reason?), and what
+happens to VERIFIED meanwhile.
+
+**Acceptance criteria**
+- [ ] A verified investigator's name can be changed through a documented, audited path
+- [ ] The name customers see never differs from the one last verified without that being visible to staff
+
+**Validation**
+```bash
+pnpm --filter api test profiles verification
+```

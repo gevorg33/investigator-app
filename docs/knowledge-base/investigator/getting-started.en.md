@@ -4,13 +4,14 @@ title: Working as an investigator on the platform
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/profiles
+  - apps/app-web/src/components/investigator
 tags: [getting-started, onboarding, roles, overview]
 ---
 
@@ -38,6 +39,9 @@ you as to everyone else.
 
 A completed professional profile, verification documents submitted and approved, at least
 one service area defined, and your specialties, services and languages declared.
+
+All of it is on one page: in Account, open **Your investigator profile**. Its checklist shows
+what is still missing and links to where each part is done.
 
 Until verification is approved, you will not appear in customer discovery and cannot quote.
 This is not a delay to work around — unverified investigators are excluded from results by

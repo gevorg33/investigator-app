@@ -199,6 +199,43 @@ pinned, as admin-web does.
 **Tests** stub what jsdom lacks and these components use (`vitest.setup.ts`: `matchMedia`,
 `scrollIntoView`, `setPointerCapture`, `ResizeObserver`).
 
+## Investigator profile (T-123)
+
+`/account/investigator` is everything that decides whether customers find an investigator and
+whether they see open missions, on one page. Someone without the role is sent to `/account#roles`.
+Account's roles section links here; the Missions page's "cannot quote yet" state does too. API:
+`profiles.md`, `service-areas.md`, `verification.md`, `media.md`.
+
+- **Status first** (`StatusCard`): a checklist — published, verified, accepting, a language, a
+  specialty, an area — each item a link to its section, the verification status as a badge, and
+  the two switches that are the investigator's (`Switch`, saved on flip). "Preview as a customer"
+  opens a `Drawer` with `PublicProfileCard` fed by `GET /profiles/investigator/me/preview`: the API's
+  public projection, not the own profile with fields hidden in the browser.
+- **One form per section**, each saved alone: about you (`DetailsForm`), languages, specialties
+  (the filter sheet's searchable `Command` list), availability (rows of day + from/to), areas,
+  verification. Lists are sent whole — the API replaces them.
+- **The name** is read-only, with the reason, while verification is `PENDING` or `VERIFIED`, and
+  not sent at all then; the API refuses the change anyway (`profiles.md`).
+- **Service areas without a map.** No map or place-search provider is chosen, and either sends
+  locations to a third party, so an area is "Use my location" + a radius chip (5–100 km) + a name,
+  country and city. The position is rounded to two decimals **on the device** before it is sent,
+  matching what the database keeps. Denied and failed locations each say what to do. Place
+  search and drawing on a map wait for a provider decision (T-147).
+- **Verification** uploads each document through the private flow (`POST /media/uploads` → the
+  signed form straight to storage → `…/complete`), then applies with the ids. Type, size and count
+  are checked before anything is sent; the uploading row shows which file is in flight and is reset
+  on failure. History shows outcome, dates and reason — the API never sends the reviewer.
+- **Reference lists come from `Intl`**, on the server, passed down as props so hydration agrees:
+  currencies (`Intl.supportedValuesOf`), and language and country names (`lib/codes.ts` asks
+  `Intl.DisplayNames` for every two-letter code and drops groupings such as EU and UN). No ISO list
+  is kept in the codebase.
+
+**Bundle:** 184.9 kB initial JS (vaul, cmdk and the Radix switch), within the 250 kB budget.
+
+**Not verified end to end:** the upload itself, because Cloudinary is not configured locally
+(`ACTIONS-FOR-ME.md` #4) — `POST /media/uploads` answers 500 there, which the page reports with its
+reference. The rest was driven in the browser at 375px against the real API.
+
 ## The assistant (T-056)
 
 `src/components/assistant/`. Mounted by the workspace layout above every page

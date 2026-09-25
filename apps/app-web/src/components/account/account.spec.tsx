@@ -211,6 +211,21 @@ describe('roles', () => {
     expect(screen.getByRole('button', { pressed: true })).toHaveTextContent(pressed);
     expect(api.calls).toEqual([]);
   });
+
+  it('leads an investigator to their profile, and nobody else', async () => {
+    api.on('GET /legal/required?for=CUSTOMER&locale=en', 204);
+    api.on('GET /legal/required?for=INVESTIGATOR&locale=en', 204);
+    const link = () =>
+      screen.queryByRole('link', { name: new RegExp(catalogs.en.investigator.link) });
+    const { unmount } = await show(
+      RolesSection({ account: account({ roles: ['INVESTIGATOR'] }), locale: 'en' }),
+    );
+    expect(link()).toHaveAttribute('href', '/account/investigator');
+    expect(link()).toHaveTextContent(catalogs.en.investigator.link_body);
+    unmount();
+    await show(RolesSection({ account: account({ roles: ['CUSTOMER'] }), locale: 'en' }));
+    expect(link()).toBeNull();
+  });
 });
 
 describe('documents to accept again', () => {

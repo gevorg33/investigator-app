@@ -5,7 +5,14 @@ import type {
   InvestigatorMatch,
 } from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
-import type { LegalDocument, MissionListing, SessionSummary } from '@/lib/api/types';
+import type {
+  LegalDocument,
+  MissionListing,
+  OwnInvestigatorProfile,
+  OwnServiceArea,
+  SessionSummary,
+  VerificationApplication,
+} from '@/lib/api/types';
 
 /** A published legal document, as `GET /legal/...` returns it. */
 export const legalDocument = (over: Partial<LegalDocument> = {}): LegalDocument => ({
@@ -116,6 +123,52 @@ export const aiReply = (over: Partial<AiMessage> = {}): AiMessage =>
 
 /** An empty page, as every list route returns one. */
 export const emptyPage = { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };
+
+/** The investigator's own profile, as `GET /profiles/investigator/me` returns it (T-123). */
+export const ownProfile = (over: Partial<OwnInvestigatorProfile> = {}): OwnInvestigatorProfile => ({
+  id: 'p-1',
+  displayName: 'Ani Petrosyan',
+  headline: 'Corporate due diligence in the Caucasus',
+  bio: 'Ten years of company checks.\nCourt and registry work.',
+  yearsExperience: 10,
+  pricingModel: 'HOURLY',
+  hourlyRateMinor: 2_500_000,
+  currency: 'AMD',
+  acceptingWork: true,
+  languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
+  specialtyNodeIds: ['5f51f336-5c7a-442a-909f-8d54d5abf81b'],
+  availability: [{ dayOfWeek: 0, startMinute: 540, endMinute: 1080 }],
+  contactPhone: '+37410000000',
+  visibility: 'PUBLISHED',
+  verificationStatus: 'VERIFIED',
+  ...over,
+});
+
+/** One of the investigator's areas, as `GET /service-areas/me` lists it (T-123). */
+export const serviceArea = (over: Partial<OwnServiceArea> = {}): OwnServiceArea => ({
+  id: 'a-1',
+  label: 'Yerevan',
+  kind: 'RADIUS',
+  countryCode: 'AM',
+  region: null,
+  city: 'Yerevan',
+  centre: { lon: 44.51, lat: 40.18 },
+  radiusKm: 15,
+  ...over,
+});
+
+/** A verification application, as `GET /verification/me/requests` lists it (T-013, T-123). */
+export const application = (
+  over: Partial<VerificationApplication> = {},
+): VerificationApplication => ({
+  id: 'v-1',
+  status: 'SUBMITTED',
+  submittedAt: '2026-09-20T08:00:00.000Z',
+  decidedAt: null,
+  documentIds: ['asset-1'],
+  decision: null,
+  ...over,
+});
 
 /** An investigator a search found, as discovery returns one (T-018): the public projection. */
 export const investigatorMatch = (over: Partial<InvestigatorMatch> = {}): InvestigatorMatch => ({

@@ -48,6 +48,11 @@ export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
   userId: string;
   contactPhone: string | null;
   visibility: InvestigatorRow['visibility'];
+  /**
+   * Where verification stands (T-013), so the owner can see what stands between them and being
+   * listed (T-123). Their own state, not a decision: who decided, and why, is the application's.
+   */
+  verificationStatus: InvestigatorRow['verificationStatus'];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +93,7 @@ export function toOwnInvestigatorProfile(
     userId: row.userId,
     contactPhone: row.contactPhone,
     visibility: row.visibility,
+    verificationStatus: row.verificationStatus,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

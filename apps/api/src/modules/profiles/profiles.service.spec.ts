@@ -9,8 +9,10 @@ import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import * as schema from '../../database/schema';
 import {
+  auditLogs,
   investigatorAvailability,
   investigatorLanguages,
+  investigatorProfiles,
   taxonomyNodes,
   users,
 } from '../../database/schema';
@@ -120,6 +122,133 @@ describe('profile persistence', () => {
     expect(saved.languages).toHaveLength(2);
     expect([...saved.specialtyNodeIds].sort()).toEqual([a, b].sort());
     expect(saved.availability).toEqual([{ dayOfWeek: 1, startMinute: 540, endMinute: 1020 }]);
+  });
+
+  it('tells the owner where verification stands, which the public never sees', async () => {
+    const actor = await investigator();
+    const own = await profiles.getMyInvestigatorProfile(actor, req);
+    expect(own.verificationStatus).toBe('UNVERIFIED');
+    const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+    expect(preview).not.toHaveProperty('verificationStatus');
+  });
+
+  it('previews a draft exactly as the public projection, owner-only fields left out', async () => {
+    const actor = await investigator();
+    const saved = await profiles.updateMyInvestigatorProfile(
+      actor,
+      {
+        headline: 'Records research',
+        contactPhone: '555-0107',
+        languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
+      },
+      req,
+    );
+    expect(saved.visibility).toBe('DRAFT');
+    const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+    // Exactly the public field set: the same function builds both, so they cannot drift.
+    expect(Object.keys(preview).sort()).toEqual(
+      [
+        'id',
+        'displayName',
+        'headline',
+        'bio',
+        'yearsExperience',
+        'pricingModel',
+        'hourlyRateMinor',
+        'currency',
+        'acceptingWork',
+        'languages',
+        'specialtyNodeIds',
+        'availability',
+      ].sort(),
+    );
+    expect(preview).toMatchObject({
+      headline: 'Records research',
+      displayName: 'Nairi',
+      languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
+    });
+    expect(JSON.stringify(preview)).not.toContain('555-0107');
+  });
+
+  it('has no preview for someone who is not an investigator', async () => {
+    const [user] = await ownerDb
+      .insert(users)
+      .values({ email: `persist-${randomUUID()}@example.test` })
+      .returning();
+    const customer = testActor({ userId: user!.id, roles: ['CUSTOMER'] });
+    await expect(profiles.previewMyInvestigatorProfile(customer, req)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
+  describe('the name customers see (T-123)', () => {
+    const setStatus = async (actor: Actor, status: 'VERIFIED' | 'PENDING') =>
+      ownerDb
+        .update(investigatorProfiles)
+        .set({
+          verificationStatus: status,
+          verifiedAt: status === 'VERIFIED' ? new Date() : null,
+        })
+        .where(eq(investigatorProfiles.userId, actor.userId));
+
+    it('is set on the account while unverified, trimmed, and its change audited on its own', async () => {
+      const actor = await investigator();
+      const saved = await profiles.updateMyInvestigatorProfile(
+        actor,
+        { displayName: '  Ani Petrosyan  ' },
+        req,
+      );
+      expect(saved.displayName).toBe('Ani Petrosyan');
+      const [account] = await ownerDb.select().from(users).where(eq(users.id, actor.userId));
+      expect(account!.displayName).toBe('Ani Petrosyan');
+      const events = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.actorId, actor.userId));
+      const renamed = events.filter((e) => e.action === 'profile.display_name_changed');
+      expect(renamed).toHaveLength(1);
+      // The names themselves are not copied into the log.
+      expect(JSON.stringify(renamed)).not.toContain('Petrosyan');
+    });
+
+    it.each([['VERIFIED' as const], ['PENDING' as const]])(
+      'is locked while %s — verification checked the documents against it',
+      async (status) => {
+        const actor = await investigator();
+        await setStatus(actor, status);
+        const e = await profiles
+          .updateMyInvestigatorProfile(actor, { displayName: 'Someone Else', headline: 'x' }, req)
+          .catch((x: unknown) => x);
+        expect(e).toMatchObject({
+          code: 'VALIDATION_FAILED',
+          details: [
+            {
+              field: 'displayName',
+              code: 'LOCKED',
+              messageKey: 'error.validation.display_name.locked',
+            },
+          ],
+        });
+        // Refused whole: nothing else in the request was saved either.
+        expect((await profiles.getMyInvestigatorProfile(actor, req)).headline).not.toBe('x');
+      },
+    );
+
+    it('lets a verified investigator save the rest of the form with their name unchanged', async () => {
+      const actor = await investigator();
+      await setStatus(actor, 'VERIFIED');
+      const saved = await profiles.updateMyInvestigatorProfile(
+        actor,
+        { displayName: 'Nairi', headline: 'Still me' },
+        req,
+      );
+      expect(saved).toMatchObject({ displayName: 'Nairi', headline: 'Still me' });
+      const events = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.actorId, actor.userId));
+      expect(events.some((e) => e.action === 'profile.display_name_changed')).toBe(false);
+    });
   });
 
   it('leaves untouched fields alone when the update names none of them', async () => {

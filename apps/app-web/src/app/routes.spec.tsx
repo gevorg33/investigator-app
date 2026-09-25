@@ -1,17 +1,27 @@
 import { catalogs } from '@investigator/i18n';
 import { colors } from '@investigator/ui-tokens';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import nextConfig from '../../next.config';
 import { I18nProvider } from '@/i18n/provider';
 import { api, apiError } from '@/test/api';
-import { account, legalDocument, session } from '@/test/fixtures';
+import {
+  account,
+  application,
+  legalDocument,
+  ownProfile,
+  serviceArea,
+  session,
+} from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
 import { Redirected } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
+import InvestigatorPage, {
+  generateMetadata as investigatorMeta,
+} from './(workspace)/account/investigator/page';
 import AccountPage, { generateMetadata as accountMeta } from './(workspace)/account/page';
 import WorkspaceLayout from './(workspace)/layout';
 import MessagesPage, { generateMetadata as messagesMeta } from './(workspace)/messages/page';
@@ -57,11 +67,12 @@ describe('the application routes', () => {
     expect(html.props.lang).toBe('ru');
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
-    // Client components translate navigation, the browse, the assistant, the auth and account
-    // forms, legal text and errors.
+    // Client components translate navigation, the browse, the investigator profile, the assistant,
+    // the auth and account forms, legal text and errors.
     expect(CLIENT_NAMESPACES).toEqual([
       'nav',
       'missions',
+      'investigator',
       'assistant',
       'auth',
       'account',
@@ -83,7 +94,10 @@ describe('the application routes', () => {
     api.on('GET /legal/outstanding', 200, [legalDocument()]);
     const tree = await resolveServer(await WorkspaceLayout({ children: 'inside' }));
     render(
-      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}>
+      <I18nProvider
+        locale="en"
+        messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}
+      >
         {tree}
       </I18nProvider>,
     );
@@ -97,7 +111,10 @@ describe('the application routes', () => {
     api.on('GET /me', 200, account());
     api.on('GET /legal/outstanding', 200, []);
     render(
-      <I18nProvider locale="en" messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}>
+      <I18nProvider
+        locale="en"
+        messages={{ nav: catalogs.en.nav, assistant: catalogs.en.assistant }}
+      >
         {await resolveServer(await WorkspaceLayout({ children: 'inside' }))}
       </I18nProvider>,
     );
@@ -110,7 +127,10 @@ describe('the application routes', () => {
       api.on('GET /me', 200, account(over));
       api.on('GET /legal/outstanding', 200, []);
       api.on('GET /workspaces', 200, []);
-      api.on('GET /ai/sessions?limit=1', 200, { items: [], pageInfo: { nextCursor: null, hasNextPage: false } });
+      api.on('GET /ai/sessions?limit=1', 200, {
+        items: [],
+        pageInfo: { nextCursor: null, hasNextPage: false },
+      });
       renderIntl(await resolveServer(await WorkspaceLayout({ children: 'inside' })));
       await userEvent.click(screen.getAllByRole('button', { name: 'Assistant' })[0]!);
       return screen.findByRole('heading', { name: catalogs.en.assistant.empty.title });
@@ -118,7 +138,9 @@ describe('the application routes', () => {
 
     it('offers a customer what a customer asks, and says nothing about roles it was not told', async () => {
       await open({ roles: ['CUSTOMER'] });
-      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.quote })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.quote }),
+      ).toBeInTheDocument();
       const ask = api.calls.find((c) => c.path === '/ai/sessions?limit=1')!;
       expect(ask.headers['x-active-role']).toBeUndefined();
     });
@@ -128,7 +150,9 @@ describe('the application routes', () => {
       expect(
         screen.getByRole('button', { name: catalogs.en.assistant.empty.public.training }),
       ).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: catalogs.en.assistant.empty.customer.quote })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: catalogs.en.assistant.empty.customer.quote }),
+      ).toBeNull();
       expect(
         screen.getByRole('link', { name: catalogs.en.assistant.empty.no_role_link }),
       ).toHaveAttribute('href', '/account#roles');
@@ -136,12 +160,16 @@ describe('the application routes', () => {
 
     it('offers an investigator what an investigator asks', async () => {
       await open({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
-      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.investigator.paid })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: catalogs.en.assistant.empty.investigator.paid }),
+      ).toBeInTheDocument();
     });
 
     it('talks to an investigator who chose to act as a customer as a customer, and tells the API so', async () => {
       await open({ roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: 'CUSTOMER' });
-      expect(screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.mission })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: catalogs.en.assistant.empty.customer.mission }),
+      ).toBeInTheDocument();
       const ask = api.calls.find((c) => c.path === '/ai/sessions?limit=1')!;
       expect(ask.headers['x-active-role']).toBe('CUSTOMER');
     });
@@ -242,6 +270,78 @@ describe('the application routes', () => {
       signedIn([]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(sections()).not.toContain('legal');
+    });
+  });
+  describe('the investigator profile page (T-123)', () => {
+    const investigator = (over: { areas?: number; empty?: boolean } = {}) => {
+      api.on('GET /me', 200, account({ roles: ['CUSTOMER', 'INVESTIGATOR'] }));
+      const reply = (route: string, body: unknown) =>
+        over.empty === true ? api.on(route, 204) : api.on(route, 200, body);
+      api.on('GET /profiles/investigator/me', 200, ownProfile({ verificationStatus: 'PENDING' }));
+      api.on('GET /profiles/investigator/me/preview', 200, ownProfile());
+      reply('GET /service-areas/me', over.areas === 0 ? [] : [serviceArea()]);
+      reply('GET /verification/me/requests', [application()]);
+      reply('GET /taxonomy?locale=en', [
+        {
+          id: 'corp',
+          label: null,
+          slug: 'corporate',
+          children: [
+            {
+              id: '5f51f336-5c7a-442a-909f-8d54d5abf81b',
+              label: 'Due diligence',
+              slug: 'due-diligence',
+              children: [],
+            },
+          ],
+        },
+      ]);
+    };
+    const en = catalogs.en.investigator;
+
+    it('shows where the profile stands, then each part of it, in order', async () => {
+      investigator();
+      renderIntl(await resolveServer(await InvestigatorPage()));
+      expect(screen.getByRole('heading', { level: 1, name: en.title })).toBeVisible();
+      expect(screen.getByText(en.intro)).toBeVisible();
+      const sections = screen.getAllByRole('region').filter((r) => r.id !== '');
+      expect(sections.map((r) => r.id)).toEqual([
+        'status',
+        'details',
+        'languages',
+        'specialties',
+        'availability',
+        'areas',
+        'verification',
+      ]);
+      expect(within(sections[0]!).getByText(en.verification_status.PENDING)).toBeVisible();
+      // Under review: the name it was checked against is shown, not offered for change.
+      expect(screen.getByRole('textbox', { name: en.details.name })).toHaveAttribute('readonly');
+      // A category with no label in this language is offered by its slug.
+      expect(screen.getByRole('option', { name: 'corporate' })).toBeInTheDocument();
+      expect(screen.getByText('Yerevan', { selector: 'span' })).toBeVisible();
+      expect(screen.getByRole('status')).toHaveTextContent(en.verification.open);
+      expect((await investigatorMeta()).title).toBe(en.title);
+    });
+
+    it('treats a route with nothing to say as nothing', async () => {
+      investigator({ empty: true });
+      renderIntl(await resolveServer(await InvestigatorPage()));
+      expect(screen.getByText(en.areas.empty)).toBeVisible();
+      expect(screen.getByText(en.verification.none)).toBeVisible();
+      expect(screen.getByText(en.specialties.none)).toBeInTheDocument();
+    });
+
+    it.each([
+      ['someone without the role', () => api.on('GET /me', 200, account())],
+      [
+        'someone signed out',
+        () => api.on('GET /me', 401, apiError('UNAUTHENTICATED', 'error.auth.unauthenticated')),
+      ],
+    ])('sends %s to Account, where the role is added', async (_, as) => {
+      as();
+      await expect(InvestigatorPage()).rejects.toEqual(new Redirected('/account#roles'));
+      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
     });
   });
 });
