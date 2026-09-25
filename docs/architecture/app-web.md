@@ -247,9 +247,29 @@ role), so it is offered three questions those answer, and a link to add a role (
 closing the assistant on the way). Each suggestion was checked to retrieve its own section first. The role the reader
 acts as is sent as `X-Active-Role`, so answers come from that role's guidance.
 
-**Not here yet:** the attachment entry point (T-144 — nothing to attach to); the session list,
-rename, archive, delete and search (T-057); confirmations (T-058); structured results and linked
-citations (T-059).
+**Conversations (T-057).** The list button at the top swaps the conversation for **your
+conversations** in the same panel — on a phone, the full-screen sheet; never a sidebar squeezed
+beside it — and focus goes to its Back button, and on return to the composer. Current or archived
+(a toggle), 20 at a time, the open one marked "Open now" and `aria-current`; from two characters,
+a search (`GET /ai/sessions/search`, after a 250 ms pause) replaces the list. Choosing one opens
+it at its newest 30 messages (`order=newest`), with "Show earlier messages" reaching back a page at
+a time while the reader keeps their place; a search result reaches back — at most ten pages — to
+the first matching message, scrolls it into view and marks it. The one being opened counts as open
+from the moment it is chosen, and whatever an abandoned opening, page or list says afterwards is
+ignored.
+
+The options menu (`@shadcn/dropdown-menu`, disabled while an answer forms) renames in place — Enter
+saves, Escape cancels the rename and nothing else (caught on the window, ahead of the sheet's own
+Escape) — archives (a fresh conversation begins, and says where the old one went), brings back from
+the archive, and deletes after `@shadcn/alert-dialog` asks — a bottom sheet on a phone, Cancel
+focused first, the text saying that anything the assistant keeps goes too. After a delete, focus
+goes to the composer; after a refusal, back to the options. **A conversation that has gone** — a
+404 from any of these, which is also what someone else's conversation answers (T-045) — is replaced
+by a fresh one saying "That conversation is no longer available", showing nothing of it.
+
+**Not here yet:** the attachment entry point (T-144 — nothing to attach to); the summary and
+structured state a resume should load (T-046 — they do not exist yet); confirmations (T-058);
+structured results and linked citations (T-059).
 
 ## Never indexed
 

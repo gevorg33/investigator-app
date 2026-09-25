@@ -41,6 +41,14 @@ export type TurnEvent =
   | { type: 'error'; error: { code: string; messageKey: string; correlationId: string | null } }
   | { type: 'done' };
 
+/** A conversation a search found, and the first message that matched (null: the name did). */
+export type SessionMatch = AiSession & { firstMatchSequence: number | null };
+
+/** How many conversations a page of the list holds. */
+export const SESSIONS_PAGE = 20;
+/** How many messages a conversation opens with, and each "earlier" adds (T-057). */
+export const MESSAGES_PAGE = 30;
+
 export interface Page<T> {
   items: T[];
   pageInfo: { nextCursor: string | null; hasNextPage: boolean };
@@ -111,7 +119,8 @@ export function assistantApi(role: string | null) {
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     if (!res.ok) throw await toApiError(res);
-    return (await res.json()) as T;
+    // A delete answers 204, with nothing to read.
+    return (res.status === 204 ? null : await res.json()) as T;
   };
 
   return {
@@ -119,20 +128,30 @@ export function assistantApi(role: string | null) {
     latest: async (): Promise<AiSession | null> =>
       (await call<Page<AiSession>>('/ai/sessions?limit=1')).items[0] ?? null,
     create: () => call<AiSession>('/ai/sessions', 'POST', {}),
-    /** Every message of a conversation, in order, page after page. */
-    messages: async (sessionId: string): Promise<AiMessage[]> => {
-      const all: AiMessage[] = [];
-      let cursor: string | null = null;
-      do {
-        const query: string = cursor === null ? '' : `&cursor=${encodeURIComponent(cursor)}`;
-        const page: Page<AiMessage> = await call(
-          `/ai/sessions/${sessionId}/messages?limit=100${query}`,
-        );
-        all.push(...page.items);
-        cursor = page.pageInfo.nextCursor;
-      } while (cursor !== null);
-      return all;
+    /** The caller's conversations in this workspace, current or archived, most recent first. */
+    list: (archived: boolean, cursor?: string) =>
+      call<Page<AiSession>>(
+        `/ai/sessions?archived=${archived}&limit=${SESSIONS_PAGE}${cursor === undefined ? '' : `&cursor=${encodeURIComponent(cursor)}`}`,
+      ),
+    /** Conversations whose name or messages match, best first, with where the first match is. */
+    search: (q: string) =>
+      call<SessionMatch[]>(`/ai/sessions/search?q=${encodeURIComponent(q)}`),
+    open: (id: string) => call<AiSession>(`/ai/sessions/${id}`),
+    /**
+     * A page of a conversation from its end backwards (T-057): the newest `MESSAGES_PAGE`
+     * messages, or those before where the last page left off — returned in reading order.
+     */
+    page: async (id: string, cursor?: string): Promise<{ items: AiMessage[]; earlier: string | null }> => {
+      const page = await call<Page<AiMessage>>(
+        `/ai/sessions/${id}/messages?order=newest&limit=${MESSAGES_PAGE}${cursor === undefined ? '' : `&cursor=${encodeURIComponent(cursor)}`}`,
+      );
+      return { items: [...page.items].reverse(), earlier: page.pageInfo.nextCursor };
     },
+    rename: (id: string, title: string) => call<AiSession>(`/ai/sessions/${id}`, 'PATCH', { title }),
+    archive: (id: string) => call<AiSession>(`/ai/sessions/${id}/archive`, 'POST', {}),
+    /** Out of the archive, and active from now. */
+    restore: (id: string) => call<AiSession>(`/ai/sessions/${id}/resume`, 'POST', {}),
+    remove: (id: string) => call<null>(`/ai/sessions/${id}`, 'DELETE'),
     workspaces: () => call<Workspace[]>('/workspaces'),
 
     /**

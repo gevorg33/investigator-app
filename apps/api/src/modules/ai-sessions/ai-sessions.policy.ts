@@ -95,18 +95,36 @@ export function decodeSessionCursor(cursor: string, archived: boolean): SessionC
   return { archived, lastActivityAt: at, id: p.i };
 }
 
-/** Where a page of messages left off: the last sequence it returned. */
-export function encodeMessageCursor(sequence: number): string {
-  return Buffer.from(JSON.stringify({ s: sequence }), 'utf8').toString('base64url');
+/**
+ * Which end of a conversation a page of messages starts from: the beginning, for reading it in
+ * order; or the end, newest first, for opening it where it stands and reaching back (T-057).
+ */
+export type MessageOrder = 'oldest' | 'newest';
+
+/** Where a page of messages left off: the last sequence it returned, and in which direction. */
+export function encodeMessageCursor(sequence: number, order: MessageOrder = 'oldest'): string {
+  return Buffer.from(
+    JSON.stringify(order === 'oldest' ? { s: sequence } : { s: sequence, o: 'n' }),
+    'utf8',
+  ).toString('base64url');
 }
 
-export function decodeMessageCursor(cursor: string): number {
+/**
+ * A cursor from the other direction is refused, not reinterpreted (docs/api/pagination.md): "after
+ * 40" read backwards would silently skip everything since. Cursors from before T-057 carry no
+ * direction and are oldest-first, as they always were.
+ */
+export function decodeMessageCursor(cursor: string, order: MessageOrder = 'oldest'): number {
   let parsed: unknown;
   try {
     parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
   } catch {
     return invalidCursor();
   }
-  const s = (parsed as { s?: unknown } | null)?.s;
-  return typeof s === 'number' && Number.isInteger(s) && s >= 0 ? s : invalidCursor();
+  const p = parsed as { s?: unknown; o?: unknown } | null;
+  const s = p?.s;
+  const direction = p?.o === 'n' ? 'newest' : p?.o === undefined ? 'oldest' : null;
+  return typeof s === 'number' && Number.isInteger(s) && s >= 0 && direction === order
+    ? s
+    : invalidCursor();
 }

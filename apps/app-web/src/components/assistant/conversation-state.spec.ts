@@ -13,7 +13,7 @@ import {
 const run = (actions: Action[], from: ConversationState = initialState) =>
   actions.reduce(reduce, from);
 
-const ready = run([{ type: 'loaded', session: aiSession(), messages: [] }]);
+const ready = run([{ type: 'loaded', session: aiSession(), messages: [], earlier: null }]);
 const unavailable = new ApiError(503, 'SERVICE_UNAVAILABLE', 'error.common.service_unavailable');
 const question = aiMessage();
 
@@ -24,7 +24,7 @@ describe('a conversation’s state (T-056)', () => {
     const failed = run([{ type: 'load_failed', error: unavailable }], loading);
     expect([failed.status, failed.loadError]).toEqual(['failed', unavailable]);
     expect(run([{ type: 'load' }], failed).loadError).toBeNull();
-    expect(run([{ type: 'loaded', session: null, messages: [question] }]).messages).toEqual([
+    expect(run([{ type: 'loaded', session: null, messages: [question], earlier: null }]).messages).toEqual([
       question,
     ]);
   });
@@ -194,7 +194,9 @@ describe('a conversation’s state (T-056)', () => {
         ready,
       );
       expect([awaitingRetry(unsent), unsentQuestion(unsent)]).toEqual([true, 'q']);
-      const fromHistory = run([{ type: 'loaded', session: aiSession(), messages: [question] }]);
+      const fromHistory = run([
+        { type: 'loaded', session: aiSession(), messages: [question], earlier: null },
+      ]);
       expect([awaitingRetry(fromHistory), unsentQuestion(fromHistory)]).toEqual([true, null]);
       const running = run([{ type: 'start', question: 'q', stored: false }], ready);
       expect(unsentQuestion(running)).toBeNull();

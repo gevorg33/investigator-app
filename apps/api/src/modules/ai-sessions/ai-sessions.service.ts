@@ -16,6 +16,7 @@ import {
   encodeSessionCursor,
   statusOf,
   titleFrom,
+  type MessageOrder,
   type SessionStatus,
 } from './ai-sessions.policy';
 
@@ -186,24 +187,42 @@ export class AiSessionsService {
     return view(row!, now);
   }
 
-  /** The conversation in order, a page at a time, from the start or from where a page left off. */
+  /**
+   * The conversation a page at a time: from the start, in order; or — `newest` — from the end
+   * backwards, newest first, so a conversation opens where it stands and reaches back only as far
+   * as the reader asks (T-057). Either way, from where a page left off.
+   */
   async messages(
     actor: Actor,
     sessionId: string,
-    query: { limit?: number | undefined; cursor?: string | undefined },
+    query: {
+      limit?: number | undefined;
+      cursor?: string | undefined;
+      order?: MessageOrder | undefined;
+    },
     req: RequestContext,
   ): Promise<Page<MessageView>> {
     const c = ctx('ai_session.messages', req, sessionId);
     await this.enter(actor, c);
     await this.find(actor, sessionId, c);
+    const order = query.order ?? 'oldest';
     const limit = clampLimit(query.limit);
-    const after = query.cursor === undefined ? 0 : decodeMessageCursor(query.cursor);
+    const from = query.cursor === undefined ? undefined : decodeMessageCursor(query.cursor, order);
 
     const rows = await this.db
       .select()
       .from(aiMessages)
-      .where(and(eq(aiMessages.sessionId, sessionId), gt(aiMessages.sequence, after)))
-      .orderBy(asc(aiMessages.sequence))
+      .where(
+        and(
+          eq(aiMessages.sessionId, sessionId),
+          order === 'oldest'
+            ? gt(aiMessages.sequence, from ?? 0)
+            : from === undefined
+              ? undefined
+              : lt(aiMessages.sequence, from),
+        ),
+      )
+      .orderBy(order === 'oldest' ? asc(aiMessages.sequence) : desc(aiMessages.sequence))
       .limit(limit + 1);
     const page = rows.slice(0, limit);
     const last = page.at(-1);
@@ -212,7 +231,9 @@ export class AiSessionsService {
       pageInfo: {
         hasNextPage: rows.length > limit,
         nextCursor:
-          rows.length > limit && last !== undefined ? encodeMessageCursor(last.sequence) : null,
+          rows.length > limit && last !== undefined
+            ? encodeMessageCursor(last.sequence, order)
+            : null,
       },
     };
   }

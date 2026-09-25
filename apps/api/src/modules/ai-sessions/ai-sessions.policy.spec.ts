@@ -46,6 +46,23 @@ describe('session and message cursors', () => {
     }
   });
 
+  it('binds a message cursor to its direction, and refuses it read the other way (T-057)', () => {
+    expect(decodeMessageCursor(encodeMessageCursor(40, 'newest'), 'newest')).toBe(40);
+    expect(decodeMessageCursor(encodeMessageCursor(40, 'oldest'), 'oldest')).toBe(40);
+    // A cursor from before T-057 carries no direction, and is what it always was: oldest first.
+    expect(decodeMessageCursor(b64({ s: 40 }), 'oldest')).toBe(40);
+    for (const [cursor, order] of [
+      [encodeMessageCursor(40, 'newest'), 'oldest'],
+      [encodeMessageCursor(40, 'oldest'), 'newest'],
+      [b64({ s: 40, o: 'sideways' }), 'newest'],
+      [b64({ s: 40, o: 'sideways' }), 'oldest'],
+    ] as const) {
+      expect(() => decodeMessageCursor(cursor, order)).toThrow(
+        expect.objectContaining({ code: 'VALIDATION_FAILED' }),
+      );
+    }
+  });
+
   it('clamps a page to between one and a hundred, defaulting to twenty-five', () => {
     expect([clampLimit(undefined), clampLimit(0), clampLimit(250), clampLimit(10.7)]).toEqual([
       25, 1, 100, 10,

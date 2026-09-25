@@ -57,16 +57,43 @@ describe('the assistant API from the browser', () => {
     ]);
   });
 
-  it('reads every page of a conversation, in order', async () => {
-    api.on(`GET /ai/sessions/${ID}/messages?limit=100`, 200, {
-      items: [aiMessage()],
-      pageInfo: { nextCursor: 'c/2', hasNextPage: true },
+  it('reads a conversation from its end backwards, a page at a time, in reading order (T-057)', async () => {
+    const client = assistantApi(null);
+    api.on(`GET /ai/sessions/${ID}/messages?order=newest&limit=30`, 200, {
+      items: [aiReply(), aiMessage()],
+      pageInfo: { nextCursor: 'c/1', hasNextPage: true },
     });
-    api.on(`GET /ai/sessions/${ID}/messages?limit=100&cursor=c%2F2`, 200, {
+    expect(await client.page(ID)).toEqual({ items: [aiMessage(), aiReply()], earlier: 'c/1' });
+    api.on(`GET /ai/sessions/${ID}/messages?order=newest&limit=30&cursor=c%2F1`, 200, emptyPage);
+    expect(await client.page(ID, 'c/1')).toEqual({ items: [], earlier: null });
+  });
+
+  it('lists, searches, opens and changes conversations — a delete answering with nothing', async () => {
+    const client = assistantApi(null);
+    const archived = aiSession({ status: 'ARCHIVED' });
+    api.on('GET /ai/sessions?archived=false&limit=20', 200, { ...emptyPage, items: [aiSession()] });
+    api.on('GET /ai/sessions?archived=true&limit=20&cursor=a%2F2', 200, {
       ...emptyPage,
-      items: [aiReply()],
+      items: [archived],
     });
-    expect((await assistantApi(null).messages(ID)).map((m) => m.sequence)).toEqual([1, 2]);
+    api.on('GET /ai/sessions/search?q=quote%20%26%20fees', 200, [
+      { ...aiSession(), firstMatchSequence: 3 },
+    ]);
+    api.on(`GET /ai/sessions/${ID}`, 200, aiSession());
+    api.on(`PATCH /ai/sessions/${ID}`, 200, aiSession({ title: 'Fees' }));
+    api.on(`POST /ai/sessions/${ID}/archive`, 200, archived);
+    api.on(`POST /ai/sessions/${ID}/resume`, 200, aiSession());
+    api.on(`DELETE /ai/sessions/${ID}`, 204);
+
+    expect((await client.list(false)).items).toEqual([aiSession()]);
+    expect((await client.list(true, 'a/2')).items).toEqual([archived]);
+    expect(await client.search('quote & fees')).toEqual([{ ...aiSession(), firstMatchSequence: 3 }]);
+    expect(await client.open(ID)).toEqual(aiSession());
+    expect((await client.rename(ID, 'Fees')).title).toBe('Fees');
+    expect((await client.archive(ID)).status).toBe('ARCHIVED');
+    expect((await client.restore(ID)).status).toBe('ACTIVE');
+    expect(await client.remove(ID)).toBeNull();
+    expect(api.calls.find((c) => c.method === 'PATCH')?.body).toEqual({ title: 'Fees' });
   });
 
   it('refuses in the API’s own words', async () => {

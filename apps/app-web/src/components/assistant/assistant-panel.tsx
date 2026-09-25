@@ -1,15 +1,57 @@
 'use client';
 
 import { breakpoints } from '@investigator/ui-tokens';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { PANEL_ID, useAssistant } from './assistant-provider';
 import { COMPOSER_ID } from './composer';
 import { Conversation } from './conversation';
+import { SessionList } from './session-list';
 
 const focusComposer = () => document.getElementById(COMPOSER_ID)?.focus();
+
+/**
+ * What the assistant shows: the conversation, or the list of conversations in its place (T-057) —
+ * on a phone that is the full-screen sheet, never a sidebar squeezed beside it. Focus follows:
+ * into the list when it opens, back to the composer when it closes.
+ */
+function AssistantBody({
+  Title = 'h2',
+  onClose,
+}: {
+  Title?: ComponentType<{ className: string; children: ReactNode }> | 'h2';
+  onClose: () => void;
+}) {
+  const { api, conversation } = useAssistant();
+  const [view, setView] = useState<'conversation' | 'sessions'>('conversation');
+  const switched = useRef(false);
+
+  useEffect(() => {
+    if (view === 'conversation' && switched.current) focusComposer();
+    switched.current = true;
+  }, [view]);
+
+  if (view === 'sessions') {
+    const current = conversation.state.session?.id ?? null;
+    return (
+      <SessionList
+        api={api}
+        currentId={current}
+        Title={Title}
+        onOpen={(session, focus) => {
+          setView('conversation');
+          // The one already open, with nothing to find in it, is simply returned to.
+          if (session.id !== current || focus !== null) void conversation.open(session, focus);
+        }}
+        onBack={() => setView('conversation')}
+        onClose={onClose}
+      />
+    );
+  }
+  return <Conversation Title={Title} onSessions={() => setView('sessions')} onClose={onClose} />;
+}
 
 /**
  * Where the assistant opens (T-056, responsive-design): docked beside the page from `lg` up, where
@@ -38,7 +80,7 @@ export function AssistantPanel() {
         onKeyDown={(e) => e.key === 'Escape' && close()}
         className="sticky top-0 flex h-dvh w-96 shrink-0 flex-col border-l border-border bg-surface-raised"
       >
-        <Conversation onClose={close} />
+        <AssistantBody onClose={close} />
       </aside>
     );
   }
@@ -55,7 +97,7 @@ export function AssistantPanel() {
         }}
         className="h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh data-[vaul-drawer-direction=bottom]:rounded-t-none"
       >
-        <Conversation Title={DrawerTitle} onClose={() => setOpen(false)} />
+        <AssistantBody Title={DrawerTitle} onClose={() => setOpen(false)} />
       </DrawerContent>
     </Drawer>
   );

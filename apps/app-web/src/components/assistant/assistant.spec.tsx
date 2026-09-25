@@ -11,7 +11,12 @@ import { AssistantProvider, useAssistant, type AssistantAudience } from './assis
 const en = catalogs.en.assistant;
 const SESSION = aiSession();
 const LATEST = 'GET /ai/sessions?limit=1';
-const MESSAGES = `GET /ai/sessions/${SESSION.id}/messages?limit=100`;
+const MESSAGES = `GET /ai/sessions/${SESSION.id}/messages?order=newest&limit=30`;
+/** A page as the API returns it: newest first. */
+const newestFirst = (messages: ReturnType<typeof aiMessage>[]) => ({
+  ...emptyPage,
+  items: [...messages].reverse(),
+});
 const TURN = `POST /ai/sessions/${SESSION.id}/turns`;
 const RETRY = `POST /ai/sessions/${SESSION.id}/turns/retry`;
 const QUESTION = 'How long does a quote stay valid?';
@@ -55,7 +60,7 @@ const openWith = async ({
   held?: boolean;
 } = {}) => {
   if (!held) api.on(LATEST, 200, { ...emptyPage, items: latest === null ? [] : [latest] });
-  if (latest !== null) api.on(MESSAGES, 200, { ...emptyPage, items: messages });
+  if (latest !== null) api.on(MESSAGES, 200, newestFirst(messages));
   renderIntl(
     <AssistantProvider audience={audience} activeRole={null}>
       <Opener />
@@ -221,7 +226,7 @@ describe('the assistant (T-056)', () => {
       await openWith({ latest: SESSION, messages: [aiMessage()] });
       await screen.findByText(en.turn.unanswered);
       api.on(RETRY, 409, apiError('STATE_CONFLICT', 'error.common.state_conflict'));
-      api.on(MESSAGES, 200, { ...emptyPage, items: [aiMessage(), aiReply()] });
+      api.on(MESSAGES, 200, newestFirst([aiMessage(), aiReply()]));
       await userEvent.click(screen.getByRole('button', { name: en.turn.retry }));
       expect(await within(log()).findByText(/Until the validity period/)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: en.turn.retry })).toBeNull();
@@ -681,7 +686,7 @@ describe('the assistant (T-056)', () => {
       await ask('Unconfirmed?');
       await screen.findByRole('status');
       // Stopped before confirmation: a read-back starts, and is held.
-      const release = api.hold(MESSAGES, 200, { ...emptyPage, items: [aiMessage(), aiReply()] });
+      const release = api.hold(MESSAGES, 200, newestFirst([aiMessage(), aiReply()]));
       await userEvent.click(screen.getByRole('button', { name: en.composer.stop }));
       await screen.findByText(en.turn.unsent);
       await userEvent.click(screen.getByRole('button', { name: en.new }));

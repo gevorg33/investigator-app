@@ -595,8 +595,9 @@ something to launch on: it reads as unfinished software to exactly the market th
 
 **What is needed:** a native speaker of each language reads their file — about 200 strings since
 T-127 added sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), T-054
-the investigator's open-missions screen (`missions.browse`) and T-056 the assistant (`assistant`,
-about 45, including six suggested questions — Armenian questions end «՞ … ։»), under an hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+the investigator's open-missions screen (`missions.browse`) and T-056/T-057 the assistant
+(`assistant`, about 90, including nine suggested questions — Armenian questions end «՞ … ։»), under an
+hour — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:
