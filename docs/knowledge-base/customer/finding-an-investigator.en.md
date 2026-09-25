@@ -4,9 +4,9 @@ title: How investigators are matched to your mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-24
+updated: 2026-09-25
 source_of_truth: database
 implementation_status: implemented
 related_code:
@@ -32,8 +32,9 @@ whose profile is published and who are currently accepting work are considered a
 Those who match are ordered by distance from your location when you give one, and otherwise by
 declared years of experience. When you describe the kind of experience you want, the assistant
 may put those whose own profile description fits it best first — but only among investigators
-who already meet every requirement. Ratings and response times are not used, because the
-platform does not collect them yet.
+who already meet every requirement. Ratings do not change the order: you see an investigator's
+rating on their profile, to help you choose, but not to decide who is shown. Response times are not
+collected.
 
 An investigator who does not meet a requirement will not appear, however well their profile
 description matches.

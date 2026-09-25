@@ -26,6 +26,7 @@ import { InvestigationSourcesModule } from './modules/investigation-sources/inve
 import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
 import { AiModule } from './modules/ai/ai.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
     InvestigationSourcesModule,
     AiSessionsModule,
     KnowledgeModule,
+    ReviewsModule,
     AiModule,
     HealthModule,
   ],

@@ -130,6 +130,9 @@ describe('tenant isolation is not business-domain plumbing', () => {
       // The knowledge-base sync, a system operation with no user (T-016, approved 2026-09-23).
       'modules/knowledge/knowledge-sync.service.ts',
       'modules/media/media.service.ts',
+      // Moderation staff pre-moderating review words and removing reviews (T-037, approved
+      // 2026-09-25). The public list and the parties' own actions do not cross.
+      'modules/reviews/reviews.service.ts',
       // Staff maintaining the taxonomy, which is platform data that only a write under platform
       // access may change (T-053, approved 2026-09-23). It reads no workspace's rows.
       'modules/taxonomy/taxonomy.service.ts',

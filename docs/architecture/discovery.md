@@ -100,9 +100,11 @@ An oversized `limit` is **clamped, not rejected**, which is why the DTO carries 
 ## Quality ranking is a stage with nothing in it yet
 
 With a location, results are ordered by distance. Without one, by declared experience. Rating,
-review count, response time and completion rate belong in this stage and **do not exist**:
-reviews are T-037. Ordering by a quality signal the platform has not collected would be
-inventing one, so the stage is honest about being empty rather than filled with a proxy.
+review count, response time and completion rate belong in this stage. Reviews exist since T-037,
+and a profile's rating summary is computed from them (`reviews.md`), but the order does not use it
+yet: changing who customers see first is gated, and is T-138. Response time and completion rate are
+not collected. Ordering by a quality signal the platform has not collected would be inventing one,
+so the stage stays empty rather than filled with a proxy.
 
 ## The match explanation
 
