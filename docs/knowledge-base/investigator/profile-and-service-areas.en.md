@@ -4,15 +4,16 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-23
+updated: 2026-09-25
 source_of_truth: database
-implementation_status: specified
+implementation_status: partial
 related_code:
   - apps/api/src/modules/profiles
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/taxonomy
+  - apps/app-web/src/components/investigator
 tags: [profile, service-areas, specialties, availability, languages, discovery, taxonomy]
 ---
 
@@ -20,6 +21,24 @@ tags: [profile, service-areas, specialties, availability, languages, discovery, 
 
 > This article explains how these settings work. The values — which specialties, which
 > areas, who is available — live in your profile and are queried live.
+
+## Where do I set up my profile?
+
+In Account, open **Your investigator profile**. Everything that decides whether customers find
+you is on that one page: what you say about yourself, your languages, specialties,
+availability, the areas you work in, and verification.
+
+At the top, **Getting listed** shows what is still to do — profile shown to customers, verified,
+accepting new work, at least one language, one specialty and one area — and each item links to
+where it is done. Two switches there are yours to flip at any time: **Show my profile to
+customers** publishes or unpublishes your profile, and **Accepting new work** says whether you
+are taking missions.
+
+**Preview as a customer** shows your profile exactly as customers see it: the same fields, built
+the same way. Anything not in the preview is not public.
+
+Open missions are shown to you, and you can quote, once your profile is shown to customers,
+verified and accepting new work. Until then the Missions page says so and links back here.
 
 ## What determines whether I appear in a customer's results?
 
@@ -47,6 +66,19 @@ Define them where you actually work, not where you would consider working. An ar
 cannot reach reliably produces missions you decline, and a high decline rate affects how
 missions are routed to you. Refusals on substantiated policy grounds are excluded from that —
 see "Does refusing on policy grounds hurt my record?" in the assignments article.
+
+## How do I add a service area?
+
+On your profile, under **Where you work**, choose **Use my location**. Your browser asks once
+for permission. The position is rounded to about a kilometre on your own device before it is
+sent, so a more precise one never leaves it.
+
+Then choose how far you travel — 5, 10, 25, 50 or 100 km — give the area a name for yourself,
+and name the country and city it covers so customers filtering by them find you.
+
+For now an area is added from where you are when you add it. Searching for a place, drawing an
+area on a map, and radii other than those offered are not available on this page yet. If
+location is blocked, allow it for the site in your browser settings and try again.
 
 ## Can I have more than one service area?
 
@@ -81,6 +113,14 @@ from "no such profile" would let anyone confirm you work here.
 
 Publishing is not the same as being verified. They are separate, and verification has its own
 process.
+
+## Can I change my name?
+
+Yes, until you apply for verification. Use the name on your identity document: verification
+checks your documents against it.
+
+While an application is under review, and once you are verified, your name is locked, because
+it is the name your documents were checked against. To change it after that, contact support.
 
 ## Is my home address visible to customers?
 

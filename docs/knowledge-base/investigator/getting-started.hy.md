@@ -4,13 +4,14 @@ title: Աշխատանք որպես խուզարկու հարթակում
 audience: investigator
 visibility: authenticated
 locale: hy
-version: 1
+version: 2
 status: draft
 updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/profiles
+  - apps/app-web/src/components/investigator
 tags: [getting-started, onboarding, roles, overview]
 ---
 
@@ -40,6 +41,9 @@ tags: [getting-started, onboarding, roles, overview]
 Լրացված մասնագիտական պրոֆիլ, ներկայացված և հաստատված ստուգման փաստաթղթեր, առնվազն մեկ
 սահմանված սպասարկման տարածք, ինչպես նաև հայտարարված մասնագիտացումներ, ծառայություններ և
 լեզուներ։
+
+Այս ամենը մեկ էջում է․ «Հաշիվ» բաժնում բացեք **Ձեր դետեկտիվի պրոֆիլը**։ Դրա
+ցուցակը ցույց է տալիս, թե ինչ է դեռ պակասում, և տանում է այնտեղ, որտեղ դա արվում է։
 
 Քանի դեռ ստուգումը հաստատված չէ, դուք չեք հայտնվում հաճախորդների որոնման մեջ և չեք կարող
 գնառաջարկներ ուղարկել։ Սա ուշացում չէ, որը կարելի է շրջանցել․ չստուգված խուզարկուներին

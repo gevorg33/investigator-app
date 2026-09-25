@@ -4,14 +4,15 @@ title: Verification — documents, review, and keeping it current
 audience: investigator
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-18
+updated: 2026-09-25
 source_of_truth: docs
-implementation_status: specified
+implementation_status: partial
 related_code:
   - apps/api/src/modules/verification
   - apps/api/src/modules/media
+  - apps/app-web/src/components/investigator
 tags: [verification, documents, licensing, compliance]
 ---
 
@@ -72,6 +73,18 @@ reviewer checks your documents against. Set up your profile before you apply.
 
 You can have one application open at a time. While it is open your status shows as pending,
 unless you were already verified, in which case you stay verified.
+
+On your investigator profile, under **Verification**, choose **Documents**, pick your files,
+then **Submit for review**. Each file is uploaded straight to private storage and checked
+there; it never passes through the platform's servers and has no public link. A file that is
+not a PDF, JPEG or PNG, or is over 15 MB, is refused before anything is sent, and the page
+says which one and why.
+
+Once submitted, the application appears in your history with its date. Each decided
+application shows its outcome, the date and the reason given — never who reviewed it.
+
+Your name is locked from the moment you apply: it is what your documents are checked against.
+See "Can I change my name?" in the profile article.
 
 ## How long does review take?
 

@@ -21,6 +21,7 @@ describe('profiles controller', () => {
     profiles = {
       activateRole: vi.fn().mockResolvedValue({ profileId: UUID }),
       getMyInvestigatorProfile: vi.fn().mockResolvedValue({ id: UUID }),
+      previewMyInvestigatorProfile: vi.fn().mockResolvedValue({ id: UUID }),
       updateMyInvestigatorProfile: vi.fn().mockResolvedValue({ id: UUID }),
       getMyCustomerProfile: vi.fn().mockResolvedValue({ id: UUID }),
       updateMyCustomerProfile: vi.fn().mockResolvedValue({ id: UUID }),
@@ -88,8 +89,18 @@ describe('profiles controller', () => {
       expect(profiles['getMyInvestigatorProfile']).toHaveBeenCalledWith(ACTOR, expect.any(Object));
     });
 
+    it('previews the caller’s own profile as the public sees it, by who they are', async () => {
+      expect((await http().get('/profiles/investigator/me/preview')).status).toBe(200);
+      expect(profiles['previewMyInvestigatorProfile']).toHaveBeenCalledWith(
+        ACTOR,
+        expect.any(Object),
+      );
+    });
+
     it('updates by who the caller is', async () => {
-      const res = await http().patch('/profiles/investigator/me').send({ headline: 'Due diligence' });
+      const res = await http()
+        .patch('/profiles/investigator/me')
+        .send({ headline: 'Due diligence' });
       expect(res.status).toBe(200);
       expect(profiles['updateMyInvestigatorProfile']).toHaveBeenCalledWith(
         ACTOR,
@@ -141,6 +152,14 @@ describe('profiles controller', () => {
   describe('DTO validation', () => {
     const patch = (body: object) => http().patch('/profiles/investigator/me').send(body);
 
+    it.each([
+      ['blank', '   '],
+      ['too long', 'x'.repeat(81)],
+      ['empty', ''],
+    ])('refuses a %s display name', async (_, displayName) => {
+      expect((await patch({ displayName })).status).toBe(400);
+    });
+
     it('accepts a full, valid update', async () => {
       const res = await patch({
         headline: 'Corporate due diligence',
@@ -164,11 +183,20 @@ describe('profiles controller', () => {
       ['an unknown pricing model', { pricingModel: 'BARTER' }],
       ['an unknown visibility', { visibility: 'SECRET' }],
       ['81 years of experience', { yearsExperience: 81 }],
-      ['an upper-case language code', { languages: [{ languageCode: 'HY', proficiency: 'NATIVE' }] }],
-      ['a three-letter language code', { languages: [{ languageCode: 'hye', proficiency: 'NATIVE' }] }],
+      [
+        'an upper-case language code',
+        { languages: [{ languageCode: 'HY', proficiency: 'NATIVE' }] },
+      ],
+      [
+        'a three-letter language code',
+        { languages: [{ languageCode: 'hye', proficiency: 'NATIVE' }] },
+      ],
       ['an unknown proficiency', { languages: [{ languageCode: 'hy', proficiency: 'PERFECT' }] }],
       ['day 7', { availability: [{ dayOfWeek: 7, startMinute: 0, endMinute: 60 }] }],
-      ['a minute past midnight', { availability: [{ dayOfWeek: 1, startMinute: 0, endMinute: 1441 }] }],
+      [
+        'a minute past midnight',
+        { availability: [{ dayOfWeek: 1, startMinute: 0, endMinute: 1441 }] },
+      ],
       ['a headline of 121 characters', { headline: 'x'.repeat(121) }],
     ] as Array<[string, Record<string, unknown>]>) {
       it(`rejects ${name}`, async () => {

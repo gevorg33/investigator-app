@@ -48,6 +48,18 @@ export class AvailabilityWindowDto {
 }
 
 export class UpdateInvestigatorProfileDto {
+  /**
+   * The name customers see (T-123). It lives on the account, and can change only while no
+   * application is under review and none has been approved — verification checks documents
+   * against a name, and "verified" must keep meaning that name (owner decision, 2026-09-25).
+   * `\S` so a name of spaces is refused.
+   */
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  @Matches(/\S/, { message: 'error.validation.display_name.blank' })
+  displayName?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)

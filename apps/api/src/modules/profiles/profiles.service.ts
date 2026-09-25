@@ -82,7 +82,10 @@ export class ProfilesService {
     req: RequestContext,
     acceptedDocumentIds: readonly string[] = [],
   ): Promise<{ profileId: string }> {
-    await this.authz.requireActive(actor, ctxFor('profile.activate_role', 'user', req, actor.userId));
+    await this.authz.requireActive(
+      actor,
+      ctxFor('profile.activate_role', 'user', req, actor.userId),
+    );
 
     // A customer who later becomes an investigator was not an investigator when they signed up,
     // so what an investigator agrees to is accepted here (T-022, `legal-consent`). The role and
@@ -106,7 +109,10 @@ export class ProfilesService {
       if (!existingRole) {
         await tx.insert(userRoles).values({ userId: actor.userId, role });
       } else if (existingRole.revokedAt !== null) {
-        await tx.update(userRoles).set({ revokedAt: null }).where(eq(userRoles.id, existingRole.id));
+        await tx
+          .update(userRoles)
+          .set({ revokedAt: null })
+          .where(eq(userRoles.id, existingRole.id));
       }
     });
 
@@ -166,6 +172,23 @@ export class ProfilesService {
     await this.authz.requirePermission(actor, 'investigators.read', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
     return toOwnInvestigatorProfile(row, await this.relationsFor(row.id, actor.userId));
+  }
+
+  /**
+   * The caller's own profile exactly as a customer would see it once published (T-123): the same
+   * projection function, whatever the profile's visibility — so a preview can never show a field
+   * the public view does not, or miss one it does.
+   */
+  async previewMyInvestigatorProfile(
+    actor: Actor,
+    req: RequestContext,
+  ): Promise<PublicInvestigatorProfile> {
+    const c = ctxFor('profile.preview_own', 'investigator_profile', req);
+    await this.authz.requireActive(actor, c);
+    await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    await this.authz.requirePermission(actor, 'investigators.read', c);
+    const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
+    return toPublicInvestigatorProfile(row, await this.relationsFor(row.id, actor.userId));
   }
 
   /**
@@ -233,7 +256,33 @@ export class ProfilesService {
 
     if (dto.specialtyNodeIds) await this.assertDeclarable(row.id, dto.specialtyNodeIds);
 
+    const name = dto.displayName?.trim();
+    const [account] = await this.db
+      .select({ displayName: users.displayName })
+      .from(users)
+      .where(eq(users.id, actor.userId));
+    const renaming = name !== undefined && name !== account?.displayName;
+    // Verification checks documents against a name: under review or approved, it stays as checked.
+    if (
+      renaming &&
+      (row.verificationStatus === 'VERIFIED' || row.verificationStatus === 'PENDING')
+    ) {
+      throw AppError.validation([
+        {
+          field: 'displayName',
+          code: 'LOCKED',
+          messageKey: 'error.validation.display_name.locked',
+        },
+      ]);
+    }
+
     await this.db.transaction(async (tx) => {
+      if (renaming) {
+        await tx
+          .update(users)
+          .set({ displayName: name, updatedAt: new Date() })
+          .where(eq(users.id, actor.userId));
+      }
       await tx
         .update(investigatorProfiles)
         .set({
@@ -267,7 +316,9 @@ export class ProfilesService {
         if (dto.specialtyNodeIds.length > 0) {
           await tx
             .insert(investigatorSpecialties)
-            .values(dto.specialtyNodeIds.map((taxonomyNodeId) => ({ profileId: row.id, taxonomyNodeId })));
+            .values(
+              dto.specialtyNodeIds.map((taxonomyNodeId) => ({ profileId: row.id, taxonomyNodeId })),
+            );
         }
       }
       if (dto.availability) {
@@ -290,6 +341,17 @@ export class ProfilesService {
       resourceType: 'investigator_profile',
       resourceId: row.id,
     });
+    if (renaming) {
+      // Its own event, so a rename can be found; the names themselves are not copied into the log.
+      await this.audit.record({
+        ...req,
+        ipAddress: req.ip,
+        actorId: actor.userId,
+        action: 'profile.display_name_changed',
+        resourceType: 'investigator_profile',
+        resourceId: row.id,
+      });
+    }
 
     return this.getMyInvestigatorProfile(actor, req);
   }
@@ -381,9 +443,18 @@ export class ProfilesService {
 
   private async relationsFor(profileId: string, userId: string): Promise<ProfileRelations> {
     const [languages, availability, specialties, displayName] = await Promise.all([
-      this.db.select().from(investigatorLanguages).where(eq(investigatorLanguages.profileId, profileId)),
-      this.db.select().from(investigatorAvailability).where(eq(investigatorAvailability.profileId, profileId)),
-      this.db.select().from(investigatorSpecialties).where(eq(investigatorSpecialties.profileId, profileId)),
+      this.db
+        .select()
+        .from(investigatorLanguages)
+        .where(eq(investigatorLanguages.profileId, profileId)),
+      this.db
+        .select()
+        .from(investigatorAvailability)
+        .where(eq(investigatorAvailability.profileId, profileId)),
+      this.db
+        .select()
+        .from(investigatorSpecialties)
+        .where(eq(investigatorSpecialties.profileId, profileId)),
       this.displayNameOf(userId),
     ]);
     return {

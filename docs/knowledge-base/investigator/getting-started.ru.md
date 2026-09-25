@@ -4,13 +4,14 @@ title: Работа детективом на платформе
 audience: investigator
 visibility: authenticated
 locale: ru
-version: 1
+version: 2
 status: draft
 updated: 2026-09-25
 source_of_truth: docs
 implementation_status: specified
 related_code:
   - apps/api/src/modules/profiles
+  - apps/app-web/src/components/investigator
 tags: [getting-started, onboarding, roles, overview]
 ---
 
@@ -38,6 +39,9 @@ tags: [getting-started, onboarding, roles, overview]
 
 Заполненный профессиональный профиль, поданные и одобренные документы для проверки, хотя бы
 одна зона обслуживания, а также указанные специализации, услуги и языки.
+
+Всё это находится на одной странице: в разделе «Аккаунт» откройте **Ваш профиль детектива**.
+Её список показывает, чего ещё не хватает, и ведёт туда, где это делается.
 
 Пока проверка не одобрена, вы не появляетесь в поиске для клиентов и не можете отправлять
 предложения. Это не задержка, которую можно обойти: непроверенные детективы исключаются из

@@ -395,6 +395,11 @@ describe('open missions', () => {
       await show({}, 'ru');
       const ru = catalogs.ru.missions.browse;
       expect(screen.getByRole('heading', { name: ru.unavailable.title })).toBeInTheDocument();
+      // What opens browsing is all on the profile page.
+      expect(screen.getByRole('link', { name: catalogs.ru.investigator.link })).toHaveAttribute(
+        'href',
+        '/account/investigator',
+      );
       expect(api.calls.map((c) => c.path)).toEqual(['/search/missions']);
     });
 
