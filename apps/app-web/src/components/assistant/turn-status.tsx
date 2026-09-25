@@ -31,15 +31,16 @@ export function TurnStatus({
   const turn = state.turn;
 
   if (turn?.phase === 'running') {
+    const step = turn.step;
     const label =
-      turn.step === null
+      step === null
         ? t('step.sending')
-        : turn.step.step === 'searching'
-          ? t('step.searching')
-          : t('step.writing', { sources: turn.step.sources });
+        : step.step === 'writing'
+          ? t('step.writing', { sources: step.sources })
+          : t(`step.${step.step}`);
     return (
       <>
-        {!turn.stored && <Question text={turn.question} />}
+        {!turn.stored && <Question text={turn.question.content} />}
         <Marker role="status" aria-live="polite">
           <MarkerIcon>
             {/* The one continuous motion here, and honest: it runs exactly while work does. */}
@@ -71,7 +72,7 @@ export function TurnStatus({
 
   return (
     <div className="grid gap-3">
-      {unsent !== null && <Question text={unsent} />}
+      {unsent !== null && <Question text={unsent.content} />}
       {note !== null && (
         <Marker role="status">
           <MarkerContent>{note}</MarkerContent>

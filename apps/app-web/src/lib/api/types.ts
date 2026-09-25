@@ -90,3 +90,14 @@ export interface OwnServiceArea {
 export interface OwnInvestigatorProfile {
   languages: Array<{ languageCode: string }>;
 }
+
+/** A help article, as `GET /knowledge/documents/:docKey` gives it to a reader who may read it (T-059). */
+export interface HelpArticle {
+  docKey: string;
+  version: number;
+  title: string;
+  /** The language it is in: English when the reader's has no version (`fallback`). */
+  locale: string;
+  fallback: boolean;
+  sections: Array<{ heading: string; content: string }>;
+}

@@ -203,8 +203,56 @@ export const en = {
     },
     step: {
       sending: 'Sending your question',
+      understanding: 'Working out what you are looking for',
+      finding: 'Finding investigators',
       searching: 'Searching the help articles',
       writing: '{sources, plural, one {Writing an answer from # source} other {Writing an answer from # sources}}',
+    },
+    discovery: {
+      searched: 'Searched for',
+      anywhere: 'You did not name a place, so every area was searched.',
+      near_you: 'near you',
+      within: 'within {km} km',
+      ordered: {
+        distance: 'Closest first.',
+        relevance: 'Best match first.',
+        experience: 'Most experienced first.',
+      },
+      more: 'More investigators match. Name a place, a specialty or a language to narrow it down.',
+      none: 'No verified investigator who is taking work matches all of that. Try a wider area, or fewer requirements.',
+      unnamed: 'An investigator',
+      verified: 'Verified',
+      years: '{years, plural, one {# year of experience} other {# years of experience}}',
+      languages: 'Languages',
+      specialties: 'Specialties',
+      hours: 'Declared hours',
+      why: 'Why this investigator',
+      reason: {
+        specialty: 'Offers {list}',
+        languages: 'Speaks {list}',
+        place: 'Works in {place}',
+        distance: '{km} km away',
+        availability: 'Available {day}, {from}–{to}',
+        not_specialty: 'Does not offer {list}',
+      },
+      clarify: {
+        specialty: 'Which of these do you mean? The answer changes who is listed.',
+        location: 'Where should the investigator be?',
+        use_location: 'Use my location',
+        my_location: 'My location',
+        locating: 'Finding your location',
+        location_denied: 'Your location is not available. Type a place instead.',
+        place: 'Or type a place',
+        place_send: 'Search there',
+        purpose: 'What is this search for? Some requests are only allowed for a lawful reason.',
+        purpose_label: 'What it is for',
+        purpose_send: 'Send the reason',
+      },
+      refused: {
+        title: 'This is not something the platform allows',
+        body: 'Requests like this one are checked by fixed rules, and this one matches them, so nothing was searched. If your request is lawful, describe it as a mission — a person reviews every mission.',
+        policy: 'Read what is not allowed',
+      },
     },
     reply: {
       sources: 'Sources',
@@ -225,6 +273,9 @@ export const en = {
     load: {
       failed: 'The conversation could not be opened.',
     },
+  },
+  help: {
+    fallback: 'This article is not yet available in your language, so it is shown in English.',
   },
   account: {
     profile: {

@@ -267,9 +267,28 @@ goes to the composer; after a refusal, back to the options. **A conversation tha
 404 from any of these, which is also what someone else's conversation answers (T-045) — is replaced
 by a fresh one saying "That conversation is no longer available", showing nothing of it.
 
+**Structured results (T-059).** A discovery reply renders from its stored answer, never as prose:
+what was searched, said out loud (and "every area" when no place was named), the order, then each
+investigator as a card (`InvestigatorCard`): name and headline in their own words, Verified,
+experience, the reasons from `matchedOn` / `notMatched` — a gap said plainly — and languages,
+specialties and declared hours, all phrased here in the reader's language (`discovery-format.ts`:
+`Intl.DisplayNames`, `ListFormat`, weekdays from Monday). At most ten; "more match" says how to
+narrow. "Nobody matches" and a refusal (with a link to the policy) are states of their own.
+Discovery's question — which specialty, where, what for — is answered in place while it is the last
+word: a specialty is one tap; "Use my location" sends the device's position rounded to two decimals
+(≈1 km); a place or a purpose in words. Sources are links to `/help/[docKey]#section`. A link out of
+the assistant closes it when it covers the page (the phone's sheet) and leaves it docked beside the
+page on a desktop.
+
+**Help articles** — `/help/[docKey]` reads `GET /knowledge/documents/:docKey` as the reader; not
+found is Next's 404. `ArticleBody` renders the knowledge base's markdown subset — paragraphs, flat
+lists, tables (scrolling in their own box), quotes, bold, code — and nothing else: every character
+is text React escapes.
+
 **Not here yet:** the attachment entry point (T-144 — nothing to attach to); the summary and
 structured state a resume should load (T-046 — they do not exist yet); confirmations (T-058);
-structured results and linked citations (T-059).
+results paged by reference (T-048); links to missions, quotes, assignments and payments (their
+screens, T-119/T-121); AI-drafted text marked unreviewed (drafting, T-117).
 
 ## Never indexed
 

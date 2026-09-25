@@ -39,8 +39,15 @@ export interface KnowledgeAnswer {
   fallback: boolean;
 }
 
-/** A stage of answering, as it starts: finding sources, then writing from however many were found. */
-export type AnswerStep = { step: 'searching' } | { step: 'writing'; sources: number };
+/**
+ * A stage of answering, as it starts (T-056, T-059): working out what is asked and finding
+ * investigators (discovery); finding help articles, then writing from however many were found.
+ */
+export type AnswerStep =
+  | { step: 'understanding' }
+  | { step: 'finding' }
+  | { step: 'searching' }
+  | { step: 'writing'; sources: number };
 
 export interface AnswerOptions {
   /** Told as each stage starts, so a person sees what is happening rather than a spinner (T-056). */

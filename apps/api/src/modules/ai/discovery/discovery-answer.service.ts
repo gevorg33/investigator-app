@@ -23,6 +23,7 @@ import type {
 import { ListTaxonomyTool } from '../tools/discovery/list-taxonomy.tool';
 import { SearchInvestigatorsTool } from '../tools/discovery/search-investigators.tool';
 import { ToolRunner } from '../tools/tool-runner';
+import type { AnswerOptions } from '../knowledge-answer.service';
 import { savedLocale } from '../user-locale';
 import { explainMatch, type MatchReason } from './discovery-explanation';
 import {
@@ -139,15 +140,32 @@ export class DiscoveryAnswerService {
     await this.limits.consume('assistantQuestionPerAccount', actor.userId);
 
     const locale = input.locale ?? (await savedLocale(this.db, actor.userId));
+    return this.respond(actor, input, locale, req);
+  }
+
+  /**
+   * The answer to a request someone was already let through for — by {@link answer}, or by a
+   * conversation's admission (T-059), which checks the same things and takes the same allowance
+   * once for the whole turn. Reports each stage as it starts; `signal` abandons it.
+   */
+  async respond(
+    actor: Actor,
+    input: DiscoveryRequest,
+    locale: KnowledgeLocale,
+    req: RequestContext,
+    { onStep, signal }: AnswerOptions = {},
+  ): Promise<DiscoveryAnswer> {
+    const model = this.model!;
     const empty = emptyAnswer(locale);
 
     const flagged = this.screen(input.question, input.purpose);
     if (flagged.length > 0) return this.refuse(actor, empty, flagged, req);
 
     try {
+      onStep?.({ step: 'understanding' });
       const taxonomy = await this.tools.invoke(actor, this.listTaxonomy, { locale }, req);
       const prompt = discoveryPrompt(input.question, input.purpose, taxonomy.nodes);
-      const proposal = parseProposal(await this.model.complete(prompt), prompt.refs);
+      const proposal = parseProposal(await model.complete(prompt, signal), prompt.refs);
       if (proposal === null) {
         return await this.finish(actor, { ...empty, status: 'not_understood' }, req);
       }
@@ -158,6 +176,8 @@ export class DiscoveryAnswerService {
       const hintFlags = this.screen(proposal.relevanceHint ?? '');
       if (hintFlags.length > 0) return await this.refuse(actor, empty, hintFlags, req);
 
+      signal?.throwIfAborted();
+      onStep?.({ step: 'finding' });
       const labels = new Map(taxonomy.nodes.map((n) => [n.id, n.label]));
       const label = (id: string): NodeLabel => ({ id, label: labels.get(id) ?? null });
       return await this.search(actor, input, proposal, locale, label, req);

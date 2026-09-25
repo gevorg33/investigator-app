@@ -32,7 +32,7 @@ describe('a conversation’s state (T-056)', () => {
   it('follows a turn: unsent question, stored, each step, the reply, done', () => {
     const steps = run(
       [
-        { type: 'start', question: 'How long?', stored: false },
+        { type: 'start', question: { content: 'How long?' }, stored: false },
         { type: 'event', event: { type: 'message', message: question } },
         { type: 'event', event: { type: 'session', session: aiSession({ title: 'How long?' }) } },
         { type: 'event', event: { type: 'step', step: { step: 'searching' } } },
@@ -42,7 +42,7 @@ describe('a conversation’s state (T-056)', () => {
     );
     expect(steps.turn).toEqual({
       phase: 'running',
-      question: 'How long?',
+      question: { content: 'How long?' },
       stored: true,
       step: { step: 'writing', sources: 2 },
     });
@@ -79,7 +79,7 @@ describe('a conversation’s state (T-056)', () => {
     // An assistant message never marks a question stored.
     const s = run(
       [
-        { type: 'start', question: 'q', stored: false },
+        { type: 'start', question: { content: 'q' }, stored: false },
         { type: 'event', event: { type: 'message', message: aiReply() } },
       ],
       ready,
@@ -88,21 +88,21 @@ describe('a conversation’s state (T-056)', () => {
   });
 
   it('keeps an unsent question when stopped or refused before storing, and not after', () => {
-    const unsent = run([{ type: 'start', question: 'q', stored: false }], ready);
-    expect(run([{ type: 'stopped' }], unsent).turn).toEqual({ phase: 'stopped', unsent: 'q' });
+    const unsent = run([{ type: 'start', question: { content: 'q' }, stored: false }], ready);
+    expect(run([{ type: 'stopped' }], unsent).turn).toEqual({ phase: 'stopped', unsent: { content: 'q' } });
     expect(run([{ type: 'failed', error: unavailable }], unsent).turn).toEqual({
       phase: 'failed',
       error: unavailable,
-      unsent: 'q',
+      unsent: { content: 'q' },
     });
-    const stored = run([{ type: 'start', question: '', stored: true }], ready);
+    const stored = run([{ type: 'start', question: { content: '' }, stored: true }], ready);
     expect(run([{ type: 'stopped' }], stored).turn).toEqual({ phase: 'stopped', unsent: null });
   });
 
   it('turns an error in the stream into a failure with the reference support needs', () => {
     const s = run(
       [
-        { type: 'start', question: 'q', stored: true },
+        { type: 'start', question: { content: 'q' }, stored: true },
         {
           type: 'event',
           event: {
@@ -128,7 +128,7 @@ describe('a conversation’s state (T-056)', () => {
   describe('reading back what the server holds', () => {
     it('learns a stopped question was stored after all, so trying again answers it', () => {
       const stopped = run(
-        [{ type: 'start', question: question.content!, stored: false }, { type: 'stopped' }],
+        [{ type: 'start', question: { content: question.content! }, stored: false }, { type: 'stopped' }],
         ready,
       );
       const s = run([{ type: 'synced', messages: [question] }], stopped);
@@ -137,30 +137,30 @@ describe('a conversation’s state (T-056)', () => {
 
     it('keeps it unsent when the server has something else last, or nothing', () => {
       const stopped = run(
-        [{ type: 'start', question: 'Something else?', stored: false }, { type: 'stopped' }],
+        [{ type: 'start', question: { content: 'Something else?' }, stored: false }, { type: 'stopped' }],
         ready,
       );
       expect(run([{ type: 'synced', messages: [question] }], stopped).turn).toEqual({
         phase: 'stopped',
-        unsent: 'Something else?',
+        unsent: { content: 'Something else?' },
       });
       expect(run([{ type: 'synced', messages: [] }], stopped).turn).toEqual({
         phase: 'stopped',
-        unsent: 'Something else?',
+        unsent: { content: 'Something else?' },
       });
       expect(run([{ type: 'synced', messages: [question, aiReply()] }], stopped).turn).toEqual({
         phase: 'stopped',
-        unsent: 'Something else?',
+        unsent: { content: 'Something else?' },
       });
     });
 
     it('ends a running turn — answered meanwhile elsewhere — and leaves no turn alone', () => {
-      const running = run([{ type: 'start', question: '', stored: true }], ready);
+      const running = run([{ type: 'start', question: { content: '' }, stored: true }], ready);
       expect(run([{ type: 'synced', messages: [question, aiReply()] }], running).turn).toBeNull();
       expect(run([{ type: 'synced', messages: [question] }], ready).turn).toBeNull();
       const failedStored = run(
         [
-          { type: 'start', question: '', stored: true },
+          { type: 'start', question: { content: '' }, stored: true },
           { type: 'failed', error: unavailable },
         ],
         ready,
@@ -173,13 +173,13 @@ describe('a conversation’s state (T-056)', () => {
   });
 
   it('starts over empty and ready, with nothing carried from the last conversation', () => {
-    const busy = run([{ type: 'start', question: 'q', stored: false }], ready);
+    const busy = run([{ type: 'start', question: { content: 'q' }, stored: false }], ready);
     expect(run([{ type: 'reset' }], busy)).toEqual({ ...initialState, status: 'ready' });
   });
 
   describe('what can be tried again', () => {
     it('is nothing while a turn runs, or once the last word is the assistant’s', () => {
-      expect(awaitingRetry(run([{ type: 'start', question: 'q', stored: false }], ready))).toBe(
+      expect(awaitingRetry(run([{ type: 'start', question: { content: 'q' }, stored: false }], ready))).toBe(
         false,
       );
       expect(awaitingRetry(run([{ type: 'synced', messages: [question, aiReply()] }], ready))).toBe(
@@ -190,15 +190,15 @@ describe('a conversation’s state (T-056)', () => {
 
     it('is an unsent question, or a stored one with no answer — from any path', () => {
       const unsent = run(
-        [{ type: 'start', question: 'q', stored: false }, { type: 'stopped' }],
+        [{ type: 'start', question: { content: 'q' }, stored: false }, { type: 'stopped' }],
         ready,
       );
-      expect([awaitingRetry(unsent), unsentQuestion(unsent)]).toEqual([true, 'q']);
+      expect([awaitingRetry(unsent), unsentQuestion(unsent)]).toEqual([true, { content: 'q' }]);
       const fromHistory = run([
         { type: 'loaded', session: aiSession(), messages: [question], earlier: null },
       ]);
       expect([awaitingRetry(fromHistory), unsentQuestion(fromHistory)]).toEqual([true, null]);
-      const running = run([{ type: 'start', question: 'q', stored: false }], ready);
+      const running = run([{ type: 'start', question: { content: 'q' }, stored: false }], ready);
       expect(unsentQuestion(running)).toBeNull();
     });
   });

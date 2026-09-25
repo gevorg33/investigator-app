@@ -4,7 +4,7 @@ title: The AI assistant, for investigators
 audience: investigator
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
 updated: 2026-09-25
 source_of_truth: docs
@@ -50,9 +50,10 @@ back.
 
 ## What does it show while it works?
 
-What it is doing: searching the guidance, then writing from the sections it found. The answer
-appears only once its sources have been checked. If the guidance does not cover your question, it
-says so rather than guessing.
+What it is doing: working out what you are asking, searching the guidance, then writing from the
+sections it found. The answer appears only once its sources have been checked, and each source is a
+link that opens the article at that section. If the guidance does not cover your question, it says
+so rather than guessing.
 
 ## What if I stop it, or it cannot answer?
 

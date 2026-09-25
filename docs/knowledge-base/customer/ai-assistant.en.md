@@ -4,7 +4,7 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 6
+version: 7
 status: current
 updated: 2026-09-25
 source_of_truth: docs
@@ -22,13 +22,15 @@ tags: [assistant, ai, help, limitations]
 
 ## What can the assistant help me with?
 
-In the app today, it answers questions about how the platform works — missions, quotes, payments,
-evidence, privacy and the platform's policies — from the platform's help articles, and shows which
-ones it used.
+In the app today, it does two things. It **finds verified investigators** who match what you
+describe — a place, a specialty, languages, the hours you need — and shows each one as a card with the
+reasons they match. And it **answers questions about how the platform works** — missions, quotes,
+payments, evidence, privacy and the platform's policies — from the platform's help articles, and shows
+which ones it used.
 
-More is being added: finding investigators who match what you need, explaining your own missions,
-quotes, assignments and payment status, and helping you draft a mission description. Until then it
-cannot see your missions or do anything for you.
+Ask in your own words; it works out which of the two you mean. More is being added: explaining your
+own missions, quotes, assignments and payment status, and helping you draft a mission description.
+Until then it cannot see your missions or do anything for you.
 
 It answers in your selected language.
 
@@ -66,10 +68,15 @@ looks up, ever becomes a conversation's name.
 
 ## How does it find investigators for me?
 
-This is coming to the app. When it does: it turns your request into search requirements — place, distance, specialty, languages, the weekly
+It turns your request into search requirements — place, distance, specialty, languages, the weekly
 hours you need — and searches live investigator data with them, with your permissions. Only
 verified investigators who are accepting work can appear. It then tells you which of your
 requirements each one met, and which of the specialties you asked for they do not offer.
+
+Each investigator appears as a card: their name and headline in their own words, that they are
+verified, their languages, specialties and declared hours, and the reasons they match — including,
+plainly, a specialty you asked for that they do not offer. It shows a few at a time; if more match, it
+says so, and naming a place, a specialty or a language narrows the list.
 
 It does not guess, and it does not write about investigators in its own words. Every reason it
 gives comes from what the investigator declared on their profile, so it cannot claim a price, an
@@ -80,8 +87,10 @@ How matching works in detail: see "How investigators are matched to your mission
 
 ## Does it use my location?
 
-Only if you share one, and only to search. Your location is not sent to the AI service that reads
-your request, and distances shown to you are rounded to whole kilometres.
+Only if you share one, and only to search. When it asks where you are, **Use my location** shares
+your device's location, rounded to about a kilometre first; it is used for that one search and is not
+kept in the conversation. Your location is not sent to the AI service that reads your request, and
+distances shown to you are rounded to whole kilometres.
 
 ## Why did it refuse to search?
 
@@ -92,6 +101,9 @@ lawful use policy explains what is not allowed.
 
 If you believe your request is lawful, describe it as a mission instead: every mission is reviewed
 by a person before any investigator sees it.
+
+The rules read every question first — even one asking about what is allowed. A question they match
+is shown the lawful use policy to read, rather than an answer written about it.
 
 ## Can it tell me what an investigation will cost?
 
@@ -139,7 +151,8 @@ role.
 ## Where do the sources in an answer come from?
 
 Every answer lists the documents and sections it used, by title: the platform's own guidance that
-the answer was written from, and nothing else.
+the answer was written from, and nothing else. Each one is a link: it opens the article at that
+section, so you can read the source for yourself.
 
 If the assistant cannot point to a page that answers your question, it tells you it does not have
 the answer rather than replying without a source.
@@ -185,6 +198,10 @@ question at a time:
   listed. If everyone found offers all of them, it does not ask.
 - **What it is for** — when a request could be for something the platform does not allow and does
   not say. Your answer is checked by the same fixed rules as your request.
+
+Answer it where it asks: choose one of the specialties it offers; for where, choose **Use my
+location** or type a place; for what it is for, say so in your own words. Your answer goes with your
+original request, so you do not need to repeat it.
 
 If it can give you a useful answer with a stated assumption, it does that instead — for example,
 searching every area when you have not mentioned one, and saying so. You can always narrow

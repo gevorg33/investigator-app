@@ -125,7 +125,7 @@ export function Conversation({
               </Button>
             )}
             <ol role="log" aria-label={t('label')} className="grid gap-6">
-              {state.messages.map((m) => (
+              {state.messages.map((m, i) => (
                 <li
                   key={m.id}
                   data-sequence={m.sequence}
@@ -136,7 +136,10 @@ export function Conversation({
                       : undefined
                   }
                 >
-                  <MessageItem message={m} />
+                  <MessageItem
+                    message={m}
+                    pending={i === state.messages.length - 1 && state.turn === null}
+                  />
                 </li>
               ))}
             </ol>

@@ -3136,34 +3136,79 @@ pnpm --filter app-web test assistant-confirmation
 ---
 
 ### T-059 — Structured result and citation rendering
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P1
 - **Depends on:** T-018, T-056
 - **Risk:** MEDIUM
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/**
+- **Affected:** apps/app-web/**; apps/api/src/modules/ai/** (turn routing), apps/api/src/modules/knowledge/** (document read)
+- **Owner decisions (2026-09-25):** (1) scope — discovery cards and openable citations are built here;
+  paging by reference (T-048), links into the app (T-119/T-121) and unreviewed drafts (T-117) stay
+  unticked. (2) **Discovery first, knowledge as the fallback**: each turn runs T-018's discovery step,
+  and a request it calls `not_discovery` is answered from the knowledge base — extending T-018's
+  stateless approval to requests and results stored in the caller's own session. (3) A read-only
+  `GET /knowledge/documents/:docKey` behind the retrieval gate (`mayRead`), and a help page in the app.
 
 **Description**
 Tool results are structured data, not prose. Rendering them as chat text loses the structure
 and invites the model to editorialise.
 
 **Acceptance criteria**
-- [ ] Investigator results render as cards showing **`matchedOn` and `notMatched` fields only**
+- [x] Investigator results render as cards showing **`matchedOn` and `notMatched` fields only**
       — never a model-composed rationale (`investigator-discovery`)
-- [ ] Distance, languages, specialties and availability shown from the data, not the prose
-- [ ] RAG answers **cite their sources**, linked and openable
-- [ ] "I don't have that" renders as a clear state, not an apology buried in text
-- [ ] Large results paginate by reference — **10,000 rows never enter the view or the prompt**
-      (`ai-session-context`)
-- [ ] Mission, quote, assignment and payment references link into the app
+- [x] Distance, languages, specialties and availability shown from the data, not the prose
+- [x] RAG answers **cite their sources**, linked and openable
+- [x] "I don't have that" renders as a clear state, not an apology buried in text
+- [~] Large results paginate by reference — **10,000 rows never enter the view or the prompt**
+      (`ai-session-context`) — capped: at most 10 results reach the view, with "more match — narrow
+      it"; paging **by reference** needs the result store (T-048)
+- [ ] Mission, quote, assignment and payment references link into the app — nothing produces
+      them yet, and their screens do not exist (T-119, T-121)
 - [ ] AI-drafted report or message text is **visibly marked unreviewed** and cannot be sent or
-      exported from the assistant without review (`report-generation`)
+      exported from the assistant without review (`report-generation`) — nothing drafts text yet
+      (T-117)
 
 **Validation**
 ```bash
 pnpm --filter app-web test assistant-results
 ```
+
+**DONE — 2026-09-25**
+
+*What exists.* API: each turn runs **discovery first** (`DiscoveryAnswerService.respond`, steps
+`understanding` → `finding`, abortable); its results, "nobody", question back or refusal are the
+reply, stored whole (`source: 'discovery'`); `not_discovery` / `not_understood` fall back to the
+knowledge base. An answer to discovery's question (`clarifies`) is paired with the question it
+answers — a specialty only from those offered, a point used once and stored nowhere, a place read
+with the question — and a retry pairs it again. The allowance is taken once per turn.
+`GET /knowledge/documents/:docKey` opens a help article behind the retrieval gate (`mayRead`,
+another audience's article a 404 like a missing one). app-web: `InvestigatorCard` and
+`DiscoveryReply` (searched-for, cards, nobody, more, refusal with the policy, the question answered
+in place: one tap, Use my location rounded to ≈1 km, or words); sources are links to
+`/help/[docKey]#section`, which close the phone's sheet and leave the dock; the help page renders
+the knowledge base's markdown subset (`ArticleBody`), nothing interpreted.
+
+*Found along the way.* (1) Two buttons named "Send" — the composer's and the purpose answer's —
+indistinguishable to a screen reader: the second is now "Send the reason". (2) Drafts are never
+ingested, so "a draft is not served" is guaranteed a step earlier than first assumed. (3) Discovery
+first means a question *about* the lawful-use rules that matches them is shown the policy, not
+answered — documented in the article.
+
+*Negative controls* (each seen to fail, then restored): knowledge never asked after discovery; the
+point stored with the message; any specialty accepted; articles served past the gate; English
+preferred over the reader's language; a gap left unsaid on a card; a clarification answerable after
+the conversation moved on; the exact location sent; the docked panel closed by a citation.
+
+*Verified.* Lint, typecheck, build, budget (all 12 routes < 250 kB; `/help/[docKey]` 140 kB),
+source maps; API 2405 tests, app-web 356, both 100%; `pnpm --filter app-web test assistant-results`
+13; knowledge base 0/0, sync 0 conflicts. In the owner's browser against the real API and database,
+with a local model stand-in and two made-up investigators seeded in dev: cards, nobody, the
+location question, refusal and the policy page, linked sources. The agent did not run the
+375/768/1440 Playwright pass (it cannot sign in).
+
+*Docs.* Customer assistant article v7 (ru/hy drafts in step), investigator v3, `ai-sessions.md`,
+`knowledge.md`, `assistant-tools.md`, `app-web.md`, retention, component inventory, ACTIONS #6, #23.
 
 ---
 

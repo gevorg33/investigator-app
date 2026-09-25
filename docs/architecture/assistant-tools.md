@@ -193,8 +193,10 @@ Showing each profile's agency waits for agency-owned profiles (T-087).
 - `getInvestigatorProfile` and `checkAvailability`, listed in the discovery skill, have no caller
   yet. They arrive with the first flow that needs them — the conversational orchestrator (T-048,
   T-095) — rather than as tools nothing calls.
-- Routing one conversation between knowledge and discovery. Two endpoints for now;
-  `not_discovery` tells the client to use the knowledge answer.
+- A classifier ahead of both. Conversations route **discovery first** (T-059): each turn asks
+  discovery, and `not_discovery` / `not_understood` fall back to the knowledge answer
+  (`ai-sessions.md`). `respond` is `answer` without its own admission, for a turn that already
+  took one.
 - Semantic relevance. Profiles have no embeddings; the lexical ranker is explainable and cannot
   add anyone, and an embedding ranker would have to keep both properties.
 - Quality ranking (rating, response time): no inputs exist until reviews (T-037).
