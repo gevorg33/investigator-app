@@ -1,4 +1,5 @@
 import { ApiError, toApiError } from './errors';
+import { workspaceHeader } from './workspace';
 
 /** A conversation with the assistant, as `/ai/sessions` returns it (T-045). */
 export interface AiSession {
@@ -121,9 +122,7 @@ export interface InvestigatorMatch {
 }
 
 export type Clarification =
-  | { code: 'purpose' }
-  | { code: 'location' }
-  | { code: 'specialty'; options: NodeLabel[] };
+  { code: 'purpose' } | { code: 'location' } | { code: 'specialty'; options: NodeLabel[] };
 
 /** What discovery answered (T-018), stored whole on the reply (T-059). */
 export interface DiscoveryAnswer {
@@ -192,6 +191,7 @@ export function sseParser(): (chunk: string) => TurnEvent[] {
  */
 export function assistantApi(role: string | null) {
   const headers = (json: boolean): Record<string, string> => ({
+    ...workspaceHeader(),
     ...(json ? { 'content-type': 'application/json' } : {}),
     ...(role === null ? {} : { 'x-active-role': role }),
   });
@@ -219,20 +219,23 @@ export function assistantApi(role: string | null) {
         `/ai/sessions?archived=${archived}&limit=${SESSIONS_PAGE}${cursor === undefined ? '' : `&cursor=${encodeURIComponent(cursor)}`}`,
       ),
     /** Conversations whose name or messages match, best first, with where the first match is. */
-    search: (q: string) =>
-      call<SessionMatch[]>(`/ai/sessions/search?q=${encodeURIComponent(q)}`),
+    search: (q: string) => call<SessionMatch[]>(`/ai/sessions/search?q=${encodeURIComponent(q)}`),
     open: (id: string) => call<AiSession>(`/ai/sessions/${id}`),
     /**
      * A page of a conversation from its end backwards (T-057): the newest `MESSAGES_PAGE`
      * messages, or those before where the last page left off — returned in reading order.
      */
-    page: async (id: string, cursor?: string): Promise<{ items: AiMessage[]; earlier: string | null }> => {
+    page: async (
+      id: string,
+      cursor?: string,
+    ): Promise<{ items: AiMessage[]; earlier: string | null }> => {
       const page = await call<Page<AiMessage>>(
         `/ai/sessions/${id}/messages?order=newest&limit=${MESSAGES_PAGE}${cursor === undefined ? '' : `&cursor=${encodeURIComponent(cursor)}`}`,
       );
       return { items: [...page.items].reverse(), earlier: page.pageInfo.nextCursor };
     },
-    rename: (id: string, title: string) => call<AiSession>(`/ai/sessions/${id}`, 'PATCH', { title }),
+    rename: (id: string, title: string) =>
+      call<AiSession>(`/ai/sessions/${id}`, 'PATCH', { title }),
     archive: (id: string) => call<AiSession>(`/ai/sessions/${id}/archive`, 'POST', {}),
     /** Out of the archive, and active from now. */
     restore: (id: string) => call<AiSession>(`/ai/sessions/${id}/resume`, 'POST', {}),

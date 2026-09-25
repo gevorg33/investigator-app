@@ -1,9 +1,4 @@
-import type {
-  AiMessage,
-  AiSession,
-  DiscoveryAnswer,
-  InvestigatorMatch,
-} from '@/lib/api/assistant';
+import type { AiMessage, AiSession, DiscoveryAnswer, InvestigatorMatch } from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
 import type {
   LegalDocument,
@@ -12,6 +7,7 @@ import type {
   OwnServiceArea,
   SessionSummary,
   VerificationApplication,
+  WorkspaceView,
 } from '@/lib/api/types';
 
 /** A published legal document, as `GET /legal/...` returns it. */
@@ -211,7 +207,16 @@ export const discoveryAnswer = (over: Partial<DiscoveryAnswer> = {}): DiscoveryA
   },
   assumptions: [],
   orderedBy: 'relevance',
-  results: [investigatorMatch(), investigatorMatch({ investigatorId: 'inv-2', displayName: null, headline: null, yearsExperience: null, explanation: [] })],
+  results: [
+    investigatorMatch(),
+    investigatorMatch({
+      investigatorId: 'inv-2',
+      displayName: null,
+      headline: null,
+      yearsExperience: null,
+      explanation: [],
+    }),
+  ],
   hasMore: false,
   clarification: null,
   refusal: null,
@@ -219,12 +224,36 @@ export const discoveryAnswer = (over: Partial<DiscoveryAnswer> = {}): DiscoveryA
 });
 
 /** The assistant's reply carrying a discovery answer, as it is stored (T-059). */
-export const aiDiscoveryReply = (answer: DiscoveryAnswer, over: Partial<AiMessage> = {}): AiMessage =>
+export const aiDiscoveryReply = (
+  answer: DiscoveryAnswer,
+  over: Partial<AiMessage> = {},
+): AiMessage =>
   aiMessage({
     id: 'msg-d',
     sequence: 2,
     role: 'ASSISTANT',
     content: '',
     metadata: { source: 'discovery', answer },
+    ...over,
+  });
+
+/** A workspace the reader can work in, as `GET /workspaces` lists it (T-092): Personal by default. */
+export const workspace = (over: Partial<WorkspaceView> = {}): WorkspaceView => ({
+  id: 'ws-personal',
+  kind: 'PERSONAL',
+  name: null,
+  status: 'ACTIVE',
+  roles: ['OWNER'],
+  current: true,
+  ...over,
+});
+
+/** An agency workspace the reader belongs to, not the current one unless told. */
+export const agencyWorkspace = (over: Partial<WorkspaceView> = {}): WorkspaceView =>
+  workspace({
+    id: 'ws-ararat',
+    kind: 'AGENCY',
+    name: 'Ararat Investigations',
+    current: false,
     ...over,
   });

@@ -282,18 +282,25 @@ cookie → ActorGuard → Actor (identity, platform roles)
 - `X-Workspace` chooses among workspaces the user already belongs to. Intersected, it can only
   narrow access, exactly like `X-Active-Role`. Unknown or foreign → 403.
 - With no header, the session's `default_tenant_id` is used, which is the last workspace the user
-  switched to. The web app always sends the header, so every request names the workspace on
-  screen, and **a tab cannot write into a workspace it is not showing**.
+  switched to. In app-web (T-092) a page is **rendered** in the session's default, and every
+  **browser** call from that page then sends `X-Workspace` naming the workspace it was rendered
+  in (`lib/api/workspace.ts`, pinned by `WorkspaceScope`). So if another tab switches, this one
+  keeps reading and writing where it shows: **a tab cannot write into a workspace it is not
+  showing**.
 - Body, query, path, AI output and MCP input are never read as a tenant.
 
-**Switching workspace** is a client action followed by a server check:
+**Switching workspace** (built in T-092):
 
-- The UI drops tenant-scoped client caches (query cache keys include the workspace id).
-- It opens that workspace's AI sessions.
-- It re-reads permissions.
-- The server updates `default_tenant_id`.
+- The server check first: `POST /workspaces/:id/activate` refuses a workspace the user cannot
+  use, and otherwise sets `default_tenant_id`.
+- Then a **full page load at Home**, not a client transition. Every list, draft, conversation
+  and permission on screen belongs to the workspace being left; a reload is the one way none of
+  it can render under the new name, and the page being left may not exist in the new workspace.
+  The workspace layout is also keyed by the workspace id, so client state cannot outlive a
+  workspace even without a reload.
+- The new page confirms where the user now is ("Now working in …").
 
-Nothing tenant-specific survives the switch, because nothing tenant-specific was keyed without
+Nothing tenant-specific survives the switch, because nothing tenant-specific was kept without
 the tenant.
 
 ---

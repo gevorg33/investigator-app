@@ -236,6 +236,37 @@ Account's roles section links here; the Missions page's "cannot quote yet" state
 (`ACTIONS-FOR-ME.md` #4) — `POST /media/uploads` answers 500 there, which the page reports with its
 reference. The rest was driven in the browser at 375px against the real API.
 
+## Workspaces and agency onboarding (T-092)
+
+- **Which workspace a page is in.** The workspace layout reads `GET /workspaces` and renders
+  inside `WorkspaceScope`, keyed by the current workspace's id. The scope pins that id for
+  `callApi` and the assistant's client, which send it as `X-Workspace` on every browser call
+  (`lib/api/workspace.ts`). The module is pinned in the browser only: on the server it would be
+  shared across requests, and server renders use the session's default instead
+  (`tenancy.md`, resolution).
+- **The switcher** (`WorkspaceSwitcher`) appears only with more than one workspace: a
+  `DropdownMenu` under the app's name in the sidebar from `md`, and a `Drawer` from a bar above
+  the content on a phone. Each row is the workspace's name ("Personal" for a Personal workspace),
+  "Being set up" for a `CREATING` agency, and the current one ticked and named "current" for
+  screen readers. Choosing one calls `POST /workspaces/:id/activate`, then loads the app again at
+  Home; while that runs the trigger says "Switching to …" and is disabled. A refusal is shown
+  under the trigger and nothing moves.
+- **The confirmation** (`SwitchedNotice`) is the switch's one motion: "Now working in …" fades
+  in on the page the switch lands on (`starting:opacity-0`, `--duration-slow`; zero under
+  reduced motion). The switch leaves the target's id in `sessionStorage` for the notice to read
+  once; storage refused only loses the sentence.
+- **Creating an agency** is `/agencies/new`, linked from Account's Agencies section and the
+  switcher. One screen: name, country, business email, time zone (the account's own first) and
+  currency — all required, although the API accepts fewer, because nothing yet lets an agency's
+  details be completed later (T-150) — and the agency terms (`LegalDocuments`). One `Idempotency-Key`
+  per form, so a retry after a lost response returns the same agency. Then it activates the new
+  agency and loads the app in it. With no agency terms published, the page says agencies cannot
+  be created yet instead of offering a form that would be refused; an unconfirmed account is
+  asked to confirm its address first.
+- **Not built:** the dismissible onboarding checklist. What it would list — the agency's
+  profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
+  not exist yet (filed as T-149).
+
 ## The assistant (T-056)
 
 `src/components/assistant/`. Mounted by the workspace layout above every page

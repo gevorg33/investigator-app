@@ -4853,7 +4853,7 @@ are empty states saying what will appear.
 ---
 
 ### T-092 — Workspace switcher and agency onboarding (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P1
 - **Depends on:** T-091, T-075, T-083
 - **Risk:** MEDIUM
@@ -4871,14 +4871,45 @@ are empty states saying what will appear.
   respected.
 
 **Acceptance criteria**
-- [ ] Switching shows no stale data from the previous workspace (tested: A's list never flashes in B)
-- [ ] Onboarding completes in one short screen on a phone; component-discovery log records what was reused
+- [x] Switching shows no stale data from the previous workspace (tested: A's list never flashes in B)
+- [x] Onboarding completes in one short screen on a phone; component-discovery log records what was reused
 - [ ] Playwright flows at 375 and 1280; accessibility checks pass
 
 **Validation**
 ```bash
 pnpm --filter app-web test workspace onboarding
 ```
+
+**DONE — 2026-09-26**
+
+*Switcher.* `WorkspaceSwitcher` — the adopted `DropdownMenu` in the sidebar from `md`, the `Drawer`
+from a bar above the content on a phone — shown only with more than one workspace. Switching calls
+`POST /workspaces/:id/activate`, then loads the app again at Home, where "Now working in …" fades in
+(zero under reduced motion). The layout renders inside `WorkspaceScope`, keyed by the workspace id,
+which pins that id for `X-Workspace` on every browser call (`callApi` and the assistant's client).
+
+*Stale data, checked.* A conversation created in Personal showed there and nowhere in the agency,
+before or after switching, at 375 and 1280. With a second "tab" moving the session default to
+Personal, this page's calls still named the agency, and Personal's conversation did not appear.
+Negative control: with the pin removed, 3 specs fail.
+
+*Onboarding.* `/agencies/new`, linked from a new Agencies section on Account and from the switcher:
+five required details and the agency terms on one screen, one idempotency key per form, then the app
+opens in the new agency. No terms published → "Agencies cannot be created yet"; unconfirmed account →
+confirm first. Created end to end against a development placeholder of the terms in the local
+database (ACTIVE, Owner, acceptance recorded), then the placeholder and that agency were deleted.
+
+*Found and fixed.* Country and language lists offered retired aliases under current names (DY and
+HV as a second "Benin" and "Burkina Faso"; iw beside he) — `lib/codes.ts` from T-123 now keeps only
+canonical codes, one per name, with a regression test seen failing first. The API's
+`error.validation.country_code.invalid` and `error.validation.legal.not_current` had no messages.
+"current" and "Being set up" ran into the workspace name for screen readers. Selects whose label
+wrapped a hint (`SelectField` added).
+
+*Not done.* The dismissible checklist: nothing it would list exists yet (T-149). Changing an
+agency's details after creation (T-150). The Playwright criterion: flows were driven in the in-app
+browser at 375 and 1280, and accessible names are asserted in the specs, but there is no Playwright
+suite to add them to yet (T-139).
 
 ---
 
@@ -6714,4 +6745,59 @@ happens to VERIFIED meanwhile.
 **Validation**
 ```bash
 pnpm --filter api test profiles verification
+```
+
+---
+
+### T-149 — Agency onboarding checklist (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-092, T-084, T-085
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+From T-092. After the five required details, the rest of an agency's setup is meant to be a
+dismissible checklist, not a wizard (plan.md). Nothing it would list exists yet: the agency profile
+and settings (T-084), inviting employees (T-085), agency verification (T-088, approval-gated). Build
+the checklist on Home for an agency's owner once at least the first two exist — each item a link to
+where it is done, done items ticked from real data, dismissal remembered per workspace.
+
+**Acceptance criteria**
+- [ ] Every item links to a screen that exists, and is ticked from the API, never from a local flag
+- [ ] Dismissed once, it stays dismissed for that workspace, on every device
+
+**Validation**
+```bash
+pnpm --filter app-web test onboarding
+```
+
+---
+
+### T-150 — Complete or change an agency's core details
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-083, T-092
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain (API) + frontend (UI)
+- **Affected:** apps/api/src/modules/tenants/**, apps/app-web/**
+
+**Description**
+From T-092. `POST /agencies` accepts an agency with some of the five required details missing, and it
+stays `CREATING` — but nothing can add them afterwards, and an owner cannot change a name, country,
+business email, time zone or currency once set. The app therefore requires all five up front, and the
+switcher shows a `CREATING` agency as "Being set up" with no way forward. T-084 covers profile,
+settings and branding, not these five. Add an owner-only update (audited; becoming ACTIVE when the
+minimum is complete) and the screen for it.
+
+**Acceptance criteria**
+- [ ] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
+- [ ] Only an owner can change the five details; every change is audited
+
+**Validation**
+```bash
+pnpm --filter api test agencies && pnpm --filter app-web test workspace
 ```

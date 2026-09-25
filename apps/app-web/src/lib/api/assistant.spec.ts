@@ -87,7 +87,9 @@ describe('the assistant API from the browser', () => {
 
     expect((await client.list(false)).items).toEqual([aiSession()]);
     expect((await client.list(true, 'a/2')).items).toEqual([archived]);
-    expect(await client.search('quote & fees')).toEqual([{ ...aiSession(), firstMatchSequence: 3 }]);
+    expect(await client.search('quote & fees')).toEqual([
+      { ...aiSession(), firstMatchSequence: 3 },
+    ]);
     expect(await client.open(ID)).toEqual(aiSession());
     expect((await client.rename(ID, 'Fees')).title).toBe('Fees');
     expect((await client.archive(ID)).status).toBe('ARCHIVED');

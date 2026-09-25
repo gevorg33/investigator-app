@@ -26,4 +26,24 @@ describe('the language and country pickers’ options', () => {
     expect(en.length).toBeGreaterThanOrEqual(249);
     expect(countryOptions('hy')).toContainEqual({ code: 'AM', name: 'Հայաստան' });
   });
+
+  it.each(['en', 'ru', 'hy'])(
+    'names each language and country once, by its current code, never a retired alias (%s)',
+    (locale) => {
+      // Regression (T-092): Intl names DY and HV "Benin" and "Burkina Faso", so both were offered
+      // twice; "iw" was offered beside "he". A duplicate name is always an alias.
+      for (const options of [countryOptions(locale), languageOptions(locale)]) {
+        const names = options.map((o) => o.name);
+        expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+      }
+      const countries = countryOptions(locale).map((o) => o.code);
+      for (const alias of ['DY', 'HV', 'UK', 'BU', 'ZR', 'NH', 'RH', 'VD']) {
+        expect(countries).not.toContain(alias);
+      }
+      expect(countries).toEqual(expect.arrayContaining(['BJ', 'BF', 'GB', 'MM', 'CD']));
+      const languages = languageOptions(locale).map((o) => o.code);
+      for (const alias of ['iw', 'in', 'ji', 'jw', 'mo']) expect(languages).not.toContain(alias);
+      expect(languages).toEqual(expect.arrayContaining(['he', 'id', 'yi', 'jv', 'ro']));
+    },
+  );
 });
