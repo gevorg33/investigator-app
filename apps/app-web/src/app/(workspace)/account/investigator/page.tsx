@@ -8,7 +8,6 @@ import { ServiceAreas } from '@/components/investigator/service-areas';
 import { SpecialtiesPicker } from '@/components/investigator/specialties-picker';
 import { StatusCard } from '@/components/investigator/status-card';
 import { VerificationSection } from '@/components/investigator/verification-section';
-import type { CategoryOption } from '@/components/missions/filter-sheet';
 import { Page } from '@/components/page';
 import { getLocale, getT } from '@/i18n/server';
 import { getAccount, serverApi } from '@/lib/api/server';
@@ -20,16 +19,11 @@ import type {
   VerificationApplication,
 } from '@/lib/api/types';
 import { countryOptions, languageOptions } from '@/lib/codes';
+import { flattenTaxonomy } from '@/lib/taxonomy';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('investigator.title') };
 }
-
-const flatten = (nodes: readonly TaxonomyNode[], depth = 0): CategoryOption[] =>
-  nodes.flatMap((n) => [
-    { id: n.id, label: n.label ?? n.slug, depth },
-    ...flatten(n.children, depth + 1),
-  ]);
 
 /**
  * The investigator's own profile (T-123): where it stands, what it says, where they work, and
@@ -47,7 +41,7 @@ export default async function InvestigatorProfilePage() {
     serverApi<VerificationApplication[]>('/verification/me/requests'),
     serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`),
   ]);
-  const categories = flatten(taxonomy ?? []);
+  const categories = flattenTaxonomy(taxonomy ?? []);
   const own = profile!;
 
   return (

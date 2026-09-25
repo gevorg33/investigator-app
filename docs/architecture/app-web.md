@@ -158,7 +158,8 @@ the table, at 375, 768 and 1280px. There is no automated browser run in CI yet.
 
 `/missions` shows an investigator — anyone holding the role who has not chosen to see the platform
 as a customer — the published missions they could quote on (`POST /search/missions`, described in
-`discovery.md`). A customer sees the empty state until their own mission screens arrive.
+`discovery.md`). A customer sees their own missions instead (T-119, below); anyone else, the empty
+state.
 
 **Built from the registries** (`component-discovery`; searched through the shadcn MCP — `@cult-ui`
 answered 429, `@react-bits` has only decorative motion pieces): `card`, `badge`, `drawer`, `command`,
@@ -198,6 +199,51 @@ pinned, as admin-web does.
 
 **Tests** stub what jsdom lacks and these components use (`vitest.setup.ts`: `matchMedia`,
 `scrollIntoView`, `setPointerCapture`, `ResizeObserver`).
+
+## Missions: a customer's own, and guided intake (T-119)
+
+A customer's `/missions` lists their missions (`GET /missions/me`), newest first, as cards that open
+where each stands; a draft a moderator returned says **Changes requested**, not "Draft". "New
+mission" opens `/missions/new`.
+
+**Intake** (`components/missions/intake/`) — plain questions, one per screen at every width, in
+`steps.ts`: what you need (title, description) → which kind of help (`Command` over the taxonomy)
+→ where (country, optional place) → by when (deadline, optional start) → budget (currency, from,
+up to) → languages → who it concerns (and, where personal, a protective order) → why (the purpose,
+in the customer's words) → the brief. Progress is `Progress` plus "Question 3 of 9" in words.
+
+- **Saves itself** (`use-draft.ts`). Every change is kept at once and sent 800 ms after typing
+  pauses; moving between questions, "Finish later", hiding the tab and leaving the intake send
+  what is waiting first. Saves are **serial**, each with the version the last returned, so a draft
+  never conflicts with itself; a 409 says it changed elsewhere. **Opening `/missions/new` creates
+  nothing** — the first saved answer POSTs the draft and the address becomes `/missions/<id>?step=`
+  (`history.replaceState`), so a reload opens the same question. A failed save keeps its changes
+  for the next one, and the question does not move on until it is saved.
+- **Never sends what the database refuses.** An emptied text field is sent as `null` (a CHECK
+  refuses empty text). A budget minimum above its maximum, or a start after the finish, is shown
+  and kept but not sent until put right, then sent as a pair — both are CHECK constraints the API
+  does not map to field errors yet (T-150).
+- **Required answers are the API's list** (`REQUIRED_AT_SUBMISSION`, plus the protective-order
+  answer for a personal relationship), asked one screen at a time: Continue with one missing flags
+  it beside the field and moves focus to it. Optional ones are labelled so.
+- **Languages start with the reader's own**, saved and removable — a default, not an assumption.
+- **The brief** (`Brief`) is each answer under a plain heading with "Change", then the
+  lawful-purpose confirmation — a `Checkbox` only the customer ticks, never pre-ticked or copied —
+  and "Send for review". Unanswered questions are marked on the brief; a 422 on sending lists each
+  field under the question that fixes it, with a button to it.
+- **Returned for changes** — `review.outcome = CHANGES_REQUESTED` on the mission — opens at the
+  brief with the moderator's note above every question.
+- A sent mission (`/missions/<id>`, not DRAFT) shows where it stands in words — being reviewed,
+  published, cancelled — the date sent in the reader's time zone, and the brief read-only. A
+  **rejection** shows the moderator's reason (or says none was given) and "Start a new mission from
+  this one", which POSTs the answers as a new draft and opens it at the brief; the confirmation is
+  never copied.
+- Names (categories, countries, languages) are resolved on the server and passed down, so the page
+  hydrates as it rendered (`Intl` names differ between Node and browsers).
+
+Built from `@shadcn/progress`, `@shadcn/radio-group` and `@shadcn/checkbox` (re-tokenised, single
+`@radix-ui/react-*` packages, pinned) with the existing `command`, `native-select`, `textarea`, `card`
+and `alert`. `@react-bits` offers an animated stepper; a progress bar says the same without motion.
 
 ## Investigator profile (T-123)
 
@@ -381,3 +427,4 @@ session cookie is sent over plain HTTP and emailed links are written to the API'
 - An app icon: the favicon request 404s until there is a brand mark to use.
 - Google sign-in (T-062), and changing an email address or password from the account page.
 - The workspace switcher and every real screen — T-092 and the core-loop tasks.
+- Cancelling a mission from the app (T-151), and attachments on a mission (T-066).

@@ -41,6 +41,73 @@ export interface BrowseFilters {
   sort?: MissionSort;
 }
 
+/** Who the customer is to the person the work is about (T-010). */
+export type SubjectRelationship =
+  | 'SELF_OR_OWN_ORGANISATION'
+  | 'EMPLOYER'
+  | 'BUSINESS_RELATIONSHIP'
+  | 'LEGAL_REPRESENTATIVE'
+  | 'FAMILY_MEMBER'
+  | 'PARTNER_OR_SPOUSE'
+  | 'FORMER_PARTNER'
+  | 'NO_PERSONAL_RELATIONSHIP'
+  | 'OTHER';
+
+export type MissionStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'QUOTED'
+  | 'CUSTOMER_CONFIRMED'
+  | 'PAID'
+  | 'ASSIGNED'
+  | 'ACCEPTED'
+  | 'IN_PROGRESS'
+  | 'REPORT_SUBMITTED'
+  | 'CUSTOMER_REVIEW'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REJECTED'
+  | 'DISPUTED'
+  | 'SUSPENDED'
+  | 'EXPIRED';
+
+/** A moderator's rejection or request for changes, while it still describes the mission (T-119). */
+export interface MissionReview {
+  outcome: 'REJECTED' | 'CHANGES_REQUESTED';
+  reason: string | null;
+  decidedAt: string;
+}
+
+/** The fields a customer writes on a draft (`PATCH /missions/me/:id`), each nullable until submission. */
+export interface MissionFields {
+  taxonomyNodeId: string | null;
+  title: string | null;
+  description: string | null;
+  countryCode: string | null;
+  locationLabel: string | null;
+  startBy: string | null;
+  deadline: string | null;
+  budgetMinMinor: number | null;
+  budgetMaxMinor: number | null;
+  currency: string | null;
+  languages: string[];
+  purpose: string | null;
+  subjectRelationship: SubjectRelationship | null;
+  protectiveOrderDeclared: boolean | null;
+}
+
+/** A mission as its own customer sees it (`GET /missions/me/:id`). No screening detail, ever. */
+export interface OwnMission extends MissionFields {
+  id: string;
+  status: MissionStatus;
+  version: number;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  review: MissionReview | null;
+}
+
 /** A published mission as an investigator browsing sees it (T-054): nothing about the customer. */
 export interface MissionListing {
   id: string;

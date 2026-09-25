@@ -4,14 +4,15 @@ title: Creating and submitting a mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-17
+updated: 2026-09-26
 source_of_truth: docs
-implementation_status: specified
+implementation_status: implemented
 related_code:
   - apps/api/src/modules/missions
   - apps/api/src/modules/mission-policy
+  - apps/app-web/src/components/missions
 tags: [missions, drafts, submission, review, categories]
 ---
 
@@ -21,25 +22,42 @@ tags: [missions, drafts, submission, review, categories]
 
 A mission is your description of the work you need done. It holds the category of work,
 what you need, where it needs to happen, your timeframe, your budget range, the languages
-you need, and any documents you attach.
+you need, who the work concerns and why you need it. Attaching documents to a mission is not
+available yet.
 
 A mission is how investigators find your work and decide whether to quote on it. It is not
 yet an agreement with anyone — that happens when you accept a quote.
 
 ## What information do I need to provide?
 
-The category of investigation, a title and a description of what you need, the country and
-area involved, your timeframe, a budget range, and the languages you need the investigator
-to work in. Some categories ask additional structured questions specific to that kind of
-work.
+Start a mission from **Missions → New mission**. You answer plain questions, one at a time — on
+a phone, one per screen — and no investigation vocabulary is needed:
 
-You must also confirm that your request is for a lawful purpose. This confirmation is
-required before a mission can be submitted.
+1. What you need to find out: a few words, then more detail.
+2. Which kind of help is closest, chosen from a searchable list.
+3. The country where the work happens, and optionally a city or area.
+4. The date it must be finished by, and optionally the earliest it may start.
+5. Your budget range and its currency.
+6. The languages the investigator must work in. Your own language is suggested; remove it if
+   it is not needed.
+7. Who the work is about, to you. If the person is family, a partner or a former partner, you
+   are also asked whether a protective order or similar restriction is in place.
+8. Why you need it, in your own words.
+
+The last screen shows your answers together as a brief — what the reviewer reads, and what
+investigators quote on once it is published — with a **Change** link for each answer. There you
+confirm that your request is for a lawful purpose. This confirmation is always yours to tick,
+and a mission cannot be sent without it.
 
 ## Can I save a mission and finish it later?
 
-Yes. A mission stays a draft until you submit it. Drafts are private to you — no
-investigator can see a draft, and drafts do not appear in any search.
+Yes. Your answers are saved as you go — there is no save button — and **Finish later** takes
+you back to your missions. A draft opens again at the first question you have not answered.
+Nothing is saved until you answer the first question, so opening a new mission and leaving
+creates nothing.
+
+A mission stays a draft until you submit it. Drafts are private to you — no investigator can
+see a draft, and drafts do not appear in any search.
 
 You can edit a draft freely. Once a mission has been submitted, what you can change is
 limited, because investigators may already be preparing quotes based on it.
@@ -64,13 +82,22 @@ category of work, the way the request is described, or a detail that could indic
 not lawful will move it up the queue. If the reviewer needs more information, you will be asked
 for it rather than simply refused.
 
+## What if the reviewer asks for changes?
+
+The mission comes back to your drafts, marked **Changes requested** in your list. Opening it
+shows the reviewer's note at the top of every question, and starts at the brief so you can see
+it all at once. Change what they asked for and send it again; you confirm the lawful purpose
+again when you do.
+
 ## Why would my mission be rejected?
 
 Because the work requested is something the platform does not support. The most common
 reason is that the request falls into a prohibited category — see the lawful use policy.
 
-Rejections state the reason. If you believe a rejection is a misunderstanding of what you
-asked for, you can revise the mission and submit it again, or contact support.
+Rejections state the reason, shown on the mission. A rejected mission cannot be reopened, but if
+you believe the rejection is a misunderstanding of what you asked for, choose **Start a new
+mission from this one**: it copies your answers into a new draft, which you can change and send.
+You confirm the lawful purpose afresh. You can also contact support.
 
 ## Can I edit a mission after submitting it?
 

@@ -400,6 +400,130 @@ describe('missions', () => {
     });
   });
 
+  describe('what the customer is told after review', () => {
+    /**
+     * A moderator's move out of review. T-051 builds the moderator's side; until then the move is
+     * written as it will be — a STAFF row under MODERATION, in its own transaction — by the owner.
+     */
+    const moderate = async (
+      mission: { id: string; version: number },
+      to: 'REJECTED' | 'DRAFT' | 'QUOTED',
+      reason: string | null,
+    ) => {
+      await ownerSql.begin(async (tx) => {
+        await tx`UPDATE missions SET status = ${to}, version = ${mission.version + 1},
+                 lawful_purpose_confirmed_at = CASE WHEN ${to} = 'DRAFT' THEN NULL
+                                                    ELSE lawful_purpose_confirmed_at END
+                 WHERE id = ${mission.id}`;
+        await tx`INSERT INTO mission_status_history
+                   (mission_id, from_status, to_status, actor_kind, actor_id, staff_scope, reason)
+                 VALUES (${mission.id}, 'UNDER_REVIEW', ${to}, 'STAFF', ${randomUUID()},
+                         'MODERATION', ${reason})`;
+      });
+      return { id: mission.id, version: mission.version + 1 };
+    };
+
+    const submitted = async (over: Record<string, unknown> = {}) => {
+      const { actor, draft } = await withDraft(over);
+      const mission = await service.submit(
+        actor,
+        draft.id,
+        { version: draft.version, lawfulPurposeConfirmed: true },
+        req(),
+      );
+      return { actor, mission };
+    };
+
+    it('gives the moderator’s reason for a rejection, in the mission and in the list', async () => {
+      const { actor, mission } = await submitted();
+      await moderate(mission, 'REJECTED', 'Locating a person for a private reason is not supported.');
+
+      const read = await service.getMine(actor, mission.id, req());
+      expect(read).toMatchObject({
+        status: 'REJECTED',
+        review: {
+          outcome: 'REJECTED',
+          reason: 'Locating a person for a private reason is not supported.',
+        },
+      });
+      expect(read.review?.decidedAt).toBeInstanceOf(Date);
+      const [listed] = await service.listMine(actor, req());
+      expect(listed?.review).toEqual(read.review);
+    });
+
+    it('says a draft came back for changes, and keeps saying so while it is edited', async () => {
+      const { actor, mission } = await submitted();
+      const returned = await moderate(mission, 'DRAFT', 'Say which city the work is in.');
+
+      const read = await service.getMine(actor, mission.id, req());
+      expect(read).toMatchObject({
+        status: 'DRAFT',
+        review: { outcome: 'CHANGES_REQUESTED', reason: 'Say which city the work is in.' },
+      });
+      // An edit is not a move: the request still describes the draft the customer is fixing.
+      const edited = await service.updateDraft(
+        actor,
+        mission.id,
+        { version: returned.version, locationLabel: 'Yerevan' },
+        req(),
+      );
+      expect(edited.review).toEqual(read.review);
+    });
+
+    it('forgets the request for changes once the mission is submitted again', async () => {
+      const { actor, mission } = await submitted();
+      const returned = await moderate(mission, 'DRAFT', 'Say which city the work is in.');
+      const again = await service.submit(
+        actor,
+        mission.id,
+        { version: returned.version, lawfulPurposeConfirmed: true },
+        req(),
+      );
+      expect(again.review).toBeNull();
+      expect((await service.getMine(actor, mission.id, req())).review).toBeNull();
+    });
+
+    it('forgets it once the customer cancels the returned draft', async () => {
+      const { actor, mission } = await submitted();
+      const returned = await moderate(mission, 'DRAFT', 'Say which city the work is in.');
+      await service.cancel(actor, mission.id, { version: returned.version }, req());
+      expect((await service.getMine(actor, mission.id, req())).review).toBeNull();
+    });
+
+    it('says nothing for a mission a moderator published', async () => {
+      const { actor, mission } = await submitted();
+      await moderate(mission, 'QUOTED', 'Fine.');
+      expect((await service.getMine(actor, mission.id, req())).review).toBeNull();
+    });
+
+    it('never passes on screening’s own reason for putting a mission into review', async () => {
+      // Screening records `PRIORITY_REVIEW:HIGH` on its move into review — a SYSTEM move, and
+      // the mission's latest. It is the detection, and the customer is never told it.
+      const { actor, mission } = await submitted({ description: 'Put a GPS tracker on his car.' });
+      const read = await service.getMine(actor, mission.id, req());
+      expect(read.review).toBeNull();
+      expect(JSON.stringify(await service.listMine(actor, req()))).not.toContain('PRIORITY_REVIEW');
+    });
+
+    it('answers for each mission separately, and for none when there are none', async () => {
+      const { actor } = await customer(ownerDb);
+      expect(await service.listMine(actor, req())).toEqual([]);
+      const nodeId = await category(ownerDb);
+      const one = await service.createDraft(actor, completeDraft(nodeId), req());
+      const two = await service.createDraft(actor, completeDraft(nodeId), req());
+      const sent = await service.submit(
+        actor,
+        two.id,
+        { version: two.version, lawfulPurposeConfirmed: true },
+        req(),
+      );
+      await moderate(sent, 'REJECTED', 'Not supported.');
+      const listed = await service.listMine(actor, req());
+      expect(listed.find((m) => m.id === one.id)?.review).toBeNull();
+      expect(listed.find((m) => m.id === two.id)?.review).toMatchObject({ outcome: 'REJECTED' });
+    });
+  });
+
   describe('the database as the last line', () => {
     it('refuses a submitted mission with no lawful-purpose confirmation, whatever wrote it', async () => {
       // The service is not the only thing that could ever write this table.

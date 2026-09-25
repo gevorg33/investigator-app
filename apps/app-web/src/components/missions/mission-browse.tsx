@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { serverApi } from '@/lib/api/server';
+import { flattenTaxonomy } from '@/lib/taxonomy';
 import type {
   MissionBrowsePage,
   OwnInvestigatorProfile,
@@ -17,16 +18,8 @@ import { ActiveFilters } from './active-filters';
 import { browseHref, narrowingCount, parseBrowse, type SearchParams } from './browse-query';
 import { BrowseRefusal } from './browse-refusal';
 import { BrowseToolbar } from './browse-toolbar';
-import type { CategoryOption } from './filter-sheet';
 import { MissionCard } from './mission-card';
 import { SavedSearchList, SaveSearch } from './saved-searches';
-
-/** The tree as one list, each node with its depth, parents before children. */
-const flatten = (nodes: readonly TaxonomyNode[], depth = 0): CategoryOption[] =>
-  nodes.flatMap((n) => [
-    { id: n.id, label: n.label ?? n.slug, depth },
-    ...flatten(n.children, depth + 1),
-  ]);
 
 /**
  * Open missions for an investigator (T-054): the published missions they could quote on.
@@ -73,7 +66,7 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
     serverApi<OwnInvestigatorProfile>('/profiles/investigator/me'),
     serverApi<{ items: SavedMissionSearch[] }>('/search/missions/saved'),
   ]);
-  const categories = flatten(taxonomy ?? []);
+  const categories = flattenTaxonomy(taxonomy ?? []);
   const labels = new Map(categories.map((c) => [c.id, c.label]));
   const items = page?.items ?? [];
   const narrowed = narrowingCount(filters) > 0;

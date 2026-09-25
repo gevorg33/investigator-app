@@ -25,7 +25,7 @@ import type {
   UpdateMissionDraftDto,
 } from './missions.dto';
 import { isCalendarDate } from './missions.policy';
-import { OwnMissionRepository, type MissionRow } from './missions.repository';
+import { OwnMissionRepository, type MissionReview, type MissionRow } from './missions.repository';
 
 /** A mission as its own customer sees it. Screening flags are staff-only and never appear here. */
 export interface OwnMission {
@@ -51,6 +51,11 @@ export interface OwnMission {
   submittedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /**
+   * A moderator's rejection or request for changes, while it still describes the mission;
+   * otherwise null. The reason is written for the customer to act on (T-051).
+   */
+  review: MissionReview | null;
 }
 
 /** Required before a mission may be submitted. The database enforces the same list. */
@@ -81,15 +86,20 @@ export class MissionsService {
 
   async listMine(actor: Actor, req: RequestContext): Promise<OwnMission[]> {
     await this.requireCustomer(actor, this.ctx('mission.list', req));
-    return (await this.repository.listMine(actor)).map(view);
+    const rows = await this.repository.listMine(actor);
+    const reviews = await this.repository.reviewsOf(rows);
+    return rows.map((m) => view(m, reviews.get(m.id)));
   }
 
   async getMine(actor: Actor, id: string, req: RequestContext): Promise<OwnMission> {
     const c = this.ctx('mission.read', req, id);
     await this.requireCustomer(actor, c);
-    return view(
-      await this.authz.visible(actor, await this.repository.findOneForActor(actor, id), c),
+    const mission = await this.authz.visible(
+      actor,
+      await this.repository.findOneForActor(actor, id),
+      c,
     );
+    return view(mission, (await this.repository.reviewsOf([mission])).get(mission.id));
   }
 
   async createDraft(
@@ -133,7 +143,7 @@ export class MissionsService {
     await this.requireCustomer(actor, c);
     const patch = this.patch(dto);
 
-    return this.db.transaction(async (tx) => {
+    const updated = await this.db.transaction(async (tx) => {
       const mission = await this.lockMine(tx, actor, id, c);
       // Editing is a draft-only operation. Once investigators may be quoting against a
       // mission, changing it under them is what produces disputes.
@@ -144,16 +154,18 @@ export class MissionsService {
         patch.taxonomyNodeId === undefined ? mission.taxonomyNodeId : patch.taxonomyNodeId,
       );
 
-      const [updated] = await tx
+      const [row] = await tx
         .update(missions)
         .set({ ...patch, version: mission.version + 1, updatedAt: new Date() })
         .where(and(eq(missions.id, mission.id), eq(missions.version, mission.version)))
         .returning();
-      if (!updated) throw AppError.stateConflict();
+      if (!row) throw AppError.stateConflict();
 
       await this.record(actor, req, 'mission.draft_updated', mission.id, tx);
-      return view(updated);
+      return row;
     });
+    // An edit is not a move, so a returned draft's request for changes still stands.
+    return view(updated, (await this.repository.reviewsOf([updated])).get(updated.id));
   }
 
   /**
@@ -409,7 +421,11 @@ const screeningFreeFields = (moved: { status: MissionStatus; version: number }) 
   version: moved.version,
 });
 
-const view = (m: MissionRow): OwnMission => ({
+/**
+ * `review` is looked up by the reads and by a draft edit. Every other write is itself the
+ * mission's latest move — created, submitted, cancelled — so no moderator's outcome stands.
+ */
+const view = (m: MissionRow, review?: MissionReview): OwnMission => ({
   id: m.id,
   status: m.status,
   version: m.version,
@@ -432,4 +448,5 @@ const view = (m: MissionRow): OwnMission => ({
   submittedAt: m.submittedAt,
   createdAt: m.createdAt,
   updatedAt: m.updatedAt,
+  review: review ?? null,
 });
