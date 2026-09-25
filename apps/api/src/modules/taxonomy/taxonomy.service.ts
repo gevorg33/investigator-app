@@ -144,16 +144,22 @@ export class TaxonomyService {
               .select({ status: taxonomyNodes.status })
               .from(taxonomyNodes)
               .where(eq(taxonomyNodes.id, dto.parentId));
-            if (parent === undefined) throw invalid('parentId', 'UNKNOWN', 'parent_unknown');
+            if (parent === undefined)
+              throw invalid('parentId', 'UNKNOWN', 'error.validation.taxonomy.parent_unknown');
             if (parent.status !== 'ACTIVE') {
-              throw invalid('parentId', 'DEPRECATED', 'parent_deprecated');
+              throw invalid(
+                'parentId',
+                'DEPRECATED',
+                'error.validation.taxonomy.parent_deprecated',
+              );
             }
           }
           const [taken] = await tx
             .select({ id: taxonomyNodes.id })
             .from(taxonomyNodes)
             .where(eq(taxonomyNodes.slug, dto.slug));
-          if (taken !== undefined) throw invalid('slug', 'TAKEN', 'slug_taken');
+          if (taken !== undefined)
+            throw invalid('slug', 'TAKEN', 'error.validation.taxonomy.slug_taken');
 
           const [row] = await tx
             .insert(taxonomyNodes)
@@ -213,7 +219,12 @@ export class TaxonomyService {
               .from(taxonomyNodes)
               .where(and(eq(taxonomyNodes.parentId, id), eq(taxonomyNodes.status, 'ACTIVE')))
               .limit(1);
-            if (child !== undefined) throw invalid('status', 'CHILDREN_ACTIVE', 'children_active');
+            if (child !== undefined)
+              throw invalid(
+                'status',
+                'CHILDREN_ACTIVE',
+                'error.validation.taxonomy.children_active',
+              );
           }
           if (dto.status === 'ACTIVE' && current.status === 'DEPRECATED' && current.parentId) {
             // The foreign key guarantees the parent exists; only its status is in question.
@@ -222,7 +233,11 @@ export class TaxonomyService {
               .from(taxonomyNodes)
               .where(eq(taxonomyNodes.id, current.parentId));
             if (parent!.status !== 'ACTIVE') {
-              throw invalid('status', 'PARENT_DEPRECATED', 'parent_deprecated');
+              throw invalid(
+                'status',
+                'PARENT_DEPRECATED',
+                'error.validation.taxonomy.parent_deprecated',
+              );
             }
           }
 
@@ -374,8 +389,9 @@ const ctx = (action: string, req: RequestContext, resourceId?: string): AuthzCon
   ipAddress: req.ip,
 });
 
-const invalid = (field: string, code: string, key: string): AppError =>
-  AppError.validation([{ field, code, messageKey: `error.validation.taxonomy.${key}` }]);
+/** `messageKey` is written out at each call so the clients' catalog test can find it (T-135). */
+const invalid = (field: string, code: string, messageKey: string): AppError =>
+  AppError.validation([{ field, code, messageKey }]);
 
 const change = <T>(name: string, from: T, to: T | undefined): string | null =>
   to === undefined || to === from ? null : `${name} ${String(from)} → ${String(to)}`;

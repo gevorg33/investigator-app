@@ -574,10 +574,17 @@ const ctx = (
   ipAddress: req.ip,
 });
 
-const invalid = (field: string, code: string): AppError =>
-  AppError.validation([
-    { field, code, messageKey: `error.validation.policy_review.${code.toLowerCase()}` },
-  ]);
+/** The message for each refusal, written out so the clients' catalog test can find it (T-135). */
+const POLICY_REVIEW_KEY = {
+  ONLY_UNSUBSTANTIATED: 'error.validation.policy_review.only_unsubstantiated',
+  NOT_FOR_DECLINE: 'error.validation.policy_review.not_for_decline',
+  REQUIRED: 'error.validation.policy_review.required',
+  NOT_FOR_RESUME: 'error.validation.policy_review.not_for_resume',
+  EXCEEDS_PRICE: 'error.validation.policy_review.exceeds_price',
+} as const;
+
+const invalid = (field: string, code: keyof typeof POLICY_REVIEW_KEY): AppError =>
+  AppError.validation([{ field, code, messageKey: POLICY_REVIEW_KEY[code] }]);
 
 const reviewView = (r: ReviewRow): PolicyReviewView => ({
   id: r.id,

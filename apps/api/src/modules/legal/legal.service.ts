@@ -7,6 +7,20 @@ import { DB, type Db, type Tx } from '../../database/database.module';
 import { legalDocuments, userConsents } from '../../database/schema';
 
 export type LegalDocumentType = (typeof legalDocuments.type.enumValues)[number];
+
+/**
+ * What to tell someone who has not accepted each document. Written out, not built from the type:
+ * the clients' catalogs need an entry for every key the API can send, and a test finds them by
+ * reading the source (T-135). A `Record` over the enum also fails to compile when a type is added.
+ */
+export const ACCEPTANCE_REQUIRED_KEY: Record<LegalDocumentType, string> = {
+  PRIVACY_POLICY: 'error.validation.legal.privacy_policy',
+  TERMS_OF_SERVICE: 'error.validation.legal.terms_of_service',
+  TERMS_AND_CONDITIONS: 'error.validation.legal.terms_and_conditions',
+  LAWFUL_USE_POLICY: 'error.validation.legal.lawful_use_policy',
+  INVESTIGATOR_AGREEMENT: 'error.validation.legal.investigator_agreement',
+  AGENCY_AGREEMENT: 'error.validation.legal.agency_agreement',
+};
 export type ConsentContext = (typeof userConsents.context.enumValues)[number];
 
 /** A published document, as it would be shown and as it would be proved afterwards. */
@@ -136,7 +150,7 @@ export class LegalService {
         missing.map((d) => ({
           field: 'acceptedDocumentIds',
           code: 'ACCEPTANCE_REQUIRED',
-          messageKey: `error.validation.legal.${d.type.toLowerCase()}`,
+          messageKey: ACCEPTANCE_REQUIRED_KEY[d.type],
         })),
       );
     }

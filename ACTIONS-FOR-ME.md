@@ -609,8 +609,8 @@ the investigator's open-missions screen (`missions.browse`), T-056/T-057 the ass
 (`assistant`, about 140, including nine suggested questions and the investigator cards — Armenian
 questions end «՞ … ։»), T-123 the investigator profile page (`investigator`, about 120) , T-092
 the workspace switcher and agency form (`workspace`, about 30) and T-120 finding investigators
-(`missions.discovery`, `missions.profile`, `missions.views`, about 75) — about 500 in all, an hour
-or two — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+(`missions.discovery`, `missions.profile`, `missions.views`, about 75), and T-135 the messages for
+every error the API can send (`error.validation`, about 30 more) — about 530 in all, an hour or two — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:

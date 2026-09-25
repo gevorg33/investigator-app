@@ -74,7 +74,17 @@ export function CreateAgencyForm({
 
   return (
     <form onSubmit={onSubmit} className="mt-6 grid gap-4">
-      <FormError error={error} />
+      <FormError
+        error={error}
+        shown={[
+          'name',
+          'countryCode',
+          'businessEmail',
+          'timezone',
+          'currency',
+          'agreementDocumentId',
+        ]}
+      />
       <Field
         label={t('name')}
         name="name"

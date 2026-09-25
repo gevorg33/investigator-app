@@ -74,7 +74,7 @@ export function DetailsForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      <FormError error={error} />
+      <FormError error={error} shown={['displayName']} />
       <Field
         label={t('name')}
         hint={nameLocked ? t('name_locked') : t('name_hint')}
