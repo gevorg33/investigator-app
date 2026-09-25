@@ -280,6 +280,69 @@ describe('the assistant finding investigators (T-018)', () => {
     expect([answer.status, answer.results]).toEqual(['no_results', []]);
   });
 
+  describe('as part of a conversation (T-059)', () => {
+    it('reports each stage as it starts — understanding, then finding — and never twice', async () => {
+      await mine();
+      const steps: unknown[] = [];
+      const answer = await asRequests(service(new FakeModel(proposing({ place: here() }))), owner).respond(
+        await as(),
+        { question: 'Someone in my city' },
+        'en',
+        req(),
+        { onStep: (s) => steps.push(s) },
+      );
+      expect(answer.status).toBe('results');
+      expect(steps).toEqual([{ step: 'understanding' }, { step: 'finding' }]);
+    });
+
+    it('does not say it is finding anyone when it is not a search', async () => {
+      const steps: unknown[] = [];
+      const answer = await asRequests(service(new FakeModel(proposing({ intent: 'other' }))), owner).respond(
+        await as(),
+        { question: 'How do refunds work?' },
+        'en',
+        req(),
+        { onStep: (s) => steps.push(s) },
+      );
+      expect([answer.status, steps]).toEqual(['not_discovery', [{ step: 'understanding' }]]);
+    });
+
+    it('stops before searching when stopped while the model worked, and hands the model the signal', async () => {
+      const stop = new AbortController();
+      let given: AbortSignal | undefined;
+      const model: ChatModel = {
+        model: 'fake-model',
+        complete: async (prompt, signal) => {
+          given = signal;
+          stop.abort();
+          return proposing({ place: here() })(prompt);
+        },
+      };
+      const steps: unknown[] = [];
+      await expect(
+        asRequests(service(model), owner).respond(await as(), { question: 'Someone near' }, 'en', req(), {
+          onStep: (s) => steps.push(s),
+          signal: stop.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(given).toBe(stop.signal);
+      expect(steps).toEqual([{ step: 'understanding' }]);
+    });
+
+    it('spends none of the question allowance itself: the conversation took it once for the turn', async () => {
+      const keys: string[] = [];
+      await asRequests(
+        service(new FakeModel(proposing({ intent: 'other' })), {
+          incr: async (key) => keys.push(key),
+        }),
+        owner,
+      ).respond(await as(), { question: 'How do refunds work?' }, 'en', req());
+      // The tools keep their own limits; the question's is not among them.
+      expect(keys.some((k) => k.includes('assistantQuestionPerAccount'))).toBe(false);
+      expect(keys.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('it cannot state a price, availability or capability the data does not hold', () => {
     it('whatever the model writes and whatever the profile prose claims', async () => {
       const records = await labelled(`Records ${tag}`);

@@ -155,7 +155,19 @@ The response is `{ status: 'answered' | 'no_answer', answer, citations, locale, 
    Request logs record only method and path.
 7. A provider failure (`ProviderError`) becomes a 503. Any other error is a 500.
 
-The endpoint is stateless. Conversation history (T-046) and session wiring (T-056) come later.
+The endpoint is stateless. In a conversation the same answering runs as the fallback of a turn
+(T-056, T-059 — `ai-sessions.md`), and the question and answer are kept in the caller's session.
+
+## Opening an article (T-059)
+
+`GET /api/v1/knowledge/documents/:docKey?locale=` — the page a citation links to
+(`KnowledgeDocumentsService`). The same gate as retrieval: `mayRead` over the document (current,
+an audience and visibility the reader holds, the platform's or this workspace's), then each section
+again. The reader's language, or English when it has no current version (`fallback: true`); drafts
+are never ingested, so never served. An article the reader may not read is the same 404 as one that
+does not exist, and a key that is not shaped like one (`kb-…`) is a 404 before any query. Not
+audited: it is the platform's own documentation, not anyone's data. The app renders it at
+`/help/[docKey]`, a section at `#` its heading's slug.
 Configuration: `OPENAI_API_KEY` and `OPENAI_CHAT_MODEL`, which has no default because choosing the
 model is the owner's decision (ACTIONS-FOR-ME #6).
 

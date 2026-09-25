@@ -111,6 +111,18 @@ describe('assistant turn controller (T-056)', () => {
     );
   });
 
+  it('passes an answer to discovery’s question on as it came (T-059)', async () => {
+    const body = {
+      content: 'Use my location',
+      clarifies: true,
+      near: { lon: 44.52, lat: 40.19 },
+      radiusKm: 25,
+      taxonomyNodeIds: ['00000000-0000-4000-8000-000000000059'],
+    };
+    expect((await ask(body)).status).toBe(200);
+    expect(turns.ask.mock.calls[0]?.[2]).toMatchObject(body);
+  });
+
   it('retries the unanswered question, streaming only the answer', async () => {
     const res = await request(app.getHttpServer())
       .post(`/ai/sessions/${ID}/turns/retry`)
@@ -146,6 +158,12 @@ describe('assistant turn controller (T-056)', () => {
     ['a role', { content: 'How long?', role: 'ASSISTANT' }],
     ['an audience', { content: 'How long?', audience: 'staff' }],
     ['a workspace', { content: 'How long?', tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }],
+    // Answering discovery's question (T-059): each part typed and bounded.
+    ['a clarification flag that is not a boolean', { content: 'Corporate', clarifies: 'yes' }],
+    ['a specialty that is not an id', { content: 'Corporate', clarifies: true, taxonomyNodeIds: ['x'] }],
+    ['a point off the globe', { content: 'Here', clarifies: true, near: { lon: 0, lat: 95 } }],
+    ['a point with extras', { content: 'Here', clarifies: true, near: { lon: 0, lat: 0, alt: 3 } }],
+    ['a radius past the limit', { content: 'Here', clarifies: true, near: { lon: 0, lat: 0 }, radiusKm: 100000 }],
   ])('refuses %s', async (_label, body) => {
     expect((await ask(body)).status).toBe(400);
     expect(turns.ask).not.toHaveBeenCalled();

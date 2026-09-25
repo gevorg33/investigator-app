@@ -1,4 +1,4 @@
-import type { AiMessage, AiSession, TurnEvent, TurnStep } from '@/lib/api/assistant';
+import type { AiMessage, AiSession, Ask, TurnEvent, TurnStep } from '@/lib/api/assistant';
 import { ApiError } from '@/lib/api/errors';
 
 /**
@@ -7,9 +7,9 @@ import { ApiError } from '@/lib/api/errors';
  * trying again sends it; once stored, trying again answers the stored one.
  */
 export type Turn =
-  | { phase: 'running'; question: string; stored: boolean; step: TurnStep | null }
-  | { phase: 'stopped'; unsent: string | null }
-  | { phase: 'failed'; error: ApiError; unsent: string | null };
+  | { phase: 'running'; question: Ask; stored: boolean; step: TurnStep | null }
+  | { phase: 'stopped'; unsent: Ask | null }
+  | { phase: 'failed'; error: ApiError; unsent: Ask | null };
 
 /** Why the conversation on screen was replaced by a fresh one, said once (T-057). */
 export type Notice = 'archived' | 'deleted' | 'gone';
@@ -63,7 +63,7 @@ export type Action =
   | { type: 'synced'; messages: AiMessage[] }
   | { type: 'reset'; notice?: Notice }
   | { type: 'session'; session: AiSession }
-  | { type: 'start'; question: string; stored: boolean }
+  | { type: 'start'; question: Ask; stored: boolean }
   | { type: 'event'; event: TurnEvent }
   | { type: 'stopped' }
   | { type: 'failed'; error: ApiError };
@@ -76,7 +76,7 @@ const merged = (messages: AiMessage[], more: AiMessage[]): AiMessage[] => {
 };
 
 /** The running turn's question, if the server has not confirmed storing it. */
-const unsentOf = (t: Turn | null): string | null =>
+const unsentOf = (t: Turn | null): Ask | null =>
   t?.phase === 'running' && !t.stored ? t.question : null;
 
 export function reduce(state: ConversationState, action: Action): ConversationState {
@@ -116,7 +116,7 @@ export function reduce(state: ConversationState, action: Action): ConversationSt
       // A question that turns out to have been stored is no longer unsent: retry answers it.
       const kept =
         t !== null && t.phase !== 'running' && t.unsent !== null && last?.role === 'USER'
-          ? { ...t, unsent: last.content === t.unsent ? null : t.unsent }
+          ? { ...t, unsent: last.content === t.unsent.content ? null : t.unsent }
           : t;
       return { ...state, messages, turn: kept?.phase === 'running' ? null : kept };
     }
@@ -187,8 +187,8 @@ export function awaitingRetry(state: ConversationState): boolean {
   return unsentQuestion(state) !== null || state.messages.at(-1)?.role === 'USER';
 }
 
-/** The question a finished turn left unsent, if any — what trying again would send. */
-export function unsentQuestion(state: ConversationState): string | null {
+/** The question a finished turn left unsent, if any — what trying again would send, as it was. */
+export function unsentQuestion(state: ConversationState): Ask | null {
   const t = state.turn;
   return t === null || t.phase === 'running' ? null : t.unsent;
 }

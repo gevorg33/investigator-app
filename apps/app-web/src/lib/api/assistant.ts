@@ -30,8 +30,12 @@ export interface AiMessage {
   createdAt: string;
 }
 
-/** How far answering has got (T-056). */
-export type TurnStep = { step: 'searching' } | { step: 'writing'; sources: number };
+/** How far answering has got (T-056, T-059). */
+export type TurnStep =
+  | { step: 'understanding' }
+  | { step: 'finding' }
+  | { step: 'searching' }
+  | { step: 'writing'; sources: number };
 
 /** What a turn's stream carries, in order (`AssistantTurnController`). */
 export type TurnEvent =
@@ -73,6 +77,87 @@ export interface KnowledgeReply {
 
 export const knowledgeReply = (m: AiMessage): KnowledgeReply | null =>
   m.metadata['source'] === 'knowledge' ? (m.metadata as unknown as KnowledgeReply) : null;
+
+/** A taxonomy node as a result names it: its id, and its label in the reader's language. */
+export interface NodeLabel {
+  id: string;
+  label: string | null;
+}
+
+export interface Place {
+  countryCode?: string;
+  region?: string;
+  city?: string;
+}
+
+/** A weekly window: 0 = Monday, minutes from midnight. */
+export interface Window {
+  dayOfWeek: number;
+  startMinute: number;
+  endMinute: number;
+}
+
+/** One reason an investigator matches, as data to phrase (`discovery-explanation.ts`). */
+export type MatchReason =
+  | { code: 'matched.specialty'; specialties: NodeLabel[] }
+  | { code: 'matched.languages'; languages: string[] }
+  | { code: 'matched.place'; place: Place }
+  | { code: 'matched.distance'; km: number }
+  | { code: 'matched.availability'; window: Window }
+  | { code: 'not_matched.specialty'; specialties: NodeLabel[] };
+
+/** One investigator a search found: the public projection — no price, no bio, no contact. */
+export interface InvestigatorMatch {
+  investigatorId: string;
+  displayName: string | null;
+  headline: string | null;
+  yearsExperience: number | null;
+  verificationStatus: 'VERIFIED';
+  languages: Array<{ code: string; proficiency: string }>;
+  specialties: NodeLabel[];
+  availability: Window[];
+  distanceKm: number | null;
+  explanation: MatchReason[];
+}
+
+export type Clarification =
+  | { code: 'purpose' }
+  | { code: 'location' }
+  | { code: 'specialty'; options: NodeLabel[] };
+
+/** What discovery answered (T-018), stored whole on the reply (T-059). */
+export interface DiscoveryAnswer {
+  status: 'results' | 'no_results' | 'clarification' | 'refused';
+  searchedFor: {
+    place: Place | null;
+    near: boolean;
+    radiusKm: number | null;
+    specialties: NodeLabel[];
+    languages: string[];
+    availability: Window | null;
+  } | null;
+  assumptions: Array<'location.anywhere'>;
+  orderedBy: 'distance' | 'relevance' | 'experience' | null;
+  results: InvestigatorMatch[];
+  hasMore: boolean;
+  clarification: Clarification | null;
+  refusal: { code: 'prohibited_request'; document: string } | null;
+}
+
+export const discoveryReply = (m: AiMessage): DiscoveryAnswer | null =>
+  m.metadata['source'] === 'discovery' ? (m.metadata['answer'] as DiscoveryAnswer) : null;
+
+/**
+ * What a turn sends: a question, or — `clarifies` — an answer to the question discovery asked:
+ * the specialty picked, or where the person is (used for that search only, never stored).
+ */
+export interface Ask {
+  content: string;
+  clarifies?: true;
+  taxonomyNodeIds?: string[];
+  near?: { lon: number; lat: number };
+  radiusKm?: number;
+}
 
 /**
  * Server-sent events, as they arrive in pieces: each call takes the next piece of text and returns
@@ -161,7 +246,7 @@ export function assistantApi(role: string | null) {
      */
     turn: async (
       sessionId: string,
-      input: { retry: true } | { content: string },
+      input: { retry: true } | Ask,
       onEvent: (event: TurnEvent) => void,
       signal: AbortSignal,
     ): Promise<void> => {
@@ -170,7 +255,7 @@ export function assistantApi(role: string | null) {
         method: 'POST',
         credentials: 'same-origin',
         headers: { ...headers(true), accept: 'text/event-stream' },
-        body: JSON.stringify(retry ? {} : { content: input.content }),
+        body: JSON.stringify(retry ? {} : input),
         signal,
       });
       if (!res.ok) throw await toApiError(res);

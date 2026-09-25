@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useReducer, useRef, useState } from 'react';
-import type { AiMessage, AiSession, AssistantApi, Workspace } from '@/lib/api/assistant';
+import type { AiMessage, AiSession, Ask, AssistantApi, Workspace } from '@/lib/api/assistant';
 import { ApiError } from '@/lib/api/errors';
 import {
   awaitingRetry,
@@ -34,7 +34,8 @@ export interface Conversation {
   /** Tries the last opening again after it failed: whichever of `load` and `open` it was. */
   reload: () => Promise<void>;
   loadEarlier: () => Promise<void>;
-  send: (question: string) => Promise<void>;
+  /** A question — or, with `clarifies`, an answer to the question discovery asked. */
+  send: (question: string, answer?: Omit<Ask, 'content'>) => Promise<void>;
   retry: () => Promise<void>;
   stop: () => void;
   startNew: () => void;
@@ -171,14 +172,14 @@ export function useConversation(api: AssistantApi): Conversation {
   );
 
   const run = useCallback(
-    async (input: { content: string } | { retry: true }, question: string) => {
+    async (input: Ask | { retry: true }) => {
       const gen = ++generation.current;
       const stop = new AbortController();
       controller.current = stop;
       const retry = 'retry' in input;
       let stored = retry;
       let ended = false;
-      dispatch({ type: 'start', question, stored });
+      dispatch({ type: 'start', question: retry ? { content: '' } : input, stored });
       let sessionId = latest.current.session?.id;
       try {
         if (sessionId === undefined) {
@@ -230,14 +231,17 @@ export function useConversation(api: AssistantApi): Conversation {
   );
 
   // Only offered while nothing runs: the composer holds Stop instead of Send meanwhile.
-  const send = useCallback((question: string) => run({ content: question }, question), [run]);
+  const send = useCallback(
+    (question: string, answer: Omit<Ask, 'content'> = {}) => run({ content: question, ...answer }),
+    [run],
+  );
 
   // Only offered while there is something to try again (`canRetry`).
   const retry = useCallback(async () => {
     const unsent = unsentQuestion(latest.current);
     // Unsent, it is sent again; stored, it is answered where it stands — never sent twice.
-    if (unsent !== null) await run({ content: unsent }, unsent);
-    else await run({ retry: true }, '');
+    if (unsent !== null) await run(unsent);
+    else await run({ retry: true });
   }, [run]);
 
   const stop = useCallback(() => controller.current?.abort(), []);

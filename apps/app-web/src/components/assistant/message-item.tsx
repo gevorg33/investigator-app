@@ -6,7 +6,11 @@ import { useTranslations } from 'use-intl';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message';
-import { knowledgeReply, type AiMessage } from '@/lib/api/assistant';
+import Link from 'next/link';
+import { discoveryReply, knowledgeReply, type AiMessage } from '@/lib/api/assistant';
+import { slug } from '@/lib/slug';
+import { useAssistant } from './assistant-provider';
+import { DiscoveryReply } from './discovery-reply';
 
 /** A tool's arguments as name and value, whatever shape they came in. */
 const entriesOf = (value: unknown): Array<[string, unknown]> =>
@@ -35,8 +39,16 @@ export function Question({ text, children }: { text: string; children?: ReactNod
  * words with the sources it used, "not covered" as a state of its own, and a tool call or result
  * as a structured block — which tool, with what — never as a sentence about it.
  */
-export function MessageItem({ message }: { message: AiMessage }) {
+export function MessageItem({
+  message,
+  pending = false,
+}: {
+  message: AiMessage;
+  /** The conversation's last word, with nothing running: a question in it can be answered. */
+  pending?: boolean;
+}) {
   const t = useTranslations('assistant');
+  const { closeIfCovering } = useAssistant();
 
   if (message.kind !== 'TEXT') {
     // The database holds a tool event to its shape (`ai_messages_shape`): a tool name, always.
@@ -78,6 +90,18 @@ export function MessageItem({ message }: { message: AiMessage }) {
     );
   }
 
+  const discovery = discoveryReply(message);
+  if (discovery !== null) {
+    return (
+      <Message>
+        <MessageContent>
+          <span className="sr-only">{t('speaker.assistant')}: </span>
+          <DiscoveryReply answer={discovery} pending={pending} />
+        </MessageContent>
+      </Message>
+    );
+  }
+
   const reply = knowledgeReply(message);
   if (reply?.status === 'no_answer') {
     return (
@@ -112,7 +136,14 @@ export function MessageItem({ message }: { message: AiMessage }) {
             <ul className="grid gap-1">
               {reply.citations.map((c) => (
                 <li key={`${c.locale}/${c.docKey}@${c.version}#${c.section}`}>
-                  {c.title} · {c.section}
+                  {/* The article, opened at the section the answer used. */}
+                  <Link
+                    href={`/help/${c.docKey}#${slug(c.section)}`}
+                    onClick={closeIfCovering}
+                    className="underline underline-offset-2 hover:text-text"
+                  >
+                    {c.title} · {c.section}
+                  </Link>
                 </li>
               ))}
             </ul>

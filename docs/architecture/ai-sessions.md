@@ -67,8 +67,26 @@ specified hybrid search is T-133's, once an embedding provider exists (T-016).
 
 ```
 own session (404 otherwise) → admitted (live, workspace, model, allowance — T-017's checks)
-  → question appended → steps → answer (T-017, citations checked) → reply appended → done
+  → question appended → steps → discovery (T-018): a search, a question back, or a refusal
+  → otherwise the knowledge base (T-017, citations checked) → reply appended → done
 ```
+
+**Discovery first** (T-059, owner decision 2026-09-25). Every question goes to discovery's
+`respond` first. Its `results`, `no_results`, `clarification` and `refused` are the reply, stored
+whole as `metadata: { source: 'discovery', answer }` with empty content — the client renders it;
+the model wrote none of it. `not_discovery` and `not_understood` fall back to the knowledge base.
+The lawful-use rules read every question before any model: a question that matches them — even one
+*about* the rules — is refused with the policy to read (`kb-policy-prohibited-requests`), rather
+than answered. Steps: `understanding`, then `finding` (discovery), or `searching` and `writing`
+(knowledge). The allowance is taken once per turn, by the admission; `respond` takes none.
+
+**Answering discovery's question.** `{ content, clarifies: true, taxonomyNodeIds? | near?, radiusKm? }`
+answers the clarification that is the conversation's last word — otherwise 409; `taxonomyNodeIds`
+or `near` without `clarifies` is 422. The answer is paired with the person's message before the
+clarification: `purpose` is the content; a specialty must be one of those offered (422 otherwise);
+`near` is searched from and **never stored** — not on the message, not in the reply, which says only
+`near: true`; a place in words is read with the question. The person's message is stored with
+`metadata: { clarifies, taxonomyNodeIds? }`, so a retry pairs it again (a location is asked again).
 
 - **Refusals store nothing** and come back as the usual JSON error: a stranger's session (404, and
   none of anyone's allowance spent), no model configured (503), a spent allowance (429).
@@ -105,5 +123,6 @@ The client is the assistant panel in app-web (`app-web.md`).
 ## Not yet
 
 - **Summaries, memory, embeddings** — T-046, T-047, T-133; each joins `SESSION_CONTENT`.
-- **Other capabilities in a conversation** — discovery (T-018) answers at its own endpoint; routing
-  a turn to it, and tool events in a session, arrive with the intent pipeline.
+- **Tool events in a session** — discovery's answer is stored as the reply's metadata; tool calls
+  and results as `TOOL_CALL`/`TOOL_RESULT` rows, with results by reference, arrive with the result
+  store (T-048).
