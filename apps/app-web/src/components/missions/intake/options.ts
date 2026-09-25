@@ -1,9 +1,9 @@
 import type { Locale } from '@investigator/i18n';
-import type { CategoryOption } from '@/components/missions/filter-sheet';
+import type { CategoryOption } from '@/lib/taxonomy';
 import { serverApi } from '@/lib/api/server';
 import type { TaxonomyNode } from '@/lib/api/types';
 import { countryOptions, languageOptions, type CodeOption } from '@/lib/codes';
-import { flattenTaxonomy } from '@/lib/taxonomy';
+import { categoryOptions } from '@/lib/taxonomy';
 
 /** What the intake offers to choose from, named in the reader's language on the server. */
 export interface IntakeOptions {
@@ -20,7 +20,7 @@ export interface IntakeOptions {
 export async function intakeOptions(locale: Locale): Promise<IntakeOptions> {
   const taxonomy = await serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`);
   return {
-    categories: flattenTaxonomy(taxonomy ?? []),
+    categories: categoryOptions(taxonomy ?? []),
     countries: countryOptions(locale),
     languages: languageOptions(locale),
     currencies: Intl.supportedValuesOf('currency'),

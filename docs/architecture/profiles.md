@@ -25,6 +25,13 @@ leaves. The preview route returns that same function's output for the caller's o
 published — the test asserts the preview's key set is the public one, and that
 `verificationStatus` is visible to its owner and absent from the preview.
 
+**Verified, and nothing more** (T-120, owner decision 2026-09-26). The projection carries
+`verified: boolean` — `verificationStatus === 'VERIFIED'` — so a customer's profile page and the
+investigator's own preview can say so. Only the yes or no is public: `PENDING` and `REJECTED` both
+read as `false`, so an applicant's standing is never shown, and the status itself never leaves in
+the public view (tested for each status). Discovery results carry it too; they are always `true`,
+because only verified investigators are eligible (`discovery.md`).
+
 ## The name, and when it is locked
 
 `displayName` is the account's name (`users.display_name`), so it is the same name on both

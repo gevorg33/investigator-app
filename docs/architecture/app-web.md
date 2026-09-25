@@ -158,8 +158,9 @@ the table, at 375, 768 and 1280px. There is no automated browser run in CI yet.
 
 `/missions` shows an investigator — anyone holding the role who has not chosen to see the platform
 as a customer — the published missions they could quote on (`POST /search/missions`, described in
-`discovery.md`). A customer sees their own missions instead (T-119, below); anyone else, the empty
-state.
+`discovery.md`). Everyone else gets two views, as links (T-120): their own missions — a customer's
+list and "New mission" (T-119, below), or the empty state without the role — and finding
+investigators.
 
 **Built from the registries** (`component-discovery`; searched through the shadcn MCP — `@cult-ui`
 answered 429, `@react-bits` has only decorative motion pieces): `card`, `badge`, `drawer`, `command`,
@@ -222,7 +223,7 @@ in the customer's words) → the brief. Progress is `Progress` plus "Question 3 
 - **Never sends what the database refuses.** An emptied text field is sent as `null` (a CHECK
   refuses empty text). A budget minimum above its maximum, or a start after the finish, is shown
   and kept but not sent until put right, then sent as a pair — both are CHECK constraints the API
-  does not map to field errors yet (T-152).
+  does not map to field errors yet (T-153).
 - **Required answers are the API's list** (`REQUIRED_AT_SUBMISSION`, plus the protective-order
   answer for a personal relationship), asked one screen at a time: Continue with one missing flags
   it beside the field and moves focus to it. Optional ones are labelled so.
@@ -312,6 +313,35 @@ reference. The rest was driven in the browser at 375px against the real API.
 - **Not built:** the dismissible onboarding checklist. What it would list — the agency's
   profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
   not exist yet (filed as T-149).
+
+## Finding investigators (T-120)
+
+A customer's Missions has two views, as links (`MissionsViews`): their own missions (T-119) and
+**Find investigators** — not a sixth navigation destination, so the phone bar keeps five (owner
+decision, 2026-09-26). Someone working as an investigator is sent back to Missions
+(`actsAsInvestigator`, the one reading both pages make).
+
+- **The list** (`InvestigatorDiscovery`) searches from the browser: filters are the address
+  (`discovery-query.ts`: `category`, `language`, `country`, `city`, `day`, `pricing`), "Near me"
+  is in memory only, so coordinates never enter a URL. Results are `InvestigatorCard`s, "Show
+  more" pages on, and an answer to a search a newer one replaced is dropped.
+- **Filters** are a sheet (`DiscoverySheet`) on the mission browse's pattern — bottom on a phone,
+  right from `md`, held until "Show investigators". Specialty is the searchable tree; languages are
+  added one at a time from every language `Intl` names. Each filter that is on is a chip that
+  removes itself; "Clear filters" removes them all.
+- **Empty is never a dead end.** With filters or a location, "No one matches all of these" and the
+  chips to remove; with a location inside a small radius, "Search up to 100 km away". With nothing
+  narrowing, "No investigators are listed yet".
+- **Why listed** comes only from the API's `matchedOn` and `notMatched` — the card phrases them and
+  adds nothing.
+- **The profile page** (`/missions/investigators/[id]`) is `PublicProfileCard` (T-123's preview, now
+  with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
+  the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
+  reviewer. No areas: the public projection has none. Not published or not an id → 404.
+- **Not built:** the map (T-147's provider); a translated 404 page (T-151).
+
+**Bundle** (the budget script's initial JS): `/missions/investigators` 206.2 kB, the profile page
+191.5 kB — within 250 kB.
 
 ## The assistant (T-056)
 
@@ -458,4 +488,4 @@ session cookie is sent over plain HTTP and emailed links are written to the API'
 - An app icon: the favicon request 404s until there is a brand mark to use.
 - Google sign-in (T-062), and changing an email address or password from the account page.
 - The workspace switcher and every real screen — T-092 and the core-loop tasks.
-- Cancelling a mission from the app (T-153), and attachments on a mission (T-066).
+- Cancelling a mission from the app (T-154), and attachments on a mission (T-066).

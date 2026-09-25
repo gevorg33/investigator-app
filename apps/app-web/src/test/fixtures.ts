@@ -158,6 +158,7 @@ export const ownProfile = (over: Partial<OwnInvestigatorProfile> = {}): OwnInves
   hourlyRateMinor: 2_500_000,
   currency: 'AMD',
   acceptingWork: true,
+  verified: true,
   languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
   specialtyNodeIds: ['5f51f336-5c7a-442a-909f-8d54d5abf81b'],
   availability: [{ dayOfWeek: 0, startMinute: 540, endMinute: 1080 }],

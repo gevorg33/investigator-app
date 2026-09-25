@@ -90,7 +90,7 @@ queue.
   again. A 409 says someone else decided it. The reviewer's own application shows a notice instead of
   the form, since the API refuses it.
 
-**Granting staff access** has no screen or command yet (T-151, which needs approval: it is
+**Granting staff access** has no screen or command yet (T-152, which needs approval: it is
 authorization). For local development only, as the database owner:
 
 ```sql
@@ -112,5 +112,5 @@ Port 3002: app-web is 3000 and the API 3001.
 
 - Every queue after verification — moderation (T-051), disputes, payments — and the navigation
   that a second queue will need.
-- Staff access management — T-151.
+- Staff access management — T-152.
 - A theme toggle and an app icon — as in app-web.

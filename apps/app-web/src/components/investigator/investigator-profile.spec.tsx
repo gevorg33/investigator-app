@@ -187,6 +187,7 @@ describe('the public profile', () => {
         bio: null,
         yearsExperience: null,
         acceptingWork: false,
+        verified: false,
         specialtyNodeIds: [],
         languages: [],
         pricingModel: null,
@@ -197,6 +198,19 @@ describe('the public profile', () => {
     expect(article.querySelectorAll('[data-slot=badge]')).toHaveLength(0);
     expect(article.querySelectorAll('p')).toHaveLength(0);
     expect(within(article).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  it('says a verified investigator is verified, and names them only where the page does not', () => {
+    const { unmount } = card();
+    const article = screen.getByRole('article', { name: 'Ani Petrosyan' });
+    expect(within(article).getByText(en.verification_status.VERIFIED)).toBeVisible();
+    unmount();
+    renderIntl(
+      <PublicProfileCard profile={ownProfile()} specialties={new Map(SPECIALTIES)} named={false} />,
+    );
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.getByRole('article')).not.toHaveAttribute('aria-labelledby');
+    expect(screen.getByRole('article')).toHaveTextContent(en.verification_status.VERIFIED);
   });
 
   it.each([

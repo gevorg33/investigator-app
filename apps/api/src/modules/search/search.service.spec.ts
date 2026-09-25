@@ -379,6 +379,8 @@ describe('investigator discovery', () => {
         id: found.profileId,
         displayName: 'Anahit',
         verificationStatus: 'VERIFIED',
+        // The public projection's own flag agrees: only verified investigators are listed.
+        verified: true,
       });
       // No contact details, no coordinates, no geometry, no account id.
       expect(serialised).not.toContain('555-0104');

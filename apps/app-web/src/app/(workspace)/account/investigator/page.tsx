@@ -19,7 +19,7 @@ import type {
   VerificationApplication,
 } from '@/lib/api/types';
 import { countryOptions, languageOptions } from '@/lib/codes';
-import { flattenTaxonomy } from '@/lib/taxonomy';
+import { categoryOptions } from '@/lib/taxonomy';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('investigator.title') };
@@ -41,7 +41,7 @@ export default async function InvestigatorProfilePage() {
     serverApi<VerificationApplication[]>('/verification/me/requests'),
     serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`),
   ]);
-  const categories = flattenTaxonomy(taxonomy ?? []);
+  const categories = categoryOptions(taxonomy ?? []);
   const own = profile!;
 
   return (

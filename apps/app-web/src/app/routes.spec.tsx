@@ -254,6 +254,7 @@ describe('the application routes', () => {
       screen.getByRole('heading', { level: 1, name: catalogs.hy.nav.missions }),
     ).toBeInTheDocument();
     expect(screen.getByText(catalogs.hy.missions.own.empty.body)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: catalogs.hy.missions.views.find })).toBeInTheDocument();
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
   });
 

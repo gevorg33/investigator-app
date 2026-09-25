@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import type { LooseT } from '@/components/form/errors';
 import { FormError } from '@/components/form/form-error';
-import type { CategoryOption } from '@/components/missions/filter-sheet';
+import type { CategoryOption } from '@/lib/taxonomy';
 import { Alert, AlertContent, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

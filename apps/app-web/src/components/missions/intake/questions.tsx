@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Field } from '@/components/form/field';
 import { SelectField } from '@/components/form/select-field';
 import { minorDigits, toMinorAmount, toWhole } from '@/components/missions/browse-query';
-import type { CategoryOption } from '@/components/missions/filter-sheet';
+import type { CategoryOption } from '@/lib/taxonomy';
 import { Button } from '@/components/ui/button';
 import {
   Command,

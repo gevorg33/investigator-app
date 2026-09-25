@@ -3753,7 +3753,7 @@ already re-tokenised.
 *Found along the way.* (1) `pattern` does nothing on a `<textarea>`, so a reason of spaces would
 have reached the API; the form refuses it itself. (2) A blocked tab would still have fetched a link —
 an audited opening of a document nobody saw. (3) Nothing grants STAFF or a staff scope except SQL:
-filed as T-151 (approval — authorization); the dev-only SQL is in `admin-web.md`.
+filed as T-152 (approval — authorization); the dev-only SQL is in `admin-web.md`.
 
 *Negative controls* (each seen to fail, then restored): the opened tab able to reach back; a link
 asked for when the tab was blocked; a reason of spaces sent; a decision offered on one's own
@@ -3769,7 +3769,7 @@ focus, and every state.
 
 *Docs.* `admin-web.md` (sign-in, shell, verification, dev cookie note, granting access), 
 `verification.md` (the console), staff article `kb-staff-verification-review` v4 (ru/hy drafts in
-step), component inventory, T-151.
+step), component inventory, T-152.
 
 ---
 
@@ -5811,10 +5811,10 @@ shows the reason and "Start a new mission from this one". `@shadcn/progress`, `r
 `checkbox` adopted and re-tokenised.
 
 *Found along the way.* (1) Three draft rules exist only as CHECK constraints — inverted budget,
-inverted dates, empty text — and answer 500: the intake never sends them; filed as T-152. (2) The
+inverted dates, empty text — and answer 500: the intake never sends them; filed as T-153. (2) The
 first cut of "hold an inverted pair" still sent the last valid keystroke ("90" while typing "900"
 against a maximum of 500); a held pair now withdraws its queued keys. (3) Cancelling has an API and a
-KB answer but no screen: T-153. (4) The KB article promised attachments and per-category questions
+KB answer but no screen: T-154. (4) The KB article promised attachments and per-category questions
 that do not exist; corrected. (5) T-051 is told the rejection reason is customer-facing.
 
 *Negative controls* (each seen to fail, then restored): API — an older outcome treated as standing;
@@ -5835,7 +5835,7 @@ component inventory, glossary terms used as written (задание, գործ).
 ---
 
 ### T-120 — Finding investigators: discovery and public profiles (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P1
 - **Depends on:** T-091, T-128, T-011
 - **Risk:** MEDIUM
@@ -5852,13 +5852,34 @@ card.
 own preview shows — reuse it for the profile page.
 
 **Acceptance criteria**
-- [ ] Filters are the typed, closed set the API accepts; an empty result suggests widening, not a dead end
-- [ ] Profile pages expose only the public projection
+- [x] Filters are the typed, closed set the API accepts; an empty result suggests widening, not a dead end
+- [x] Profile pages expose only the public projection
 
 **Validation**
 ```bash
 pnpm --filter app-web test discovery profiles
 ```
+
+**DONE — 2026-09-26**
+
+*App.* A customer's Missions has two views (links, not a new destination — owner decision):
+their missions, and **Find investigators** (`/missions/investigators`). Filters are the address
+(specialty, languages, country, city, a weekday, pricing), applied from a sheet on the mission
+browse's pattern; each active filter is a removable chip. "Near me" is the device's position rounded
+to two decimals, in memory only, with a radius from "covers me" to 100 km — coordinates never enter
+a URL. Cards say why each investigator is listed from `matchedOn`/`notMatched` only. Empty results
+offer the chips to remove, or "Search up to 100 km away". The profile page is T-123's
+`PublicProfileCard` plus reviews (summary, stars read as words, words and reply, never the reviewer);
+unpublished or unknown → 404. Someone working as an investigator is sent back to Missions.
+
+*API.* The public projection carries `verified: boolean` (owner decision) — `PENDING` and `REJECTED`
+both read as `false`, the status itself never leaves; tested per status.
+
+*Scope.* No map: no provider is chosen (T-147). Areas are not on the profile page: the public
+projection has none. Reviews rendering is verified in specs only — the dev database has no reviews.
+
+*Also.* The taxonomy flatten helper existed twice and would have been a third copy:
+`lib/taxonomy.ts` now. Duplicate name heading on the profile page found in the browser and fixed.
 
 ---
 
@@ -6765,6 +6786,9 @@ chosen, and either would send typed places or map views to a third party. Owner 
 provider (and its privacy terms); then add "search a place" + radius on phones and drawing on a
 map from `md`, keeping the centre rounded on the device.
 
+The same provider decision unblocks the map view of finding investigators (T-120), which ships
+as a list with "near me" until then.
+
 **Acceptance criteria**
 - [ ] An area can be added for a place the investigator is not at
 - [ ] Nothing more precise than the stored ~1 km centre reaches the provider or the API
@@ -6859,7 +6883,33 @@ pnpm --filter api test agencies && pnpm --filter app-web test workspace
 
 ---
 
-### T-151 — Staff access: grant and revoke STAFF and staff scopes
+### T-151 — A translated "not found" page (app-web)
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-128
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/**
+
+**Description**
+From T-120. `notFound()` — an unpublished investigator profile, a help article for another audience
+— renders Next's default page: "404 — This page could not be found.", in English, outside the shell.
+Add `not-found.tsx` in the workspace group, in the reader's language, inside the shell, with a way
+back (Home, and the list it came from where known).
+
+**Acceptance criteria**
+- [ ] A 404 inside the workspace keeps the navigation and speaks the reader's language
+- [ ] It says nothing about whether the thing exists (a draft profile and a missing one read the same)
+
+**Validation**
+```bash
+pnpm --filter app-web test routes
+```
+
+---
+
+### T-152 — Staff access: grant and revoke STAFF and staff scopes
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-070
@@ -6888,7 +6938,7 @@ pnpm --filter api test staff-access
 
 ---
 
-### T-152 — Draft saves that break a CHECK answer 500, not a field error
+### T-153 — Draft saves that break a CHECK answer 500, not a field error
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-010
@@ -6916,7 +6966,7 @@ pnpm --filter api test missions
 
 ---
 
-### T-153 — Cancel a mission from the app
+### T-154 — Cancel a mission from the app
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-119

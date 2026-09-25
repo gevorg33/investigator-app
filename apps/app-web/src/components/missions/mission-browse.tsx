@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { serverApi } from '@/lib/api/server';
-import { flattenTaxonomy } from '@/lib/taxonomy';
 import type {
   MissionBrowsePage,
   OwnInvestigatorProfile,
@@ -18,6 +17,7 @@ import { ActiveFilters } from './active-filters';
 import { browseHref, narrowingCount, parseBrowse, type SearchParams } from './browse-query';
 import { BrowseRefusal } from './browse-refusal';
 import { BrowseToolbar } from './browse-toolbar';
+import { categoryOptions } from '@/lib/taxonomy';
 import { MissionCard } from './mission-card';
 import { SavedSearchList, SaveSearch } from './saved-searches';
 
@@ -66,7 +66,7 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
     serverApi<OwnInvestigatorProfile>('/profiles/investigator/me'),
     serverApi<{ items: SavedMissionSearch[] }>('/search/missions/saved'),
   ]);
-  const categories = flattenTaxonomy(taxonomy ?? []);
+  const categories = categoryOptions(taxonomy ?? []);
   const labels = new Map(categories.map((c) => [c.id, c.label]));
   const items = page?.items ?? [];
   const narrowed = narrowingCount(filters) > 0;
