@@ -1,7 +1,7 @@
 'use client';
 
 import { formatBudget, type Locale } from '@investigator/i18n';
-import { Clock, Languages, Wallet } from 'lucide-react';
+import { BadgeCheck, Clock, Languages, Wallet } from 'lucide-react';
 import { useLocale, useTranslations } from 'use-intl';
 import { Badge } from '@/components/ui/badge';
 import type { PublicInvestigatorProfile } from '@/lib/api/types';
@@ -25,10 +25,13 @@ const weekday = (day: number, locale: string) =>
 export function PublicProfileCard({
   profile,
   specialties,
+  named = true,
 }: {
   profile: PublicInvestigatorProfile;
   /** Labels for the profile's specialty ids, in the reader's language. */
   specialties: ReadonlyMap<string, string>;
+  /** False where the page is already headed with the name — the public profile page (T-120). */
+  named?: boolean;
 }) {
   const t = useTranslations('investigator');
   const locale = useLocale() as Locale;
@@ -39,13 +42,21 @@ export function PublicProfileCard({
       : null;
 
   return (
-    <article aria-labelledby="public-profile-name" className="grid gap-4">
+    <article aria-labelledby={named ? 'public-profile-name' : undefined} className="grid gap-4">
       <header className="grid gap-1">
-        <h3 id="public-profile-name" className="text-xl font-semibold">
-          {profile.displayName ?? t('details.not_set')}
-        </h3>
+        {named && (
+          <h3 id="public-profile-name" className="text-xl font-semibold">
+            {profile.displayName ?? t('details.not_set')}
+          </h3>
+        )}
         {profile.headline !== null && <p className="text-text-muted">{profile.headline}</p>}
         <div className="mt-1 flex flex-wrap gap-2">
+          {profile.verified && (
+            <Badge variant="secondary">
+              <BadgeCheck aria-hidden />
+              {t('verification_status.VERIFIED')}
+            </Badge>
+          )}
           {profile.acceptingWork && <Badge variant="secondary">{t('status.accepting')}</Badge>}
           {profile.yearsExperience !== null && (
             <Badge variant="outline">

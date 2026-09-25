@@ -248,11 +248,12 @@ describe('the application routes', () => {
   it('renders every page in the reader’s chosen language', async () => {
     request.cookies.set('locale', 'hy');
     api.on('GET /me', 200, account());
-    render(await MissionsPage({ searchParams: Promise.resolve({}) }));
+    render(await resolveServer(await MissionsPage({ searchParams: Promise.resolve({}) })));
     expect(
       screen.getByRole('heading', { level: 1, name: catalogs.hy.nav.missions }),
     ).toBeInTheDocument();
     expect(screen.getByText(catalogs.hy.missions.empty.body)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: catalogs.hy.missions.views.find })).toBeInTheDocument();
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
   });
 

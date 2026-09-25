@@ -125,6 +125,19 @@ requested node that does not exist is not reported as missing.
 The assistant finds investigators through this same service, as a registered tool:
 `assistant-tools.md`.
 
+## The customer's screen (T-120)
+
+`/missions/investigators` in app-web, a customer's second view of Missions (`app-web.md`). It sends
+exactly the typed filters above — country, city, one specialty, languages, a weekday (as
+`availableDuring` over the whole day, which overlap turns into "free for part of it") and pricing
+— and `near` + `radiusKm` only when the customer shares their location. Region is not offered: a
+free-text region has no list to choose from, and country and city already cover the place.
+
+**Coordinates never reach a URL** here either: filters live in the address, the location lives in
+the page's memory, and the search is a `POST` from the browser. The device's position is rounded
+to two decimals before it is sent, as service areas are. The map view waits for a map provider
+(T-147).
+
 ---
 
 # Investigators browsing missions (T-054)
