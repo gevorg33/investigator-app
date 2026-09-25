@@ -111,7 +111,7 @@ export class SaveMissionDraftDto {
  * so two people editing the same mission cannot silently overwrite each other — the second
  * write is refused and the client re-reads.
  */
-class VersionedDto {
+export class VersionedDto {
   @IsInt()
   @Min(1)
   version!: number;

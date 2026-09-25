@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "fixtures:load": "tsx test/demo-data.ts",
-    "knowledge:sync": "tsc --build && node dist/modules/knowledge/knowledge-sync.main.js"
+    "knowledge:sync": "tsc --build && node dist/modules/knowledge/knowledge-sync.main.js",
+    "openapi:metadata": "tsc --build && node dist/common/openapi/metadata.generator.main.js"
   },
   "dependencies": {
     "@investigator/auth": "workspace:*",

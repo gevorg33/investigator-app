@@ -20,7 +20,7 @@ const STATUSES = taxonomyNodeStatus.enumValues;
  * node's band decides how its missions are moderated, and "who changed it" is only half of
  * what anyone will ask later.
  */
-class Reasoned {
+export class Reasoned {
   @IsString()
   @Length(12, 500)
   reason!: string;

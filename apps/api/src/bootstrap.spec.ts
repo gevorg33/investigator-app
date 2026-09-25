@@ -37,7 +37,7 @@ describe('global application configuration', () => {
     }).compile();
     app = mod.createNestApplication();
     beforeConfigure?.(app);
-    configureApp(app);
+    await configureApp(app);
     await listenOnce(app);
     return app;
   };

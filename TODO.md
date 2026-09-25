@@ -6472,7 +6472,7 @@ another.", in English and Russian.
 ---
 
 ### T-136 — OpenAPI lists no request properties for any DTO
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -6488,13 +6488,33 @@ plugin or explicit `@ApiProperty`, so the published contract says nothing about 
 takes, and `packages/api-client` cannot be generated from it.
 
 **Acceptance criteria**
-- [ ] Every request DTO's properties, types and bounds appear in the OpenAPI document
-- [ ] A test fails when a DTO property is missing from the document
+- [x] Every request DTO's properties, types and bounds appear in the OpenAPI document
+- [x] A test fails when a DTO property is missing from the document
 
 **Validation**
 ```bash
 pnpm --filter api test openapi
 ```
+
+**DONE — 2026-09-26**
+
+*How.* The API builds with plain `tsc`, so `@nestjs/swagger`'s compiler plugin never ran.
+`src/common/openapi/metadata.generator.ts` runs the plugin's own `ReadonlyVisitor` over the source
+(the Nest CLI's approach for SWC builds, without the CLI) and prints `src/metadata.ts` — committed,
+with static imports because a dynamic `import()` under Node16 in this CommonJS package would need
+`.js` on every path. `bootstrap.ts` loads it (`configureApp` is now async), then `addValidationBounds`
+writes every class-validator bound as the running API enforces it — the plugin reads only literal
+arguments, so `@Max(MAX_SEARCH_RADIUS_KM)` had been dropped. `pnpm --filter api openapi:metadata`
+regenerates.
+
+*Test.* `openapi.spec.ts`, over the real module graph's real document: metadata fresh; every body
+DTO's properties in its schema; every `@Query()` class's properties on its own route (mapped through
+Nest's route metadata, not by name); every bound equal to class-validator's. Negative controls: a DTO
+property added without regenerating fails three tests; removing the bounds pass fails one.
+
+*Found and fixed.* Two base DTOs (`VersionedDto`, `Reasoned`) were not exported, so the plugin
+skipped them and `version`/`reason` vanished from every subclass schema. `ReadDocumentQuery` sat in
+a controller file, so `GET /knowledge/documents/{docKey}` listed no `locale` — now `knowledge.dto.ts`.
 
 ---
 
