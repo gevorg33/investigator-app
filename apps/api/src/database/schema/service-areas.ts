@@ -60,7 +60,9 @@ export const serviceAreas = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     // GIST, always: without it every coverage query is a sequential scan of every area.

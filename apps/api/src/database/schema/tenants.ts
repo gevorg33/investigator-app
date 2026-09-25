@@ -80,7 +80,9 @@ export const tenants = pgTable(
     // kind without a join — which is what lets a partial index refuse a second Personal member.
     unique('tenants_id_kind_unique').on(t.id, t.kind),
     index('tenants_status_idx').on(t.kind, t.status),
-    index('tenants_created_by_idx').on(t.createdBy).where(sql`created_by IS NOT NULL`),
+    index('tenants_created_by_idx')
+      .on(t.createdBy)
+      .where(sql`created_by IS NOT NULL`),
   ],
 );
 

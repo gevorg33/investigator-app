@@ -154,6 +154,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['tenant_id'],
     note: 'narrower than the class: its own user in its own workspace only, so not even an agency owner reads a colleague’s conversation (T-045)',
   },
+  saved_mission_searches: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'narrower than the class, as ai_sessions: its own user in its own workspace only (T-054)',
+  },
   ai_messages: {
     class: 'tenant_owned',
     columns: ['tenant_id'],

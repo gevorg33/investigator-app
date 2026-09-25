@@ -9,6 +9,11 @@
   padding-bottom: calc(var(--spacing) * 16 + env(safe-area-inset-bottom));
 }
 
+/* How tall a bottom sheet may grow: the page stays visible above it, so it reads as a sheet. */
+@utility max-h-sheet {
+  max-height: 85dvh;
+}
+
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }

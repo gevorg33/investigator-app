@@ -472,7 +472,9 @@ describe('workspace references', () => {
     }));
 
   it('a Personal workspace goes with its user', () => {
-    expect(refs(tenants)).toEqual([{ columns: ['personal_owner_id'], target: users, onDelete: 'cascade' }]);
+    expect(refs(tenants)).toEqual([
+      { columns: ['personal_owner_id'], target: users, onDelete: 'cascade' },
+    ]);
   });
 
   it('a membership goes with its workspace, and its user check waits for commit', () => {
@@ -502,7 +504,9 @@ describe('workspace references', () => {
 
   it('a session’s default workspace clears if the workspace ever goes', () => {
     expect(refs(userSessions)).toEqual(
-      expect.arrayContaining([{ columns: ['default_tenant_id'], target: tenants, onDelete: 'set null' }]),
+      expect.arrayContaining([
+        { columns: ['default_tenant_id'], target: tenants, onDelete: 'set null' },
+      ]),
     );
   });
 });

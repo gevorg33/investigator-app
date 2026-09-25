@@ -9,6 +9,7 @@ import './globals.css';
 /** The namespaces client components translate. Everything else is rendered on the server. */
 export const CLIENT_NAMESPACES = [
   'nav',
+  'missions',
   'auth',
   'account',
   'legal',

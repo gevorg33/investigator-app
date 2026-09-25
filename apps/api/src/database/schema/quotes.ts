@@ -87,13 +87,17 @@ export const quotes = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
     /**
      * Copied from the lead investigator's profile by trigger `fill_party_from_parent`, never from the request, and
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
+    supplierTenantId: uuid('supplier_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     // The customer's list: every quote on their mission, newest first.

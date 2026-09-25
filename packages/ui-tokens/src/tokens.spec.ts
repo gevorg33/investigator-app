@@ -50,6 +50,8 @@ describe('design tokens', () => {
       'surface-raised',
       'surface-sunken',
       'surface-overlay',
+      // Behind a sheet, at an opacity; nothing is ever written on it.
+      'scrim',
       'border',
       'primary-subtle',
     ]);

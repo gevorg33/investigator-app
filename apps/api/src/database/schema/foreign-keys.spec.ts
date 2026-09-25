@@ -8,7 +8,7 @@ import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
-import { missions } from './missions';
+import { missions, savedMissionSearches } from './missions';
 import { moneyDecisions, policyReviews } from './policy-reviews';
 import { investigatorProfiles } from './profiles';
 import { reviewTexts, reviews } from './reviews';
@@ -190,6 +190,22 @@ describe('reviews (T-037)', () => {
         { columns: ['author_id'], target: users, onDelete: 'restrict' },
         { columns: ['moderated_by'], target: users, onDelete: 'restrict' },
         { columns: ['reported_by'], target: users, onDelete: 'restrict' },
+      ]),
+    );
+  });
+});
+
+describe('saved mission searches (T-054)', () => {
+  it('belong to one user in one workspace, and go only by the retention workflow', () => {
+    const fks = getTableConfig(savedMissionSearches).foreignKeys.map((f) => ({
+      columns: f.reference().columns.map((c) => c.name),
+      target: f.reference().foreignTable,
+      onDelete: f.onDelete,
+    }));
+    expect(fks).toEqual(
+      expect.arrayContaining([
+        { columns: ['tenant_id'], target: tenants, onDelete: 'restrict' },
+        { columns: ['user_id'], target: users, onDelete: 'restrict' },
       ]),
     );
   });

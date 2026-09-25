@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatDateTime, formatMoney, formatNumber, formatRelativeTime } from './format.js';
+import {
+  formatDateTime,
+  formatBudget,
+  formatMoney,
+  formatMoneyRange,
+  formatNumber,
+  formatRelativeTime,
+} from './format.js';
 
 // A deadline at 18:30 UTC — 22:30 in Yerevan, the evening before in Los Angeles.
 const AT = '2026-09-24T18:30:00Z';
@@ -29,6 +36,20 @@ describe('locale formatting', () => {
     expect(plain(formatMoney(123_450, 'USD', 'ru'))).toBe('1 234,50 $');
     // No minor unit: 5000 minor units of yen are 5000 yen.
     expect(formatMoney(5000, 'JPY', 'en')).toBe('¥5,000');
+  });
+
+  it('formats one budget amount without the noise of whole-number decimals', () => {
+    expect(formatBudget(15_000_000, 'AMD', 'en')).toBe('AMD\u00a0150,000');
+    expect(formatBudget(150_050, 'USD', 'en')).toBe('$1,500.50');
+    expect(formatBudget(5000, 'JPY', 'en')).toBe('¥5,000');
+  });
+
+  it('formats a budget range by the locale’s own range rules', () => {
+    expect(formatMoneyRange(50_000, 150_000, 'USD', 'en')).toBe('$500 – $1,500');
+    // A part of a unit is kept where there is one.
+    expect(formatMoneyRange(50_050, 150_000, 'USD', 'en')).toBe('$500.50 – $1,500.00');
+    expect(plain(formatMoneyRange(50_000, 150_000, 'AMD', 'hy'))).toBe('500–1500 ֏');
+    expect(plain(formatMoneyRange(5000, 9000, 'JPY', 'ru'))).toBe('5 000–9 000 ¥');
   });
 
   it('formats numbers in the reader’s grouping', () => {

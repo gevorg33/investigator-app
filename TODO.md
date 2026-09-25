@@ -2838,7 +2838,7 @@ not re-emit them.
 ---
 
 ### T-054 — Investigator mission browse and filter
-- **Status:** TODO
+- **Status:** DONE — 2026-09-25
 - **Priority:** P1
 - **Depends on:** T-053, T-011, T-091
 - **Risk:** MEDIUM
@@ -2853,22 +2853,64 @@ eligible for two hundred missions has no way to find the ones worth quoting on.
 Distinct from T-011, which is the customer→investigator direction.
 
 **Acceptance criteria**
-- [ ] **Eligibility is applied first and is not user-adjustable** — filters narrow the eligible
+- [x] **Eligibility is applied first and is not user-adjustable** — filters narrow the eligible
       set, never widen it. A test proves no filter combination surfaces an ineligible mission
+      — eligibility is the quote gate, one function for both (`requireQuotingProfile`): a caller
+      who may quote, a QUOTED mission, not their own (owner decision, 2026-09-25; narrowing to
+      declared specialties is T-143). Fifteen filter/sort combinations walked page by page never
+      show a draft, submitted, under-review, rejected, cancelled, confirmed or own mission
 - [ ] Filters: taxonomy node, budget range, timeline, distance from a service area, language,
       posted date, tags
-- [ ] Sorts: newest, closest, highest budget, soonest deadline
-- [ ] Free-text search ranks within the eligible set; it never gates (`investigator-discovery`)
-- [ ] Saved filters, so a returning investigator does not rebuild the same query
-- [ ] Cursor pagination, bounded limit (`docs/api/pagination.md`)
-- [ ] Results are projections — **no customer contact details before assignment**
-- [ ] Distance uses `ST_DWithin` to filter and `ST_Distance` to sort (`postgis-search`)
+      — all but **tags**, which do not exist until T-055 (criterion added there). Budget needs a
+      currency; language means every required language is among those chosen
+- [x] Sorts: newest, closest, highest budget, soonest deadline
+- [x] Free-text search ranks within the eligible set; it never gates (`investigator-discovery`)
+      — `q` implies relevance order; with any other sort it is refused rather than silently ignored
+- [x] Saved filters, so a returning investigator does not rebuild the same query
+      — `saved_mission_searches`, own user in own workspace under RLS, at most 20, unique names
+- [x] Cursor pagination, bounded limit (`docs/api/pagination.md`)
+- [x] Results are projections — **no customer contact details before assignment**
+      — nothing about the customer at all, nor their purpose or relationship to the subject; the
+      key set is asserted
+- [x] Distance uses `ST_DWithin` to filter and `ST_Distance` to sort (`postgis-search`)
 
 **Validation**
 ```bash
 pnpm --filter api test mission-browse
 ```
 
+**DONE — 2026-09-25**
+
+*API.* `POST /api/v1/search/missions` and `GET/POST/DELETE /search/missions/saved`, in the search
+module (`MissionBrowseService`). Migration 0023: `missions.published_at`, set only by a trigger on
+entry into QUOTED (backfilled), two partial indexes, and `saved_mission_searches` with an own-user
+policy. `requireQuotingProfile` extracted so quoting and browse share the gate; the taxonomy walk
+extracted so discovery and browse share it. Row-level security already hid unpublished missions
+from other workspaces — a mutation removing the status condition from the query changes nothing,
+which the doc records.
+
+*App.* `/missions` for investigators, built from the registries after a first hand-built version
+was rightly rejected as looking like a form: shadcn `card`, `badge`, `drawer` (filter sheet: bottom on
+phones, right from `md`), `command` (searchable categories), `input-group`, `native-select`,
+`toggle-group` chips and `skeleton`, all re-tokenised; active filters as removable chips; budgets
+without whole-number decimals (`formatMoneyRange`, `formatBudget`); a `scrim` token for the sheet's
+backdrop. The URL stays the one description of a browse. A customer keeps the empty state. `formatMoneyRange` added to `@investigator/i18n`. Two bugs found in the browser and
+fixed with tests seen failing first: the language filter used `?lang=`, which the middleware takes
+as the app's language (renamed `language`); and client strings under `missions` were not sent to
+the browser, so a delete button read "Delete {name}". `Button` moved to `@radix-ui/react-slot`:
+the `radix-ui` barrel had become a 78 kB client boundary. `/missions` is 165 kB with the sheet and
+the category list (budget 250).
+
+*Verified* in the browser against the real API and database, at 375, 768 and 1280px: not-eligible
+state, tree walk, closest-first with distances, language + currency + budget via the form, text
+ordering, a budget without a currency refused with the field named, paging over 3,000+ missions,
+saving, running, duplicate-name refusal and deleting a saved search. No horizontal scroll; every
+target ≥ 44px; inputs 16px.
+
+*Tests.* API 2332 (100%), `mission-browse` 50; app-web 228 (100%); i18n 29 (100%); ui-tokens 15. Docs:
+`discovery.md`, `missions.md`, `tenancy.md`, `app-web.md`, component inventory; KB
+`finding-work` and `privacy-and-data` in en/ru/hy. Filed T-142 (self-quoting), T-143 (narrower
+eligibility after the taxonomy seed).
 ---
 
 ### T-055 — Mission tagging
@@ -2893,6 +2935,7 @@ moderation surface.
 - [ ] Tags applied from the curated vocabulary — **no free-text tag creation by customers**
 - [ ] Customers may suggest tags at mission creation; moderators confirm at publication (T-051)
 - [ ] Tags improve search ranking and browse filtering only
+- [ ] Mission browse (`POST /search/missions`, T-054) takes a tag filter that only narrows, and the app-web filters offer it — T-054 left it out because tags did not exist
 - [ ] **A tag never affects eligibility** — tested
 - [ ] Tag labels localised for en/ru/hy
 - [ ] Staff can add, merge, deprecate and relabel tags; all audited
@@ -6286,6 +6329,70 @@ needed at all; if it is, make the build scripts immune to it rather than every c
 **Validation**
 ```bash
 pnpm build && ./scripts/setup.sh
+```
+
+---
+
+### T-142 — An investigator can quote on their own mission
+- **Status:** TODO
+- **Priority:** P1 — self-dealing reaches reviews (T-037) and payouts
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes the quote authorization rule
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/quotes/**, apps/api/src/modules/profiles/quoting-eligibility.ts
+
+**Description**
+Found in T-054. One account holds both roles, and `QuotesService.submit` checks the investigator
+(`requireQuotingProfile`) and that the mission is QUOTED — but not that the mission is someone
+else's. So a person can publish a mission as a customer, quote on it as an investigator, accept
+their own quote, and after completion review themselves. Browse (T-054) already leaves a person's
+own missions out; quoting should refuse them, and so should anything that shortlists or invites
+(T-103).
+
+**Acceptance criteria**
+- [ ] Quoting on a mission whose customer is the quoting user is refused, as a 404 like any mission
+      the investigator may not quote on
+- [ ] The same for a mission in a workspace the quoting user belongs to (an agency quoting on its
+      own member's mission) — decided with the owner, since agencies make "own" wider than a user
+- [ ] Tested at the service and through HTTP
+
+**Validation**
+```bash
+pnpm --filter api test quotes
+```
+
+---
+
+### T-143 — Narrow mission eligibility to what an investigator declared
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-131, T-142
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes who may read and quote on a mission
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/{search,quotes,profiles}/**, docs/knowledge-base/investigator/finding-work.*
+
+**Description**
+From T-054 (owner decision, 2026-09-25). Today an investigator may browse and quote on every
+published mission; specialties, areas and languages are filters they choose. The investigator
+article used to promise the narrower model — only missions matching their verified specialties,
+service areas and languages — and a customer's mission description, which routinely names third
+parties, would reach fewer people under it. It was not built then because no real taxonomy exists
+until T-131, so narrowing would have shown most investigators nothing.
+
+Once the taxonomy is seeded, decide and build: which of specialties (tree walk), service-area
+country, languages and availability become eligibility, applied to **both** browse and
+`requireQuotingProfile`/quote submission so the list and the quote never disagree.
+
+**Acceptance criteria**
+- [ ] The rule decided with the owner, and written into `discovery.md` and the investigator article
+- [ ] Browse and quoting apply it through one implementation, tested the way T-054 tests eligibility
+- [ ] The customer privacy article says who can read a published mission
+
+**Validation**
+```bash
+pnpm --filter api test mission-browse
 ```
 
 ---

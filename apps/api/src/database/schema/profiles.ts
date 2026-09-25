@@ -165,7 +165,9 @@ export const investigatorLanguages = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('investigator_languages_unique').on(t.profileId, t.languageCode),
@@ -202,7 +204,9 @@ export const investigatorSpecialties = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('investigator_specialties_unique').on(t.profileId, t.taxonomyNodeId),
@@ -240,7 +244,9 @@ export const investigatorAvailability = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    tenantId: uuid('tenant_id').notNull().default(sql`app_current_tenant()`),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     index('investigator_availability_profile_idx').on(t.profileId),

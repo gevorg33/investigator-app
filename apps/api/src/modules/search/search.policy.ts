@@ -74,3 +74,48 @@ export function decodeCursor(filters: unknown, cursor: string): Cursor {
 
   return { distanceM: d as number | null, profileId: i };
 }
+
+/**
+ * A keyset position: the sort keys of the last row on a page, then the id that breaks their ties.
+ * Used by mission browse (T-054), whose sorts need two keys — the chosen order, then newest.
+ */
+export interface Keyset {
+  keys: number[];
+  id: string;
+}
+
+/** As `encodeCursor`, for a keyset: bound to the filters that produced it, opaque to the client. */
+export function encodeKeyset(filters: unknown, last: Keyset): string {
+  const payload = { f: fingerprint(filters), k: last.keys, i: last.id };
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+}
+
+/** As `decodeCursor`: every malformed, foreign or invented cursor is the same refusal. */
+export function decodeKeyset(filters: unknown, cursor: string, arity: number): Keyset {
+  const reject = (): never => {
+    throw AppError.validation([
+      { field: 'cursor', code: 'INVALID', messageKey: 'error.validation.cursor.invalid' },
+    ]);
+  };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+  } catch {
+    return reject();
+  }
+  if (parsed === null || typeof parsed !== 'object') return reject();
+
+  const { f, k, i } = parsed as { f?: unknown; k?: unknown; i?: unknown };
+  if (typeof f !== 'string' || f !== fingerprint(filters)) return reject();
+  if (typeof i !== 'string' || !/^[0-9a-f-]{36}$/.test(i)) return reject();
+  if (
+    !Array.isArray(k) ||
+    k.length !== arity ||
+    !k.every((n) => typeof n === 'number' && Number.isFinite(n))
+  ) {
+    return reject();
+  }
+
+  return { keys: k as number[], id: i };
+}

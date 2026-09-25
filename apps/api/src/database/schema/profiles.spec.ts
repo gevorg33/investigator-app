@@ -20,9 +20,10 @@ import { users } from './users';
 describe('profile table shape', () => {
   const indexNames = (t: Parameters<typeof getTableConfig>[0]): string[] => {
     const c = getTableConfig(t);
-    return [...c.indexes.map((i) => i.config.name), ...c.uniqueConstraints.map((u) => u.name)].filter(
-      (n): n is string => n !== undefined,
-    );
+    return [
+      ...c.indexes.map((i) => i.config.name),
+      ...c.uniqueConstraints.map((u) => u.name),
+    ].filter((n): n is string => n !== undefined);
   };
 
   it('allows one customer profile per user', () => {
@@ -65,8 +66,8 @@ describe('profile table shape', () => {
   it('does not cascade a specialty away with its taxonomy node', () => {
     // Nodes are deprecated, never deleted (ADR-0007). A profile's declared specialty must
     // survive deprecation, so the reference restricts rather than cascades.
-    const fk = getTableConfig(investigatorSpecialties).foreignKeys.find((f) =>
-      f.reference().foreignTable === taxonomyNodes,
+    const fk = getTableConfig(investigatorSpecialties).foreignKeys.find(
+      (f) => f.reference().foreignTable === taxonomyNodes,
     );
     expect(fk?.onDelete).toBe('restrict');
   });
@@ -86,7 +87,11 @@ describe('profile table shape', () => {
     ['customer_profiles', customerProfiles],
     ['investigator_profiles', investigatorProfiles],
   ] as const)('removes %s with the account', (_name, table) => {
-    expect(keyOf(table, 'user_id')).toEqual({ column: 'user_id', target: users, onDelete: 'cascade' });
+    expect(keyOf(table, 'user_id')).toEqual({
+      column: 'user_id',
+      target: users,
+      onDelete: 'cascade',
+    });
   });
 
   it.each([

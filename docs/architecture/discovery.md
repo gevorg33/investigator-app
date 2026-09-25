@@ -124,3 +124,81 @@ requested node that does not exist is not reported as missing.
 
 The assistant finds investigators through this same service, as a registered tool:
 `assistant-tools.md`.
+
+---
+
+# Investigators browsing missions (T-054)
+
+The other direction: an investigator finding the published missions they could quote on.
+`POST /api/v1/search/missions`, in the same module (`MissionBrowseService`), over PostgreSQL and
+PostGIS, never RAG.
+
+## Eligibility is the quote gate
+
+```
+requireQuotingProfile  active, INVESTIGATOR, investigations.create, own profile published + VERIFIED + accepting work
+  → mission            status QUOTED, and not the investigator's own (one account holds both roles)
+  → filters            taxonomy (tree), currency + budget overlap, deadline window, languages ⊆ chosen,
+                       published within N days, ST_DWithin of the investigator's own service areas
+  → order              newest | closest | budget | deadline | relevance, then newest, then id
+  → projection         MissionListing — nothing about the customer
+```
+
+**Browse shows exactly what a quote would be accepted on.** `requireQuotingProfile`
+(`profiles/quoting-eligibility.ts`) is one function called by both `QuotesService.submit` and the
+browse, so the two cannot disagree. Specialties, areas and languages are **filters the investigator
+chooses**, not eligibility (owner decision, 2026-09-25): narrowing eligibility to declared specialties
+would show most investigators nothing until the real taxonomy is seeded (T-131), and would have to
+change the quote gate with it — filed as T-143.
+
+Eligibility sits in the SQL `WHERE` with the filters. Row-level security holds it a second time:
+any workspace reads a mission only while it is QUOTED (`quoted_read`), so removing the status
+condition from the query changes nothing for another workspace's missions — the mutation check in
+`mission-browse.service.spec.ts` shows it. A test runs fifteen filter and sort combinations through
+every page and asserts no draft, submitted, under-review, rejected, cancelled, confirmed or own
+mission ever appears.
+
+## Filter semantics
+
+| Filter | Meaning |
+|---|---|
+| `taxonomyNodeIds` | Filed at, below or above a requested node — the same two-way walk as discovery (`taxonomy-closure.ts`) |
+| `currency`, `budgetMinMinor`, `budgetMaxMinor` | Overlap with the mission's range, in one currency. A budget or the budget sort without a currency is refused — amounts in different currencies do not compare |
+| `deadlineFrom`, `deadlineTo` | Inclusive dates |
+| `languages` | Every language the mission requires is among those chosen (`<@`): a mission needing Armenian and English is not work for someone who ticked only English |
+| `postedWithinDays` | Relative to now, so a saved search still means "recent" later |
+| `serviceAreaId`, `withinKm` | Distance from the edge of the investigator's own area (one, or the nearest of them). `ST_DWithin` filters, `ST_Distance` only sorts. Someone else's area is refused |
+| `q` | Orders by `ts_rank` over title and description (`simple` configuration, so no stemming yet). **Never filters.** It implies `sort: relevance`, and any other sort with it is refused — it would do nothing, silently |
+
+A published mission always has a deadline, both ends of its budget, a currency and at least one
+language (`missions_submission_complete`), so only location can be missing: missions without one
+sort last under "closest" and are left out by a distance filter.
+
+## Posted date
+
+`missions.published_at` (migration 0023) is set by the trigger `missions_published_at` on every
+entry into QUOTED — a writer cannot supply or change it — so "newest" and "posted within" need no
+access to the status history, which only the customer's workspace can read. Existing published
+missions were backfilled from that history.
+
+## Paging
+
+Keyset, on `(sort key, newest, id)`, with the cursor bound to the filters that produced it
+(`encodeKeyset`/`decodeKeyset` in `search.policy.ts`): a cursor from one browse applied to another
+is refused, as discovery's are.
+
+## What a listing shows
+
+`id, title, description, taxonomyNodeId, countryCode, locationLabel, distanceKm, startBy,
+deadline, budgetMinMinor, budgetMaxMinor, currency, languages, publishedAt`. Not the customer, not
+their purpose or relationship to the subject, not a protective-order declaration, never coordinates.
+A test asserts the exact key set.
+
+## Saved searches
+
+`GET/POST /search/missions/saved`, `DELETE /search/missions/saved/:id`. Stored in
+`saved_mission_searches` — own user in own workspace under row-level security, like assistant
+conversations. The filters are checked exactly as a browse would check them before they are saved,
+names are unique per owner, and one investigator keeps at most 20 (serialised by an advisory lock).
+A saved search never holds a cursor. Listing stays open to an investigator whose eligibility has
+lapsed; browsing does not.

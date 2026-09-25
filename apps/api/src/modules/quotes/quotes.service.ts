@@ -10,6 +10,7 @@ import { DB, type Db, type Tx } from '../../database/database.module';
 import { missions, quotes } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
+import { requireQuotingProfile } from '../profiles/quoting-eligibility';
 import type { SubmitQuoteDto } from './quotes.dto';
 import { isExpired, MAX_EXPIRY_DAYS, MIN_EXPIRY_MINUTES } from './quotes.policy';
 
@@ -70,19 +71,8 @@ export class QuotesService {
     req: RequestContext,
   ): Promise<QuoteView> {
     const c = this.ctx('quote.submit', req, missionId);
-    await this.authz.requireActive(actor, c);
-    await this.authz.requireRole(actor, 'INVESTIGATOR', c);
-    await this.authz.requirePermission(actor, 'investigations.create', c);
-
-    const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
-    // Eligibility is a state check on the actor's own profile, so it is a 403 rather than a 404.
-    await this.authz.stateAllows(
-      actor,
-      profile.visibility === 'PUBLISHED' &&
-        profile.verificationStatus === 'VERIFIED' &&
-        profile.acceptingWork,
-      c,
-    );
+    // The same gate browse applies (T-054): what an investigator is shown is what they may quote on.
+    const profile = await requireQuotingProfile(this.authz, this.profiles, actor, c);
 
     const expiresAt = this.expiry(dto.expiresAt);
 

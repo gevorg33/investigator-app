@@ -6,7 +6,6 @@ import * as schema from './schema';
 import { userIdentities, users } from './schema';
 import { testPool } from '../../test/db';
 
-
 /**
  * The shape of identity linking is the thing that is expensive to change once accounts
  * depend on it, so the constraints are pinned here before the first provider ships
@@ -32,8 +31,9 @@ describe('external identity linking', () => {
   const uniqueViolation = async (run: Promise<unknown>): Promise<void> => {
     const err = await run.then(() => null).catch((e: unknown) => e);
     expect(err, 'expected the insert to be rejected').not.toBeNull();
-    const code = (err as { cause?: { code?: string }; code?: string }).cause?.code
-      ?? (err as { code?: string }).code;
+    const code =
+      (err as { cause?: { code?: string }; code?: string }).cause?.code ??
+      (err as { code?: string }).code;
     expect(code).toBe('23505');
   };
 
@@ -53,7 +53,9 @@ describe('external identity linking', () => {
       provider: 'GOOGLE',
       providerAccountId: randomUUID(),
     });
-    const rows = await db.query.userIdentities.findMany({ where: (t, { eq }) => eq(t.userId, userId) });
+    const rows = await db.query.userIdentities.findMany({
+      where: (t, { eq }) => eq(t.userId, userId),
+    });
     expect(rows).toHaveLength(1);
   });
 

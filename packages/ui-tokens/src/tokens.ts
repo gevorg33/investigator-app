@@ -20,6 +20,8 @@ export type ColorRole =
   | 'surface-raised'
   | 'surface-sunken'
   | 'surface-overlay'
+  // Dims the page behind a sheet or dialog; used with an opacity (`bg-scrim/50`), never as text
+  | 'scrim'
   // Text
   | 'text'
   | 'text-muted'
@@ -57,6 +59,7 @@ export const colors: Readonly<Record<Theme, Readonly<Record<ColorRole, string>>>
     'surface-raised': '#ffffff',
     'surface-sunken': '#efeff1',
     'surface-overlay': '#ffffff',
+    scrim: '#18181b',
     text: '#18181b',
     'text-muted': '#52525b',
     border: '#e4e4e7',
@@ -84,6 +87,7 @@ export const colors: Readonly<Record<Theme, Readonly<Record<ColorRole, string>>>
     'surface-raised': '#18181b',
     'surface-sunken': '#09090b',
     'surface-overlay': '#1f1f23',
+    scrim: '#000000',
     text: '#f4f4f5',
     'text-muted': '#a1a1aa',
     border: '#27272a',

@@ -290,12 +290,8 @@
           "name": "user_identities_user_id_users_id_fk",
           "tableFrom": "user_identities",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -372,12 +368,8 @@
           "name": "customer_profiles_user_id_users_id_fk",
           "tableFrom": "customer_profiles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -446,12 +438,8 @@
           "name": "investigator_availability_profile_id_investigator_profiles_id_fk",
           "tableFrom": "investigator_availability",
           "tableTo": "investigator_profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -536,12 +524,8 @@
           "name": "investigator_languages_profile_id_investigator_profiles_id_fk",
           "tableFrom": "investigator_languages",
           "tableTo": "investigator_profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -685,12 +669,8 @@
           "name": "investigator_profiles_user_id_users_id_fk",
           "tableFrom": "investigator_profiles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -768,12 +748,8 @@
           "name": "investigator_specialties_profile_id_investigator_profiles_id_fk",
           "tableFrom": "investigator_specialties",
           "tableTo": "investigator_profiles",
-          "columnsFrom": [
-            "profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["profile_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -781,12 +757,8 @@
           "name": "investigator_specialties_taxonomy_node_id_taxonomy_nodes_id_fk",
           "tableFrom": "investigator_specialties",
           "tableTo": "taxonomy_nodes",
-          "columnsFrom": [
-            "taxonomy_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["taxonomy_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -887,12 +859,8 @@
           "name": "taxonomy_nodes_parent_id_taxonomy_nodes_id_fk",
           "tableFrom": "taxonomy_nodes",
           "tableTo": "taxonomy_nodes",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -996,12 +964,8 @@
           "name": "user_staff_scopes_user_id_users_id_fk",
           "tableFrom": "user_staff_scopes",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1009,12 +973,8 @@
           "name": "user_staff_scopes_granted_by_users_id_fk",
           "tableFrom": "user_staff_scopes",
           "tableTo": "users",
-          "columnsFrom": [
-            "granted_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["granted_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1022,12 +982,8 @@
           "name": "user_staff_scopes_revoked_by_users_id_fk",
           "tableFrom": "user_staff_scopes",
           "tableTo": "users",
-          "columnsFrom": [
-            "revoked_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["revoked_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1131,12 +1087,8 @@
           "name": "user_tokens_user_id_users_id_fk",
           "tableFrom": "user_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1213,12 +1165,8 @@
           "name": "user_roles_user_id_users_id_fk",
           "tableFrom": "user_roles",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1349,12 +1297,8 @@
           "name": "user_sessions_user_id_users_id_fk",
           "tableFrom": "user_sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1488,84 +1432,47 @@
     "public.identity_provider": {
       "name": "identity_provider",
       "schema": "public",
-      "values": [
-        "GOOGLE"
-      ]
+      "values": ["GOOGLE"]
     },
     "public.language_proficiency": {
       "name": "language_proficiency",
       "schema": "public",
-      "values": [
-        "BASIC",
-        "CONVERSATIONAL",
-        "FLUENT",
-        "NATIVE"
-      ]
+      "values": ["BASIC", "CONVERSATIONAL", "FLUENT", "NATIVE"]
     },
     "public.pricing_model": {
       "name": "pricing_model",
       "schema": "public",
-      "values": [
-        "HOURLY",
-        "FIXED_FEE",
-        "RETAINER",
-        "MIXED"
-      ]
+      "values": ["HOURLY", "FIXED_FEE", "RETAINER", "MIXED"]
     },
     "public.profile_visibility": {
       "name": "profile_visibility",
       "schema": "public",
-      "values": [
-        "DRAFT",
-        "PUBLISHED"
-      ]
+      "values": ["DRAFT", "PUBLISHED"]
     },
     "public.taxonomy_node_status": {
       "name": "taxonomy_node_status",
       "schema": "public",
-      "values": [
-        "ACTIVE",
-        "DEPRECATED"
-      ]
+      "values": ["ACTIVE", "DEPRECATED"]
     },
     "public.staff_scope": {
       "name": "staff_scope",
       "schema": "public",
-      "values": [
-        "VERIFICATION",
-        "MODERATION",
-        "DISPUTES",
-        "PAYMENTS",
-        "TAXONOMY",
-        "ENFORCEMENT"
-      ]
+      "values": ["VERIFICATION", "MODERATION", "DISPUTES", "PAYMENTS", "TAXONOMY", "ENFORCEMENT"]
     },
     "public.user_token_purpose": {
       "name": "user_token_purpose",
       "schema": "public",
-      "values": [
-        "EMAIL_VERIFICATION",
-        "PASSWORD_RESET"
-      ]
+      "values": ["EMAIL_VERIFICATION", "PASSWORD_RESET"]
     },
     "public.account_status": {
       "name": "account_status",
       "schema": "public",
-      "values": [
-        "PENDING_VERIFICATION",
-        "ACTIVE",
-        "SUSPENDED",
-        "DELETED"
-      ]
+      "values": ["PENDING_VERIFICATION", "ACTIVE", "SUSPENDED", "DELETED"]
     },
     "public.user_role_name": {
       "name": "user_role_name",
       "schema": "public",
-      "values": [
-        "CUSTOMER",
-        "INVESTIGATOR",
-        "STAFF"
-      ]
+      "values": ["CUSTOMER", "INVESTIGATOR", "STAFF"]
     }
   },
   "schemas": {},

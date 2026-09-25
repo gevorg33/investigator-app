@@ -10,6 +10,7 @@
   --surface-raised: #ffffff;
   --surface-sunken: #efeff1;
   --surface-overlay: #ffffff;
+  --scrim: #18181b;
   --text: #18181b;
   --text-muted: #52525b;
   --border: #e4e4e7;
@@ -50,6 +51,7 @@
     --surface-raised: #18181b;
     --surface-sunken: #09090b;
     --surface-overlay: #1f1f23;
+    --scrim: #000000;
     --text: #f4f4f5;
     --text-muted: #a1a1aa;
     --border: #27272a;
@@ -97,6 +99,7 @@
   --color-surface-raised: var(--surface-raised);
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-overlay: var(--surface-overlay);
+  --color-scrim: var(--scrim);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-border: var(--border);

@@ -121,13 +121,17 @@ export const assignments = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
     /**
      * Copied from the quote by trigger `fill_party_from_parent`, never from the request, and
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
+    supplierTenantId: uuid('supplier_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     uniqueIndex('assignments_mission_unique').on(t.missionId),
@@ -171,13 +175,17 @@ export const assignmentStatusHistory = pgTable(
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    customerTenantId: uuid('customer_tenant_id').notNull().default(sql`app_current_tenant()`),
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
     /**
      * Copied from the assignment by trigger `fill_party_from_parent`, never from the request, and
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
      */
-    supplierTenantId: uuid('supplier_tenant_id').notNull().default(sql`app_current_tenant()`),
+    supplierTenantId: uuid('supplier_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
   },
   (t) => [
     index('assignment_status_history_assignment_idx').on(t.assignmentId, t.occurredAt),
