@@ -11,6 +11,7 @@ import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import { PlatformContext } from '../../common/context/platform-context';
 import { ProviderError } from '../../common/errors/provider-error';
+import type { RequestContext } from '../../common/http/request-context';
 import { AiSessionsService } from '../ai-sessions/ai-sessions.service';
 import {
   MemoryRateLimitStore,
@@ -105,7 +106,7 @@ describe('a turn in a conversation (T-056)', () => {
     actor: Actor,
     turn: Awaited<ReturnType<AssistantTurnService['ask']>>,
     signal = new AbortController().signal,
-    r = req(),
+    r: RequestContext = req(),
   ): Promise<TurnEvent[]> => {
     const events: TurnEvent[] = [...turn.opening];
     await turns.run(actor, turn, r, (e) => events.push(e), signal);
