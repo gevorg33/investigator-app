@@ -4,9 +4,9 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-09-26
 source_of_truth: database
 implementation_status: partial
 related_code:
@@ -91,8 +91,9 @@ visibility.
 ## Which parts of my profile can customers see?
 
 Customers see your storefront: display name, headline, description, years of experience,
-specialties, languages, pricing model and rate, availability windows, and whether you are
-currently accepting work.
+specialties, languages, pricing model and rate, availability windows, whether you are
+currently accepting work, and whether you are verified. Only that last yes or no is shown: an
+application under review and one that was not approved both read as not verified.
 
 They do not see your phone number. Contact happens through the platform, and your number is
 there for staff and support rather than for customers.

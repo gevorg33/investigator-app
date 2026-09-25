@@ -8,7 +8,8 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { NativeSelect } from '@/components/ui/native-select';
 import type { BrowseFilters, MissionSort, OwnServiceArea } from '@/lib/api/types';
 import { browseHref, SORTS } from './browse-query';
-import { FilterSheet, type CategoryOption } from './filter-sheet';
+import type { CategoryOption } from '@/lib/taxonomy';
+import { FilterSheet } from './filter-sheet';
 
 /**
  * The browse controls (T-054): words to look for across the top; under them the filters and the

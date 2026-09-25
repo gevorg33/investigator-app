@@ -38,6 +38,11 @@ export interface PublicInvestigatorProfile {
   hourlyRateMinor: number | null;
   currency: string | null;
   acceptingWork: boolean;
+  /**
+   * Whether staff verified this investigator (T-120). Only the yes or no is public: "under review"
+   * and "not approved" both read as not verified, so an applicant's standing is never shown.
+   */
+  verified: boolean;
   languages: Array<{ languageCode: string; proficiency: LanguageRow['proficiency'] }>;
   specialtyNodeIds: string[];
   availability: Array<{ dayOfWeek: number; startMinute: number; endMinute: number }>;
@@ -71,6 +76,7 @@ export function toPublicInvestigatorProfile(
     hourlyRateMinor: row.hourlyRateMinor,
     currency: row.currency,
     acceptingWork: row.acceptingWork,
+    verified: row.verificationStatus === 'VERIFIED',
     languages: rel.languages.map((l) => ({
       languageCode: l.languageCode,
       proficiency: l.proficiency,

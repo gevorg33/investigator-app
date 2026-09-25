@@ -27,6 +27,7 @@ import {
 import { NativeSelect } from '@/components/ui/native-select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { BrowseFilters, OwnServiceArea } from '@/lib/api/types';
+import type { CategoryOption } from '@/lib/taxonomy';
 import { cn } from '@/lib/utils';
 import {
   browseHref,
@@ -36,13 +37,6 @@ import {
   toWhole,
   WITHIN_KM,
 } from './browse-query';
-
-/** A taxonomy node as the category list shows it: indented under its parent. */
-export interface CategoryOption {
-  id: string;
-  label: string;
-  depth: number;
-}
 
 /** The "any" chip's value: Radix reads an empty value as nothing chosen, so it cannot be ''. */
 const ANY = 'any';
@@ -55,7 +49,7 @@ const compact = (f: Patch): BrowseFilters =>
   Object.fromEntries(Object.entries(f).filter(([, v]) => v !== undefined)) as BrowseFilters;
 
 /** The sheet opens from the bottom on a phone and from the side from `md` up. */
-function useSheetSide(): 'bottom' | 'right' {
+export function useSheetSide(): 'bottom' | 'right' {
   const [side, setSide] = useState<'bottom' | 'right'>('bottom');
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 48rem)');
@@ -67,7 +61,15 @@ function useSheetSide(): 'bottom' | 'right' {
   return side;
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+export function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <fieldset className="grid gap-3">
       <legend className="mb-3 text-sm font-semibold">{title}</legend>

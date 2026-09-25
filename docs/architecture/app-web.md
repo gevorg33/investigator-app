@@ -267,6 +267,35 @@ reference. The rest was driven in the browser at 375px against the real API.
   profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
   not exist yet (filed as T-149).
 
+## Finding investigators (T-120)
+
+A customer's Missions has two views, as links (`MissionsViews`): their own missions (T-119) and
+**Find investigators** — not a sixth navigation destination, so the phone bar keeps five (owner
+decision, 2026-09-26). Someone working as an investigator is sent back to Missions
+(`actsAsInvestigator`, the one reading both pages make).
+
+- **The list** (`InvestigatorDiscovery`) searches from the browser: filters are the address
+  (`discovery-query.ts`: `category`, `language`, `country`, `city`, `day`, `pricing`), "Near me"
+  is in memory only, so coordinates never enter a URL. Results are `InvestigatorCard`s, "Show
+  more" pages on, and an answer to a search a newer one replaced is dropped.
+- **Filters** are a sheet (`DiscoverySheet`) on the mission browse's pattern — bottom on a phone,
+  right from `md`, held until "Show investigators". Specialty is the searchable tree; languages are
+  added one at a time from every language `Intl` names. Each filter that is on is a chip that
+  removes itself; "Clear filters" removes them all.
+- **Empty is never a dead end.** With filters or a location, "No one matches all of these" and the
+  chips to remove; with a location inside a small radius, "Search up to 100 km away". With nothing
+  narrowing, "No investigators are listed yet".
+- **Why listed** comes only from the API's `matchedOn` and `notMatched` — the card phrases them and
+  adds nothing.
+- **The profile page** (`/missions/investigators/[id]`) is `PublicProfileCard` (T-123's preview, now
+  with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
+  the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
+  reviewer. No areas: the public projection has none. Not published or not an id → 404.
+- **Not built:** the map (T-147's provider); a translated 404 page (T-151).
+
+**Bundle** (the budget script's initial JS): `/missions/investigators` 206.2 kB, the profile page
+191.5 kB — within 250 kB.
+
 ## The assistant (T-056)
 
 `src/components/assistant/`. Mounted by the workspace layout above every page

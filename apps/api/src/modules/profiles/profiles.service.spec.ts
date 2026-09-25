@@ -157,11 +157,15 @@ describe('profile persistence', () => {
         'hourlyRateMinor',
         'currency',
         'acceptingWork',
+        'verified',
         'languages',
         'specialtyNodeIds',
         'availability',
       ].sort(),
     );
+    // Whether the investigator is verified is public (T-120); where an application stands is not.
+    expect(preview.verified).toBe(false);
+    expect(preview).not.toHaveProperty('verificationStatus');
     expect(preview).toMatchObject({
       headline: 'Records research',
       displayName: 'Nairi',
@@ -180,6 +184,25 @@ describe('profile persistence', () => {
       code: 'FORBIDDEN',
     });
   });
+
+  it.each([
+    ['VERIFIED', true],
+    ['PENDING', false],
+    ['REJECTED', false],
+  ] as const)(
+    'tells customers only whether the investigator is verified — %s is shown as %s (T-120)',
+    async (status, verified) => {
+      const actor = await investigator();
+      await ownerDb
+        .update(investigatorProfiles)
+        .set({ verificationStatus: status, verifiedAt: status === 'VERIFIED' ? new Date() : null })
+        .where(eq(investigatorProfiles.userId, actor.userId));
+      const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+      expect(preview.verified).toBe(verified);
+      // Under review and not approved look the same from outside: both are "not verified".
+      expect(JSON.stringify(preview)).not.toContain(status === 'VERIFIED' ? 'PENDING' : status);
+    },
+  );
 
   describe('the name customers see (T-123)', () => {
     const setStatus = async (actor: Actor, status: 'VERIFIED' | 'PENDING') =>

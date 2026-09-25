@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form/form-error';
 import { useSubmit } from '@/components/form/use-submit';
-import type { CategoryOption } from '@/components/missions/filter-sheet';
+import type { CategoryOption } from '@/lib/taxonomy';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

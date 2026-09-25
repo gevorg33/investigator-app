@@ -4,15 +4,16 @@ title: How investigators are matched to your mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-09-26
 source_of_truth: database
 implementation_status: implemented
 related_code:
   - apps/api/src/modules/search
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/ai/tools
+  - apps/app-web/src/components/discovery
 tags: [discovery, investigators, location, specialties]
 ---
 
@@ -38,6 +39,28 @@ collected.
 
 An investigator who does not meet a requirement will not appear, however well their profile
 description matches.
+
+## Where do I look for investigators myself?
+
+In **Missions**, choose **Find investigators**. The list shows only verified investigators who are
+taking on work, nearest first when you share your location. **Filters** narrows it by specialty,
+languages, country, city, a day they are available and how they charge; each filter that is on
+appears as a chip you can tap to remove, and if nobody matches, the page says so and you can
+remove one.
+
+**Near me** uses your device's location, rounded to about a kilometre before it leaves your
+device. It is used for that search only: it is never saved and never appears in the page address.
+Choose how far from you to look, from "Covers me" up to 100 km. There is no map yet.
+
+## What does an investigator's profile show me?
+
+Their name, their headline and description, whether they are verified, whether they are taking
+on work, their specialties, languages and levels, experience, how they charge and their usual
+hours — and their reviews: the average and number of ratings, then each review with its words and
+the investigator's reply. Reviews never name who wrote them.
+
+It does not show where their service areas are. The search tells you how far away they are
+instead.
 
 ## Can I find investigators near a specific place?
 

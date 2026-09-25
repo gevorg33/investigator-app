@@ -120,6 +120,8 @@ export interface PublicInvestigatorProfile {
   hourlyRateMinor: number | null;
   currency: string | null;
   acceptingWork: boolean;
+  /** Whether staff verified them — the yes or no only, never where an application stands (T-120). */
+  verified: boolean;
   languages: Array<{ languageCode: string; proficiency: Proficiency }>;
   specialtyNodeIds: string[];
   availability: AvailabilityWindow[];
@@ -177,4 +179,37 @@ export interface AgencyView {
   currency: string | null;
   /** What is still missing before it can be used; empty once ACTIVE. */
   missing: string[];
+}
+
+/** Why a search listed an investigator — only what was asked for (`discovery.md`, T-011). */
+export interface MatchedOn {
+  taxonomyNodeIds: string[];
+  languages: string[];
+  place: { countryCode?: string; region?: string; city?: string } | null;
+  availability: boolean;
+}
+
+/** An investigator a search found: the public projection, a rounded distance, the match (T-120). */
+export interface InvestigatorSearchResult extends PublicInvestigatorProfile {
+  /** Whole kilometres, rounded up; 0 when the location is inside their area; null with no location. */
+  distanceKm: number | null;
+  matchedOn: MatchedOn;
+  /** Requested specialties this investigator does not reach through the tree. */
+  notMatched: { taxonomyNodeIds: string[] };
+}
+
+/** A published review, as anyone may read it — no reviewer is ever named (T-037). */
+export interface PublicReview {
+  id: string;
+  rating: number;
+  createdAt: string;
+  text: string | null;
+  response: string | null;
+}
+
+/** A profile's reviews: the rating summary over all standing reviews, and a page of them. */
+export interface ProfileReviews {
+  summary: { count: number; average: number | null };
+  items: PublicReview[];
+  pageInfo: { nextCursor: string | null; hasNextPage: boolean };
 }
