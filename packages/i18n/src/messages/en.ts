@@ -291,6 +291,38 @@ export const en = {
       },
     },
   },
+  workspace: {
+    title: 'Your workspaces',
+    personal: 'Personal',
+    switch: 'Switch workspace, now {name}',
+    current: 'current',
+    setting_up: 'Being set up',
+    create: 'Create an agency',
+    switching: 'Switching to {name}',
+    switched: 'Now working in {name}.',
+    close: 'Close',
+    agencies: {
+      title: 'Agencies',
+      body: 'An agency is a workspace of its own for a team working under one business, with its own missions and conversations. You can switch between it and your personal workspace at any time.',
+    },
+    create_agency: {
+      title: 'Create an agency',
+      intro: 'Five details and the agency terms, then it is ready. You become its owner.',
+      name: 'Agency name',
+      country: 'Country',
+      country_hint: 'Where the agency is registered.',
+      email: 'Business email',
+      email_hint: 'Where the platform writes to the agency, not your personal address.',
+      timezone: 'Time zone',
+      currency: 'Currency',
+      choose: 'Choose',
+      accept_intro: 'Read the agency terms before you accept them.',
+      accept: 'I accept the agency terms',
+      submit: 'Create agency',
+      unavailable_title: 'Agencies cannot be created yet',
+      unavailable_body: 'Creating one needs the agency terms, which are not published yet. Your personal workspace works as before.',
+    },
+  },
   investigator: {
     title: 'Investigator profile',
     intro: 'What customers see, where you work, and your verification.',
@@ -730,6 +762,7 @@ export const en = {
       service_unavailable: 'This is not available right now. Try again later.',
     },
     validation: {
+      country_code: { invalid: 'Choose a country from the list.' },
       email: { invalid: 'Enter a valid email address.' },
       password: {
         too_short: 'Use at least 12 characters.',
@@ -765,9 +798,6 @@ export const en = {
       lawful_purpose: {
         required: 'Confirm that your request is for a lawful purpose.',
       },
-      country_code: {
-        invalid: 'Choose a country from the list.',
-      },
       timezone: { invalid: 'Choose a time zone from the list.' },
       legal: {
         privacy_policy: 'Accept the privacy policy to continue.',
@@ -776,6 +806,7 @@ export const en = {
         lawful_use_policy: 'Accept the lawful use policy to continue.',
         investigator_agreement: 'Accept the investigator agreement to continue.',
         agency_agreement: 'Accept the agency agreement to continue.',
+        not_current: 'These terms changed while the page was open. Reload the page to read the version now in force.',
       },
     },
   },

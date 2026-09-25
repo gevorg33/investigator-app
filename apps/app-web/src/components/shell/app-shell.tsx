@@ -12,9 +12,15 @@ export async function AppShell({
   children,
   notices,
   beside,
+  workspaces,
 }: {
   children: ReactNode;
   notices?: ReactNode;
+  /**
+   * The workspace switcher (T-092), when there is more than one workspace: `menu` sits under the
+   * app's name in the sidebar, `sheet` in a bar above the content on a phone.
+   */
+  workspaces?: { menu: ReactNode; sheet: ReactNode } | undefined;
   /** What docks beside the content from `lg` up — the assistant (T-056). */
   beside?: ReactNode;
 }) {
@@ -30,12 +36,18 @@ export async function AppShell({
 
       <aside className="hidden md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:gap-6 md:border-r md:border-border md:bg-surface-raised md:px-3 md:py-6">
         <p className="px-3 text-lg font-semibold">{t('app.name')}</p>
+        {workspaces?.menu}
         <nav aria-label={t('shell.nav.label')}>
           <NavLinks layout="rail" />
         </nav>
       </aside>
 
       <main id="content" tabIndex={-1} className="min-w-0 flex-1 pb-bottom-nav md:pb-0">
+        {workspaces !== undefined && (
+          <div className="border-b border-border bg-surface-raised px-4 py-2 md:hidden">
+            {workspaces.sheet}
+          </div>
+        )}
         {notices}
         {children}
       </main>

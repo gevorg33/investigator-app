@@ -4,13 +4,14 @@ title: Setting up an agency on the platform
 audience: agency
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-21
+updated: 2026-09-26
 source_of_truth: docs
 implementation_status: partial
 related_code:
   - apps/api/src/modules/tenants
+  - apps/app-web/src/components/workspace
 tags: [getting-started, onboarding, agency, workspaces]
 ---
 
@@ -27,20 +28,33 @@ belong to, and the platform always shows which one you are working in.
 
 ## What do I need to create one?
 
-Five things, and you can supply them as you go:
+In Account, under **Agencies**, choose **Create an agency**. One screen asks for five things
+and the agency terms:
 
 - the agency's name
 - the country it operates from
 - a business email address — where the platform writes to the company, not to you personally
-- a time zone
+- a time zone — your own is offered first
 - a currency
 
-The agency exists from the moment you create it, and becomes usable once all five are
-there. Until then it is still being set up, and the platform tells you what is missing.
+All five are required there, so the agency is ready the moment it is created, and the app
+opens in it. If the page says agencies cannot be created yet, the agency terms have not been
+published: there is nothing to accept, so no agency can be created.
 
 Everything else — legal name, company type, size, languages, the areas and services you
-cover, specialities, credentials, experience, working hours and branding — can be added
-whenever you like.
+cover, specialities, credentials, experience, working hours and branding — belongs to the
+agency's settings, which are arriving later.
+
+## How do I switch between my personal workspace and an agency?
+
+Once you belong to more than one workspace, the switcher shows the one you are in: at the top
+of the page on a phone, and under the app's name in the sidebar on a larger screen. Choose
+another and the app opens again at Home, inside it, and says where you are now working.
+Nothing from the workspace you left stays on screen.
+
+Each browser tab keeps the workspace its page was opened in. If you switch in one tab, a form
+you are filling in another still saves where that page showed. Reload the other tab to follow
+the switch.
 
 ## Am I the owner?
 
@@ -65,6 +79,7 @@ decision — invitations, roles and teams are covered in their own articles as t
 
 ## What can I not do yet?
 
-Some of this is still being built. Today you can create an agency, complete the minimum,
-and see it in your workspace list. Inviting employees, teams, agency-owned investigator
-profiles and agency verification are arriving in later releases.
+Some of this is still being built. Today you can create an agency and switch between it and
+your personal workspace. Changing its details after it is created, inviting employees,
+teams, agency-owned investigator profiles and agency verification are arriving in later
+releases.

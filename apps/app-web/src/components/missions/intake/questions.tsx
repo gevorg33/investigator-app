@@ -4,6 +4,7 @@ import { Check, Plus, X } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
 import { Field } from '@/components/form/field';
+import { SelectField } from '@/components/form/select-field';
 import { minorDigits, toMinorAmount, toWhole } from '@/components/missions/browse-query';
 import type { CategoryOption } from '@/components/missions/filter-sheet';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { NativeSelect } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import type { MissionFields, SubjectRelationship } from '@/lib/api/types';
@@ -88,41 +88,6 @@ function LongText({
         aria-describedby={described}
       />
       <Hint id={`${id}-hint`}>{hint}</Hint>
-      {error && <Problem id={`${id}-error`}>{error}</Problem>}
-    </div>
-  );
-}
-
-/** A labelled select, wired like `Field`. */
-function Select({
-  label,
-  error,
-  value,
-  onChange,
-  placeholder,
-  children,
-}: {
-  label: string;
-  error?: string | undefined;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  children: ReactNode;
-}) {
-  const id = useId();
-  return (
-    <div className="grid gap-1.5">
-      <Label id={id}>{label}</Label>
-      <NativeSelect
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-      >
-        <option value="">{placeholder}</option>
-        {children}
-      </NativeSelect>
       {error && <Problem id={`${id}-error`}>{error}</Problem>}
     </div>
   );
@@ -212,19 +177,19 @@ export function WhereQuestion({
   const t = useTranslations('missions.intake');
   return (
     <>
-      <Select
+      <SelectField
         label={t('where.country')}
-        placeholder={t('where.country_placeholder')}
         error={flagged.has('countryCode') ? t('required') : undefined}
         value={fields.countryCode ?? ''}
-        onChange={(v) => edit({ countryCode: text(v) })}
+        onChange={(e) => edit({ countryCode: text(e.target.value) })}
       >
+        <option value="">{t('where.country_placeholder')}</option>
         {countries.map((c) => (
           <option key={c.code} value={c.code}>
             {c.name}
           </option>
         ))}
-      </Select>
+      </SelectField>
       <Field
         label={t('where.place')}
         hint={t('where.place_hint')}
@@ -293,13 +258,12 @@ export function BudgetQuestion({
 
   return (
     <>
-      <Select
+      <SelectField
         label={t('budget.currency')}
-        placeholder={t('budget.currency_placeholder')}
         error={flagged.has('currency') ? t('required') : undefined}
         value={fields.currency ?? ''}
-        onChange={(v) => {
-          const cur = text(v);
+        onChange={(e) => {
+          const cur = text(e.target.value);
           // The same typed amounts mean different minor units in another currency.
           edit({
             currency: cur,
@@ -308,12 +272,13 @@ export function BudgetQuestion({
           });
         }}
       >
+        <option value="">{t('budget.currency_placeholder')}</option>
         {currencies.map((c) => (
           <option key={c} value={c}>
             {c}
           </option>
         ))}
-      </Select>
+      </SelectField>
       <div className="grid grid-cols-2 gap-3">
         <Field
           label={t('budget.min')}
@@ -390,13 +355,13 @@ export function LanguagesQuestion({
       )}
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <Select
+          <SelectField
             label={t('languages.add')}
-            placeholder={t('languages.add_placeholder')}
             error={flagged.has('languages') ? t('languages.required') : undefined}
             value={adding}
-            onChange={setAdding}
+            onChange={(e) => setAdding(e.target.value)}
           >
+            <option value="">{t('languages.add_placeholder')}</option>
             {languages
               .filter((l) => !chosen.includes(l.code))
               .map((l) => (
@@ -404,7 +369,7 @@ export function LanguagesQuestion({
                   {l.name}
                 </option>
               ))}
-          </Select>
+          </SelectField>
         </div>
         <Button
           type="button"

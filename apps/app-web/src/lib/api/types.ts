@@ -219,3 +219,29 @@ export interface HelpArticle {
   fallback: boolean;
   sections: Array<{ heading: string; content: string }>;
 }
+
+/** A workspace the reader can work in, as `GET /workspaces` lists it (T-075, T-092). */
+export interface WorkspaceView {
+  id: string;
+  kind: 'PERSONAL' | 'AGENCY';
+  /** Null for a Personal workspace. */
+  name: string | null;
+  /** CREATING until an agency's required details are all present. */
+  status: 'CREATING' | 'ACTIVE';
+  roles: string[];
+  /** The workspace this request ran in. */
+  current: boolean;
+}
+
+/** A new agency, as `POST /agencies` returns it (T-083). */
+export interface AgencyView {
+  id: string;
+  name: string;
+  status: 'CREATING' | 'ACTIVE';
+  countryCode: string | null;
+  businessEmail: string | null;
+  timezone: string | null;
+  currency: string | null;
+  /** What is still missing before it can be used; empty once ACTIVE. */
+  missing: string[];
+}

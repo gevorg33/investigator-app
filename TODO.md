@@ -3753,7 +3753,7 @@ already re-tokenised.
 *Found along the way.* (1) `pattern` does nothing on a `<textarea>`, so a reason of spaces would
 have reached the API; the form refuses it itself. (2) A blocked tab would still have fetched a link —
 an audited opening of a document nobody saw. (3) Nothing grants STAFF or a staff scope except SQL:
-filed as T-149 (approval — authorization); the dev-only SQL is in `admin-web.md`.
+filed as T-151 (approval — authorization); the dev-only SQL is in `admin-web.md`.
 
 *Negative controls* (each seen to fail, then restored): the opened tab able to reach back; a link
 asked for when the tab was blocked; a reason of spaces sent; a decision offered on one's own
@@ -3769,7 +3769,7 @@ focus, and every state.
 
 *Docs.* `admin-web.md` (sign-in, shell, verification, dev cookie note, granting access), 
 `verification.md` (the console), staff article `kb-staff-verification-review` v4 (ru/hy drafts in
-step), component inventory, T-149.
+step), component inventory, T-151.
 
 ---
 
@@ -4890,7 +4890,7 @@ are empty states saying what will appear.
 ---
 
 ### T-092 — Workspace switcher and agency onboarding (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P1
 - **Depends on:** T-091, T-075, T-083
 - **Risk:** MEDIUM
@@ -4908,14 +4908,45 @@ are empty states saying what will appear.
   respected.
 
 **Acceptance criteria**
-- [ ] Switching shows no stale data from the previous workspace (tested: A's list never flashes in B)
-- [ ] Onboarding completes in one short screen on a phone; component-discovery log records what was reused
+- [x] Switching shows no stale data from the previous workspace (tested: A's list never flashes in B)
+- [x] Onboarding completes in one short screen on a phone; component-discovery log records what was reused
 - [ ] Playwright flows at 375 and 1280; accessibility checks pass
 
 **Validation**
 ```bash
 pnpm --filter app-web test workspace onboarding
 ```
+
+**DONE — 2026-09-26**
+
+*Switcher.* `WorkspaceSwitcher` — the adopted `DropdownMenu` in the sidebar from `md`, the `Drawer`
+from a bar above the content on a phone — shown only with more than one workspace. Switching calls
+`POST /workspaces/:id/activate`, then loads the app again at Home, where "Now working in …" fades in
+(zero under reduced motion). The layout renders inside `WorkspaceScope`, keyed by the workspace id,
+which pins that id for `X-Workspace` on every browser call (`callApi` and the assistant's client).
+
+*Stale data, checked.* A conversation created in Personal showed there and nowhere in the agency,
+before or after switching, at 375 and 1280. With a second "tab" moving the session default to
+Personal, this page's calls still named the agency, and Personal's conversation did not appear.
+Negative control: with the pin removed, 3 specs fail.
+
+*Onboarding.* `/agencies/new`, linked from a new Agencies section on Account and from the switcher:
+five required details and the agency terms on one screen, one idempotency key per form, then the app
+opens in the new agency. No terms published → "Agencies cannot be created yet"; unconfirmed account →
+confirm first. Created end to end against a development placeholder of the terms in the local
+database (ACTIVE, Owner, acceptance recorded), then the placeholder and that agency were deleted.
+
+*Found and fixed.* Country and language lists offered retired aliases under current names (DY and
+HV as a second "Benin" and "Burkina Faso"; iw beside he) — `lib/codes.ts` from T-123 now keeps only
+canonical codes, one per name, with a regression test seen failing first. The API's
+`error.validation.country_code.invalid` and `error.validation.legal.not_current` had no messages.
+"current" and "Being set up" ran into the workspace name for screen readers. Selects whose label
+wrapped a hint (`SelectField` added).
+
+*Not done.* The dismissible checklist: nothing it would list exists yet (T-149). Changing an
+agency's details after creation (T-150). The Playwright criterion: flows were driven in the in-app
+browser at 375 and 1280, and accessible names are asserted in the specs, but there is no Playwright
+suite to add them to yet (T-139).
 
 ---
 
@@ -5780,10 +5811,10 @@ shows the reason and "Start a new mission from this one". `@shadcn/progress`, `r
 `checkbox` adopted and re-tokenised.
 
 *Found along the way.* (1) Three draft rules exist only as CHECK constraints — inverted budget,
-inverted dates, empty text — and answer 500: the intake never sends them; filed as T-150. (2) The
+inverted dates, empty text — and answer 500: the intake never sends them; filed as T-152. (2) The
 first cut of "hold an inverted pair" still sent the last valid keystroke ("90" while typing "900"
 against a maximum of 500); a held pair now withdraws its queued keys. (3) Cancelling has an API and a
-KB answer but no screen: T-151. (4) The KB article promised attachments and per-category questions
+KB answer but no screen: T-153. (4) The KB article promised attachments and per-category questions
 that do not exist; corrected. (5) T-051 is told the rejection reason is customer-facing.
 
 *Negative controls* (each seen to fail, then restored): API — an older outcome treated as standing;
@@ -6773,7 +6804,62 @@ pnpm --filter api test profiles verification
 
 ---
 
-### T-149 — Staff access: grant and revoke STAFF and staff scopes
+### T-149 — Agency onboarding checklist (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-092, T-084, T-085
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+From T-092. After the five required details, the rest of an agency's setup is meant to be a
+dismissible checklist, not a wizard (plan.md). Nothing it would list exists yet: the agency profile
+and settings (T-084), inviting employees (T-085), agency verification (T-088, approval-gated). Build
+the checklist on Home for an agency's owner once at least the first two exist — each item a link to
+where it is done, done items ticked from real data, dismissal remembered per workspace.
+
+**Acceptance criteria**
+- [ ] Every item links to a screen that exists, and is ticked from the API, never from a local flag
+- [ ] Dismissed once, it stays dismissed for that workspace, on every device
+
+**Validation**
+```bash
+pnpm --filter app-web test onboarding
+```
+
+---
+
+### T-150 — Complete or change an agency's core details
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-083, T-092
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain (API) + frontend (UI)
+- **Affected:** apps/api/src/modules/tenants/**, apps/app-web/**
+
+**Description**
+From T-092. `POST /agencies` accepts an agency with some of the five required details missing, and it
+stays `CREATING` — but nothing can add them afterwards, and an owner cannot change a name, country,
+business email, time zone or currency once set. The app therefore requires all five up front, and the
+switcher shows a `CREATING` agency as "Being set up" with no way forward. T-084 covers profile,
+settings and branding, not these five. Add an owner-only update (audited; becoming ACTIVE when the
+minimum is complete) and the screen for it.
+
+**Acceptance criteria**
+- [ ] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
+- [ ] Only an owner can change the five details; every change is audited
+
+**Validation**
+```bash
+pnpm --filter api test agencies && pnpm --filter app-web test workspace
+```
+
+---
+
+### T-151 — Staff access: grant and revoke STAFF and staff scopes
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-070
@@ -6802,7 +6888,7 @@ pnpm --filter api test staff-access
 
 ---
 
-### T-150 — Draft saves that break a CHECK answer 500, not a field error
+### T-152 — Draft saves that break a CHECK answer 500, not a field error
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-010
@@ -6830,7 +6916,7 @@ pnpm --filter api test missions
 
 ---
 
-### T-151 — Cancel a mission from the app
+### T-153 — Cancel a mission from the app
 - **Status:** TODO
 - **Priority:** P2
 - **Depends on:** T-119

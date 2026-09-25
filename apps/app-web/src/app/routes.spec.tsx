@@ -7,13 +7,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import nextConfig from '../../next.config';
 import { I18nProvider } from '@/i18n/provider';
 import { api, apiError } from '@/test/api';
+import { SWITCHED_KEY } from '@/components/workspace/workspace-scope';
 import {
   account,
+  agencyWorkspace,
   application,
   legalDocument,
   ownProfile,
   serviceArea,
   session,
+  workspace,
 } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
 import { Redirected } from '@/test/navigation';
@@ -67,12 +70,14 @@ describe('the application routes', () => {
     expect(html.props.lang).toBe('ru');
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
-    // Client components translate navigation, the browse, the investigator profile, the assistant,
-    // the auth and account forms, legal text and errors.
+    // Client components translate navigation, the browse, the investigator profile, the workspace
+    // switcher and agency onboarding, the assistant, the auth and account forms, legal text and
+    // errors.
     expect(CLIENT_NAMESPACES).toEqual([
       'nav',
       'missions',
       'investigator',
+      'workspace',
       'assistant',
       'auth',
       'account',
@@ -92,6 +97,8 @@ describe('the application routes', () => {
     request.cookies.set('investigator_session', 'tok');
     api.on('GET /me', 200, account({ emailVerified: false }));
     api.on('GET /legal/outstanding', 200, [legalDocument()]);
+    // Nothing listed: no workspace to name, and nothing to switch between.
+    api.on('GET /workspaces', 204);
     const tree = await resolveServer(await WorkspaceLayout({ children: 'inside' }));
     render(
       <I18nProvider
@@ -105,11 +112,13 @@ describe('the application routes', () => {
     expect(main).toHaveTextContent('inside');
     expect(screen.getByRole('status')).toHaveTextContent(catalogs.en.shell.outstanding);
     expect(screen.getByRole('status')).toHaveTextContent(catalogs.en.shell.unverified);
+    expect(screen.queryByRole('button', { name: /^Switch workspace/ })).toBeNull();
   });
 
   it('owes nothing, shows nothing', async () => {
     api.on('GET /me', 200, account());
     api.on('GET /legal/outstanding', 200, []);
+    api.on('GET /workspaces', 200, [workspace()]);
     render(
       <I18nProvider
         locale="en"
@@ -120,6 +129,47 @@ describe('the application routes', () => {
     );
     expect(screen.getByRole('main')).toHaveTextContent('inside');
     expect(screen.queryByRole('status')).toBeNull();
+    // One workspace: nothing to switch between, so no switcher.
+    expect(screen.queryByRole('button', { name: /^Switch workspace/ })).toBeNull();
+  });
+
+  describe('the workspace a page is in (T-092)', () => {
+    const inAgency = async () => {
+      api.on('GET /me', 200, account());
+      api.on('GET /legal/outstanding', 200, []);
+      api.on('GET /workspaces', 200, [
+        workspace({ current: false }),
+        agencyWorkspace({ current: true }),
+      ]);
+      renderIntl(await resolveServer(await WorkspaceLayout({ children: 'inside' })));
+    };
+
+    it('offers the switcher in the sidebar and above the content on a phone', async () => {
+      await inAgency();
+      const [menu, sheet] = screen.getAllByRole('button', {
+        name: 'Switch workspace, now Ararat Investigations',
+      });
+      expect(menu!.closest('aside')).toHaveClass('hidden', 'md:flex');
+      expect(sheet!.closest('main')).not.toBeNull();
+      expect(sheet!.parentElement!.parentElement).toHaveClass('md:hidden');
+    });
+
+    it('names it on every call from the page, and confirms a switch that landed here', async () => {
+      sessionStorage.setItem(SWITCHED_KEY, 'ws-ararat');
+      await inAgency();
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Now working in Ararat Investigations.',
+      );
+      api.on('GET /ai/sessions?limit=1', 200, {
+        items: [],
+        pageInfo: { nextCursor: null, hasNextPage: false },
+      });
+      await userEvent.click(screen.getAllByRole('button', { name: 'Assistant' })[0]!);
+      await screen.findByRole('heading', { name: catalogs.en.assistant.empty.title });
+      const fromPage = api.calls.filter((c) => c.origin === '');
+      expect(fromPage.length).toBeGreaterThan(0);
+      for (const call of fromPage) expect(call.headers['x-workspace']).toBe('ws-ararat');
+    });
   });
 
   describe('the assistant, beside every workspace page (T-056)', () => {
@@ -270,14 +320,36 @@ describe('the application routes', () => {
     };
     const sections = () => screen.getAllByRole('region').map((r) => r.id);
 
-    it('puts documents to accept first, then who, roles, language, time zone and sessions', async () => {
+    it('puts documents to accept first, then who, roles, agencies, language, time zone and sessions', async () => {
       signedIn([legalDocument()]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
-      expect(sections()).toEqual(['legal', 'profile', 'roles', '', 'timezone', 'sessions']);
+      expect(sections()).toEqual([
+        'legal',
+        'profile',
+        'roles',
+        'agencies',
+        '',
+        'timezone',
+        'sessions',
+      ]);
+      const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
+      expect(agencies).toHaveTextContent(catalogs.en.workspace.agencies.body);
+      expect(
+        within(agencies).getByRole('link', { name: catalogs.en.workspace.create }),
+      ).toHaveAttribute('href', '/agencies/new');
       expect(screen.getByRole('region', { name: 'Language' })).toBeVisible();
       expect(screen.getByText('Now showing times in Asia/Yerevan.')).toBeVisible();
       expect((await accountMeta()).title).toBe('Account');
+    });
+
+    it('asks for a confirmed address before an agency can be created', async () => {
+      signedIn([]);
+      api.on('GET /me', 200, account({ timezone: 'Asia/Yerevan', emailVerified: false }));
+      renderIntl(await resolveServer(await AccountPage()));
+      const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
+      expect(agencies).toHaveTextContent(catalogs.en.account.roles.verify_first);
+      expect(within(agencies).queryByRole('link')).toBeNull();
     });
 
     it('has no documents section when nothing is outstanding', async () => {

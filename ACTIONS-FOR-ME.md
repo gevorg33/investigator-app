@@ -543,7 +543,9 @@ legal position, not an engineering one, and changing it is a one-line change wit
 a version is published: registration behaves exactly as it always has (T-022) — the sign-up screen
 (T-127) shows whatever is published, in full, and records its acceptance — while **creating
 an agency is refused until `AGENCY_AGREEMENT` is published** (T-083) — the gate working as
-intended, but it does mean that endpoint is unusable in production until this is done
+intended, but it does mean that endpoint is unusable in production until this is done. Since
+T-092 the app's **Create an agency** page says "Agencies cannot be created yet" until then; once
+the agency terms are published it shows them and the form, with nothing else to change
 
 ---
 
@@ -605,8 +607,8 @@ something to launch on: it reads as unfinished software to exactly the market th
 T-127 added for sign-in, sign-up and the account page (`auth`, `account`, `legal` and `error`), T-054
 the investigator's open-missions screen (`missions.browse`), T-056/T-057 the assistant
 (`assistant`, about 140, including nine suggested questions and the investigator cards — Armenian
-questions end «՞ … ։») and T-123 the investigator profile page (`investigator`, about 120) — about
-400 in all, an hour or two — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
+questions end «՞ … ։»), T-123 the investigator profile page (`investigator`, about 120) and T-092
+the workspace switcher and agency form (`workspace`, about 30) — about 430 in all, an hour or two — with [`docs/product/translation-glossary.md`](docs/product/translation-glossary.md)
 beside it: every product term, the word chosen, the alternatives and why. **Do it with #22** — the
 app and the knowledge base must use the same words, and the glossary lists the two places they
 still differ. Word choices to confirm, two of them made so the labels fit a 75px phone tab:

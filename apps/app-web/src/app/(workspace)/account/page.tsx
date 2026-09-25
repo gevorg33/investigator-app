@@ -1,4 +1,6 @@
+import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LegalOutstandingForm } from '@/components/account/legal-outstanding';
 import { ProfileSection } from '@/components/account/profile-section';
 import { RolesSection } from '@/components/account/roles-section';
@@ -7,6 +9,8 @@ import { SessionsSection } from '@/components/account/sessions-section';
 import { TimeZoneForm } from '@/components/account/time-zone-form';
 import { LanguageChoice } from '@/components/language-choice';
 import { Page } from '@/components/page';
+import { Button } from '@/components/ui/button';
+import { CREATE_AGENCY_HREF } from '@/components/workspace/workspace-switcher';
 import { getLocale, getT } from '@/i18n/server';
 import { getAccount, getOutstanding } from '@/lib/api/server';
 
@@ -15,8 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * The account (T-127): what it still has to accept first, then who it is, its roles, language,
- * time zone and sessions. The workspace layout has already required a session.
+ * The account (T-127): what it still has to accept first, then who it is, its roles, agencies
+ * (T-092), language, time zone and sessions. The workspace layout has already required a session.
  */
 export default async function AccountPage() {
   const [t, { locale }, account, outstanding] = await Promise.all([
@@ -34,6 +38,22 @@ export default async function AccountPage() {
       )}
       <ProfileSection account={account!} />
       <RolesSection account={account!} locale={locale} />
+      <AccountSection
+        id="agencies"
+        title={t('workspace.agencies.title')}
+        body={t('workspace.agencies.body')}
+      >
+        {account!.emailVerified ? (
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link href={CREATE_AGENCY_HREF}>
+              <Plus aria-hidden />
+              {t('workspace.create')}
+            </Link>
+          </Button>
+        ) : (
+          <p className="text-sm">{t('account.roles.verify_first')}</p>
+        )}
+      </AccountSection>
       <LanguageChoice />
       <AccountSection
         id="timezone"
