@@ -27,10 +27,10 @@ After a moderator publishes it, investigators who are eligible to quote on it ca
 mission details: every verified investigator whose profile is published and accepting work, not
 only those who cover your category or area. They see what a quote needs — the category, title,
 description, place, deadline, budget and languages. Your reasons for the request and your
-relationship to the subject are seen only by the moderator. They see you by first name only: never your surname, email, phone number or
-photo before you hire. Messages that contain contact details are not delivered. Once you accept a quote, that
-one investigator sees what the assignment requires them to see; the others no longer have
-access.
+relationship to the subject are seen only by the moderator. They see you by first name only:
+never your surname, email, phone number or photo before you hire. Messages that contain contact
+details are not delivered. Once you accept a quote, that one investigator sees what the
+assignment requires them to see; the others no longer have access.
 
 ## Who can see my evidence and reports?
 

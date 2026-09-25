@@ -550,7 +550,9 @@ subtly different statements would matter.
 your name. If one pair disagrees, delete its entry and say which document is right. CI will then
 flag it until the other document is corrected.
 
-**Status:** ⬜ Pending — not blocking. CI passes on the agent's review.
+**Status:** ⬜ Pending — not blocking. CI passes on the agent's review, re-recorded at
+`kb-customer-privacy-data@3` when T-054 changed who can see a published mission (none of the three
+reviewed answers changed).
 
 ---
 
