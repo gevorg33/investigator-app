@@ -65,6 +65,9 @@ Rules:
 6. **One test step, not four.** There is one suite; naming a split the suite does not make
    produced three steps that each ran everything or nothing. Coverage runs the tests, so
    `pnpm test:coverage` is the step, and a failure in it names either the test or the number.
+   It runs the packages **one at a time** (`--workspace-concurrency=1`, T-160): together, app-web's
+   and the API's suites fought over the runner's cores and fast tests timed out. The fix for a
+   timeout under load is less contention, never a longer timeout on one test.
    The browser flows (`pnpm --filter app-web test:e2e`, T-139) are a second suite, not a split of
    the first: another runner, against the build, after it.
 

@@ -125,6 +125,10 @@ jobs:
       # `pnpm test` first would only run everything twice.
       #
       # Blocking. Per package, not global. Exclusions: docs/operations/coverage-exclusions.md
+      #
+      # One package at a time (the root script's --workspace-concurrency=1, T-160): run together,
+      # app-web's and the API's suites fought over the runner's cores, and tests that take a third
+      # of a second alone passed 5 s and timed out.
       - name: Tests and coverage gate
         run: pnpm test:coverage
 
