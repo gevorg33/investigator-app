@@ -54,6 +54,6 @@
     "jsdom": "29.1.1",
     "postgres": "3.4.9",
     "tailwindcss": "4.3.3",
-    "vitest": "4.1.11"
+    "vitest": "5.0.1"
   }
 }
