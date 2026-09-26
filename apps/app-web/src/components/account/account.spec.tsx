@@ -368,6 +368,22 @@ describe('the time zone', () => {
     expect(api.calls[0]!.body).toEqual({ timezone: 'America/New_York' });
   });
 
+  /**
+   * T-162. The select's own width is its longest zone's: at 768px in Russian it pushed the save
+   * button 93px past the card and scrolled the page sideways. jsdom does no layout, so this holds
+   * the classes that let the select shrink and the row wrap; the browser check is the measurement.
+   */
+  it('keeps the list and its buttons inside the card, whatever the zone and language', () => {
+    vi.mocked(deviceTimeZone).mockReturnValue('America/Argentina/ComodRivadavia');
+    renderIntl(<TimeZoneForm current="Asia/Yerevan" />);
+    expect(select()).toHaveClass('w-full', 'min-w-0');
+    expect(select().closest('label')).toHaveClass('min-w-0');
+    expect(select().closest('form')).toHaveClass('sm:flex-wrap');
+    expect(
+      screen.getByRole('button', { name: 'Use America/Argentina/ComodRivadavia' }),
+    ).toHaveClass('whitespace-normal');
+  });
+
   it('keeps a saved zone the browser does not list, so it is still shown as chosen', () => {
     renderIntl(<TimeZoneForm current="Etc/Retired_Zone" />);
     expect(select()).toHaveValue('Etc/Retired_Zone');

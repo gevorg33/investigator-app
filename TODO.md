@@ -7357,7 +7357,7 @@ pnpm --filter app-web test workspace
 ---
 
 ### T-162 — The account page scrolls sideways at tablet width: the time zone button
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. The select is `w-full min-w-0` in a `min-w-0 basis-60` label, and from `sm` the row wraps: left at `min-width: auto`, the select sized itself to its longest zone and pushed the button out. The detected-zone button wraps its text (`whitespace-normal`). Spec in `account.spec.tsx` seen failing first. Measured in the browser against the real API, account zone set to the longest (`America/Argentina/Rio_Gallegos`): at 375, 768 and 1280 in en, ru and hy, page scroll width equals the viewport and every control sits inside the card; at 768 in ru the save button wraps under the select (297–522px in a 272–736px card; was 603–829px). Both buttons 44px; the longest detected-zone label at 375 wraps to two lines (64px) inside the card. Filed T-164
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -7373,8 +7373,8 @@ rules out. The select and the button sit in one row that does not wrap; the long
 what pushes it over.
 
 **Acceptance criteria**
-- [ ] No horizontal page scroll on `/account` at 375, 768 and 1280, in en, ru and hy
-- [ ] The select and its button stack or wrap rather than overflow, and the button stays ≥ 44px
+- [x] No horizontal page scroll on `/account` at 375, 768 and 1280, in en, ru and hy
+- [x] The select and its button stack or wrap rather than overflow, and the button stays ≥ 44px
 
 **Validation**
 ```bash
@@ -7411,6 +7411,37 @@ fast rejection has a handler waiting.
 **Validation**
 ```bash
 pnpm --filter api test agency-settings
+```
+
+---
+
+### T-164 — An unconfirmed account opening `/account` gets "Application error"
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/(workspace)/account/page.tsx
+
+**Description**
+Found in T-162's browser check. A new account signed in before confirming its address, with
+`next=/account`, landed on Next's bare "Application error: a server-side exception has occurred"
+(digest 783991466). The page's server read of `GET /workspaces` is refused 403 `FORBIDDEN` —
+correctly: `WorkspacesService.list` calls `requireActive`, and an unconfirmed account is not active.
+The page does not handle that refusal and throws. Once the address was confirmed the page rendered.
+The API rule stays as it is; the page should show what an unconfirmed reader can do (confirm, resend
+the link) instead of crashing. Check the other `(workspace)` pages for the same unhandled refusal.
+
+**Acceptance criteria**
+- [ ] An unconfirmed account opening `/account` sees a page that says to confirm the address, with a
+  way to resend the link — no server exception
+- [ ] Every `(workspace)` page an unconfirmed reader can reach is checked, and none throws
+- [ ] Spec seen failing first; checked in the browser against the real API at 375, 768 and 1280
+
+**Validation**
+```bash
+pnpm --filter app-web test account
 ```
 
 ---
