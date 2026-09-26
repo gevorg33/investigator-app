@@ -35,14 +35,14 @@ export function isCalendarDate(value: string): boolean {
 const TEXT_FIELDS = ['title', 'description', 'purpose', 'locationLabel'] as const;
 
 type DraftShape = {
-  title?: string | null;
-  description?: string | null;
-  purpose?: string | null;
-  locationLabel?: string | null;
-  budgetMinMinor?: number | null;
-  budgetMaxMinor?: number | null;
-  startBy?: string | null;
-  deadline?: string | null;
+  title?: string | null | undefined;
+  description?: string | null | undefined;
+  purpose?: string | null | undefined;
+  locationLabel?: string | null | undefined;
+  budgetMinMinor?: number | null | undefined;
+  budgetMaxMinor?: number | null | undefined;
+  startBy?: string | null | undefined;
+  deadline?: string | null | undefined;
 };
 
 /**
