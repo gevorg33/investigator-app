@@ -18,7 +18,17 @@ import { users } from './users';
  * retention (common/media/media.policy.ts). Only categories with an owning feature exist:
  * mission, evidence and message media arrive with the entities they attach to.
  */
-export const mediaCategory = pgEnum('media_category', ['PROFILE_IMAGE', 'VERIFICATION_DOCUMENT']);
+/**
+ * AGENCY_LOGO and AGENCY_COVER (T-084) belong to an agency, not to the person who uploaded them:
+ * any member holding `settings.update` may upload one, and the agency's profile decides whether
+ * anyone else sees it.
+ */
+export const mediaCategory = pgEnum('media_category', [
+  'PROFILE_IMAGE',
+  'VERIFICATION_DOCUMENT',
+  'AGENCY_LOGO',
+  'AGENCY_COVER',
+]);
 
 /** Who may be shown a file, from the cloudinary-media skill. The database authorizes; folders do not. */
 export const mediaVisibility = pgEnum('media_visibility', [

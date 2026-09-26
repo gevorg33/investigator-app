@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
@@ -72,7 +72,12 @@ export class MediaService {
     const policy = MEDIA_POLICY[input.category];
     const c = this.ctx('media.upload.authorize', req);
     await this.authz.requireActive(actor, c);
-    await this.authz.requireRole(actor, policy.uploaderRole, c);
+    if ('role' in policy.uploader) {
+      await this.authz.requireRole(actor, policy.uploader.role, c);
+    } else {
+      await this.authz.requireAgencyWorkspace(actor, c);
+      await this.authz.requirePermission(actor, policy.uploader.permission, c);
+    }
 
     if (!policy.formats[input.mimeType]) {
       throw AppError.validation([
@@ -219,6 +224,42 @@ export class MediaService {
     // Who opened what, and when — never the link itself.
     await this.record(actor, req, 'media.delivered', row.id, row.category);
     return { signedUrl, expiresAt };
+  }
+
+  /**
+   * Links for the images a published agency profile shows (T-084), by asset id, for those that
+   * can be shown: READY and scanned CLEAN. Which rows this reader may see at all is the database's
+   * — an agency's own, or another agency's logo and cover while its profile is published
+   * (`public_branding_read`, migration 0024) — so an id the reader has no business with simply
+   * yields nothing. The same five-minute links as every other delivery; not audited, because
+   * showing a published logo is not a sensitive access.
+   */
+  async profileImageLinks(ids: readonly string[]): Promise<Map<string, DeliveryUrl>> {
+    const links = new Map<string, DeliveryUrl>();
+    if (ids.length === 0) return links;
+    const rows = await this.db
+      .select()
+      .from(mediaAssets)
+      .where(
+        and(
+          inArray(mediaAssets.id, [...ids]),
+          inArray(mediaAssets.category, ['AGENCY_LOGO', 'AGENCY_COVER']),
+          isNull(mediaAssets.deletedAt),
+          eq(mediaAssets.uploadStatus, 'READY'),
+          eq(mediaAssets.scanStatus, 'CLEAN'),
+        ),
+      );
+    const expiresAt = new Date(Date.now() + DELIVERY_URL_TTL_SECONDS * 1000);
+    for (const row of rows) {
+      const signedUrl = this.storage.signedDownloadUrl({
+        publicId: row.publicId,
+        format: row.format!,
+        resourceType: row.resourceType,
+        expiresAt,
+      });
+      links.set(row.id, { signedUrl, expiresAt });
+    }
+    return links;
   }
 
   /**

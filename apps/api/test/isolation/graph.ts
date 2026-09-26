@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type postgres from 'postgres';
+import { agencyImage, agencyProfile, agencySettings } from '../agency-fixtures';
+import { agency } from '../workspace-fixtures';
 
 /**
  * One row in every workspace-scoped table, belonging to two real workspaces (T-077).
@@ -24,6 +26,8 @@ export interface SeededGraph {
   readonly supplier: SeededWorkspace;
   /** One row per table, by table name: the value of that table's key column. */
   readonly rows: Readonly<Record<string, string>>;
+  /** The agency's logo — a media row reachable only through its profile, once published. */
+  readonly agencyLogo: string;
 }
 
 const email = () => `iso-${randomUUID()}@example.test`;
@@ -254,6 +258,12 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${supplier.tenantId}, ${supplier.userId}, 'Yerevan work', '{"languages":["hy"]}'::jsonb)
     RETURNING id`);
 
+  // An agency the supplier owns, with a draft profile, its logo and a saved section (T-084).
+  const { tenantId: agencyId } = await agency(owner, [{ userId: supplier.userId }]);
+  const logo = await agencyImage(owner, { tenantId: agencyId, uploadedBy: supplier.userId });
+  await agencyProfile(owner, agencyId, { logoMediaId: logo });
+  await agencySettings(owner, agencyId);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -296,6 +306,10 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       knowledge_documents: docA!,
       knowledge_chunks: chunk,
       knowledge_conflicts: conflict,
+      // Keyed by the agency (see KEY_COLUMN in the matrix).
+      tenant_profiles: agencyId,
+      tenant_settings: agencyId,
     },
+    agencyLogo: logo,
   };
 }

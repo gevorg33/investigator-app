@@ -43,9 +43,13 @@ import * as m39 from './modules/taxonomy/taxonomy.controller';
 import * as m40 from './modules/taxonomy/taxonomy.dto';
 import * as m41 from './modules/tenants/agencies.controller';
 import * as m42 from './modules/tenants/agencies.dto';
-import * as m43 from './modules/tenants/workspaces.controller';
-import * as m44 from './modules/verification/verification.controller';
-import * as m45 from './modules/verification/verification.dto';
+import * as m43 from './modules/tenants/profile/agency-profile.controller';
+import * as m44 from './modules/tenants/profile/agency-profile.dto';
+import * as m45 from './modules/tenants/settings/agency-settings.controller';
+import * as m46 from './modules/tenants/settings/agency-settings.dto';
+import * as m47 from './modules/tenants/workspaces.controller';
+import * as m48 from './modules/verification/verification.controller';
+import * as m49 from './modules/verification/verification.dto';
 
 export default async () => {
     const t = {["./modules/assignments/assignments.dto"]: m11, ["./modules/profiles/profiles.dto"]: m27, ["./modules/search/mission-browse.dto"]: m34, ["./modules/search/search.dto"]: m36, ["./modules/service-areas/service-areas.dto"]: m38};
@@ -66,7 +70,7 @@ export default async () => {
                     ResetPasswordDto: { token: { required: true, type: () => String, maxLength: 256 }, password: { required: true, type: () => String, minLength: 12, maxLength: 200 } }
                 }],
             [m23, {
-                    AuthorizeUploadDto: { category: { required: true, enum: ["PROFILE_IMAGE", "VERIFICATION_DOCUMENT"] }, mimeType: { required: true, type: () => String, maxLength: 100 }, bytes: { required: true, type: () => Number, minimum: 1 } }
+                    AuthorizeUploadDto: { category: { required: true, enum: ["PROFILE_IMAGE", "VERIFICATION_DOCUMENT", "AGENCY_LOGO", "AGENCY_COVER"] }, mimeType: { required: true, type: () => String, maxLength: 100 }, bytes: { required: true, type: () => Number, minimum: 1 } }
                 }],
             [m38, {
                     LonLatDto: { lon: { required: true, type: () => Number, minimum: -180, maximum: 180 }, lat: { required: true, type: () => Number, minimum: -90, maximum: 90 } },
@@ -107,13 +111,20 @@ export default async () => {
                     UpdateCustomerProfileDto: { organisationName: { required: false, type: () => String, maxLength: 200 }, contactPhone: { required: false, type: () => String, maxLength: 32 } },
                     ActivateRoleDto: { role: { required: true, enum: ["CUSTOMER", "INVESTIGATOR"] }, acceptedDocumentIds: { required: false, type: () => [String], description: "The documents being accepted, by id \u2014 so the record says which exact version and locale was\nshown (T-021). Empty is valid: with nothing published there is nothing to accept, and the\ngate refuses only when something required is in force and missing from this list.", maxItems: 12, minLength: 36, maxLength: 36 } }
                 }],
-            [m45, {
+            [m49, {
                     SubmitVerificationDto: { documentIds: { required: true, type: () => [String], format: "uuid", minItems: 1 } },
                     DecideVerificationDto: { outcome: { required: true, enum: ["APPROVED", "REJECTED"] }, reason: { required: true, type: () => String, minLength: 1, pattern: "\\S" } },
                     QueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
                 }],
             [m42, {
                     CreateAgencyDto: { name: { required: true, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String, description: "Where the platform writes to the business, which is not the creator's personal address.", format: "email", minLength: 3, maxLength: 254 }, timezone: { required: false, type: () => String, minLength: 1, maxLength: 64 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, agreementDocumentId: { required: true, type: () => String, description: "The agency terms the creator is accepting, by id \u2014 so the record says which exact version and\nlocale they were shown (T-021), rather than the server deciding after the fact.", minLength: 36, maxLength: 36 } }
+                }],
+            [m44, {
+                    ProfileVersionDto: { version: { required: true, type: () => Number, minimum: 0 } },
+                    UpdateAgencyProfileDto: { displayName: { required: false, type: () => String, nullable: true, maxLength: 200 }, headline: { required: false, type: () => String, nullable: true, maxLength: 300 }, about: { required: false, type: () => String, nullable: true, maxLength: 4000 }, logoMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_LOGO uploads (`POST /media/uploads`).", format: "uuid" }, coverMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_COVER uploads.", format: "uuid" } }
+                }],
+            [m46, {
+                    UpdateSettingsSectionDto: { version: { required: true, type: () => Number, minimum: 0 }, values: { required: true, type: "object", additionalProperties: true } }
                 }],
             [m40, {
                     Reasoned: { reason: { required: true, type: () => String, minLength: 12, maxLength: 500 } },
@@ -262,7 +273,7 @@ export default async () => {
                         getCustomer: { type: Object }
                     }
                 }],
-            [m44, {
+            [m48, {
                     VerificationController: {
                         submit: { type: Object },
                         listMine: { type: [Object] },
@@ -278,6 +289,21 @@ export default async () => {
                     }
                 }],
             [m43, {
+                    AgencyProfileController: {
+                        readOwn: { type: Object },
+                        update: { type: Object },
+                        publish: { type: Object },
+                        unpublish: { type: Object },
+                        readPublished: { type: Object }
+                    }
+                }],
+            [m45, {
+                    AgencySettingsController: {
+                        read: { type: Object },
+                        update: { type: Object }
+                    }
+                }],
+            [m47, {
                     WorkspacesController: {
                         list: { type: [Object] },
                         activate: {}

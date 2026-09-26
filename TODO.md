@@ -4607,7 +4607,7 @@ pnpm --filter api test agencies && python3 scripts/validate-knowledge-base.py
 ---
 
 ### T-084 — Agency public profile, private settings and branding (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27
 - **Priority:** P2
 - **Depends on:** T-083
 - **Risk:** MEDIUM
@@ -4624,15 +4624,60 @@ pnpm --filter api test agencies && python3 scripts/validate-knowledge-base.py
 - New media categories are `AGENCY_LOGO` and `AGENCY_COVER`.
 
 **Acceptance criteria**
-- [ ] The public endpoint returns only projection fields; a test asserts no private settings, employees, customers or financial fields appear
-- [ ] Every settings section has a default; nothing is required to use the product
-- [ ] Branding cannot break contrast (tokens validated)
+- [x] The public endpoint returns only projection fields; a test asserts no private settings, employees, customers or financial fields appear
+- [x] Every settings section has a default; nothing is required to use the product
+- [x] Branding cannot break contrast (tokens validated)
 
 **Validation**
 ```bash
 pnpm --filter api test agencies
 ```
 
+
+**DONE — 2026-09-27**
+
+*Owner decisions (asked):* build the settings **mechanism plus branding** — the other ten sections
+exist with empty defaults, each filled by the task that first reads one of its settings; **include
+logo and cover** media; a **minimal** public profile (display name, headline, about, country, logo,
+cover, publish).
+
+*What exists.* Migration 0024: `tenant_profiles` and `tenant_settings` (both classified
+`tenant_owned`, RLS forced), media categories `AGENCY_LOGO` / `AGENCY_COVER`, and three read
+policies — a published profile, the agency behind it, and the images it names. API:
+`GET|PATCH /agencies/current/profile`, `POST …/profile/publish|unpublish` (`company.read` /
+`company.update`), `GET /agencies/current/settings`, `PATCH …/settings/:section` (`settings.read` /
+`settings.update`), and `GET /agencies/:id/profile` — the projection only. Everything versioned (a
+stale save is a 409); every change audited; `AuthzService.requireAgencyWorkspace` added (403
+`workspace_kind_forbidden` elsewhere). Media uploads may now be allowed by a workspace permission in
+an agency, not only a platform role; `MediaService.profileImageLinks` is the one place that signs the
+images — READY and CLEAN only. **No scanner exists (T-065), so a real logo stays hidden until one
+does.** Branding: accent ≥3:1 on both light surfaces and 4.5:1 text on it; report header 4.5:1 text;
+the text colour is derived and returned; reference colours held equal to `@investigator/ui-tokens`
+by a spec.
+
+*Found along the way.* (1) An unfiltered own-profile read in an agency's context would also return
+every **other** published profile (public_read) — own reads filter on `app_current_tenant()`.
+(2) The image check's workspace filter is load-bearing, not decoration: another agency's published
+logo is readable, and without the filter it reached the composite key as a 500 — now a field error,
+with a test. (3) A published profile could lose its headline — now a CHECK and a field error.
+(4) A value added to an enum cannot be used in the same migration, so the category rule is a
+trigger. (5) The harness keeps test databases between runs and never re-applies an edited
+migration; they were rebuilt. (6) A T-119 spec failed once under full load right after that rebuild
+and never again in two full runs or eleven targeted ones — filed as T-155.
+
+*Negative controls* (each seen to fail, then restored): settings outside an agency; the profile
+changed with `company.read`; a suspended agency still public; another agency's image accepted;
+contrast never checked; the projection leaking a field; agency images uploaded without the
+permission; publishing without a headline; `tenant_profiles.public_read` without the published
+clause. **One survived, and why:** loosening only `media_assets.public_branding_read`'s published
+clause — the subquery runs under `tenant_profiles`' own policy, which already hides a draft. Kept as
+defence in depth; documented in `tenancy.md` §12.
+
+*Verified.* API `test:coverage` 2,524 passing, 100% (two full runs); lint; typecheck; knowledge-base
+validator 0 errors. No browser surface — this is API only; the screens are T-094.
+
+*Docs.* `tenancy.md` §12, `authorization.md` (permission table), `media.md` (categories, delivery),
+`retention.md`, KB `kb-agency-profile-and-branding` v1 (en current; ru/hy drafts).
 ---
 
 ### T-085 — Employees: invitations and the membership lifecycle (API)
@@ -4991,6 +5036,15 @@ pnpm --filter app-web test agency
 - The public profile editor, with a live preview of what customers see.
 - Settings sections with their defaults visible: nothing must be configured to proceed.
 - Branding limited to logo, cover and validated accent tokens.
+
+> **From T-084:** the API is `GET|PATCH /agencies/current/profile`, `POST …/publish|unpublish`,
+> `GET /agencies/current/settings`, `PATCH …/settings/:section`, `GET /agencies/:id/profile`, and
+> uploads through `POST /media/uploads` with `AGENCY_LOGO` / `AGENCY_COVER`. **Draw branded fills on
+> light surfaces only** — the accent is validated against the light theme, and in dark mode it may not
+> reach 3:1. Use `derived.accentText` / `reportHeaderText` for text on them. Every write sends the
+> version read; show a 409 as "changed elsewhere, reload". The new message keys
+> (`error.validation.branding.*`, `settings.unknown`, `agency_profile.*`) are in the en/ru/hy
+> catalogs already (T-135's check requires it).
 
 **Acceptance criteria**
 - [ ] The preview matches the public projection exactly (shared component)
@@ -7035,6 +7089,34 @@ open quotes — decide with T-121 whether that belongs here.
 **Validation**
 ```bash
 pnpm --filter app-web test missions
+```
+
+---
+
+### T-155 — A T-119 spec failed once under full load
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-119
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/missions/**
+
+**Description**
+Found in T-084. `missions.service.spec.ts` › "says a draft came back for changes, and keeps saying so
+while it is edited" returned `review: null` once — in the first full run after the test databases
+were rebuilt — and passed in two further full runs and eleven targeted ones. `reviewsOf` takes a
+mission's latest `mission_status_history` row by `occurred_at`, which is each transaction's start
+time. Two hypotheses: a wall-clock step in the Docker VM under load reordering rows from separate
+transactions, or something in that first run's order. If it is ordering, the review lookup should not
+depend on clock order alone (e.g. a monotonic sequence on the history table).
+
+**Acceptance criteria**
+- [ ] The cause is found and fixed, or the spec is shown sound and the note closed with evidence
+
+**Validation**
+```bash
+VITEST_SEQUENCE=reverse pnpm --filter api test missions
 ```
 
 ---

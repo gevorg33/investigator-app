@@ -662,6 +662,42 @@ Branding is limited to logo, cover, display name and **token overrides** (accent
 header), which are validated for contrast. The application is never forked per tenant.
 Email and report branding read the same tokens.
 
+> **Built in T-084** (migration 0024).
+>
+> - **`tenant_settings`** — one row per saved section; a section with no row *is* its defaults, so
+>   nothing must be configured and a new setting needs no backfill. The database holds the section
+>   list (`tenant_settings_known_section`) and that a value is an object; each section's shape and
+>   defaults are `modules/tenants/settings/sections.ts`, held equal to the database list by a spec.
+>   **Only branding has settings yet.** The other ten are places with a version and an empty
+>   default, each filled by the task that first *reads* a setting in it — a setting nothing reads is
+>   a control that does nothing (owner decision, 2026-09-27). A save names the section's version
+>   (0 for never saved); a stale one is a 409. `settings.read` reads, `settings.update` changes, in
+>   an agency workspace only.
+> - **Branding tokens** — `accentColor` and `reportHeaderColor`, each `#rrggbb` or null (the
+>   platform's own). An accent must reach **3:1 against both light surfaces** (WCAG 1.4.11) and a
+>   report header, like an accent, must carry text at **4.5:1** in white or the dark text colour,
+>   whichever reads better — returned as `derived.accentText` / `reportHeaderText` so every surface
+>   agrees. Measured against the light theme only: branded fills are drawn on light surfaces
+>   (reports, emails, branded blocks), never the dark theme's chrome — T-094 must keep them there.
+>   The reference colours are copied from `@investigator/ui-tokens` (this app is CommonJS; the
+>   package is ESM) and `branding.spec.ts` holds the copy equal.
+> - **`tenant_profiles`** — the public projection: display name (null → the registered name),
+>   headline, about, logo and cover. One per agency (`tenant_kind` held to AGENCY by a composite
+>   key); logo and cover must be this agency's own `AGENCY_LOGO` / `AGENCY_COVER` (composite keys
+>   for the workspace, a trigger for the category). `company.read` reads it, `company.update`
+>   changes, publishes and unpublishes it. **Publishing needs an ACTIVE agency and a headline**, and
+>   a published profile keeps its headline (`tenant_profiles_published_has_headline`).
+> - **Reading across workspaces:** `public_read` on `tenant_profiles` while published; `public_read`
+>   on `tenants` for an agency whose profile is published (the service selects only the name,
+>   country and status); `public_branding_read` on `media_assets` for the files a published profile
+>   names. A policy's subquery runs under the reader's own row-level security, so the media rule is
+>   held twice — by its own `published_at` clause and by `tenant_profiles`' policy; a negative
+>   control that loosened only the first was still held by the second. `tenant_settings` is never
+>   readable outside its workspace.
+> - **The public projection** (`GET /agencies/:id/profile`) is id, name, headline, about, country,
+>   logo and cover — nothing else; a suspended or archived agency, a draft, a Personal workspace and
+>   an unknown id all answer the same 404.
+
 ---
 
 ## 13. Migrating the existing data
