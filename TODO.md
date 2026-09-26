@@ -7094,7 +7094,7 @@ pnpm --filter app-web test missions
 ---
 
 ### T-155 — A T-119 spec failed once under full load
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. Cause: ordering. `occurred_at` is `now()`, the transaction start, so moves in one transaction tie and a clock step reorders two; `reviewsOf` then picked the submission and said nothing. Migration 0025 adds `mission_status_history.seq` (identity) and `reviewsOf` orders by it. Two specs (clock stepped back, tied) reproduce `review: null` on the old ordering and pass on `seq`; reverse-sequence run green
 - **Priority:** P3
 - **Depends on:** T-119
 - **Risk:** LOW
@@ -7112,11 +7112,38 @@ transactions, or something in that first run's order. If it is ordering, the rev
 depend on clock order alone (e.g. a monotonic sequence on the history table).
 
 **Acceptance criteria**
-- [ ] The cause is found and fixed, or the spec is shown sound and the note closed with evidence
+- [x] The cause is found and fixed, or the spec is shown sound and the note closed with evidence
 
 **Validation**
 ```bash
 VITEST_SEQUENCE=reverse pnpm --filter api test missions
+```
+
+---
+
+### T-156 — The latest consent is chosen by clock, not by write order
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-155
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — legal consent (AGENTS.md)
+- **Owner agent:** database (schema) + backend-domain (service)
+- **Affected:** apps/api/src/modules/legal/**, apps/api/src/database/schema/legal.ts
+
+**Description**
+Found in T-155. `LegalService.consentState` takes a person's latest `user_consents` row for a
+document type by `occurred_at`, which is its transaction's start time — the ordering that made T-155's
+review lookup unreliable. A withdrawal and a re-acceptance written close together, or across a
+wall-clock step, can be read in the wrong order, and the gate then says the wrong thing. Same fix as
+T-155: an identity `seq`, ordered by it.
+
+**Acceptance criteria**
+- [ ] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
+- [ ] Ties in `occurred_at` are resolved by write order
+
+**Validation**
+```bash
+pnpm --filter api test legal
 ```
 
 ---

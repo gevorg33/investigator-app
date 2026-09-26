@@ -164,6 +164,11 @@ field — whatever wrote it.
 | `mission_screenings` | S/I | Append-only. A result that can be rewritten explains nothing |
 | `outbox_events` | S/I/U | The relay marks rows published; no DELETE, pruning is a retention job |
 
+**Order is `seq`, not `occurred_at`.** `occurred_at` is its transaction's start time, so the moves
+one transaction writes share it, and a wall-clock step can put a later move before an earlier one.
+The latest move — what `reviewsOf` reads to tell a customer about a rejection or a request for
+changes — is the highest `seq`, an identity assigned at insert (migration 0025, T-155).
+
 > **A GRANT alone decides nothing here.** Migration 0000 sets `ALTER DEFAULT PRIVILEGES`
 > granting SELECT, INSERT, UPDATE and DELETE on every table created in this schema, so a new
 > table arrives fully writable and a narrower GRANT adds nothing. Withholding a privilege means

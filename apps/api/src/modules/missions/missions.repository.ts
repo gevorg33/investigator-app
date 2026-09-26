@@ -68,7 +68,9 @@ export class OwnMissionRepository extends ActorScopedRepository<MissionRow> {
           rows.map((r) => r.id),
         ),
       )
-      .orderBy(h.missionId, desc(h.occurredAt));
+      // The last move written, not the one with the latest clock: moves in one transaction share a
+      // time, and the clock can step back between two (T-155).
+      .orderBy(h.missionId, desc(h.seq));
     for (const move of latest) {
       if (move.actorKind !== 'STAFF' || move.fromStatus !== 'UNDER_REVIEW') continue;
       if (move.toStatus !== 'REJECTED' && move.toStatus !== 'DRAFT') continue;

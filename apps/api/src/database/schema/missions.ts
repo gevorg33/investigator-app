@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   date,
   foreignKey,
@@ -217,6 +218,12 @@ export const missionStatusHistory = pgTable(
     reason: text('reason'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
     /**
+     * The order the moves were written in. `occurred_at` is its transaction's start time, so moves
+     * in one transaction tie and a wall-clock step can put a later move first (T-155): "the latest
+     * move" is the highest `seq`, never the latest time.
+     */
+    seq: bigint('seq', { mode: 'number' }).notNull().generatedAlwaysAsIdentity(),
+    /**
      * Copied from the mission by trigger `fill_party_from_parent`, never from the request, and
      * held equal to it by a composite foreign key (T-076). The default only makes it optional
      * to drizzle; the trigger always overwrites it.
@@ -226,7 +233,8 @@ export const missionStatusHistory = pgTable(
       .default(sql`app_current_tenant()`),
   },
   (t) => [
-    index('mission_status_history_mission_idx').on(t.missionId, t.occurredAt),
+    // Serves OwnMissionRepository.reviewsOf(): the latest move per mission.
+    index('mission_status_history_mission_seq_idx').on(t.missionId, t.seq),
     foreignKey({
       name: 'mission_status_history_mission_tenant_fk',
       columns: [t.missionId, t.customerTenantId],
