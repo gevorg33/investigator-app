@@ -52,8 +52,8 @@ opening would be used up before you ever saw it.
 
 You can sign in, and **Account** works as usual: your details, the language, the time zone and
 where you are signed in. Adding a role or an agency, finding investigators, reading an
-investigator's reviews or an agency's profile, and reading help articles wait until the address is
-confirmed. Where one of them would be, the page says so and offers **Send the confirmation link
+investigator's reviews or an agency's profile, reading help articles and asking the assistant wait
+until the address is confirmed. Where one of them would be, the page says so and offers **Send the confirmation link
 again**.
 
 ## How do I reset my password?

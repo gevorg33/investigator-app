@@ -237,6 +237,18 @@ describe('the application routes', () => {
       const ask = api.calls.find((c) => c.path === '/ai/sessions?limit=1')!;
       expect(ask.headers['x-active-role']).toBe('CUSTOMER');
     });
+
+    it('asks an unconfirmed reader to confirm first, and asks the API nothing for it (T-165)', async () => {
+      api.on('GET /me', 200, account({ roles: [], emailVerified: false }));
+      api.on('GET /legal/outstanding', 200, []);
+      renderIntl(await resolveServer(await WorkspaceLayout({ children: 'inside' })));
+      const before = api.calls.length;
+      await userEvent.click(screen.getAllByRole('button', { name: 'Assistant' })[0]!);
+      const { confirm_first, profile } = catalogs.en.account;
+      expect(await screen.findByRole('heading', { name: confirm_first.title })).toBeVisible();
+      expect(screen.getByRole('button', { name: profile.resend })).toBeVisible();
+      expect(api.calls.slice(before)).toEqual([]);
+    });
   });
 
   it.each([

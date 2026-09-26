@@ -35,6 +35,8 @@ interface AssistantValue {
    */
   closeIfCovering: () => void;
   audience: AssistantAudience;
+  /** In place of the conversation while the address is unconfirmed; nothing is asked of the API. */
+  confirmFirst: ReactNode | undefined;
   api: AssistantApi;
   conversation: Conversation;
 }
@@ -45,13 +47,16 @@ const AssistantContext = createContext<AssistantValue | null>(null);
  * The assistant across the workspace (T-056): whether it is open, and its conversation. Mounted by
  * the workspace layout, which outlives every page, so a conversation stays where it was while the
  * reader moves between screens. The conversation is read when the assistant first opens, never on
- * a page load that does not use it.
+ * a page load that does not use it — and not at all while the address is unconfirmed: the API
+ * answers an active account only, and `confirmFirst` says what opens it instead (T-165).
  */
 export function AssistantProvider({
   audience,
+  confirmFirst,
   children,
 }: {
   audience: AssistantAudience;
+  confirmFirst?: ReactNode;
   children: ReactNode;
 }) {
   const api = useMemo(() => assistantApi(), []);
@@ -65,11 +70,11 @@ export function AssistantProvider({
     (next: boolean) => {
       if (next) {
         opener.current = document.activeElement as HTMLElement | null;
-        if (idle) void load();
+        if (idle && confirmFirst === undefined) void load();
       }
       setOpenState(next);
     },
-    [idle, load],
+    [idle, load, confirmFirst],
   );
   const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
   const close = useCallback(() => {
@@ -82,8 +87,18 @@ export function AssistantProvider({
   }, []);
 
   const value = useMemo(
-    () => ({ open, setOpen, toggle, close, closeIfCovering, audience, api, conversation }),
-    [open, setOpen, toggle, close, closeIfCovering, audience, api, conversation],
+    () => ({
+      open,
+      setOpen,
+      toggle,
+      close,
+      closeIfCovering,
+      audience,
+      confirmFirst,
+      api,
+      conversation,
+    }),
+    [open, setOpen, toggle, close, closeIfCovering, audience, confirmFirst, api, conversation],
   );
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }

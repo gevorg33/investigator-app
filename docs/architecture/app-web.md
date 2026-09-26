@@ -89,6 +89,7 @@ unconfirmed reader without calling the API, and a page whose content the API kee
 | `/agencies/[id]` | titled **Agency profile**, `ConfirmFirst` instead of the profile |
 | `/missions/investigators` | the Missions views, `ConfirmFirst` instead of the search |
 | `/missions/investigators/[id]` | the profile, `ConfirmFirst` under **Reviews** instead of the list |
+| The assistant (T-165) | its name and **Close**, `ConfirmFirst` instead of the conversation; opening it reads nothing, and focus lands on **Close** |
 
 Account, language, time zone and sessions work as for anyone. The check is `emailVerified` from
 `GET /me`, before the call, rather than a caught 403: a refused request is an audited denial on the

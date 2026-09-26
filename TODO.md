@@ -7448,7 +7448,7 @@ pnpm --filter app-web test account
 ---
 
 ### T-165 — The assistant tells an unconfirmed reader only "You cannot do that here"
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. The layout hands `AssistantProvider` a server-rendered `ConfirmFirst` while `emailVerified` is false; the provider then never loads the conversation (no `/ai/*`, no `/workspaces` from the browser), and the panel shows the assistant's name, **Close** and `ConfirmFirst` in its place, focus on **Close**. `resolveServer` (test helper) now resolves an async element passed as any prop, as the server renderer does — the layout spec renders the real `ConfirmFirst`. Specs (phone sheet, docked panel, layout) seen failing first. In the browser against the real API, unconfirmed: the sheet at 375 and 768, docked at 1280, in en, ru and hy — no horizontal scroll, **Close** 44px, resend inside the panel (wrapping to 66px where its label is long), no `/ai` request in the API log; confirmed, the same account opens a new conversation with the composer focused (`GET /ai/sessions?limit=1` 200). `app-web.md`, KB article (en, ru, hy), inventory. Filed T-166
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7468,9 +7468,40 @@ Whether help articles and the assistant's public-policy answers should open to a
 at all is an authorization question, not this task — asked of the owner in T-164's handoff.
 
 **Acceptance criteria**
-- [ ] An unconfirmed reader opening the assistant sees "confirm first" with **Send the confirmation
+- [x] An unconfirmed reader opening the assistant sees "confirm first" with **Send the confirmation
   link again**, and no call to `/ai/*` is made
-- [ ] Spec seen failing first; checked in the browser at 375, 768 and 1280 in en, ru and hy
+- [x] Spec seen failing first; checked in the browser at 375, 768 and 1280 in en, ru and hy
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant
+```
+
+---
+
+### T-166 — The assistant's phone sheet is not full-screen
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/assistant-panel.tsx, apps/app-web/src/components/ui/drawer.tsx
+
+**Description**
+Found in T-165's browser check. `AssistantPanel` means the sheet below `lg` to be full-screen (T-056:
+"a full-screen sheet"), and its `DrawerContent` carries `h-dvh` and
+`data-[vaul-drawer-direction=bottom]:max-h-dvh`. The drawer's own default
+`data-[vaul-drawer-direction=bottom]:max-h-sheet` wins the cascade: at 375×812 the sheet measured
+690px tall, its top at 122px, with the page's notice showing above it. The spec only checks that the
+class is there (`toHaveClass('h-dvh')`), which it is. Not a T-165 change — every assistant sheet is
+affected. Decide how the override should win (the variant's order, or the panel not taking the
+default), and check the other sheets that pass their own height.
+
+**Acceptance criteria**
+- [ ] The assistant's sheet fills the viewport at 375 and 768 (measured top 0, height = viewport)
+- [ ] The other `DrawerContent` sheets keep the height they are meant to have
+- [ ] Spec seen failing first; checked in the browser
 
 **Validation**
 ```bash

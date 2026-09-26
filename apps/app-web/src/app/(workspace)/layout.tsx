@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { AccountNotices } from '@/components/account/notices';
 import { AssistantBeside } from '@/components/assistant/assistant-beside';
 import { AssistantProvider } from '@/components/assistant/assistant-provider';
@@ -34,7 +35,10 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   const customer = account.roles.includes('CUSTOMER');
   return (
     <WorkspaceScope key={current?.id ?? 'none'} workspace={current} activeRole={account.activeRole}>
-      <AssistantProvider audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}>
+      <AssistantProvider
+        audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}
+        confirmFirst={account.emailVerified ? undefined : <ConfirmFirst email={account.email} />}
+      >
         <AppShell
           workspaces={
             all.length > 1
