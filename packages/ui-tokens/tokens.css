@@ -76,6 +76,36 @@
   }
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+  --surface: #f7f7f8;
+  --surface-raised: #ffffff;
+  --surface-sunken: #efeff1;
+  --surface-overlay: #ffffff;
+  --scrim: #18181b;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --border: #e4e4e7;
+  --border-control: #71717a;
+  --focus-ring: #1d4ed8;
+  --primary: #1d4ed8;
+  --primary-contrast: #ffffff;
+  --primary-subtle: #e8eefc;
+  --danger: #b91c1c;
+  --danger-contrast: #ffffff;
+  --success: #15803d;
+  --success-contrast: #ffffff;
+  --warning: #92400e;
+  --warning-contrast: #ffffff;
+  --evidence-fact: #15803d;
+  --evidence-claim: #0369a1;
+  --evidence-inference: #6d28d9;
+  --evidence-hypothesis: #92400e;
+  --evidence-unknown: #52525b;
+  --evidence-contradicted: #b91c1c;
+  --ai-unreviewed: #c2410c;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;

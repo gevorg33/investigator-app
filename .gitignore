@@ -54,3 +54,6 @@ apps/api/test/**/*.d.ts.map
 # Next.js regenerates this on every dev and build run, and it points at .next/types, which exists
 # only after one. Committing it would make `pnpm typecheck` depend on a build having run.
 apps/*/next-env.d.ts
+
+# The browser suite's servers' logs, traces and failure screenshots (T-139). Rebuilt on every run.
+apps/app-web/e2e/.output/

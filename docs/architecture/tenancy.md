@@ -711,6 +711,11 @@ Email and report branding read the same tokens.
 > - **The public projection** (`GET /agencies/:id/profile`) is id, name, headline, about, country,
 >   logo and cover — nothing else; a suspended or archived agency, a draft, a Personal workspace and
 >   an unknown id all answer the same 404.
+> - **The members' own view** (`GET /agencies/current/profile`) carries the agency's `id` and
+>   `countryCode` as well (T-094), so the app builds its preview of the projection from this view
+>   alone. Both are the agency's own; the country is public once the profile is.
+> - **The screens** are T-094: `/agency` in app-web, and `/agencies/[id]` for the public page
+>   (`docs/architecture/app-web.md`).
 
 ---
 

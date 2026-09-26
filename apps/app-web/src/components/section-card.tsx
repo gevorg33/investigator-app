@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
- * One part of the investigator profile page (T-123): a titled card with what it is for, reachable
- * by its id so the checklist can link to it.
+ * One part of a page of settings — the investigator profile (T-123), the agency's (T-094): a
+ * titled card with what it is for, reachable by its id so a checklist or a link can land on it.
  */
 export function SectionCard({
   id,

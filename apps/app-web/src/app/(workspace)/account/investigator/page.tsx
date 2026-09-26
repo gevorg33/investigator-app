@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { AvailabilityEditor } from '@/components/investigator/availability-editor';
 import { DetailsForm } from '@/components/investigator/details-form';
 import { LanguagesEditor } from '@/components/investigator/languages-editor';
-import { SectionCard } from '@/components/investigator/section-card';
+import { SectionCard } from '@/components/section-card';
 import { ServiceAreas } from '@/components/investigator/service-areas';
 import { SpecialtiesPicker } from '@/components/investigator/specialties-picker';
 import { StatusCard } from '@/components/investigator/status-card';

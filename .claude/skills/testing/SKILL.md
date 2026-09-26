@@ -35,6 +35,14 @@ admin moderation.
 Few, high-value, stable. An e2e suite that flakes gets ignored, and an ignored suite is
 worse than none.
 
+Where it lives: `apps/app-web/e2e/`, Playwright against the **built** API and app and a database
+migrated from empty — started by the suite itself, never a stand-in (T-139; how to run it and how
+it gets emailed links: `docs/architecture/app-web.md`, Browser flows). A journey is serial on one
+account per viewport, 375 and 1280px. Find elements by role and catalog text (`e2e/support/text.ts`),
+run `expectAccessible` on each new screen, and check what a screen cannot show — a consent row, a
+cookie attribute — from the database or the browser, not from the API's unit tests. Before trusting
+a new assertion, break the thing it guards once and watch it fail.
+
 ### Security — mandatory, not optional
 IDOR per endpoint · broken role checks · unauthorized evidence access · signed-URL misuse
 and expiry · file upload bypass · rate limits · webhook replay · **prompt injection** ·

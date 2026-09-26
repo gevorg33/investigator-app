@@ -4,7 +4,7 @@ title: Your agency's public profile, settings and branding
 audience: agency
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
 updated: 2026-09-27
 source_of_truth: docs
@@ -13,6 +13,7 @@ related_code:
   - apps/api/src/modules/tenants/profile
   - apps/api/src/modules/tenants/settings
   - apps/api/src/modules/media
+  - apps/app-web/src/components/agency
 tags: [agency, profile, branding, settings, logo, publishing]
 ---
 
@@ -25,8 +26,23 @@ an about text, your country, and a logo and a cover image. Nothing else about th
 it — not your business email, currency or time zone, not your settings, not your employees, and
 not your customers or anything about money.
 
-The screens for editing it in the app are still being built. What this article describes is how it
-works, and the app will follow it.
+## Where do I edit it?
+
+Switch to your agency, then open **Account → Agencies → Agency profile and colours**. The page has
+two parts: the public profile, and the agency's colours.
+
+- Change the name customers see, the headline and the about text, then choose **Save profile**.
+- **Preview as customers see it** shows the profile exactly as it will appear — including changes
+  you have not saved yet.
+- **Publish** shows it to everyone signed in. It is offered once everything publishing needs is
+  there, and it publishes what is saved, so save your changes first. Once published, **Open the
+  public page** shows it as customers see it.
+- Under **Colours**, enter each colour as # and six characters, or leave it empty for the
+  platform's own. **How they look** shows the saved colours on a light background, as reports and
+  emails will.
+
+If your role in the agency does not include the profile or the settings, the page says so instead
+of showing a form.
 
 ## Who can see it?
 

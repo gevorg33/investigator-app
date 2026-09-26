@@ -46,6 +46,10 @@ Two constraints carried from that skill:
 Every text/background pairing meets WCAG AA — 4.5:1 body, 3:1 large text and UI boundaries.
 Check in **both** themes; a pair passing in light frequently fails in dark.
 
+**What is only ever measured against light** — an agency's branded fills (T-084), and reports and
+emails when they come — is drawn inside `data-theme="light"`, which puts the light values back for
+that subtree whatever the system setting (`tokens.css`, T-094). Never a hard-coded white.
+
 **Never encode meaning in colour alone.** An evidence state needs a label or icon too; a
 contradiction warning that is only red is invisible to a large minority of users.
 

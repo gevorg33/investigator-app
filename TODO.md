@@ -5024,7 +5024,7 @@ pnpm --filter app-web test agency
 ---
 
 ### T-094 — Agency profile, settings and branding (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27; `/agency` (profile, preview, publish, colours) and `/agencies/[id]`
 - **Priority:** P3
 - **Depends on:** T-092, T-084
 - **Risk:** LOW
@@ -5047,8 +5047,18 @@ pnpm --filter app-web test agency
 > catalogs already (T-135's check requires it).
 
 **Acceptance criteria**
-- [ ] The preview matches the public projection exactly (shared component)
-- [ ] Branding cannot produce unreadable contrast; the core UI is never forked per agency
+- [x] The preview matches the public projection exactly (shared component)
+      — `AgencyProfileCard` takes `PublicAgencyProfile` and draws both the preview and
+      `/agencies/[id]`; `projection()` builds the preview from the own view (which now carries `id`
+      and `countryCode`, API spec seen failing first) plus the unsaved text, and a unit test holds
+      its keys equal to the API's projection. `agency.e2e.ts` compares the preview and the public
+      page line for line against the real API, at 375 and 1280px
+- [x] Branding cannot produce unreadable contrast; the core UI is never forked per agency
+      — contrast stays the API's rule (a refused colour is said beside its field, checked in the
+      browser); branded fills are drawn only in the new `data-theme="light"` token scope
+      (`tokens.css`), so they stay on a light surface in dark mode — asserted in the browser, and a
+      negative control without the scope failed. Branding touches only its own sample; no app
+      chrome reads it
 
 **Validation**
 ```bash
@@ -6641,7 +6651,7 @@ pnpm --filter api test request-context
 ---
 
 ### T-139 — Browser flows for sign-up, sign-in and the account page in CI
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26; `apps/app-web/e2e/`, Playwright against the built stack, a PR step
 - **Priority:** P2
 - **Depends on:** T-127
 - **Risk:** LOW
@@ -6659,10 +6669,19 @@ emailed link, sign in and land on the page asked for, the saved language restore
 browser, time zone saved, a role added, another session ended, sign out, reset a password.
 
 **Acceptance criteria**
-- [ ] The flows above run in CI against the API and a migrated database, at 375 and 1280px
-- [ ] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
-      the browser, not the API's unit tests
-- [ ] Accessibility checks pass on each signed-out screen and the account page
+- [x] The flows above run in CI against the API and a migrated database, at 375 and 1280px
+      — `account.e2e.ts`, 9 steps × 2 viewports; `global-setup.ts` drops, creates and migrates
+      `investigator_e2e`, publishes the registration and customer documents, and starts the built
+      API (runtime role, `NODE_ENV=test`) and app. 18/18 locally, twice in a row, ~9s. CI:
+      `e2e:browser` + `test:e2e` after the bundle budgets; `.output/` uploaded on failure. Emailed
+      links are read from the API's log (`support/mailbox.ts`); consent rows read back as owner
+- [x] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
+      the browser, not the API's unit tests — `context.cookies()` plus `Secure` and absence from
+      `document.cookie`. Mutation check: the API built with `sameSite: 'lax'` fails the step
+- [x] Accessibility checks pass on each signed-out screen and the account page — axe, WCAG 2.2
+      A/AA: sign-up, check-email, verify-email, sign-in (notice and refusal), forgot, reset,
+      account (before and after adding a role). No violations found; a probe page with an
+      unlabelled input and an image without alt failed the helper on `label` and `image-alt`
 
 **Validation**
 ```bash

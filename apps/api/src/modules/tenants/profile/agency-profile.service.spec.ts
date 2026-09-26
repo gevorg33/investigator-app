@@ -72,9 +72,15 @@ describe('agency profile (T-084)', () => {
       })),
     );
     const [row] = await ownerSql<
-      { name: string }[]
-    >`SELECT name FROM tenants WHERE id = ${tenantId}`;
-    return { tenantId, name: row!.name, owner: members[0]!, others: members.slice(1) };
+      { name: string; country_code: string | null }[]
+    >`SELECT name, country_code FROM tenants WHERE id = ${tenantId}`;
+    return {
+      tenantId,
+      name: row!.name,
+      countryCode: row!.country_code,
+      owner: members[0]!,
+      others: members.slice(1),
+    };
   };
 
   /** Someone with no part in the agency, in their own Personal workspace. */
@@ -92,7 +98,12 @@ describe('agency profile (T-084)', () => {
   describe('the agency’s own view', () => {
     it('is a draft under the registered name until something is saved, and says what publishing needs', async () => {
       const a = await setUp();
+      expect(a.countryCode).not.toBeNull();
       expect(await as(a.owner, () => profiles.readOwn(a.owner.actor, req()))).toEqual({
+        // What the public projection also carries, so the agency's preview can be built from
+        // this view alone (T-094).
+        id: a.tenantId,
+        countryCode: a.countryCode,
         name: a.name,
         displayName: null,
         headline: null,

@@ -155,8 +155,8 @@ role, locale, time zone), `PATCH /me/preferences` (`locale`, `timezone`; audited
 `POST /auth/register`, and `id` on every legal document response.
 
 **Tested** in Vitest against a stand-in for the API behind `fetch` (`src/test/api.ts`, which
-fails any request a spec did not expect), and in the browser against the real API — every flow in
-the table, at 375, 768 and 1280px. There is no automated browser run in CI yet.
+fails any request a spec did not expect), and in a real browser against the real API on every PR —
+see [Browser flows](#browser-flows-t-139).
 
 ## Missions: open missions for investigators (T-054)
 
@@ -317,6 +317,48 @@ reference. The rest was driven in the browser at 375px against the real API.
 - **Not built:** the dismissible onboarding checklist. What it would list — the agency's
   profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
   not exist yet (filed as T-149).
+
+## An agency's profile and colours (T-094)
+
+`/agency`, reached from Account's Agencies section while working in an agency ("Agency profile and
+colours"). Anywhere else there is no agency to show, so it sends the reader to `/account#agencies`.
+API: `tenancy.md` §12, `media.md`.
+
+- **Public profile** (`ProfileEditor`): the name customers see (blank → the registered name, said in
+  the hint), headline and about, one form saved together; the logo and cover (`ImageField`), each
+  saved on choosing; and publishing, a form of its own. Every write names the version read, and the
+  answer is the profile as saved — whose version the next write names. A write refused because
+  someone saved first shows the API's "changed while you were working — reload".
+- **Publishing** lists what it still needs (the API's `missing`: a headline, a finished agency) and
+  is held back until nothing is missing. It publishes what is saved, so with changes waiting it is
+  held back too, and says so (`aria-describedby`). A published profile links to its public page.
+- **The preview** ("Preview as customers see it", a bottom `Drawer`, as T-123's) is
+  `AgencyProfileCard` fed by `projection()`: the public projection built from the saved profile and
+  the text as typed. It takes `PublicAgencyProfile`, the type `GET /agencies/:id/profile` answers
+  with, and `/agencies/[id]` draws the same component from that answer — so the preview is what
+  customers get. `GET /agencies/current/profile` returns the agency's `id` and `countryCode` for this
+  (T-094); the registered name comes from `GET /workspaces`. The browser suite compares the two
+  pages line for line.
+- **Images** go through the private flow (`lib/api/media.ts`, `uploadMedia`, shared with
+  verification): type and size checked first (JPEG, PNG, WebP; 2 MB logo, 5 MB cover), then
+  `POST /media/uploads` → storage → `…/complete` → the profile names it. A file with no link yet is
+  waiting for its safety check and says so; the card shows nothing for it, as customers would see.
+  **No scanner exists yet (T-065), so an uploaded image stays hidden**, and uploads themselves are
+  not verified end to end because Cloudinary is not configured locally or in CI (ACTIONS-FOR-ME #4).
+- **Colours** (`BrandingForm`): accent and report header, each `#rrggbb` or blank for the platform's
+  own, with the current value in the hint — the defaults are visible, and nothing must be set.
+  Contrast is the API's rule; a refused colour is said beside its field. The sample shows the
+  **saved** colours with the text colour the API derived, inside `data-theme="light"`: a branded
+  fill is measured against the light theme and is never drawn on dark chrome (`design-system`).
+- **Only branding has settings.** The other ten sections are empty places (T-084's owner decision),
+  so the page shows no section with nothing in it.
+- **Permissions are the API's**: a section whose read answers 403 says the reader's role does not
+  include it, instead of a form that would be refused. No role name is tested here.
+
+**Browser flow:** `e2e/agency.e2e.ts` — create the agency, reach the page from Account, preview
+unsaved text, save, publish, and the public page equal to the preview; a low-contrast colour
+refused beside its field, a saved one drawn on a white surface in dark mode (a negative control that
+removed the scope failed). axe on each screen.
 
 ## Finding investigators (T-120)
 
@@ -500,7 +542,9 @@ the API answers 403 and the page sends the reader Home.
 While the current workspace is an agency still `CREATING`, `AgencySetupNotice` sits above every
 page with **Finish**, where "Being set up" in the switcher used to lead nowhere. The save that
 completes the minimum says the agency is ready and refreshes the shell, so the notice and the
-switcher change with it. Inside an agency, Account links to the page too.
+switcher change with it. Inside an agency, Account's Agencies section links to it ("Agency
+details") above the profile and colours (T-094) — who the agency is, then how it is shown. Publishing
+a profile needs these five complete; the notice is above `/agency` too while they are not.
 
 ## Cancelling a mission (T-154)
 
@@ -523,6 +567,51 @@ catch-all, `(workspace)/[...missing]`, which named routes and the `/api` rewrite
 It reads the same whatever the reason. The API answers an unpublished profile, another audience's
 article and another customer's mission exactly as it answers one that is not there, and the page
 must not undo that by telling them apart.
+
+## Browser flows (T-139)
+
+`apps/app-web/e2e/` drives Chromium through the built app and the built API, against a database
+migrated from empty — no stand-ins. `account.e2e.ts` is one reader's first hour, in order, on one
+account per viewport (375 and 1280px): sign up accepting the published documents (and the consent
+rows recorded, read back as the owner), confirm the address from the emailed link, sign in and land
+on the page asked for, the session cookie's attributes as the browser holds them (HTTP-only,
+`SameSite=Strict`, `Secure`, host-only, unreadable from `document.cookie`), the device's time zone
+stored at sign-up and a new one saved, the customer role added with its document, the saved
+language restored on a fresh browser, another device's session ended, sign out, and a password
+reset. axe (WCAG 2.2 A/AA) runs on every signed-out screen and the account page.
+
+```bash
+env -u NODE_ENV pnpm build                                # the suite runs the build, not dev servers
+pnpm --filter @investigator/app-web e2e:browser           # once: the Chromium @playwright/test pins
+pnpm --filter @investigator/app-web test:e2e
+```
+
+What `e2e/global-setup.ts` does, so a failure can be read:
+
+- **Its own database.** `investigator_e2e` is dropped, created, given the extensions and migrated
+  on every run (`MIGRATION_DATABASE_URL`, default the local owner), then the documents registration
+  and the customer role require are published into it. Publishing is global state — it changes
+  what every registration requires — so it never happens in the development database. The API
+  connects as the runtime role (`DATABASE_URL` with the database swapped), so row-level security
+  applies as in production.
+- **Its own servers.** The API on 3001 with `NODE_ENV=test` — a `Secure` cookie, as deployed;
+  Chromium accepts one on `http://localhost` — and the app on 3100. The API has to be on 3001
+  because Next resolves a rewrite's destination at **build** time: `API_INTERNAL_URL` given to
+  `next start` moves server-side reads, not the browser's `/api` calls. Setup refuses to start
+  while either port is taken, so stop the development servers first.
+- **The inbox is the API's log.** The development mailer writes each link to it
+  (`e2e/.output/api.log`), and `support/mailbox.ts` reads a link written after a given point —
+  only the token's hash is stored, so there is nowhere else to read it from.
+
+Specs find things by role and by the words in the catalog (`support/text.ts`), never by class or
+test id, so the suite reads the screen as a person does and a copy change moves both together. The
+journey stays inside the API's per-account sign-in limit (five in five minutes); a new step that
+signs in again has to account for it. `agency.e2e.ts` (T-094) is the second journey: its account is
+set up through the API, since the account screens are the first journey's subject. Together they
+register four accounts a run against the API's five per IP per hour — a third journey that
+registers, or a retry of both, meets that limit; the API process is new each run, so a new run
+starts from zero. Traces, screenshots and both servers' logs land in
+`e2e/.output/` (gitignored), which CI uploads when the step fails.
 
 ## Not built here
 
