@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/authz/actor.decorator';
@@ -6,8 +6,8 @@ import { ActorGuard } from '../../common/authz/actor.guard';
 import type { Actor } from '../../common/authz/contract';
 import { idempotencyKey } from '../../common/http/idempotency-key';
 import { requestContext } from '../../common/http/request-context';
-import { CreateAgencyDto } from './agencies.dto';
-import { AgenciesService, type AgencyView } from './agencies.service';
+import { CreateAgencyDto, UpdateAgencyDetailsDto } from './agencies.dto';
+import { AgenciesService, type AgencyDetails, type AgencyView } from './agencies.service';
 
 /**
  * Creating an agency (T-083).
@@ -38,5 +38,31 @@ export class AgenciesController {
   ): Promise<AgencyView> {
     const key = idempotencyKey(req);
     return this.agencies.create(actor, dto, key, requestContext(req));
+  }
+
+  @Get('current')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary: 'This agency’s core details and what is still missing. Requires company.read.',
+  })
+  async readCurrent(@CurrentActor() actor: Actor, @Req() req: Request): Promise<AgencyDetails> {
+    return this.agencies.readCurrent(actor, requestContext(req));
+  }
+
+  @Patch('current')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary: 'Complete or change this agency’s core details. Owner only (company.update_details).',
+    description:
+      'Name, country, business email, time zone and currency, with the version read. Absent is ' +
+      'left alone; none can be cleared. A CREATING agency becomes ACTIVE in the write that ' +
+      'completes the minimum. Audited with the names of the fields changed.',
+  })
+  async updateCurrent(
+    @CurrentActor() actor: Actor,
+    @Body() dto: UpdateAgencyDetailsDto,
+    @Req() req: Request,
+  ): Promise<AgencyDetails> {
+    return this.agencies.updateCurrent(actor, dto, requestContext(req));
   }
 }

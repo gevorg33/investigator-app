@@ -1,4 +1,15 @@
-import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+import { EmailField } from '../../common/validation/email';
+import { IsTimeZone } from '../../common/validation/time-zone';
 
 /**
  * What a client may say when creating an agency (T-083).
@@ -42,4 +53,43 @@ export class CreateAgencyDto {
   @IsString()
   @Length(36, 36)
   agreementDocumentId!: string;
+}
+
+/**
+ * Optional, but not nullable. `IsOptional` skips validation for `null` too, and a `null` here would
+ * clear one of the five — which an ACTIVE agency's constraint refuses as a 500. Only an absent
+ * field is skipped; `null` is validated, and refused.
+ */
+const Present = () => ValidateIf((_, value: unknown) => value !== undefined);
+
+/**
+ * Completing or changing an agency's core details (T-150). Absent is left alone; there is no
+ * clearing — each of the five is part of the minimum an agency needs, and an ACTIVE agency must keep
+ * all of them. `version` is the one read, so two owners editing at once cannot overwrite each other.
+ */
+export class UpdateAgencyDetailsDto {
+  @IsInt()
+  @Min(1)
+  version!: number;
+
+  @Present()
+  @IsString()
+  @Length(2, 120)
+  name?: string;
+
+  @Present()
+  @Matches(/^[A-Z]{2}$/, { message: 'error.validation.country_code.invalid' })
+  countryCode?: string;
+
+  @Present()
+  @EmailField()
+  businessEmail?: string;
+
+  @Present()
+  @IsTimeZone()
+  timezone?: string;
+
+  @Present()
+  @Matches(/^[A-Z]{3}$/, { message: 'error.validation.currency.invalid' })
+  currency?: string;
 }

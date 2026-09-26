@@ -80,6 +80,13 @@ User ─────────────< Membership >───────�
   > else can activate a half-filled one. Time zone defaults from the creator's account; there is
   > no currency to inherit, so an agency that names none is simply not complete yet. Status,
   > verification and kind have no field on the DTO, and the pipe refuses a body that names one.
+  >
+  > **Completed or changed later (T-150):** `GET /api/v1/agencies/current` reads the five, what is
+  > missing and the `version`, to any member (`company.read`); `PATCH /api/v1/agencies/current`
+  > changes them, the OWNER only (`company.update_details`), naming the version read (409 if it has
+  > moved). Absent is left alone and none can be cleared. The write that completes the minimum is
+  > the one that makes a `CREATING` agency `ACTIVE`, audited `agency.activated`; every change is
+  > audited `agency.details_updated` with the names of the fields changed, never their values.
   > **Any active account may create one, from any workspace** — an agency owner need not be an
   > investigator, and the new agency belongs to the person rather than to the workspace their tab
   > was showing.
@@ -145,6 +152,7 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 |---|---|---|---|---|---|---|
 | `company.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `company.update` | ✓ | ✓ | | | | |
+| `company.update_details` | ✓ | | | | | |
 | `company.delete` | ✓ | | | | | |
 | `employees.read` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `employees.invite` · `employees.update` · `employees.suspend` · `employees.remove` | ✓ | ✓ | | | | |
@@ -171,7 +179,8 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 
 - The catalog (`permissions`, `roles`, `role_permissions`) is **data**, seeded by migration. The
   system roles are immutable. Custom roles are a later addition to the same tables. **Built in
-  T-074:** 40 permissions, 6 roles, 134 grants, generated from this table. `tenants.spec.ts`
+  T-074:** 40 permissions, 6 roles, 134 grants, generated from this table; T-150 added
+  `company.update_details` (41 and 135, migration 0026). `tenants.spec.ts`
   parses the table and fails if the seed and this document ever disagree, naming the role.
   The application role can only read the catalog.
 - **Open:** as written, `AGENCY_STAFF` ("Staff") and `VIEWER` grant identical permissions. That
@@ -198,6 +207,11 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 > agency — their investigator profile belongs to their Personal workspace, and a quote must belong
 > to one of its two parties, so the database refuses the write. Agency-owned investigator profiles
 > are what would make it work.
+>
+> **`company.update_details` (T-150, owner decision 2026-09-26).** An agency's name, country,
+> business email, time zone and currency are who the agency is to customers and to the platform —
+> the legal name, the jurisdiction, where the platform writes to it. They change with the OWNER
+> only; `company.update` (OWNER and ADMIN) keeps the public profile, settings and branding.
 
 ---
 

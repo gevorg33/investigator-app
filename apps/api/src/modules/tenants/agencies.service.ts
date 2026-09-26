@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
@@ -16,7 +16,7 @@ import {
   users,
 } from '../../database/schema';
 import { LegalService } from '../legal/legal.service';
-import type { CreateAgencyDto } from './agencies.dto';
+import type { CreateAgencyDto, UpdateAgencyDetailsDto } from './agencies.dto';
 
 export interface AgencyView {
   id: string;
@@ -29,6 +29,14 @@ export interface AgencyView {
   /** What is still missing before the workspace can be used. Empty once it is ACTIVE. */
   missing: string[];
 }
+
+/** The agency's core details as its members read them, with the version a change must name. */
+export interface AgencyDetails extends AgencyView {
+  version: number;
+}
+
+/** The workspace the request acts in — from the context, never from code (tenancy.md §6). */
+const THIS_WORKSPACE = sql`app_current_tenant()`;
 
 /** The minimum an agency needs before it is usable, and the order it is reported in. */
 const REQUIRED = ['name', 'countryCode', 'businessEmail', 'timezone', 'currency'] as const;
@@ -168,6 +176,89 @@ export class AgenciesService {
     });
   }
 
+  /** This agency's core details, for any member with `company.read`. */
+  async readCurrent(actor: Actor, req: RequestContext): Promise<AgencyDetails> {
+    await this.requireInAgency(actor, 'company.read', this.ctx('agency.details.read', req));
+    const [row] = await this.db.select().from(tenants).where(eq(tenants.id, THIS_WORKSPACE));
+    // The agency workspace was required already; its own row is always visible to its members.
+    return details(row!);
+  }
+
+  /**
+   * Completes or changes this agency's core details (T-150) — the OWNER's alone
+   * (`company.update_details`, tenancy.md §3). A CREATING agency becomes ACTIVE in the same write
+   * that completes its minimum, which the database checks too (`tenants_active_agency_is_complete`).
+   * Audited with the names of what changed, never the values: a business email is personal data.
+   */
+  async updateCurrent(
+    actor: Actor,
+    dto: UpdateAgencyDetailsDto,
+    req: RequestContext,
+  ): Promise<AgencyDetails> {
+    const c = this.ctx('agency.details.update', req);
+    await this.requireInAgency(actor, 'company.update_details', c);
+
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(tenants)
+        .where(eq(tenants.id, THIS_WORKSPACE))
+        .for('update');
+      const current = row!;
+      if (current.version !== dto.version) throw AppError.stateConflict();
+
+      const patch = {
+        ...(dto.name !== undefined && { name: dto.name.trim() }),
+        ...(dto.countryCode !== undefined && { countryCode: dto.countryCode }),
+        ...(dto.businessEmail !== undefined && { businessEmail: dto.businessEmail }),
+        ...(dto.timezone !== undefined && { timezone: dto.timezone }),
+        ...(dto.currency !== undefined && { currency: dto.currency }),
+      };
+      const changed = REQUIRED.filter(
+        (field) => field in patch && patch[field as keyof typeof patch] !== current[field],
+      );
+      if (changed.length === 0) return details(current);
+
+      const activates =
+        current.status === 'CREATING' && missingFrom({ ...current, ...patch }).length === 0;
+      const [updated] = await tx
+        .update(tenants)
+        .set({
+          ...patch,
+          ...(activates && { status: 'ACTIVE' as const }),
+          version: current.version + 1,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tenants.id, current.id), eq(tenants.version, current.version)))
+        .returning();
+
+      const event = {
+        correlationId: req.correlationId,
+        ipAddress: req.ip,
+        userAgent: req.userAgent,
+        actorId: actor.userId,
+        resourceType: 'tenant',
+        resourceId: current.id,
+      };
+      await this.audit.record(
+        { ...event, action: 'agency.details_updated', reason: changed.join(',') },
+        tx,
+      );
+      if (activates) await this.audit.record({ ...event, action: 'agency.activated' }, tx);
+      return details(updated!);
+    });
+  }
+
+  private async requireInAgency(
+    actor: Actor,
+    permission: 'company.read' | 'company.update_details',
+    c: AuthzContext,
+  ): Promise<void> {
+    await this.authz.requireActive(actor, c);
+    await this.authz.requireAgencyWorkspace(actor, c);
+    await this.authz.requirePermission(actor, permission, c);
+  }
+
   /**
    * The creator's own settings stand in for the agency's until it says otherwise. A currency is
    * not among them: an account has a locale and a time zone, not a currency, so an agency that
@@ -217,4 +308,9 @@ const view = (row: typeof tenants.$inferSelect): AgencyView => ({
     timezone: row.timezone,
     currency: row.currency,
   }),
+});
+
+const details = (row: typeof tenants.$inferSelect): AgencyDetails => ({
+  ...view(row),
+  version: row.version,
 });

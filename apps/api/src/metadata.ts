@@ -117,7 +117,8 @@ export default async () => {
                     QueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
                 }],
             [m42, {
-                    CreateAgencyDto: { name: { required: true, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String, description: "Where the platform writes to the business, which is not the creator's personal address.", format: "email", minLength: 3, maxLength: 254 }, timezone: { required: false, type: () => String, minLength: 1, maxLength: 64 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, agreementDocumentId: { required: true, type: () => String, description: "The agency terms the creator is accepting, by id \u2014 so the record says which exact version and\nlocale they were shown (T-021), rather than the server deciding after the fact.", minLength: 36, maxLength: 36 } }
+                    CreateAgencyDto: { name: { required: true, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String, description: "Where the platform writes to the business, which is not the creator's personal address.", format: "email", minLength: 3, maxLength: 254 }, timezone: { required: false, type: () => String, minLength: 1, maxLength: 64 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, agreementDocumentId: { required: true, type: () => String, description: "The agency terms the creator is accepting, by id \u2014 so the record says which exact version and\nlocale they were shown (T-021), rather than the server deciding after the fact.", minLength: 36, maxLength: 36 } },
+                    UpdateAgencyDetailsDto: { version: { required: true, type: () => Number, minimum: 1 }, name: { required: false, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String }, timezone: { required: false, type: () => String }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" } }
                 }],
             [m44, {
                     ProfileVersionDto: { version: { required: true, type: () => Number, minimum: 0 } },
@@ -285,7 +286,9 @@ export default async () => {
                 }],
             [m41, {
                     AgenciesController: {
-                        create: { type: Object }
+                        create: { type: Object },
+                        readCurrent: { type: Object },
+                        updateCurrent: { type: Object }
                     }
                 }],
             [m43, {

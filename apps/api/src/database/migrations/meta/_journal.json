@@ -183,6 +183,13 @@
       "when": 1790415620755,
       "tag": "0025_order_mission_history",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790416308909,
+      "tag": "0026_add_company_update_details",
+      "breakpoints": true
     }
   ]
 }

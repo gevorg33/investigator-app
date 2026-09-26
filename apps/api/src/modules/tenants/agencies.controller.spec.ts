@@ -141,3 +141,77 @@ describe('POST /api/v1/agencies', () => {
     expect(made.create).not.toHaveBeenCalled();
   });
 });
+
+describe('GET and PATCH /api/v1/agencies/current (T-150)', () => {
+  let app: INestApplication | undefined;
+  const details = { ...created, version: 2 };
+
+  afterEach(async () => {
+    await closeApp(app);
+    app = undefined;
+  });
+
+  const make = async () => {
+    const readCurrent = vi.fn().mockResolvedValue(details);
+    const updateCurrent = vi.fn().mockResolvedValue(details);
+    const moduleRef = await Test.createTestingModule({
+      controllers: [AgenciesController],
+      providers: [
+        { provide: AgenciesService, useValue: { readCurrent, updateCurrent } },
+        { provide: ActorService, useValue: { fromRefreshToken: async () => actor } },
+        workspaceResolverStub(actor),
+      ],
+    }).compile();
+    const instance = moduleRef.createNestApplication();
+    instance.setGlobalPrefix('api/v1');
+    instance.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: false },
+      }),
+    );
+    instance.useGlobalFilters(new AppExceptionFilter());
+    await listenOnce(instance);
+    app = instance;
+    return { http: request(instance.getHttpServer()), readCurrent, updateCurrent };
+  };
+
+  it('reads the agency the request acts in, uncached', async () => {
+    const { http, readCurrent } = await make();
+    const res = await http.get('/api/v1/agencies/current');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(details);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(readCurrent).toHaveBeenCalledWith(actor, expect.anything());
+  });
+
+  it('passes a change on with the version read', async () => {
+    const { http, updateCurrent } = await make();
+    const res = await http
+      .patch('/api/v1/agencies/current')
+      .send({ version: 2, currency: 'USD', timezone: 'Europe/Moscow' });
+    expect(res.status).toBe(200);
+    expect(updateCurrent).toHaveBeenCalledWith(
+      actor,
+      { version: 2, currency: 'USD', timezone: 'Europe/Moscow' },
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ['no version', { currency: 'USD' }],
+    ['a status', { version: 2, status: 'ACTIVE' }],
+    ['a time zone that is an offset', { version: 2, timezone: '+04:00' }],
+    ['a time zone that does not exist', { version: 2, timezone: 'Mars/Olympus' }],
+    ['an address that is not an email', { version: 2, businessEmail: 'desk' }],
+    ['a cleared currency', { version: 2, currency: null }],
+    ['a name too short', { version: 2, name: 'N' }],
+  ])('refuses %s', async (_label, payload) => {
+    const { http, updateCurrent } = await make();
+    const res = await http.patch('/api/v1/agencies/current').send(payload);
+    expect(res.status).toBe(400);
+    expect(updateCurrent).not.toHaveBeenCalled();
+  });
+});
