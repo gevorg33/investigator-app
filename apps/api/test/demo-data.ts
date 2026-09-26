@@ -1,7 +1,12 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../src/database/schema';
 import { testPool } from './db';
-import { assignment, investigationSource } from './assignment-fixtures';
+import {
+  assignment,
+  investigationNote,
+  investigationSource,
+  investigationTask,
+} from './assignment-fixtures';
 import { customerProfile } from './profile-fixtures';
 import { eligibleInvestigator, quotableMission, submittedQuote } from './quote-fixtures';
 import { agency, member } from './workspace-fixtures';
@@ -51,6 +56,24 @@ export async function loadDemoData(): Promise<Record<string, string>> {
       addedBy: investigator.userId,
       type: 'WITNESS',
       title: 'Former colleague of the subject',
+    });
+    // The same for notes and the work plan: the customer sees the shared ones only (T-032).
+    await investigationNote(db, {
+      assignmentId: hired.id,
+      authorId: investigator.userId,
+      body: 'Registered address confirmed against the company register.',
+      visibility: 'SHARED',
+    });
+    await investigationNote(db, {
+      assignmentId: hired.id,
+      authorId: investigator.userId,
+      body: 'Possible second trading name — check before mentioning it to anyone.',
+    });
+    await investigationTask(db, {
+      assignmentId: hired.id,
+      createdBy: investigator.userId,
+      title: 'Request the certified register extract',
+      visibility: 'SHARED',
     });
 
     // A workspace with more than one person in it, which a personal workspace cannot show.

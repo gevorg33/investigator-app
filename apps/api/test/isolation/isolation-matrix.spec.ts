@@ -279,7 +279,15 @@ describe('the isolation matrix', () => {
     it('shows each party its own side of a two-party row, and no third workspace either', async () => {
       const customer = await personalContext(owner, graph.customer.userId);
       const supplier = await personalContext(owner, graph.supplier.userId);
-      for (const table of ['quotes', 'assignments', 'assignment_status_history']) {
+      // The notes and tasks in the graph are shared and written by the supplier's user, so both
+      // parties read them (T-032).
+      for (const table of [
+        'quotes',
+        'assignments',
+        'assignment_status_history',
+        'investigation_notes',
+        'investigation_tasks',
+      ]) {
         expect(await rowsSeen(customer, table)).toBe(1);
         expect(await rowsSeen(supplier, table)).toBe(1);
         expect(await rowsSeen(outsider, table)).toBe(0);

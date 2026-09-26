@@ -24,6 +24,7 @@ import { VerificationModule } from './modules/verification/verification.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
+import { InvestigationWorkspaceModule } from './modules/investigation-workspace/investigation-workspace.module';
 import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
 import { AiModule } from './modules/ai/ai.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
@@ -64,6 +65,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     TenantsModule,
     TaxonomyModule,
     InvestigationSourcesModule,
+    InvestigationWorkspaceModule,
     AiSessionsModule,
     KnowledgeModule,
     ReviewsModule,

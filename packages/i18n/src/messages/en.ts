@@ -992,6 +992,7 @@ export const en = {
         category_unavailable: 'This kind of help is no longer offered. Choose another.',
         blank: 'Write something here, or clear the field.',
       },
+      investigation_workspace: { blank: 'Write something here.' },
       lawful_purpose: {
         required: 'Confirm that your request is for a lawful purpose.',
       },

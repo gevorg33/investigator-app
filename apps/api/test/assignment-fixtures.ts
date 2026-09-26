@@ -84,3 +84,50 @@ export async function investigationSource(
     .returning();
   return row!;
 }
+
+/**
+ * A note on an assignment (T-032). Private unless a test says otherwise — the same default the
+ * service applies — and written by whoever the test names as its author.
+ */
+export async function investigationNote(
+  db: TestDb,
+  input: {
+    assignmentId: string;
+    authorId: string;
+    body?: string;
+    visibility?: (typeof schema.investigationNotes.visibility.enumValues)[number];
+  },
+): Promise<typeof schema.investigationNotes.$inferSelect> {
+  const [row] = await db
+    .insert(schema.investigationNotes)
+    .values({
+      assignmentId: input.assignmentId,
+      authorId: input.authorId,
+      body: input.body ?? 'Register extract matches the claimed address',
+      visibility: input.visibility ?? 'PRIVATE',
+    })
+    .returning();
+  return row!;
+}
+
+/** A task in an assignment's work plan (T-032). Private and still to do unless a test says otherwise. */
+export async function investigationTask(
+  db: TestDb,
+  input: {
+    assignmentId: string;
+    createdBy: string;
+    title?: string;
+    visibility?: (typeof schema.investigationTasks.visibility.enumValues)[number];
+  },
+): Promise<typeof schema.investigationTasks.$inferSelect> {
+  const [row] = await db
+    .insert(schema.investigationTasks)
+    .values({
+      assignmentId: input.assignmentId,
+      createdBy: input.createdBy,
+      title: input.title ?? 'Request the certified extract',
+      visibility: input.visibility ?? 'PRIVATE',
+    })
+    .returning();
+  return row!;
+}

@@ -200,6 +200,18 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${assignment}, 'REGISTRY', 'Company register extract', true, ${supplier.userId})
     RETURNING id`);
 
+  // A note and a task, shared for the same reason as the source: the customer's workspace reads
+  // them too, and a third workspace still reads neither (T-032). Private ones are narrower still —
+  // their author only — which the module's own specs hold.
+  const note = await id(owner`
+    INSERT INTO investigation_notes (assignment_id, author_id, body, visibility)
+    VALUES (${assignment}, ${supplier.userId}, 'Register extract matches the claimed address', 'SHARED')
+    RETURNING id`);
+  const task = await id(owner`
+    INSERT INTO investigation_tasks (assignment_id, created_by, title, visibility)
+    VALUES (${assignment}, ${supplier.userId}, 'Request the certified extract', 'SHARED')
+    RETURNING id`);
+
   // A halt under review, and the hold it put on the money (T-050).
   const review = await id(owner`
     INSERT INTO policy_reviews (assignment_id, mission_id, kind, ground, raised_by)
@@ -296,6 +308,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       assignments: assignment,
       assignment_status_history: assignmentHistory,
       investigation_sources: source,
+      investigation_notes: note,
+      investigation_tasks: task,
       ai_sessions: conversation,
       ai_messages: said,
       saved_mission_searches: savedSearch,

@@ -6,6 +6,7 @@ import { userStaffScopes } from './staff-scopes';
 import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
 import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
+import { investigationNotes, investigationTasks } from './investigation-workspace';
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
 import { missions, savedMissionSearches } from './missions';
@@ -87,6 +88,34 @@ describe('investigation sources', () => {
   it('keep who recorded them, even if that account goes', () => {
     expect(fks).toContainEqual({ columns: ['added_by'], target: users, onDelete: 'restrict' });
   });
+});
+
+describe('investigation notes and tasks (T-032)', () => {
+  it.each([
+    ['investigation_notes', investigationNotes, 'author_id'],
+    ['investigation_tasks', investigationTasks, 'created_by'],
+  ] as Array<[string, PgTable, string]>)(
+    '%s neither go with their assignment nor lose who wrote them',
+    (_name, table, writer) => {
+      const fks = getTableConfig(table).foreignKeys.map((f) => ({
+        columns: f.reference().columns.map((c) => c.name),
+        target: f.reference().foreignTable,
+        onDelete: f.onDelete,
+      }));
+      // Retention is a policy a job enforces (plan.md §8), never a cascade.
+      expect(fks).toContainEqual({
+        columns: ['assignment_id'],
+        target: assignments,
+        onDelete: 'restrict',
+      });
+      expect(fks).toContainEqual({
+        columns: ['assignment_id', 'customer_tenant_id', 'supplier_tenant_id'],
+        target: assignments,
+        onDelete: 'restrict',
+      });
+      expect(fks).toContainEqual({ columns: [writer], target: users, onDelete: 'restrict' });
+    },
+  );
 });
 
 describe('assistant sessions (T-045)', () => {

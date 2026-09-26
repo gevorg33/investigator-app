@@ -1003,6 +1003,7 @@ export const hy: Catalog = {
         category_unavailable: 'Օգնության այս տեսակն այլևս չի առաջարկվում։ Ընտրեք մեկ այլը։',
         blank: 'Գրեք ինչ-որ բան այստեղ կամ մաքրեք դաշտը։',
       },
+      investigation_workspace: { blank: 'Այստեղ ինչ-որ բան գրեք։' },
       lawful_purpose: {
         required: 'Հաստատեք, որ ձեր խնդրանքն ունի օրինական նպատակ։',
       },
