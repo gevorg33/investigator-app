@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  * A decision is made from a permission, never from the name of a tenant role (T-078,
  * docs/architecture/tenancy.md §3).
  *
- * What a role grants is the catalog's business — 40 permissions, 6 roles, 134 grants, seeded
+ * What a role grants is the catalog's business — 41 permissions, 6 roles, 135 grants, seeded
  * from the matrix and read with the membership on every request. A service that branched on
  * `ADMIN` would be a second copy of that catalog, written in code, updated by hand, and wrong
  * the first time the matrix changed. So the names have nowhere to appear:

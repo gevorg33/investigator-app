@@ -58,7 +58,8 @@ describe('workspace resolution', () => {
         tenantKind: 'PERSONAL',
         userId: actor.userId,
       });
-      expect(ctx.permissions).toHaveLength(40);
+      expect(ctx.permissions).toHaveLength(41);
+      expect(ctx.permissions).toContain('company.update_details');
     });
 
     it('resolves an agency the caller works in, with that membership’s permissions only', async () => {
