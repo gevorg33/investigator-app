@@ -6960,7 +6960,7 @@ pnpm --filter app-web test onboarding
 ---
 
 ### T-150 — Complete or change an agency's core details
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `GET`/`PATCH /agencies/current` (owner only, `company.update_details`, migration 0026; version-checked, 409 on a stale read; audited `agency.details_updated` with field names, plus `agency.activated` when a CREATING agency completes). Screen `/agencies/current`: form for the owner, read-only list for other members; the shell's "not set up yet" notice links to it. Specs in `agencies.details.spec.ts`, `agencies.controller.spec.ts`, `agency-details.spec.tsx`; resolver spec updated to 41 permissions. Verified in the browser against the local API and database at 375 and 1280px: CREATING → ACTIVE on save (audit rows checked), rename reflected in the switcher, stale version shows the conflict message, a VIEWER sees the read-only view and gets 403 from `PATCH`, Personal redirects home
 - **Priority:** P2
 - **Depends on:** T-083, T-092
 - **Risk:** MEDIUM
@@ -6977,8 +6977,8 @@ settings and branding, not these five. Add an owner-only update (audited; becomi
 minimum is complete) and the screen for it.
 
 **Acceptance criteria**
-- [ ] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
-- [ ] Only an owner can change the five details; every change is audited
+- [x] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
+- [x] Only an owner can change the five details; every change is audited
 
 **Validation**
 ```bash
