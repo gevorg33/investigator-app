@@ -5954,6 +5954,10 @@ projection has none. Reviews rendering is verified in specs only — the dev dat
 - **Tracking:** the assignment timeline shows status, the investigator's acceptance window, and
   updates.
 
+> **From T-154:** cancelling a mission is offered for a draft and a mission under review. A `QUOTED`
+> mission is not: cancelling it closes its open quotes, so it belongs here, beside them, with
+> `CancelMission` (`components/missions/cancel-mission.tsx`) reused and a `quoted` stage in its copy.
+
 **Acceptance criteria**
 - [ ] The UI never shows "paid" or "assigned" from the client's own callback, only from server state (tested)
 - [ ] Idempotent acceptance: a double-tap produces one payment
@@ -7067,7 +7071,7 @@ pnpm --filter api test missions
 ---
 
 ### T-154 — Cancel a mission from the app
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `CancelMission` (`components/missions/cancel-mission.tsx`) in the draft intake and under a mission in review; KB `creating-a-mission` v3 (en/ru/hy) says how. QUOTED left to T-121, which shows the quotes that close
 - **Priority:** P2
 - **Depends on:** T-119
 - **Risk:** LOW
@@ -7083,8 +7087,8 @@ customer cancel, confirmed in an `AlertDialog` that says what closes. A `QUOTED`
 open quotes — decide with T-121 whether that belongs here.
 
 **Acceptance criteria**
-- [ ] A draft and a mission under review can be cancelled, after a confirmation; the list says so
-- [ ] A 409 (it moved on meanwhile) says so and reloads
+- [x] A draft and a mission under review can be cancelled, after a confirmation; the list says so
+- [x] A 409 (it moved on meanwhile) says so and reloads
 
 **Validation**
 ```bash

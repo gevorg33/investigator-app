@@ -4,7 +4,7 @@ title: Creating and submitting a mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
 updated: 2026-09-26
 source_of_truth: docs
@@ -116,6 +116,13 @@ scope needs a new quote.
 
 Yes, before you accept a quote — at that point nothing has been agreed and no payment has
 been taken. Cancelling a mission closes any open quotes on it.
+
+To cancel, open the mission and choose **Cancel this mission** — at the bottom of a draft, or
+under a mission that is being reviewed. You are asked to confirm first, because a cancelled
+mission closes for good: it stays in your missions marked **Cancelled**, and to go ahead later you
+start a new one. If the mission changed in the meantime — the review finished while you were
+deciding — you are told, and shown where it stands now. Cancelling a mission that is already open
+for quotes is not offered in the app yet.
 
 After you accept a quote and pay, cancelling is governed by the cancellation terms in that
 quote. See the payments article.

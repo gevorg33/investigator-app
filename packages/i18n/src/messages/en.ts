@@ -138,6 +138,20 @@ export const en = {
       SUSPENDED: 'On hold',
       EXPIRED: 'Expired',
     },
+    cancel: {
+      action: 'Cancel this mission',
+      draft: {
+        title: 'Cancel this draft?',
+        body: 'It closes for good and can no longer be sent. You can still read it under your missions; to go ahead later, start a new one.',
+      },
+      review: {
+        title: 'Withdraw this mission from review?',
+        body: 'The review stops and the mission closes for good. No investigator has seen it. You can still read it under your missions; to go ahead later, start a new one.',
+      },
+      confirm: 'Cancel mission',
+      keep: 'Keep it',
+      conflict: 'This mission changed while you were deciding. It is shown as it stands now.',
+    },
     view: {
       sent: 'Sent {date}',
       brief: 'What you asked for',

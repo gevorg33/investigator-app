@@ -488,6 +488,16 @@ session cookie is sent over plain HTTP and emailed links are written to the API'
 The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
 404 prerender (T-141).
 
+## Cancelling a mission (T-154)
+
+`CancelMission` offers it where the customer can still take a mission back: at the foot of a draft
+in the intake (once there is a draft to close — a new one not yet saved is simply left), and under
+a mission that is being reviewed. It asks first, in an `AlertDialog` that says what closes;
+cancelling is final. The intake finishes any save under way before cancelling, and cancels the
+version that save returned. Done, the customer lands on their missions, where it is listed as
+**Cancelled**. A 409 — it moved on meanwhile — says so and refreshes the page to where it stands.
+A published mission is not offered here (T-121).
+
 ## Not found (T-151)
 
 `notFound()` anywhere in the workspace renders `NotFoundPage` (`components/not-found-page.tsx`)
@@ -506,4 +516,5 @@ must not undo that by telling them apart.
 - An app icon: the favicon request 404s until there is a brand mark to use.
 - Google sign-in (T-062), and changing an email address or password from the account page.
 - The workspace switcher and every real screen — T-092 and the core-loop tasks.
-- Cancelling a mission from the app (T-154), and attachments on a mission (T-066).
+- Attachments on a mission (T-066); cancelling a mission already open for quotes, which closes
+  its quotes and belongs with the quotes screen (T-121).
