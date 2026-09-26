@@ -222,16 +222,21 @@ describe('agency settings (T-084)', () => {
       const gate = new Promise<void>((resolve) => (release = resolve));
       let written!: () => void;
       const inserted = new Promise<void>((resolve) => (written = resolve));
-      const competing = ownerSql.begin(async (tx) => {
-        await tx`INSERT INTO tenant_settings (tenant_id, section, value)
+      const competing = ownerSql
+        .begin(async (tx) => {
+          await tx`INSERT INTO tenant_settings (tenant_id, section, value)
                  VALUES (${a.tenantId}, 'branding', '{}'::jsonb)`;
-        written();
-        await gate;
-      });
+          written();
+          await gate;
+        })
+        // Settles after the refusal, as a loaded machine did in CI: the refusal must not be
+        // left without a handler meanwhile (T-163).
+        .then(() => new Promise((resolve) => setTimeout(resolve, 100)));
       await inserted;
       const attempt = as(a.owner, () =>
         settings.update(a.owner.actor, 'branding', { version: 0, values: {} }, req()),
       );
+      const refused = expect(attempt).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
       // Released only once this save is seen waiting on the competing row — a fixed pause lets
       // a loaded machine commit the competitor first, and the save then fails the version check
       // instead, which is a different refusal.
@@ -244,7 +249,7 @@ describe('agency settings (T-084)', () => {
       }
       release();
       await competing;
-      await expect(attempt).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+      await refused;
     });
 
     it('refuses a colour nothing can be read on, and saves nothing', async () => {

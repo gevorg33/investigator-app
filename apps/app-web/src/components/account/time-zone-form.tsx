@@ -51,18 +51,20 @@ export function TimeZoneForm({ current }: { current: string }) {
             {t('account.timezone.detected', { zone: detected })}
           </p>
           <input type="hidden" name="timezone" value={detected} />
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending} className="whitespace-normal">
             {t('account.timezone.use_detected', { zone: detected })}
           </Button>
         </form>
       )}
-      <form onSubmit={onSubmit} className="grid gap-2 sm:flex sm:items-end">
-        <label className="grid flex-1 gap-1.5 text-sm font-medium">
+      {/* The select's own width is its longest zone's: left at `min-width: auto`, it pushed the
+          button past the card (T-162). */}
+      <form onSubmit={onSubmit} className="grid gap-2 sm:flex sm:flex-wrap sm:items-end">
+        <label className="grid min-w-0 flex-1 basis-60 gap-1.5 text-sm font-medium">
           {t('account.timezone.choose')}
           <select
             name="timezone"
             defaultValue={current}
-            className="min-h-11 rounded-md border border-input bg-surface-raised px-3 text-base"
+            className="min-h-11 w-full min-w-0 rounded-md border border-input bg-surface-raised px-3 text-base"
           >
             {zones.map((zone) => (
               <option key={zone} value={zone}>
