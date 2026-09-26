@@ -179,6 +179,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['customer_tenant_id', 'supplier_tenant_id'],
     note: 'asymmetric: the supplier workspace reads and writes; the customer workspace reads shared, unwithdrawn rows only (T-031)',
   },
+  investigation_notes: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'narrower than the class: only the author, in the supplier workspace, reads and writes — not even an agency owner reads a colleague’s note; the customer workspace reads shared, undeleted rows only (T-032)',
+  },
+  investigation_tasks: {
+    class: 'two_party',
+    columns: ['customer_tenant_id', 'supplier_tenant_id'],
+    note: 'as investigation_notes, with the creator in place of the author (T-032)',
+  },
   assignment_status_history: {
     class: 'two_party',
     columns: ['customer_tenant_id', 'supplier_tenant_id'],

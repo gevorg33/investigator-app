@@ -4,9 +4,9 @@ title: Evidence and reports — what you receive and how to access it
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-23
+updated: 2026-09-26
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -14,6 +14,7 @@ related_code:
   - apps/api/src/modules/reports
   - apps/api/src/modules/media
   - apps/api/src/modules/investigation-sources
+  - apps/api/src/modules/investigation-workspace
 tags: [evidence, reports, deliverables, access, downloads]
 ---
 
@@ -63,6 +64,17 @@ way, and some — a witness, for example — may stay private to protect the per
 
 A source can be withdrawn by the investigator if it turns out to be wrong or irrelevant. It then
 disappears from your view but is kept, so the record of the work stays complete.
+
+## Can I see the investigator's notes and task list?
+
+Only what your investigator chooses to share. Their working notes and their task list for your
+assignment are private to them by default — you do not see them, and neither does anyone else on
+the platform. An investigator can share individual notes or tasks with you, for example to show
+progress, and can make them private again.
+
+Notes are thinking in progress, not findings. A shared note may mention a line of inquiry that
+was later ruled out; what the investigator concluded is in the report, with what it rests on.
+Notes can be edited by the investigator at any time and are not evidence.
 
 ## Who else can see my evidence?
 

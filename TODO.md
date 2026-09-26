@@ -1809,7 +1809,7 @@ customer answer on seeing sources.
 ---
 
 ### T-032 — Investigation notes and tasks
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26, approved by the owner in chat. Migration 0027 (`investigation_notes`, `investigation_tasks`: author/creator-only RLS, customer reads shared; no DELETE grant; restrict FKs; task-edge trigger); module `investigation-workspace` (`/assignments/:id/notes`, `/assignments/:id/tasks`, `…/tasks/:taskId/transition`); docs `investigation.md`, KB `kb-investigator-notes-and-tasks` (en; ru/hy drafts), `kb-customer-evidence-reports` v3. Privacy specs seen failing (10) with the policies loosened. No browser surface: verified by booting the API on the migrated dev database and probing the routes (401 / 404 / 400 / 403)
 - **Priority:** P1
 - **Depends on:** T-012, T-077
 - **Risk:** MEDIUM
@@ -1824,13 +1824,13 @@ material and work plan.
 **Tenancy (ADR-0011).** As T-031: supplier-workspace rows, reachable inside an agency only by staffed members or `investigations.read_all` once T-089 lands. `private` notes stay private to their author, even from agency admins.
 
 **Acceptance criteria**
-- [ ] Both default to `visibility: private` — author only
-- [ ] A test proves a `private` note is unreachable by the other assignment participant
-- [ ] Changing visibility is an audited action with the actor recorded
-- [ ] Task status transitions validated; no direct status assignment
-- [ ] Notes are mutable; evidence semantics are **not** applied to them
-- [ ] Soft delete, audited; neither cascades with the assignment
-- [ ] `*.authz.spec.ts` covers author vs. participant vs. non-participant vs. staff
+- [x] Both default to `visibility: private` — author only
+- [x] A test proves a `private` note is unreachable by the other assignment participant
+- [x] Changing visibility is an audited action with the actor recorded
+- [x] Task status transitions validated; no direct status assignment
+- [x] Notes are mutable; evidence semantics are **not** applied to them
+- [x] Soft delete, audited; neither cascades with the assignment
+- [x] `*.authz.spec.ts` covers author vs. participant vs. non-participant vs. staff
 
 **Validation**
 ```bash
@@ -7167,6 +7167,42 @@ T-155: an identity `seq`, ordered by it.
 **Validation**
 ```bash
 pnpm --filter api test legal
+```
+
+---
+
+### T-157 — A DTO's own validation message reaches the client as the field name
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain (API) + frontend (form errors)
+- **Affected:** apps/api/src/common/errors/http-exception.filter.ts, apps/api/src/bootstrap.ts,
+  apps/app-web/src/components/form/errors.ts
+
+**Description**
+Found in T-032. `extractValidationDetails` takes the text before the first space of each
+class-validator message as the field name. A decorator with its own `message` — 29 in ten DTOs, e.g.
+`@Matches(/\S/, { message: 'error.validation.display_name.blank' })` in `profiles.dto.ts`, and every
+`EmailField` — has no space, so the client receives `{ field: 'error.validation.display_name.blank',
+messageKey: 'error.common.validation_failed' }`: the key in the wrong place and the generic message
+in its own. `fieldErrorKeys` then finds neither the field nor a specific key, and the form shows a
+generic error instead of the one written for it. Seen in T-032's route spec with the same pipe and
+filter as `bootstrap.ts`; T-032 validates its blank case in the service instead. Fix with an
+`exceptionFactory` that keeps each issue's property and constraint message, so a message that is a
+catalog key becomes `messageKey` and `field` is always the property. The same parsing names an undeclared field
+`property` ("property status should not exist"), seen probing T-032's task PATCH.
+
+**Acceptance criteria**
+- [ ] A refused `displayName` of spaces answers `{ field: 'displayName', messageKey: 'error.validation.display_name.blank' }`
+- [ ] A message that is not a catalog key still yields the property as `field` and the generic key
+- [ ] An undeclared field is reported under its own name, not `property`
+- [ ] The sign-up form shows the email message written for it, seen in the browser
+
+**Validation**
+```bash
+pnpm --filter api test http-exception bootstrap && pnpm --filter app-web test form
 ```
 
 ---

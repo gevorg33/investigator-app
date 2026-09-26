@@ -1003,6 +1003,7 @@ export const ru: Catalog = {
         category_unavailable: 'Этот вид помощи больше не предлагается. Выберите другой.',
         blank: 'Напишите здесь что-нибудь или очистите поле.',
       },
+      investigation_workspace: { blank: 'Напишите здесь что-нибудь.' },
       lawful_purpose: {
         required: 'Подтвердите, что запрос преследует законную цель.',
       },

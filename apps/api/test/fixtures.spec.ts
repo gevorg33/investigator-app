@@ -49,6 +49,8 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   quotes: 'quote-fixtures.submittedQuote',
   assignments: 'assignment-fixtures.assignment',
   investigation_sources: 'assignment-fixtures.investigationSource',
+  investigation_notes: 'assignment-fixtures.investigationNote',
+  investigation_tasks: 'assignment-fixtures.investigationTask',
   ai_sessions: 'ai-fixtures.aiSession',
   tenant_profiles: 'agency-fixtures.agencyProfile',
   tenant_settings: 'agency-fixtures.agencySettings',
