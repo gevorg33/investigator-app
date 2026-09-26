@@ -60,7 +60,10 @@ describe('CI runs what it says it runs', () => {
 
   it('delegates only to scripts some package defines', () => {
     const delegating = Object.entries(root.scripts ?? {})
-      .map(([name, body]) => ({ name, target: /^pnpm -r ([\w:-]+)$/.exec(body)?.[1] }))
+      .map(([name, body]) => ({
+        name,
+        target: /^pnpm -r(?: --[\w-]+=\S+)* ([\w:-]+)$/.exec(body)?.[1],
+      }))
       .filter((s) => s.target !== undefined);
     expect(delegating.length).toBeGreaterThan(2);
 
@@ -68,6 +71,14 @@ describe('CI runs what it says it runs', () => {
       (s) => !packages.some((p) => s.target! in (p.manifest.scripts ?? {})),
     );
     expect(orphaned).toEqual([]);
+  });
+
+  it('runs the packages’ coverage one at a time, each with the whole machine (T-160)', () => {
+    // In parallel, app-web's suite and the API's shared CI's four cores: a test taking 305 ms
+    // alone took over 5 s there and timed out, on a change that did not touch it. One package at a
+    // time gives each suite every core, and no test's timeout had to move.
+    expect(root.scripts?.['test:coverage']).toBe('pnpm -r --workspace-concurrency=1 test:coverage');
+    expect(steps).toMatch(/run: pnpm test:coverage\n/);
   });
 
   it('gates coverage in every package that ships code that runs', () => {

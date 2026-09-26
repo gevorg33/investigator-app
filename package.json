@@ -13,7 +13,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --build --verbose && pnpm -r typecheck:specs",
     "test": "pnpm -r test",
-    "test:coverage": "pnpm -r test:coverage",
+    "test:coverage": "pnpm -r --workspace-concurrency=1 test:coverage",
     "fixtures:load": "pnpm -r fixtures:load",
     "build": "pnpm -r build",
     "format": "prettier --write .",
