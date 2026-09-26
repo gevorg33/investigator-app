@@ -7299,7 +7299,7 @@ pnpm --filter api test invitations teams
 ---
 
 ### T-160 — App-web tests time out in CI under parallel coverage
-- **Status:** IN_PROGRESS
+- **Status:** DONE — 2026-09-27. Root `test:coverage` runs the packages with `--workspace-concurrency=1` (PR #87); no test's timeout moved. Measured from CI logs, 5 PR runs before vs 11 green-or-unrelated runs after (36260917253 onward). The timed-out test: 4,694–4,939 ms in runs that *passed* before (5,074 ms in the one that failed), 1,271–2,010 ms after. App-web's suite: 131–143 s wall with 200–215 s of test time before (its workers shared cores with the API's), 40–56 s after. Individual tests ≥ 1 s: 49–55 per run before, 7–11 after. The step's wall time did not move — 169–177 s green before, 138–183 s after (median 178 s): the API's suite bounds it either way. 14 consecutive runs since the merge, none timed out; 10 green, 4 red for other causes — three major-version Dependabot bumps (`@nestjs/common` 12, `nestjs-pino` 5, `vitest` 5) and one flake, filed as T-163
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -7319,9 +7319,9 @@ Decide the fix across the board — run the packages' coverage one at a time
 measure the step's wall time either way, and do not raise single tests' timeouts to hide it.
 
 **Acceptance criteria**
-- [ ] The cause is shown with numbers (per-test times in CI before and after)
-- [ ] Ten consecutive CI runs of the coverage step without a timeout
-- [ ] The coverage step's wall time is recorded before and after
+- [x] The cause is shown with numbers (per-test times in CI before and after)
+- [x] Ten consecutive CI runs of the coverage step without a timeout
+- [x] The coverage step's wall time is recorded before and after
 
 **Validation**
 ```bash
@@ -7379,6 +7379,38 @@ what pushes it over.
 **Validation**
 ```bash
 pnpm --filter app-web test account
+```
+
+---
+
+### T-163 — An agency-settings race spec leaves a rejection unhandled
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/settings/agency-settings.service.spec.ts
+
+**Description**
+Found in T-160's CI review. Run 36269910347 (PR "Bump actions/setup-node", which changes no test)
+went red with all 2,791 tests passing: Vitest caught an unhandled `AppError: STATE_CONFLICT` from
+`agency-settings.service.spec.ts` › "refuses a first save that another first save reached the
+database ahead of". The spec starts `attempt`, calls `release()`, then `await competing` — and only
+after that attaches `expect(attempt).rejects`. Once the competitor commits, `attempt` can reject
+before the handler is attached, which Node reports as unhandled. The assertion itself is sound;
+the ordering is not. Attach the rejection expectation before `release()` (and await it after), so a
+fast rejection has a handler waiting.
+
+**Acceptance criteria**
+- [ ] The spec attaches its rejection handler before the competing transaction is released
+- [ ] Seen failing first: a delay forcing `attempt` to reject before `await competing` returns
+  reproduces the unhandled error on the old ordering and not on the new
+- [ ] 20 targeted runs of the file with no unhandled error
+
+**Validation**
+```bash
+pnpm --filter api test agency-settings
 ```
 
 ---
