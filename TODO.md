@@ -6519,7 +6519,7 @@ a controller file, so `GET /knowledge/documents/{docKey}` listed no `locale` —
 ---
 
 ### T-137 — Pin the Playwright MCP version
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26; `.mcp.json` pins `@playwright/mcp@0.0.81`, reasoning and bump procedure in `visual-qa`
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6534,8 +6534,12 @@ avoid. T-014 pinned the shadcn MCP (`shadcn@4.21.0`); this one was out of that t
 the newest version that has been out long enough, per CLAUDE.md, and note it in `visual-qa`.
 
 **Acceptance criteria**
-- [ ] `.mcp.json` names an exact `@playwright/mcp` version, chosen by release date and changelog
-- [ ] The MCP starts and a browser snapshot works on the pinned version
+- [x] `.mcp.json` names an exact `@playwright/mcp` version, chosen by release date and changelog —
+      0.0.81 (2026-09-14, 12 days; carries the symlink file-access fix). 0.0.82 (8 days) too new
+- [x] The MCP starts and a browser snapshot works on the pinned version — driven over stdio
+      JSON-RPC: 26 tools listed, `browser_navigate` + `browser_snapshot` returned the accessibility
+      tree; reduced motion via `browser_run_code_unsafe` + `page.emulateMedia` matched, survived
+      re-navigation and cleared with `null`
 
 **Validation**
 ```bash

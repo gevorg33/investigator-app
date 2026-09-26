@@ -12,6 +12,19 @@ implement → run → desktop 1440 / tablet 768 / mobile 375
 
 Verify it yourself. Do not ask the user to check whether it looks right.
 
+## The tool
+
+`.mcp.json` pins the Playwright MCP to **`@playwright/mcp@0.0.81`** (T-137), never `@latest` —
+the same version policy as CLAUDE.md's pinned table. Chosen 2026-09-26: 0.0.81 was 12 days old
+and carries a fix for symlinks escaping the file-access roots; 0.0.82 was 8 days old, younger
+than the ESLint release CLAUDE.md turned down. It depends on a `playwright` 1.64 alpha — every
+recent `@playwright/mcp` does, there is no stable-core build to prefer.
+
+**Before bumping:** read the release notes (`gh release view vX -R microsoft/playwright-mcp`),
+check the age, then run `npx -y @playwright/mcp@<version> --help` and a navigate + snapshot
+against the new version before changing `.mcp.json`. Tool names change between releases
+(0.0.82 replaced `browser_webmcp_*`), so update any tool name this skill mentions.
+
 ## Viewports
 
 | Name | Size | Watch for |
@@ -36,7 +49,15 @@ A screenshot of the success state only is not a review.
 
 ## Reduced-motion pass
 
-Emulate `prefers-reduced-motion: reduce` and confirm:
+Emulate `prefers-reduced-motion: reduce` and confirm the rules below. On 0.0.81 there is no
+media-emulation tool (`browser_emulate_media` arrives in 0.0.82), so call
+`browser_run_code_unsafe` with:
+
+```js
+async (page) => { await page.emulateMedia({ reducedMotion: 'reduce' }); }
+```
+
+The emulation lasts for the page until it is cleared with `reducedMotion: null`. Then confirm:
 
 - Nothing is still moving
 - **No information was lost** — a state change that was communicated by movement is now
