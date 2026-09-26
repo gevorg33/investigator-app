@@ -54,6 +54,8 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   ai_sessions: 'ai-fixtures.aiSession',
   tenant_profiles: 'agency-fixtures.agencyProfile',
   tenant_settings: 'agency-fixtures.agencySettings',
+  teams: 'agency-fixtures.team',
+  team_members: 'agency-fixtures.team',
 };
 
 /** Tables a factory must NOT write, because something else is what makes them true. */

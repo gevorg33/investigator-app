@@ -67,3 +67,20 @@ export async function agencyImage(
     RETURNING id`;
   return row!.id;
 }
+
+/** A team of the agency (T-086), with the memberships given in it; named uniquely unless told. */
+export async function team(
+  owner: postgres.Sql,
+  tenantId: string,
+  over: { name?: string; memberships?: readonly string[] } = {},
+): Promise<string> {
+  const [row] = await owner<{ id: string }[]>`
+    INSERT INTO teams (tenant_id, name)
+    VALUES (${tenantId}, ${over.name ?? `Team ${randomUUID().slice(0, 6)}`}) RETURNING id`;
+  for (const membershipId of over.memberships ?? []) {
+    await owner`
+      INSERT INTO team_members (team_id, membership_id, tenant_id)
+      VALUES (${row!.id}, ${membershipId}, ${tenantId})`;
+  }
+  return row!.id;
+}

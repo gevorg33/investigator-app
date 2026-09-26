@@ -38,6 +38,8 @@ const KEY_COLUMN: Readonly<Record<string, string>> = {
   // One per agency, and one row per agency in the graph (T-084).
   tenant_profiles: 'tenant_id',
   tenant_settings: 'tenant_id',
+  // A membership row has no id of its own; the graph puts one team member in (T-086).
+  team_members: 'team_id',
 };
 const keyOf = (table: string): string => KEY_COLUMN[table] ?? 'id';
 

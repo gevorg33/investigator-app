@@ -105,6 +105,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['tenant_id'],
     note: 'private to the workspace; one row per saved section, an absent section being its defaults (T-084)',
   },
+  teams: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'private to the agency; a name unique per agency (T-086)',
+  },
+  team_members: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'tenant_id held equal to the team’s and the membership’s by composite keys; a removed member leaves every team by trigger (T-086)',
+  },
   idempotency_keys: {
     class: 'tenant_owned',
     columns: ['tenant_id'],

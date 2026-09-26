@@ -268,6 +268,21 @@ be in several teams. In v1 teams drive:
 Workload, team-level permissions and AI routing are later uses of the same rows; none of them
 needs new structure.
 
+> **Built in T-086** (migration 0029). `teams` (a name unique per agency whatever the case, 1–80
+> characters, and an optional description) and `team_members`, both tenant-owned under `tenant_rw`.
+> `team_members.tenant_id` is held equal to the team's and the membership's by composite keys
+> (`tenant_memberships` gained `UNIQUE (id, tenant_id)` for it), so no one is put in another
+> agency's team whoever writes — shown by writing it straight to the table. A **removed** member
+> leaves every team by trigger (`leave_teams_on_removal`, an ordinary invoker function: whoever may
+> set REMOVED can see the workspace's team rows) and cannot be added to one
+> (`team_members_member_present`); a **suspended** member stays, as they keep their roles. API:
+> `GET|POST /agencies/current/teams`, `GET|PATCH|DELETE …/:id`, `POST …/:id/members`,
+> `DELETE …/:id/members/:membershipId` (`teams.read` for everyone, `teams.create|update|delete` for
+> OWNER, ADMIN and MANAGER). Deleting a team takes its membership rows, never its members. Teams
+> grant nothing yet: staffing and `investigations.read` read them in T-089, notifications in T-036.
+> An invitation naming the teams its member joins is not built — it needs an invitee door on
+> `team_members`, an authorization change (filed as T-159).
+
 ---
 
 ## 5. The marketplace across workspaces

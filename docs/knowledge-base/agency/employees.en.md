@@ -1,10 +1,10 @@
 ---
 id: kb-agency-employees
-title: Your agency's employees — inviting, roles, suspending and removing
+title: Your agency's employees — inviting, roles, teams, suspending and removing
 audience: agency
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
 updated: 2026-09-27
 source_of_truth: docs
@@ -12,10 +12,11 @@ implementation_status: partial
 related_code:
   - apps/api/src/modules/tenants/employees
   - apps/api/src/database/migrations/0028_add_employees.sql
-tags: [agency, employees, invitations, roles, members, suspend, remove]
+  - apps/api/src/modules/teams
+tags: [agency, employees, invitations, roles, members, suspend, remove, teams]
 ---
 
-# Your agency's employees — inviting, roles, suspending and removing
+# Your agency's employees — inviting, roles, teams, suspending and removing
 
 ## How does someone join my agency?
 
@@ -70,6 +71,19 @@ invite them again: they rejoin as the same member, with the role the new invitat
 
 A suspended member cannot get round a suspension by accepting a new invitation — the agency has to
 reactivate them.
+
+## What are teams for?
+
+A team groups members of your agency — by place, by kind of work, however you organise. A member can
+be in several teams. Teams do not give anyone extra permissions; what someone may do comes from
+their roles. As features arrive, teams decide which cases a member sees and who is notified.
+
+Owners, admins and managers create, rename and delete teams and put members in or take them out;
+every member can see them. Two teams in one agency cannot have the same name. Deleting a team does
+not remove anyone from the agency.
+
+A suspended member stays in their teams. A removed member is taken out of every team, and cannot be
+put back in one unless they rejoin the agency.
 
 ## Can the last owner leave?
 

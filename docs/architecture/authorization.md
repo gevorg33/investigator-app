@@ -274,6 +274,10 @@ and customer actions keep their platform-role checks until an agency version of 
 | Change a member's details or roles | `employees.update` |
 | Suspend or reactivate a member | `employees.suspend` |
 | Remove a member | `employees.remove` |
+| List or read the agency's teams (T-086) | `teams.read` |
+| Create a team | `teams.create` |
+| Rename a team, change its description, put members in or take them out | `teams.update` |
+| Delete a team | `teams.delete` |
 
 **Nothing upward (T-085).** Beside the permission, `AuthzService.requireHoldsAll(actor, permissions,
 ctx)` refuses — 403, audited `exceeds_own_permissions` — granting a role that carries a permission

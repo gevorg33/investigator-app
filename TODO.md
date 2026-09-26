@@ -4723,7 +4723,7 @@ pnpm --filter api test memberships invitations
 ---
 
 ### T-086 — Teams (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27; migration 0029, `modules/teams/`, `/agencies/current/teams`
 - **Priority:** P2
 - **Depends on:** T-085
 - **Risk:** LOW
@@ -4740,8 +4740,13 @@ and `investigations.read` (T-089), and notification routing (T-036).
 > `invited_role_insert` policy are where that goes; `team_members` needs the same invitee door.
 
 **Acceptance criteria**
-- [ ] CRUD behind `teams.*`; removing a member from the workspace removes their team memberships
-- [ ] Cross-workspace probes; KB updated
+- [x] CRUD behind `teams.*`; removing a member from the workspace removes their team memberships
+      — create/read/rename/delete and members in/out, each permission checked by role over HTTP; a
+      removed member leaves every team by trigger (negative control: without it the test fails) and
+      cannot be put back (service 422, database `team_members_member_present`)
+- [x] Cross-workspace probes; KB updated — another agency gets 404 on read, change, fill and
+      delete; the composite keys refuse another agency's member written straight to the table; the
+      isolation matrix covers both tables; `kb-agency-employees` v2 (Teams section, en/ru/hy)
 
 **Validation**
 ```bash
@@ -7253,6 +7258,65 @@ suspended. T-093 builds the rest of the agency console; this should not wait for
 **Validation**
 ```bash
 pnpm --filter app-web test invitation
+```
+
+---
+
+### T-159 — An invitation names the teams its member joins
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-085, T-086
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a new invitee door in the row-level security policies
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/tenants/employees/**, apps/api/src/database/migrations/**
+
+**Description**
+Deferred from T-086. tenancy.md §2 has an invitation carry the teams its member joins. That needs
+`tenant_invitation_teams` (or an array held by a trigger), and an `invited_insert` policy on
+`team_members` keyed, like T-085's, on `app_current_confirmed_email()` and a live invitation naming
+that team — plus the "nothing upward" check extended if teams ever carry permissions.
+
+**Acceptance criteria**
+- [ ] An accepted invitation puts its member in the teams it names, in the same transaction
+- [ ] An invitee can join no team the invitation does not name (isolation matrix)
+- [ ] A team deleted before acceptance is dropped from the invitation, not an error
+
+**Validation**
+```bash
+pnpm --filter api test invitations teams
+```
+
+---
+
+### T-160 — App-web tests time out in CI under parallel coverage
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .github/workflows/pr.yml, apps/*/vitest.config.ts, package.json
+
+**Description**
+Found on PR #85 (T-086, API-only): `mission-browse.spec.tsx` › "shows what is applied, and turns
+every choice into the address at once" timed out at 5,000 ms in CI's coverage step. The same test
+takes 305 ms locally, and 469 ms under coverage — CI ran it about ten times slower, because
+`pnpm -r test:coverage` runs every package's suite at once on one runner. Swapping its role queries
+for label queries (the fix `onboarding.spec.tsx` used) saved only ~12%, so this is contention, not
+one heavy test: any test near half a second is at the same risk, and T-155 may be the same thing.
+Decide the fix across the board — run the packages' coverage one at a time
+(`--workspace-concurrency=1`), cap Vitest's workers in CI, or a deliberate `testTimeout` for CI —
+measure the step's wall time either way, and do not raise single tests' timeouts to hide it.
+
+**Acceptance criteria**
+- [ ] The cause is shown with numbers (per-test times in CI before and after)
+- [ ] Ten consecutive CI runs of the coverage step without a timeout
+- [ ] The coverage step's wall time is recorded before and after
+
+**Validation**
+```bash
+pnpm test:coverage
 ```
 
 ---

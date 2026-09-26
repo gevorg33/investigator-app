@@ -4,7 +4,6 @@ import { AuditService } from '../../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../../common/authz/authz.service';
 import type { Actor } from '../../../common/authz/contract';
 import { AppError } from '../../../common/errors/app-error';
-import { ErrorCode } from '../../../common/errors/error-codes';
 import type { RequestContext } from '../../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../../database/database.module';
 import { tenantMemberships, users } from '../../../database/schema';
@@ -200,7 +199,11 @@ export class MembersService {
         await this.authz.requireHoldsAll(actor, permissionsOf(held), c);
         // Suspending yourself would lock you out with no way back; someone else must do it.
         if (to === 'SUSPENDED' && row.userId === actor.userId) {
-          throw conflict('membership', 'SELF', 'error.validation.employees.not_yourself');
+          throw AppError.conflictOn(
+            'membership',
+            'SELF',
+            'error.validation.employees.not_yourself',
+          );
         }
         await this.authz.stateAllows(
           actor,
@@ -269,7 +272,11 @@ export class MembersService {
       const pg = (e as { cause?: unknown }).cause ?? e;
       const { code, constraint_name } = pg as { code?: string; constraint_name?: string };
       if (code === '23514' && constraint_name === LAST_OWNER) {
-        throw conflict('membership', 'LAST_OWNER', 'error.validation.employees.last_owner');
+        throw AppError.conflictOn(
+          'membership',
+          'LAST_OWNER',
+          'error.validation.employees.last_owner',
+        );
       }
       throw e;
     }
@@ -361,7 +368,3 @@ function view(row: Row, held: readonly CatalogRole[], actor: Actor): EmployeeVie
     you: row.userId === actor.userId,
   };
 }
-
-/** A refusal because of the state things are in, with the reason as its own message (T-085). */
-export const conflict = (field: string, code: string, messageKey: string): AppError =>
-  new AppError(ErrorCode.STATE_CONFLICT, [{ field, code, messageKey }]);

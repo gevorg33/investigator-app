@@ -13,7 +13,6 @@ import { RateLimitService } from '../../auth/rate-limit.service';
 import { TokenService } from '../../auth/token.service';
 import { EmployeeRoles } from './employee-roles';
 import type { InviteEmployeeDto } from './employees.dto';
-import { conflict } from './members.service';
 
 /** How long a link works. Resending starts it again. */
 export const INVITATION_TTL_DAYS = 7;
@@ -100,7 +99,7 @@ export class InvitationsService {
           ),
         );
       if (member !== undefined) {
-        throw conflict('email', 'MEMBER', 'error.validation.employees.already_member');
+        throw AppError.conflictOn('email', 'MEMBER', 'error.validation.employees.already_member');
       }
       const [pending] = await tx
         .select()
@@ -114,7 +113,7 @@ export class InvitationsService {
         )
         .for('update');
       if (pending !== undefined && pending.expiresAt > new Date()) {
-        throw conflict('email', 'INVITED', 'error.validation.employees.already_invited');
+        throw AppError.conflictOn('email', 'INVITED', 'error.validation.employees.already_invited');
       }
       if (pending !== undefined) {
         // Expired: it is replaced, so the address has one live invitation, not two.
@@ -231,11 +230,11 @@ export class InvitationsService {
           ),
         );
       if (existing?.status === 'ACTIVE') {
-        throw conflict('token', 'MEMBER', 'error.validation.employees.already_member');
+        throw AppError.conflictOn('token', 'MEMBER', 'error.validation.employees.already_member');
       }
       // Suspension is the agency's to reverse, not something an invitation gets round.
       if (existing?.status === 'SUSPENDED') {
-        throw conflict('token', 'SUSPENDED', 'error.validation.employees.suspended');
+        throw AppError.conflictOn('token', 'SUSPENDED', 'error.validation.employees.suspended');
       }
       let membershipId: string;
       if (existing === undefined) {

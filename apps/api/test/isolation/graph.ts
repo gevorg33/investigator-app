@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type postgres from 'postgres';
-import { agencyImage, agencyProfile, agencySettings } from '../agency-fixtures';
+import { agencyImage, agencyProfile, agencySettings, team } from '../agency-fixtures';
 import { agency } from '../workspace-fixtures';
 
 /**
@@ -271,7 +271,11 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     RETURNING id`);
 
   // An agency the supplier owns, with a draft profile, its logo and a saved section (T-084).
-  const { tenantId: agencyId } = await agency(owner, [{ userId: supplier.userId }]);
+  const { tenantId: agencyId, memberships: agencyMembers } = await agency(owner, [
+    { userId: supplier.userId },
+  ]);
+  // A team in the agency, with its owner in it (T-086).
+  const teamId = await team(owner, agencyId, { memberships: [agencyMembers[0]!] });
   const logo = await agencyImage(owner, { tenantId: agencyId, uploadedBy: supplier.userId });
   await agencyProfile(owner, agencyId, { logoMediaId: logo });
   await agencySettings(owner, agencyId);
@@ -332,6 +336,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       tenant_profiles: agencyId,
       tenant_settings: agencyId,
       tenant_invitations: invitation!.id,
+      teams: teamId,
+      team_members: teamId,
     },
     agencyLogo: logo,
   };
