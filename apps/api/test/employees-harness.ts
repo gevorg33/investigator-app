@@ -71,6 +71,7 @@ export async function employeesApp() {
       post: (path: string, body?: object) => withHeaders(http.post(`/api/v1${path}`)).send(body),
       patch: (path: string, body: object) => withHeaders(http.patch(`/api/v1${path}`)).send(body),
       put: (path: string, body: object) => withHeaders(http.put(`/api/v1${path}`)).send(body),
+      delete: (path: string) => withHeaders(http.delete(`/api/v1${path}`)),
     };
   };
 

@@ -21,6 +21,7 @@ import { SearchModule } from './modules/search/search.module';
 import { ServiceAreasModule } from './modules/service-areas/service-areas.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { VerificationModule } from './modules/verification/verification.module';
+import { TeamsModule } from './modules/teams/teams.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TaxonomyModule } from './modules/taxonomy/taxonomy.module';
 import { InvestigationSourcesModule } from './modules/investigation-sources/investigation-sources.module';
@@ -63,6 +64,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     AssignmentsModule,
     VerificationModule,
     TenantsModule,
+    TeamsModule,
     TaxonomyModule,
     InvestigationSourcesModule,
     InvestigationWorkspaceModule,

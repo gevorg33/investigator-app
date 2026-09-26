@@ -123,6 +123,8 @@ export const tenantMemberships = pgTable(
     }).onDelete('cascade'),
     // One membership per person per workspace; a removed member rejoining reactivates it.
     uniqueIndex('tenant_memberships_tenant_user_unique').on(t.tenantId, t.userId),
+    // What a row naming a membership in its own workspace points at (team_members, T-086).
+    unique('tenant_memberships_id_tenant_unique').on(t.id, t.tenantId),
     // A Personal workspace never has a second member.
     uniqueIndex('tenant_memberships_one_per_personal')
       .on(t.tenantId)

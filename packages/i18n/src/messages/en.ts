@@ -944,6 +944,12 @@ export const en = {
         colour: 'Enter a colour as # followed by six characters, such as #1d4ed8.',
         low_contrast: 'This colour is too hard to read against. Choose a darker or a stronger one.',
       },
+      teams: {
+        name_length: 'Give the team a name of at most 80 characters.',
+        description_length: 'Use at most 500 characters.',
+        name_taken: 'The agency already has a team with this name.',
+        member_unknown: 'Choose someone who is a member of this agency.',
+      },
       employees: {
         role_unknown: 'Choose a role from the list.',
         role_required: 'Choose at least one role.',

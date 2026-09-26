@@ -32,4 +32,11 @@ export class AppError extends Error {
   static stateConflict(): AppError {
     return new AppError(ErrorCode.STATE_CONFLICT);
   }
+  /**
+   * A refusal because of the state things are in, with its own message for the one thing in the
+   * way — "the last owner", "a team of that name" — rather than only "this changed" (T-085).
+   */
+  static conflictOn(field: string, code: string, messageKey: string): AppError {
+    return new AppError(ErrorCode.STATE_CONFLICT, [{ field, code, messageKey }]);
+  }
 }
