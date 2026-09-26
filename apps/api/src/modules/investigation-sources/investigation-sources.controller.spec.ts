@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import { ErrorCode } from '../../common/errors/error-codes';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { InvestigationSourcesController } from './investigation-sources.controller';
 import { InvestigationSourcesService } from './investigation-sources.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ASSIGNMENT = '00000000-0000-4000-8000-0000000000a3';
 const SOURCE = '00000000-0000-4000-8000-0000000000b3';
@@ -51,9 +52,7 @@ describe('investigation source routes', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return instance;

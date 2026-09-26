@@ -1,4 +1,4 @@
-import { Global, Module, ValidationPipe } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -12,6 +12,7 @@ import { AuthzModule } from '../../common/authz/authz.module';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { closeApp, listenOnce } from '../../../test/http';
+import { validationPipe } from '../../common/validation/pipe';
 
 /**
  * DatabaseModule and AuditModule are @Global() in the running app. This stands in for
@@ -56,9 +57,7 @@ describe('auth wiring survives the container', () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     await listenOnce(app);
   });
 

@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,6 +11,7 @@ import { ErrorCode } from '../../../common/errors/error-codes';
 import { AppExceptionFilter } from '../../../common/errors/http-exception.filter';
 import { DiscoveryAnswerController } from './discovery-answer.controller';
 import { DiscoveryAnswerService } from './discovery-answer.service';
+import { validationPipe } from '../../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const ANSWER = { status: 'no_results', locale: 'en', results: [] };
@@ -40,9 +40,7 @@ describe('discovery assistant controller (T-018)', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     app.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(app);
   };

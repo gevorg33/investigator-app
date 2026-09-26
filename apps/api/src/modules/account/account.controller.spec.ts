@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,6 +11,7 @@ import { ErrorCode } from '../../common/errors/error-codes';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const VIEW = { id: 'u1', email: 'a@example.test', locale: 'ru', timezone: 'Asia/Yerevan' };
@@ -42,9 +42,7 @@ describe('account controller (T-127)', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     app.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(app);
   };

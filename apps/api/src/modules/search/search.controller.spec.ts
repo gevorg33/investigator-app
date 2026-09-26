@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,6 +8,7 @@ import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const EMPTY = { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };
@@ -28,9 +28,7 @@ describe('search controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     await listenOnce(app);
   });
 

@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { PolicyRefusalService } from './policy-refusal.service';
 import { PolicyReviewsController } from './policy-reviews.controller';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ID = '00000000-0000-4000-8000-0000000000a5';
 const moderator = testActor({
@@ -38,9 +39,7 @@ describe('policy review routes', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return instance;

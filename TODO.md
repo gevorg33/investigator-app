@@ -7172,7 +7172,7 @@ pnpm --filter api test legal
 ---
 
 ### T-157 — A DTO's own validation message reaches the client as the field name
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `validationPipe()` (`common/validation/pipe.ts`) builds `details` from the validation errors — property path as `field`, a catalog-key message as `messageKey`, `NOT_ALLOWED` for an undeclared field — and `AppExceptionFilter` passes them on instead of parsing message text. `bootstrap.ts` and all 27 route specs use it. Regression specs in `bootstrap.spec.ts` and the filter spec seen failing on the old code; documented in `docs/api/errors.md`. Web needed no change: `fieldErrorKeys` already preferred a specific key. Seen in the browser: sign-up with `a@b` shows the email message under the field, in en and ru, at 1024 and 375px
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -7195,10 +7195,10 @@ catalog key becomes `messageKey` and `field` is always the property. The same pa
 `property` ("property status should not exist"), seen probing T-032's task PATCH.
 
 **Acceptance criteria**
-- [ ] A refused `displayName` of spaces answers `{ field: 'displayName', messageKey: 'error.validation.display_name.blank' }`
-- [ ] A message that is not a catalog key still yields the property as `field` and the generic key
-- [ ] An undeclared field is reported under its own name, not `property`
-- [ ] The sign-up form shows the email message written for it, seen in the browser
+- [x] A refused `displayName` of spaces answers `{ field: 'displayName', messageKey: 'error.validation.display_name.blank' }`
+- [x] A message that is not a catalog key still yields the property as `field` and the generic key
+- [x] An undeclared field is reported under its own name, not `property`
+- [x] The sign-up form shows the email message written for it, seen in the browser
 
 **Validation**
 ```bash

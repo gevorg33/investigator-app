@@ -104,27 +104,36 @@ describe('the error filter', () => {
     expect(body.error['code']).toBe(code);
   });
 
-  it('turns the validation pipe’s messages into field issues', () => {
+  it('passes on the field issues the validation pipe attached', () => {
+    const details = [
+      { field: 'displayName', code: 'INVALID', messageKey: 'error.validation.display_name.blank' },
+      { field: 'status', code: 'NOT_ALLOWED', messageKey: 'error.common.validation_failed' },
+    ];
+    const { status, body } = respond(new BadRequestException({ details }));
+    expect(status).toBe(400);
+    expect(body.error['code']).toBe('VALIDATION_FAILED');
+    expect(body.error['details']).toEqual(details);
+  });
+
+  it('never reads a field name out of a message’s text (T-157)', () => {
+    // The old parsing took the first word as the field: a message that is a catalog key became
+    // `field: "error.validation…"`, and "property status should not exist" became `property`.
     const { body } = respond(
       new BadRequestException({
-        message: ['email must be an email', 'password must be longer than 12 characters'],
-        error: 'Bad Request',
-        statusCode: 400,
+        message: ['error.validation.display_name.blank', 'property status should not exist'],
       }),
     );
     expect(body.error['code']).toBe('VALIDATION_FAILED');
-    expect((body.error['details'] as Array<{ field: string }>).map((d) => d.field)).toEqual([
-      'email',
-      'password',
-    ]);
+    expect(body.error).not.toHaveProperty('details');
   });
 
-  it('keeps a one-word message whole, and an empty one empty', () => {
-    const { body } = respond(new BadRequestException({ message: ['required', ''] }));
-    expect((body.error['details'] as Array<{ field: string }>).map((d) => d.field)).toEqual([
-      'required',
-      '',
-    ]);
+  it('sends no details for an empty or malformed list', () => {
+    expect(respond(new BadRequestException({ details: [] })).body.error).not.toHaveProperty(
+      'details',
+    );
+    expect(
+      respond(new BadRequestException({ details: 'displayName' })).body.error,
+    ).not.toHaveProperty('details');
   });
 
   it('treats a 422 as a validation failure even with a single message', () => {

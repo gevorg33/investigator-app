@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -10,6 +9,7 @@ import { QuotesController } from './quotes.controller';
 import { QuotesService } from './quotes.service';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -40,9 +40,7 @@ describe('quotes controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     // The filter bootstrap.ts installs. This controller is the first to throw an AppError from
     // the handler body rather than from a pipe — a missing Idempotency-Key — and without the
     // filter that 422 arrived as a bare 500, which is what this spec caught.
