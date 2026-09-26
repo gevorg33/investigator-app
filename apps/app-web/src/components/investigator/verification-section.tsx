@@ -10,7 +10,7 @@ import { useSubmit } from '@/components/form/use-submit';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { callApi } from '@/lib/api/browser';
-import { ApiError } from '@/lib/api/errors';
+import { uploadMedia } from '@/lib/api/media';
 import type { VerificationApplication } from '@/lib/api/types';
 
 /** What the API accepts for a verification document (media.policy.ts). */
@@ -18,28 +18,9 @@ export const DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'] as 
 export const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 export const MAX_DOCUMENTS = 10;
 
-interface Authorization {
-  assetId: string;
-  upload: { url: string; fields: Record<string, string> };
-}
-
-/**
- * One document through the private flow (cloudinary-media): the API authorises an upload and signs
- * it; the file goes straight to storage; the API is told it is finished and checks it there. The
- * file never passes through our servers, and nothing about it is public.
- */
-export async function uploadDocument(file: File): Promise<string> {
-  const auth = await callApi<Authorization>('/media/uploads', {
-    body: { category: 'VERIFICATION_DOCUMENT', mimeType: file.type, bytes: file.size },
-  });
-  const form = new FormData();
-  for (const [key, value] of Object.entries(auth!.upload.fields)) form.append(key, value);
-  form.append('file', file);
-  const res = await fetch(auth!.upload.url, { method: 'POST', body: form });
-  if (!res.ok) throw new ApiError(res.status, 'UPLOAD_FAILED', 'error.common.internal');
-  await callApi(`/media/uploads/${encodeURIComponent(auth!.assetId)}/complete`);
-  return auth!.assetId;
-}
+/** A verification document, through the private upload flow (`uploadMedia`). */
+export const uploadDocument = (file: File): Promise<string> =>
+  uploadMedia(file, 'VERIFICATION_DOCUMENT');
 
 /**
  * Verification (T-123, T-013): every application with its decision and the reason given — never who

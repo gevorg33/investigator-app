@@ -5024,7 +5024,7 @@ pnpm --filter app-web test agency
 ---
 
 ### T-094 — Agency profile, settings and branding (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27; `/agency` (profile, preview, publish, colours) and `/agencies/[id]`
 - **Priority:** P3
 - **Depends on:** T-092, T-084
 - **Risk:** LOW
@@ -5047,8 +5047,18 @@ pnpm --filter app-web test agency
 > catalogs already (T-135's check requires it).
 
 **Acceptance criteria**
-- [ ] The preview matches the public projection exactly (shared component)
-- [ ] Branding cannot produce unreadable contrast; the core UI is never forked per agency
+- [x] The preview matches the public projection exactly (shared component)
+      — `AgencyProfileCard` takes `PublicAgencyProfile` and draws both the preview and
+      `/agencies/[id]`; `projection()` builds the preview from the own view (which now carries `id`
+      and `countryCode`, API spec seen failing first) plus the unsaved text, and a unit test holds
+      its keys equal to the API's projection. `agency.e2e.ts` compares the preview and the public
+      page line for line against the real API, at 375 and 1280px
+- [x] Branding cannot produce unreadable contrast; the core UI is never forked per agency
+      — contrast stays the API's rule (a refused colour is said beside its field, checked in the
+      browser); branded fills are drawn only in the new `data-theme="light"` token scope
+      (`tokens.css`), so they stay on a light surface in dark mode — asserted in the browser, and a
+      negative control without the scope failed. Branding touches only its own sample; no app
+      chrome reads it
 
 **Validation**
 ```bash

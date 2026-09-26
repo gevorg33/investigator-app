@@ -12,6 +12,7 @@ export const CLIENT_NAMESPACES = [
   'missions',
   'investigator',
   'workspace',
+  'agency',
   'assistant',
   'auth',
   'account',

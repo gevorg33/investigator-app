@@ -54,6 +54,9 @@ const themeColors = (theme: Theme) =>
  *
  * - `:root` holds each role's value, swapped for dark under `prefers-color-scheme` — the system
  *   setting decides, and nothing is stored.
+ * - `[data-theme="light"]` puts the light values back for one subtree, whatever the system
+ *   setting: for what is only ever measured against the light theme — an agency's branded fills
+ *   (T-094), reports and emails. It follows the dark swap, so at equal specificity it wins.
  * - Under `prefers-reduced-motion` every duration is 0: movement becomes an instant state change.
  * - `@theme` resets Tailwind's own palette, radii, shadows, type sizes, easings and breakpoints,
  *   so `bg-red-500`, `rounded-3xl` or `shadow-2xl` do not exist to be reached for. What remains
@@ -99,6 +102,11 @@ export function toCss(): string {
     '    color-scheme: dark;',
     declarations(themeColors('dark'), '    '),
     '  }',
+    '}',
+    '',
+    '[data-theme="light"] {',
+    '  color-scheme: light;',
+    declarations(themeColors('light'), '  '),
     '}',
     '',
     '@media (prefers-reduced-motion: reduce) {',

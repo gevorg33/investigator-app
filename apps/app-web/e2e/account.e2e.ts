@@ -21,7 +21,9 @@ import { text } from './support/text';
 test.describe.configure({ mode: 'serial' });
 
 const SESSION_COOKIE = 'investigator_session';
-const REGISTRATION = PUBLISHED.filter((d) => d.type !== 'TERMS_AND_CONDITIONS');
+const REGISTRATION = PUBLISHED.filter(
+  (d) => d.type === 'PRIVACY_POLICY' || d.type === 'TERMS_OF_SERVICE',
+);
 const CUSTOMER_TERMS = PUBLISHED.find((d) => d.type === 'TERMS_AND_CONDITIONS')!;
 
 let email: string;
@@ -71,11 +73,14 @@ test('signs up, reading and accepting the published documents', async () => {
   await expect(heading(page, text('auth.sign_up.title'))).toBeVisible();
   await expectAccessible(page);
 
-  // Exactly what registration requires is offered — not the customer's terms, which bind a role.
+  // Exactly what registration requires is offered — not the customer's terms, which bind a role,
+  // nor the agency agreement, which binds an agency.
   for (const d of REGISTRATION) {
     await expect(page.getByText(d.title, { exact: true })).toBeVisible();
   }
-  await expect(page.getByText(CUSTOMER_TERMS.title)).toHaveCount(0);
+  for (const d of PUBLISHED.filter((p) => !REGISTRATION.some((r) => r.type === p.type))) {
+    await expect(page.getByText(d.title)).toHaveCount(0);
+  }
 
   // Each reads in full in place.
   await page.getByText(REGISTRATION[0]!.title, { exact: true }).click();

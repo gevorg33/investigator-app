@@ -12,20 +12,27 @@ import {
   account,
   agencyWorkspace,
   application,
+  brandingSection,
+  deliveryUrl,
   legalDocument,
+  ownAgencyProfile,
   ownProfile,
   serviceArea,
   session,
   workspace,
 } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
-import { Redirected } from '@/test/navigation';
+import { NotFound, Redirected } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
 import InvestigatorPage, {
   generateMetadata as investigatorMeta,
 } from './(workspace)/account/investigator/page';
 import AccountPage, { generateMetadata as accountMeta } from './(workspace)/account/page';
+import AgencyPublicPage, {
+  generateMetadata as agencyPublicMeta,
+} from './(workspace)/agencies/[id]/page';
+import AgencyPage, { generateMetadata as agencyMeta } from './(workspace)/agency/page';
 import WorkspaceLayout from './(workspace)/layout';
 import MessagesPage, { generateMetadata as messagesMeta } from './(workspace)/messages/page';
 import MissionsPage, { generateMetadata as missionsMeta } from './(workspace)/missions/page';
@@ -71,13 +78,14 @@ describe('the application routes', () => {
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
     // Client components translate navigation, the browse, the investigator profile, the workspace
-    // switcher and agency onboarding, the assistant, the auth and account forms, legal text and
-    // errors.
+    // switcher and agency onboarding, the agency's profile and colours, the assistant, the auth and
+    // account forms, legal text and errors.
     expect(CLIENT_NAMESPACES).toEqual([
       'nav',
       'missions',
       'investigator',
       'workspace',
+      'agency',
       'assistant',
       'auth',
       'account',
@@ -318,6 +326,7 @@ describe('the application routes', () => {
       api.on('GET /legal/outstanding', 200, outstanding);
       api.on('GET /legal/required?for=INVESTIGATOR&locale=en', 200, []);
       api.on('GET /auth/sessions', 200, { sessions: [session({ current: true })] });
+      api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
     };
     const sections = () => screen.getAllByRole('region').map((r) => r.id);
 
@@ -353,12 +362,127 @@ describe('the application routes', () => {
       expect(within(agencies).queryByRole('link')).toBeNull();
     });
 
+    it('leads to the agency’s profile and colours while working in an agency — and only then', async () => {
+      signedIn([]);
+      api.on('GET /workspaces', 200, [
+        workspace({ current: false }),
+        agencyWorkspace({ current: true }),
+      ]);
+      renderIntl(await resolveServer(await AccountPage()));
+      const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
+      const link = within(agencies).getByRole('link', { name: /Agency profile and colours/ });
+      expect(link).toHaveAttribute('href', '/agency');
+      expect(link).toHaveTextContent(
+        'What customers see about Ararat Investigations, and the colours it uses.',
+      );
+    });
+
+    it('offers no agency profile from a Personal workspace, or when none is listed', async () => {
+      signedIn([]);
+      renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
+      api.on('GET /workspaces', 204);
+      renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
+    });
+
     it('has no documents section when nothing is outstanding', async () => {
       signedIn([]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(sections()).not.toContain('legal');
     });
   });
+  describe('the agency’s profile and colours (T-094)', () => {
+    const inAgency = () =>
+      api.on('GET /workspaces', 200, [
+        workspace({ current: false }),
+        agencyWorkspace({ current: true }),
+      ]);
+
+    it('is only for an agency workspace: anywhere else it sends the reader to Account’s agencies', async () => {
+      api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
+      await expect(AgencyPage()).rejects.toEqual(new Redirected('/account#agencies'));
+      api.on('GET /workspaces', 204);
+      await expect(AgencyPage()).rejects.toEqual(new Redirected('/account#agencies'));
+    });
+
+    it('shows the profile and the colours, each in its own section, titled in the reader’s language', async () => {
+      inAgency();
+      api.on('GET /agencies/current/profile', 200, ownAgencyProfile({ name: 'Ararat Checks' }));
+      api.on('GET /agencies/current/settings', 200, { branding: brandingSection(), general: {} });
+      renderIntl(await resolveServer(await AgencyPage()));
+      expect(screen.getByRole('heading', { level: 1, name: 'Agency profile' })).toBeVisible();
+      expect(screen.getByText('What customers see about Ararat Checks, and the colours it uses.'));
+      expect(screen.getAllByRole('region').map((r) => r.id)).toEqual(['profile', 'branding']);
+      expect(screen.getByRole('textbox', { name: 'Headline' })).toHaveValue(
+        'Due diligence across the Caucasus',
+      );
+      expect(screen.getByRole('textbox', { name: 'Accent colour' })).toHaveValue('');
+      expect((await agencyMeta()).title).toBe('Agency profile');
+    });
+
+    it('says which parts the reader’s role does not include, instead of a form that would be refused', async () => {
+      inAgency();
+      api.on('GET /agencies/current/profile', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
+      api.on('GET /agencies/current/settings', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
+      renderIntl(await resolveServer(await AgencyPage()));
+      expect(
+        screen.getByText(
+          'What customers see about Ararat Investigations, and the colours it uses.',
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getAllByText('Your role here does not include the agency’s profile'),
+      ).toHaveLength(2);
+      expect(screen.queryByRole('textbox')).toBeNull();
+    });
+
+    it('does not hide a failure that is not a refusal', async () => {
+      inAgency();
+      api.on('GET /agencies/current/profile', 500, apiError('INTERNAL', 'error.common.internal'));
+      api.on('GET /agencies/current/settings', 200, { branding: brandingSection() });
+      await expect(AgencyPage()).rejects.toMatchObject({ status: 500 });
+    });
+  });
+
+  describe('a published agency’s public page (T-094)', () => {
+    const id = ownAgencyProfile().id;
+    const params = (value: string) => ({ params: Promise.resolve({ id: value }) });
+    const published = {
+      id,
+      name: 'Ararat Checks',
+      headline: 'Due diligence across the Caucasus',
+      about: 'Twelve years of company checks.',
+      countryCode: 'AM',
+      logo: deliveryUrl('logo'),
+      cover: null,
+    };
+
+    it('is the public projection, headed with the agency’s name and titled with it', async () => {
+      api.on(`GET /agencies/${id}/profile`, 200, published);
+      renderIntl(await resolveServer(await AgencyPublicPage(params(id))));
+      expect(screen.getByRole('heading', { level: 1, name: 'Ararat Checks' })).toBeVisible();
+      const card = screen.getByRole('article', { name: 'Ararat Checks' });
+      expect(card).toHaveTextContent('Due diligence across the Caucasus');
+      expect(card).toHaveTextContent('Armenia');
+      expect(card).toHaveTextContent('Twelve years of company checks.');
+      expect(within(card).queryByRole('heading')).toBeNull();
+      expect((await agencyPublicMeta(params(id))).title).toBe('Ararat Checks');
+    });
+
+    it('is not found for an id that is not one, and for what the API does not show', async () => {
+      await expect(AgencyPublicPage(params('not-an-id'))).rejects.toBeInstanceOf(NotFound);
+      expect(api.calls).toEqual([]);
+      api.on(`GET /agencies/${id}/profile`, 404, apiError('NOT_FOUND', 'error.common.not_found'));
+      await expect(AgencyPublicPage(params(id))).rejects.toBeInstanceOf(NotFound);
+    });
+
+    it('does not turn a failure into a 404', async () => {
+      api.on(`GET /agencies/${id}/profile`, 500, apiError('INTERNAL', 'error.common.internal'));
+      await expect(AgencyPublicPage(params(id))).rejects.toMatchObject({ status: 500 });
+    });
+  });
+
   describe('the investigator profile page (T-123)', () => {
     const investigator = (over: { areas?: number; empty?: boolean } = {}) => {
       api.on('GET /me', 200, account({ roles: ['CUSTOMER', 'INVESTIGATOR'] }));

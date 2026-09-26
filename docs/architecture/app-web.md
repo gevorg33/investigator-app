@@ -314,6 +314,48 @@ reference. The rest was driven in the browser at 375px against the real API.
   profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
   not exist yet (filed as T-149).
 
+## An agency's profile and colours (T-094)
+
+`/agency`, reached from Account's Agencies section while working in an agency ("Agency profile and
+colours"). Anywhere else there is no agency to show, so it sends the reader to `/account#agencies`.
+API: `tenancy.md` §12, `media.md`.
+
+- **Public profile** (`ProfileEditor`): the name customers see (blank → the registered name, said in
+  the hint), headline and about, one form saved together; the logo and cover (`ImageField`), each
+  saved on choosing; and publishing, a form of its own. Every write names the version read, and the
+  answer is the profile as saved — whose version the next write names. A write refused because
+  someone saved first shows the API's "changed while you were working — reload".
+- **Publishing** lists what it still needs (the API's `missing`: a headline, a finished agency) and
+  is held back until nothing is missing. It publishes what is saved, so with changes waiting it is
+  held back too, and says so (`aria-describedby`). A published profile links to its public page.
+- **The preview** ("Preview as customers see it", a bottom `Drawer`, as T-123's) is
+  `AgencyProfileCard` fed by `projection()`: the public projection built from the saved profile and
+  the text as typed. It takes `PublicAgencyProfile`, the type `GET /agencies/:id/profile` answers
+  with, and `/agencies/[id]` draws the same component from that answer — so the preview is what
+  customers get. `GET /agencies/current/profile` returns the agency's `id` and `countryCode` for this
+  (T-094); the registered name comes from `GET /workspaces`. The browser suite compares the two
+  pages line for line.
+- **Images** go through the private flow (`lib/api/media.ts`, `uploadMedia`, shared with
+  verification): type and size checked first (JPEG, PNG, WebP; 2 MB logo, 5 MB cover), then
+  `POST /media/uploads` → storage → `…/complete` → the profile names it. A file with no link yet is
+  waiting for its safety check and says so; the card shows nothing for it, as customers would see.
+  **No scanner exists yet (T-065), so an uploaded image stays hidden**, and uploads themselves are
+  not verified end to end because Cloudinary is not configured locally or in CI (ACTIONS-FOR-ME #4).
+- **Colours** (`BrandingForm`): accent and report header, each `#rrggbb` or blank for the platform's
+  own, with the current value in the hint — the defaults are visible, and nothing must be set.
+  Contrast is the API's rule; a refused colour is said beside its field. The sample shows the
+  **saved** colours with the text colour the API derived, inside `data-theme="light"`: a branded
+  fill is measured against the light theme and is never drawn on dark chrome (`design-system`).
+- **Only branding has settings.** The other ten sections are empty places (T-084's owner decision),
+  so the page shows no section with nothing in it.
+- **Permissions are the API's**: a section whose read answers 403 says the reader's role does not
+  include it, instead of a form that would be refused. No role name is tested here.
+
+**Browser flow:** `e2e/agency.e2e.ts` — create the agency, reach the page from Account, preview
+unsaved text, save, publish, and the public page equal to the preview; a low-contrast colour
+refused beside its field, a saved one drawn on a white surface in dark mode (a negative control that
+removed the scope failed). axe on each screen.
+
 ## Finding investigators (T-120)
 
 A customer's Missions has two views, as links (`MissionsViews`): their own missions (T-119) and
@@ -520,7 +562,11 @@ What `e2e/global-setup.ts` does, so a failure can be read:
 Specs find things by role and by the words in the catalog (`support/text.ts`), never by class or
 test id, so the suite reads the screen as a person does and a copy change moves both together. The
 journey stays inside the API's per-account sign-in limit (five in five minutes); a new step that
-signs in again has to account for it. Traces, screenshots and both servers' logs land in
+signs in again has to account for it. `agency.e2e.ts` (T-094) is the second journey: its account is
+set up through the API, since the account screens are the first journey's subject. Together they
+register four accounts a run against the API's five per IP per hour — a third journey that
+registers, or a retry of both, meets that limit; the API process is new each run, so a new run
+starts from zero. Traces, screenshots and both servers' logs land in
 `e2e/.output/` (gitignored), which CI uploads when the step fails.
 
 ## Not built here
@@ -530,3 +576,5 @@ signs in again has to account for it. Traces, screenshots and both servers' logs
 - Google sign-in (T-062), and changing an email address or password from the account page.
 - The workspace switcher and every real screen — T-092 and the core-loop tasks.
 - Cancelling a mission from the app (T-154), and attachments on a mission (T-066).
+- Finishing an agency's core details after creation (T-150): a profile that lists `agency_setup` as missing
+  says so, but there is nowhere to finish it yet.
