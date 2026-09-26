@@ -318,10 +318,15 @@ describe('agency profile (T-084)', () => {
     it('refuses another agency’s logo even while their published profile makes it visible', async () => {
       const a = await setUp();
       const b = await setUp();
-      const theirs = await agencyImage(ownerSql, { tenantId: b.tenantId, uploadedBy: b.owner.actor.userId });
+      const theirs = await agencyImage(ownerSql, {
+        tenantId: b.tenantId,
+        uploadedBy: b.owner.actor.userId,
+      });
       await agencyProfile(ownerSql, b.tenantId, { logoMediaId: theirs, published: true });
       await expect(
-        as(a.owner, () => profiles.update(a.owner.actor, { version: 0, logoMediaId: theirs }, req())),
+        as(a.owner, () =>
+          profiles.update(a.owner.actor, { version: 0, logoMediaId: theirs }, req()),
+        ),
       ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', details: [{ code: 'NOT_USABLE' }] });
     });
 
@@ -444,9 +449,9 @@ describe('agency profile (T-084)', () => {
   describe('the database as the last line', () => {
     it('refuses a published profile without a headline, whatever writes it', async () => {
       const a = await setUp();
-      await expect(agencyProfile(ownerSql, a.tenantId, { headline: null, published: true })).rejects.toThrow(
-        /tenant_profiles_published_has_headline/,
-      );
+      await expect(
+        agencyProfile(ownerSql, a.tenantId, { headline: null, published: true }),
+      ).rejects.toThrow(/tenant_profiles_published_has_headline/);
     });
 
     it('refuses a logo that is not an AGENCY_LOGO, and a cover that is not an AGENCY_COVER', async () => {
@@ -456,7 +461,10 @@ describe('agency profile (T-084)', () => {
         uploadedBy: a.owner.actor.userId,
         category: 'PROFILE_IMAGE',
       });
-      const logo = await agencyImage(ownerSql, { tenantId: a.tenantId, uploadedBy: a.owner.actor.userId });
+      const logo = await agencyImage(ownerSql, {
+        tenantId: a.tenantId,
+        uploadedBy: a.owner.actor.userId,
+      });
       await expect(agencyProfile(ownerSql, a.tenantId, { logoMediaId: photo })).rejects.toThrow(
         /tenant_profiles_logo_category/,
       );
@@ -468,12 +476,17 @@ describe('agency profile (T-084)', () => {
     it('refuses another workspace’s file, and a profile for a Personal workspace', async () => {
       const a = await setUp();
       const b = await setUp();
-      const theirs = await agencyImage(ownerSql, { tenantId: b.tenantId, uploadedBy: b.owner.actor.userId });
+      const theirs = await agencyImage(ownerSql, {
+        tenantId: b.tenantId,
+        uploadedBy: b.owner.actor.userId,
+      });
       await expect(agencyProfile(ownerSql, a.tenantId, { logoMediaId: theirs })).rejects.toThrow(
         /tenant_profiles_logo_fk/,
       );
       const s = await stranger();
-      await expect(agencyProfile(ownerSql, s.context.tenantId)).rejects.toThrow(/tenant_profiles_tenant_kind_fk/);
+      await expect(agencyProfile(ownerSql, s.context.tenantId)).rejects.toThrow(
+        /tenant_profiles_tenant_kind_fk/,
+      );
     });
   });
 

@@ -1,6 +1,13 @@
 import { colors } from '@investigator/ui-tokens';
 import { describe, expect, it } from 'vitest';
-import { brandingProblem, contrast, MIN_TEXT_CONTRAST, MIN_UI_CONTRAST, REFERENCE, textOn } from './branding';
+import {
+  brandingProblem,
+  contrast,
+  MIN_TEXT_CONTRAST,
+  MIN_UI_CONTRAST,
+  REFERENCE,
+  textOn,
+} from './branding';
 
 describe('agency branding (T-084)', () => {
   it('measures contrast the way WCAG does', () => {

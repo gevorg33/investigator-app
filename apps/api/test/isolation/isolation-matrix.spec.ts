@@ -288,7 +288,12 @@ describe('the isolation matrix', () => {
   });
 
   describe('an agency’s profile (T-084)', () => {
-    const visible = async (context: ExecutionContext, table: string, column: string, value: string) => {
+    const visible = async (
+      context: ExecutionContext,
+      table: string,
+      column: string,
+      value: string,
+    ) => {
       const [row] = await as(context, (tx) =>
         tx.unsafe<{ n: number }[]>(`SELECT count(*)::int AS n FROM ${table} WHERE ${column} = $1`, [
           value,
@@ -338,17 +343,22 @@ describe('the isolation matrix', () => {
       };
       expect(await rowsSeen(outsider, 'verification_requests')).toBe(0);
       const seen = await runInContext(outsider, () =>
-        platform.asStaff(staff as never, { scope: 'VERIFICATION', purpose: 'verification.review' }, {}, async () => {
-          // Through `begin`, like every query the application makes: a bare tagged template on
-          // the pool is the unscoped path, and carries no context at all.
-          const rows = await scoped.begin(
-            (tx) =>
-              tx<{ n: number }[]>`
+        platform.asStaff(
+          staff as never,
+          { scope: 'VERIFICATION', purpose: 'verification.review' },
+          {},
+          async () => {
+            // Through `begin`, like every query the application makes: a bare tagged template on
+            // the pool is the unscoped path, and carries no context at all.
+            const rows = await scoped.begin(
+              (tx) =>
+                tx<{ n: number }[]>`
                 SELECT count(*)::int AS n FROM verification_requests
                  WHERE id = ${graph.rows['verification_requests']!}`,
-          );
-          return (rows[0] as unknown as { n: number }).n;
-        }),
+            );
+            return (rows[0] as unknown as { n: number }).n;
+          },
+        ),
       );
       expect(seen).toBe(1);
     });

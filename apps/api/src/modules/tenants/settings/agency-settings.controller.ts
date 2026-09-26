@@ -23,7 +23,8 @@ export class AgencySettingsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Every settings section, with its defaults where none was saved. Requires settings.read.',
+    summary:
+      'Every settings section, with its defaults where none was saved. Requires settings.read.',
   })
   async read(@CurrentActor() actor: Actor, @Req() req: Request): Promise<SettingsView> {
     return this.settings.read(actor, requestContext(req));

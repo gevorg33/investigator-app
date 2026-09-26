@@ -1,20 +1,17 @@
 import type { Role } from '../../common/authz/contract';
 import type { TenantPermission } from '../../common/authz/permissions';
 
-export type MediaCategory = 'PROFILE_IMAGE' | 'VERIFICATION_DOCUMENT' | 'AGENCY_LOGO' | 'AGENCY_COVER';
+export type MediaCategory =
+  'PROFILE_IMAGE' | 'VERIFICATION_DOCUMENT' | 'AGENCY_LOGO' | 'AGENCY_COVER';
 export type MediaVisibility =
-  | 'PUBLIC_PROFILE'
-  | 'PARTICIPANT_ONLY'
-  | 'EVIDENCE_RESTRICTED'
-  | 'STAFF_REVIEW_ONLY';
+  'PUBLIC_PROFILE' | 'PARTICIPANT_ONLY' | 'EVIDENCE_RESTRICTED' | 'STAFF_REVIEW_ONLY';
 
 /**
  * Who may upload into a category. A person's own files are theirs by platform role; an agency's
  * are the agency's, uploaded by a member holding the permission in an agency workspace (T-084).
  */
 export type Uploader =
-  | { readonly role: Role }
-  | { readonly permission: TenantPermission; readonly workspace: 'AGENCY' };
+  { readonly role: Role } | { readonly permission: TenantPermission; readonly workspace: 'AGENCY' };
 
 export interface CategoryPolicy {
   uploader: Uploader;

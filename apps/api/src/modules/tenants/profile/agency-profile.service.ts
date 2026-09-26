@@ -107,7 +107,11 @@ export class AgencyProfileService {
       // it would publish a profile that says nothing. Unpublish first.
       if (row?.publishedAt && changes.headline !== undefined && clean(changes.headline) === null) {
         throw AppError.validation([
-          { field: 'headline', code: 'REQUIRED', messageKey: 'error.validation.agency_profile.headline' },
+          {
+            field: 'headline',
+            code: 'REQUIRED',
+            messageKey: 'error.validation.agency_profile.headline',
+          },
         ]);
       }
       this.requireLengths(changes);

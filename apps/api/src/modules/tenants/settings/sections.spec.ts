@@ -10,7 +10,9 @@ describe('settings sections (T-084)', () => {
       'utf8',
     );
     const check = migration.slice(migration.indexOf('tenant_settings_known_section'));
-    const listed = [...check.slice(0, check.indexOf(')),')).matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+    const listed = [...check.slice(0, check.indexOf(')),')).matchAll(/'([a-z]+)'/g)].map(
+      (m) => m[1],
+    );
     expect(listed).toEqual([...SETTINGS_SECTIONS]);
   });
 
@@ -37,7 +39,11 @@ describe('settings sections (T-084)', () => {
 
   it('put a colour back to the platform’s own with null, and leave the rest alone', () => {
     expect(
-      applyPatch('branding', { accentColor: '#1d4ed8', reportHeaderColor: '#1e3a8a' }, { accentColor: null }),
+      applyPatch(
+        'branding',
+        { accentColor: '#1d4ed8', reportHeaderColor: '#1e3a8a' },
+        { accentColor: null },
+      ),
     ).toEqual({ values: { accentColor: null, reportHeaderColor: '#1e3a8a' } });
   });
 
@@ -49,7 +55,11 @@ describe('settings sections (T-084)', () => {
     });
     expect(result).toEqual({
       issues: [
-        { field: 'values.accentColor', code: 'INVALID', messageKey: 'error.validation.branding.colour' },
+        {
+          field: 'values.accentColor',
+          code: 'INVALID',
+          messageKey: 'error.validation.branding.colour',
+        },
         {
           field: 'values.reportHeaderColor',
           code: 'LOW_CONTRAST_TEXT',
@@ -70,7 +80,9 @@ describe('settings sections (T-084)', () => {
 
   it('refuse any setting in a section that has none yet, rather than pretending to save it', () => {
     expect(applyPatch('notifications', {}, { email: true })).toEqual({
-      issues: [{ field: 'values.email', code: 'UNKNOWN', messageKey: 'error.validation.settings.unknown' }],
+      issues: [
+        { field: 'values.email', code: 'UNKNOWN', messageKey: 'error.validation.settings.unknown' },
+      ],
     });
     expect(applyPatch('billing', {}, {})).toEqual({ values: {} });
   });
