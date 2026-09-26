@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { breakpoints } from '@investigator/ui-tokens';
 import { assistantApi, type AssistantApi } from '@/lib/api/assistant';
 import { useConversation, type Conversation } from './use-conversation';

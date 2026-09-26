@@ -41,7 +41,6 @@ export interface DeliveryUrl {
   expiresAt: Date;
 }
 
-
 /**
  * The upload and delivery flow from the cloudinary-media skill. PostgreSQL decides who may
  * touch a file; Cloudinary only stores it.
@@ -77,7 +76,11 @@ export class MediaService {
 
     if (!policy.formats[input.mimeType]) {
       throw AppError.validation([
-        { field: 'mimeType', code: 'TYPE_NOT_ALLOWED', messageKey: 'error.validation.media.type_not_allowed' },
+        {
+          field: 'mimeType',
+          code: 'TYPE_NOT_ALLOWED',
+          messageKey: 'error.validation.media.type_not_allowed',
+        },
       ]);
     }
     if (input.bytes > policy.maxBytes) {
@@ -124,7 +127,11 @@ export class MediaService {
    * The server reads the asset back from storage by the ID it assigned and checks it against
    * what it authorized. Nothing the client says about its upload is used.
    */
-  async completeUpload(actor: Actor, assetId: string, req: RequestContext): Promise<CompletedUpload> {
+  async completeUpload(
+    actor: Actor,
+    assetId: string,
+    req: RequestContext,
+  ): Promise<CompletedUpload> {
     const c = this.ctx('media.upload.complete', req, assetId);
     await this.authz.requireActive(actor, c);
     const row = await this.authz.visible(actor, await this.own.findOneForActor(actor, assetId), c);

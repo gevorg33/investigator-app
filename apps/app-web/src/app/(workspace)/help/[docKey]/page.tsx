@@ -44,7 +44,12 @@ export default async function HelpArticlePage({ params }: { params: Params }) {
           i === 0 && s.heading === article.title ? (
             <ArticleBody key={i} markdown={s.content} />
           ) : (
-            <section key={i} id={slug(s.heading)} aria-labelledby={`${slug(s.heading)}-h`} className="grid gap-3 scroll-mt-6">
+            <section
+              key={i}
+              id={slug(s.heading)}
+              aria-labelledby={`${slug(s.heading)}-h`}
+              className="grid gap-3 scroll-mt-6"
+            >
               <h2 id={`${slug(s.heading)}-h`} className="text-lg font-semibold">
                 {s.heading}
               </h2>

@@ -70,8 +70,13 @@ export default async function VerificationQueuePage({
                 <CardHeader>
                   <CardTitle>
                     {/* The whole card opens it; the link is the title, for its name. */}
-                    <Link href={`/verification/${item.id}`} className="after:absolute after:inset-0">
-                      {t('verification.item.title', { date: when(item.submittedAt, account.timezone) })}
+                    <Link
+                      href={`/verification/${item.id}`}
+                      className="after:absolute after:inset-0"
+                    >
+                      {t('verification.item.title', {
+                        date: when(item.submittedAt, account.timezone),
+                      })}
                     </Link>
                   </CardTitle>
                 </CardHeader>

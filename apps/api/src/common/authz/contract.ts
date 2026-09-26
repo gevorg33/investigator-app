@@ -10,9 +10,6 @@
  * These are types only. They erase at compile time, so no `require` of an ESM package
  * reaches the runtime — verified in the emitted output.
  */
-export type {
-  AccountStatus,
-  Actor,
-  Role,
-  StaffScope,
-} from '@investigator/auth' with { 'resolution-mode': 'import' };
+export type { AccountStatus, Actor, Role, StaffScope } from '@investigator/auth' with {
+  'resolution-mode': 'import',
+};

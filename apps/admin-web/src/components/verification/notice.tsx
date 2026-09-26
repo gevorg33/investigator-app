@@ -1,7 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
 
 /** A whole-screen state — nothing to review, no access — that says what it means and why. */
-export function Notice({ icon: Icon, title, body }: { icon: LucideIcon; title: string; body: string }) {
+export function Notice({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
   return (
     <section
       aria-labelledby="notice-title"

@@ -4,7 +4,13 @@ import { Bot } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { useAssistant, type AssistantAudience } from './assistant-provider';
 
 /**
@@ -38,8 +44,7 @@ export function EmptyConversation({
         <EmptyDescription>{t('body')}</EmptyDescription>
         {audience === 'NONE' && (
           <EmptyDescription>
-            {t('no_role')}{' '}
-            {/* Closed on the way, or the sheet would cover the page it leads to. */}
+            {t('no_role')} {/* Closed on the way, or the sheet would cover the page it leads to. */}
             <Link href="/account#roles" onClick={() => setOpen(false)} className="underline">
               {t('no_role_link')}
             </Link>

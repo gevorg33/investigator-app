@@ -16,7 +16,6 @@ import { testPool } from '../../../test/db';
 import { member } from '../../../test/workspace-fixtures';
 import { asRequests, inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
 
-
 describe('service areas', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -63,14 +62,21 @@ describe('service areas', () => {
   describe('managing your own areas', () => {
     it('coarsens a radius centre to about a kilometre before storing it', async () => {
       const { actor } = await investigator(ownerDb);
-      const created = await areas.createMine(actor, radius({ lon: 44.51523, lat: 40.18724 }), req());
+      const created = await areas.createMine(
+        actor,
+        radius({ lon: 44.51523, lat: 40.18724 }),
+        req(),
+      );
       expect(created).toMatchObject({
         kind: 'RADIUS',
         centre: { lon: 44.52, lat: 40.19 },
         radiusKm: 10,
         boundary: null,
       });
-      const [row] = await ownerDb.select().from(serviceAreas).where(eq(serviceAreas.id, created.id));
+      const [row] = await ownerDb
+        .select()
+        .from(serviceAreas)
+        .where(eq(serviceAreas.id, created.id));
       expect(row?.radiusM).toBe(10_000);
       // Only the coarsened point exists anywhere.
       expect(row?.centre).toEqual({ lon: 44.52, lat: 40.19 });
@@ -88,13 +94,19 @@ describe('service areas', () => {
       // minimum areas. A random longitude usually missed the affected bands, which is why an
       // earlier version of this test passed against the broken constraint.
       const { actor } = await investigator(ownerDb);
-      await expect(areas.createMine(actor, radius(at, 5), req())).resolves.toMatchObject({ radiusKm: 5 });
+      await expect(areas.createMine(actor, radius(at, 5), req())).resolves.toMatchObject({
+        radiusKm: 5,
+      });
     });
 
     it('closes a drawn boundary and returns it as drawn', async () => {
       const { actor } = await investigator(ownerDb);
       const boundary = square(somewhere(), 0.5);
-      const created = await areas.createMine(actor, { kind: 'POLYGON', label: 'district', boundary }, req());
+      const created = await areas.createMine(
+        actor,
+        { kind: 'POLYGON', label: 'district', boundary },
+        req(),
+      );
       expect(created).toMatchObject({ kind: 'POLYGON', centre: null, radiusKm: null, boundary });
     });
 
@@ -102,7 +114,11 @@ describe('service areas', () => {
       const { actor } = await investigator(ownerDb);
       const open = square(somewhere(), 0.5);
       const closed = [...open, open[0]!];
-      const created = await areas.createMine(actor, { kind: 'POLYGON', label: 'closed', boundary: closed }, req());
+      const created = await areas.createMine(
+        actor,
+        { kind: 'POLYGON', label: 'closed', boundary: closed },
+        req(),
+      );
       expect(created.boundary).toEqual(open);
     });
 
@@ -110,12 +126,25 @@ describe('service areas', () => {
       const { actor } = await investigator(ownerDb);
       const r = req();
       const created = await areas.createMine(actor, radius(somewhere()), r);
-      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
-      expect(rows).toContainEqual(expect.objectContaining({ action: 'service_area.created', resourceId: created.id, reason: 'RADIUS' }));
+      const rows = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, r.correlationId));
+      expect(rows).toContainEqual(
+        expect.objectContaining({
+          action: 'service_area.created',
+          resourceId: created.id,
+          reason: 'RADIUS',
+        }),
+      );
     });
 
     it.each([
-      ['a drawn area too small to be anywhere but one building', () => square(somewhere(), 0.01), 'TOO_SMALL'],
+      [
+        'a drawn area too small to be anywhere but one building',
+        () => square(somewhere(), 0.01),
+        'TOO_SMALL',
+      ],
       [
         'a self-intersecting boundary',
         () => {
@@ -144,7 +173,10 @@ describe('service areas', () => {
       const { actor } = await investigator(ownerDb);
       await expect(
         areas.createMine(actor, { kind: 'POLYGON', label: 'bad', boundary: makeBoundary() }, req()),
-      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED', details: [expect.objectContaining({ code })] });
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        details: [expect.objectContaining({ code })],
+      });
     });
 
     it('surfaces a database refusal it does not have a reason for, rather than mislabelling it', async () => {
@@ -156,7 +188,8 @@ describe('service areas', () => {
 
     it(`allows at most ${MAX_AREAS_PER_PROFILE} areas`, async () => {
       const { actor } = await investigator(ownerDb);
-      for (let i = 0; i < MAX_AREAS_PER_PROFILE; i++) await areas.createMine(actor, radius(somewhere()), req());
+      for (let i = 0; i < MAX_AREAS_PER_PROFILE; i++)
+        await areas.createMine(actor, radius(somewhere()), req());
       await expect(areas.createMine(actor, radius(somewhere()), req())).rejects.toMatchObject({
         details: [expect.objectContaining({ code: 'LIMIT_REACHED' })],
       });
@@ -182,15 +215,23 @@ describe('service areas', () => {
       const owner = await investigator(ownerDb);
       const created = await areas.createMine(owner.actor, radius(somewhere()), req());
       const stranger = await investigator(ownerDb);
-      await expect(areas.deleteMine(stranger.actor, created.id, req())).rejects.toMatchObject({ status: 404 });
-      await expect(areas.deleteMine(stranger.actor, randomUUID(), req())).rejects.toMatchObject({ status: 404 });
+      await expect(areas.deleteMine(stranger.actor, created.id, req())).rejects.toMatchObject({
+        status: 404,
+      });
+      await expect(areas.deleteMine(stranger.actor, randomUUID(), req())).rejects.toMatchObject({
+        status: 404,
+      });
       expect(await areas.listMine(owner.actor, req())).toHaveLength(1);
     });
 
     it('refuses a customer, a suspended investigator, and one with no profile', async () => {
       const { actor } = await investigator(ownerDb);
-      await expect(areas.listMine({ ...actor, roles: ['CUSTOMER'] }, req())).rejects.toMatchObject({ status: 403 });
-      await expect(areas.listMine({ ...actor, status: 'SUSPENDED' }, req())).rejects.toMatchObject({ status: 403 });
+      await expect(areas.listMine({ ...actor, roles: ['CUSTOMER'] }, req())).rejects.toMatchObject({
+        status: 403,
+      });
+      await expect(areas.listMine({ ...actor, status: 'SUSPENDED' }, req())).rejects.toMatchObject({
+        status: 403,
+      });
       await expect(
         areas.listMine(testActor({ userId: randomUUID(), roles: ['INVESTIGATOR'] }), req()),
       ).rejects.toMatchObject({ status: 404 });
@@ -216,7 +257,9 @@ describe('service areas', () => {
       // About 20 km north of the centre: outside a 5 km area by roughly 15 km.
       const away = { lon: at.lon, lat: at.lat + 0.18 };
       expect((await coverage(away)).map((c) => c.profileId)).not.toContain(profileId);
-      const reached = (await coverage(away, { searchRadiusM: 30_000 })).find((c) => c.profileId === profileId);
+      const reached = (await coverage(away, { searchRadiusM: 30_000 })).find(
+        (c) => c.profileId === profileId,
+      );
       expect(reached?.distanceKm).toBeGreaterThanOrEqual(15);
       expect(reached?.distanceKm).toBeLessThanOrEqual(16);
     });
@@ -226,7 +269,15 @@ describe('service areas', () => {
       const { actor, profileId } = await investigator(ownerDb);
       await areas.createMine(actor, radius(at, 10, 'a'), req());
       await areas.createMine(actor, radius(at, 20, 'b'), req());
-      await areas.createMine(actor, { kind: 'POLYGON', label: 'c', boundary: square({ lon: at.lon - 0.3, lat: at.lat - 0.3 }, 0.6) }, req());
+      await areas.createMine(
+        actor,
+        {
+          kind: 'POLYGON',
+          label: 'c',
+          boundary: square({ lon: at.lon - 0.3, lat: at.lat - 0.3 }, 0.6),
+        },
+        req(),
+      );
       const mine = (await coverage(at)).filter((c) => c.profileId === profileId);
       expect(mine).toEqual([{ profileId, distanceKm: 0 }]);
     });
@@ -278,7 +329,12 @@ describe('service areas', () => {
       ['a latitude out of range', { lon: 0, lat: -91 }, {}, 'point'],
       ['a non-numeric coordinate', { lon: Number.NaN, lat: 0 }, {}, 'point'],
       ['a negative search radius', { lon: 0, lat: 0 }, { searchRadiusM: -1 }, 'searchRadiusM'],
-      ['a search radius over the limit', { lon: 0, lat: 0 }, { searchRadiusM: 100_001 }, 'searchRadiusM'],
+      [
+        'a search radius over the limit',
+        { lon: 0, lat: 0 },
+        { searchRadiusM: 100_001 },
+        'searchRadiusM',
+      ],
       ['a zero limit', { lon: 0, lat: 0 }, { limit: 0 }, 'limit'],
       ['a fractional limit', { lon: 0, lat: 0 }, { limit: 1.5 }, 'limit'],
       ['a limit over the maximum', { lon: 0, lat: 0 }, { limit: 201 }, 'limit'],

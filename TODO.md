@@ -6235,7 +6235,7 @@ pnpm --filter api test password
 ---
 
 ### T-130 — `pnpm format:check` fails on 21 files, and nothing notices
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26; format:check green, now a PR gate
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW

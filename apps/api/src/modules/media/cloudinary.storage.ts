@@ -42,7 +42,11 @@ export class CloudinaryStorage implements MediaStorage {
     return `${folder}/tenant/${tenantId}/${category.toLowerCase().replace(/_/g, '-')}/${randomUUID()}`;
   }
 
-  signUpload(input: { publicId: string; resourceType: string; allowedFormats: string[] }): SignedUpload {
+  signUpload(input: {
+    publicId: string;
+    resourceType: string;
+    allowedFormats: string[];
+  }): SignedUpload {
     const params = {
       allowed_formats: input.allowedFormats.join(','),
       overwrite: 'false',
@@ -118,7 +122,9 @@ export class CloudinaryStorage implements MediaStorage {
  */
 export class UnconfiguredStorage implements MediaStorage {
   private refuse(): never {
-    throw new Error('Media storage is not configured: set the CLOUDINARY_* variables (ACTIONS-FOR-ME #4).');
+    throw new Error(
+      'Media storage is not configured: set the CLOUDINARY_* variables (ACTIONS-FOR-ME #4).',
+    );
   }
   publicIdFor(): string {
     return this.refuse();

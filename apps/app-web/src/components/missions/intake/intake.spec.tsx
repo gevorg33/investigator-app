@@ -509,8 +509,14 @@ describe('mission intake', () => {
     });
 
     it.each([
-      [{ subjectRelationship: 'FAMILY_MEMBER', protectiveOrderDeclared: true }, en.brief.protective_yes],
-      [{ subjectRelationship: 'PARTNER_OR_SPOUSE', protectiveOrderDeclared: false }, en.brief.protective_no],
+      [
+        { subjectRelationship: 'FAMILY_MEMBER', protectiveOrderDeclared: true },
+        en.brief.protective_yes,
+      ],
+      [
+        { subjectRelationship: 'PARTNER_OR_SPOUSE', protectiveOrderDeclared: false },
+        en.brief.protective_no,
+      ],
     ] as const)('says whether a protective order stands, where it was asked', (over, words) => {
       open(ownMission({ ...over, startBy: '2026-10-01' }), 'review');
       const brief = document.querySelector('dl')!;

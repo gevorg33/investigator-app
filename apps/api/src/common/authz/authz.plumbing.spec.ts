@@ -15,7 +15,6 @@ import { ACTOR_KEY, actorFromRequest } from './actor.decorator';
 import type { Actor } from './contract';
 import { testPool } from '../../../test/db';
 
-
 type UserRow = typeof users.$inferSelect;
 
 /** A repository that scopes to the actor, for comparison with the one below. */
@@ -80,9 +79,9 @@ describe('an unscoped repository exposes everything, by design', () => {
     const repo = new UnscopedUsers(db as never);
     const mine = await seedUser();
     const theirs = await seedUser();
-    await expect(repo.findOneForActor(testActor({ userId: theirs }), mine)).resolves.toMatchObject(
-      { id: mine },
-    );
+    await expect(repo.findOneForActor(testActor({ userId: theirs }), mine)).resolves.toMatchObject({
+      id: mine,
+    });
   });
 
   it('unscoped listing returns more than the actor’s own rows', async () => {
@@ -139,7 +138,10 @@ describe('the guard', () => {
 
   it('passes the cookie to actor resolution', async () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(testActor({ userId: 'u1' })) };
-    const req: Record<string, unknown> = { cookies: { investigator_session: 'tok' }, get: () => undefined };
+    const req: Record<string, unknown> = {
+      cookies: { investigator_session: 'tok' },
+      get: () => undefined,
+    };
     await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
     expect(actors.fromRefreshToken).toHaveBeenCalledWith('tok', undefined);
   });

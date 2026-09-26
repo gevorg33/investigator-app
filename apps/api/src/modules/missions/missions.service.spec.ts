@@ -32,7 +32,6 @@ import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { agency } from '../../../test/workspace-fixtures';
 import { runInContext } from '../../common/context/execution-context';
 
-
 describe('missions', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -221,7 +220,10 @@ describe('missions', () => {
       // Unpublished: the relay arrives with BullMQ (T-036).
       expect(events.every((e) => e.publishedAt === null)).toBe(true);
 
-      const audits = await ownerDb.select().from(auditLogs).where(eq(auditLogs.resourceId, draft.id));
+      const audits = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.resourceId, draft.id));
       expect(audits.map((a) => a.action)).toContain('mission.status_changed');
       expect(audits.map((a) => a.action)).toContain('mission.submitted');
 
@@ -306,7 +308,10 @@ describe('missions', () => {
         lawfulPurposeConfirmedAt: null,
       });
       expect(
-        await ownerDb.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
+        await ownerDb
+          .select()
+          .from(missionScreenings)
+          .where(eq(missionScreenings.missionId, draft.id)),
       ).toEqual([]);
     });
 
@@ -436,7 +441,11 @@ describe('missions', () => {
 
     it('gives the moderator’s reason for a rejection, in the mission and in the list', async () => {
       const { actor, mission } = await submitted();
-      await moderate(mission, 'REJECTED', 'Locating a person for a private reason is not supported.');
+      await moderate(
+        mission,
+        'REJECTED',
+        'Locating a person for a private reason is not supported.',
+      );
 
       const read = await service.getMine(actor, mission.id, req());
       expect(read).toMatchObject({
@@ -781,7 +790,10 @@ describe('missions', () => {
 
       // And the losing one left nothing behind: one screening, one submission in the history.
       expect(
-        await ownerDb.select().from(missionScreenings).where(eq(missionScreenings.missionId, draft.id)),
+        await ownerDb
+          .select()
+          .from(missionScreenings)
+          .where(eq(missionScreenings.missionId, draft.id)),
       ).toHaveLength(1);
       const history = await historyOf(draft.id);
       expect(history.filter((h) => h.toStatus === 'SUBMITTED')).toHaveLength(1);

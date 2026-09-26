@@ -24,7 +24,6 @@ import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
 import { runInContext, type ExecutionContext } from '../../common/context/execution-context';
 
-
 describe('quotes', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -322,7 +321,10 @@ describe('quotes', () => {
       ]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
 
-      const rows = await ownerDb.select().from(quotes).where(eq(quotes.missionId, mission.missionId));
+      const rows = await ownerDb
+        .select()
+        .from(quotes)
+        .where(eq(quotes.missionId, mission.missionId));
       expect(rows.filter((q) => q.status === 'ACCEPTED')).toHaveLength(1);
     });
   });
@@ -366,7 +368,10 @@ describe('quotes', () => {
         investigatorProfileId: inv.profileId,
       });
       await expect(
-        submittedQuote(ownerDb, { missionId: mission.missionId, investigatorProfileId: inv.profileId }),
+        submittedQuote(ownerDb, {
+          missionId: mission.missionId,
+          investigatorProfileId: inv.profileId,
+        }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'quotes_one_live_per_investigator' } });
     });
   });

@@ -284,26 +284,24 @@ describe('the assistant finding investigators (T-018)', () => {
     it('reports each stage as it starts — understanding, then finding — and never twice', async () => {
       await mine();
       const steps: unknown[] = [];
-      const answer = await asRequests(service(new FakeModel(proposing({ place: here() }))), owner).respond(
-        await as(),
-        { question: 'Someone in my city' },
-        'en',
-        req(),
-        { onStep: (s) => steps.push(s) },
-      );
+      const answer = await asRequests(
+        service(new FakeModel(proposing({ place: here() }))),
+        owner,
+      ).respond(await as(), { question: 'Someone in my city' }, 'en', req(), {
+        onStep: (s) => steps.push(s),
+      });
       expect(answer.status).toBe('results');
       expect(steps).toEqual([{ step: 'understanding' }, { step: 'finding' }]);
     });
 
     it('does not say it is finding anyone when it is not a search', async () => {
       const steps: unknown[] = [];
-      const answer = await asRequests(service(new FakeModel(proposing({ intent: 'other' }))), owner).respond(
-        await as(),
-        { question: 'How do refunds work?' },
-        'en',
-        req(),
-        { onStep: (s) => steps.push(s) },
-      );
+      const answer = await asRequests(
+        service(new FakeModel(proposing({ intent: 'other' }))),
+        owner,
+      ).respond(await as(), { question: 'How do refunds work?' }, 'en', req(), {
+        onStep: (s) => steps.push(s),
+      });
       expect([answer.status, steps]).toEqual(['not_discovery', [{ step: 'understanding' }]]);
     });
 
@@ -320,10 +318,16 @@ describe('the assistant finding investigators (T-018)', () => {
       };
       const steps: unknown[] = [];
       await expect(
-        asRequests(service(model), owner).respond(await as(), { question: 'Someone near' }, 'en', req(), {
-          onStep: (s) => steps.push(s),
-          signal: stop.signal,
-        }),
+        asRequests(service(model), owner).respond(
+          await as(),
+          { question: 'Someone near' },
+          'en',
+          req(),
+          {
+            onStep: (s) => steps.push(s),
+            signal: stop.signal,
+          },
+        ),
       ).rejects.toMatchObject({ name: 'AbortError' });
       expect(given).toBe(stop.signal);
       expect(steps).toEqual([{ step: 'understanding' }]);

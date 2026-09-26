@@ -8,7 +8,6 @@ import { auditLogs, users } from '../../database/schema';
 import { AuditService } from './audit.service';
 import { testPool } from '../../../test/db';
 
-
 describe('audit records', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
