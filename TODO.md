@@ -7384,7 +7384,7 @@ pnpm --filter app-web test account
 ---
 
 ### T-163 — An agency-settings race spec leaves a rejection unhandled
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. The spec builds `expect(attempt).rejects` before releasing the competitor and awaits it last. The competing transaction now settles 100 ms after its commit, holding CI's ordering open on every run: on the old ordering that reproduces CI's error (all tests pass, `Unhandled Rejection: AppError: STATE_CONFLICT`) in 5/5 runs; on the new, 20/20 targeted runs clean. API suite green at 100%
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7403,10 +7403,10 @@ the ordering is not. Attach the rejection expectation before `release()` (and aw
 fast rejection has a handler waiting.
 
 **Acceptance criteria**
-- [ ] The spec attaches its rejection handler before the competing transaction is released
-- [ ] Seen failing first: a delay forcing `attempt` to reject before `await competing` returns
+- [x] The spec attaches its rejection handler before the competing transaction is released
+- [x] Seen failing first: a delay forcing `attempt` to reject before `await competing` returns
   reproduces the unhandled error on the old ordering and not on the new
-- [ ] 20 targeted runs of the file with no unhandled error
+- [x] 20 targeted runs of the file with no unhandled error
 
 **Validation**
 ```bash
