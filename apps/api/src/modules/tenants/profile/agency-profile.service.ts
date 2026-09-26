@@ -147,8 +147,14 @@ export class AgencyProfileService {
                 ),
               )
               .returning();
-      if (written[0] === undefined) throw AppError.stateConflict();
-      return written[0];
+      const [saved] = written;
+      // Nothing written: another save got there first — the insert met its row, or the update
+      // found the version moved.
+      if (saved === undefined) {
+        throw AppError.stateConflict();
+      } else {
+        return saved;
+      }
     });
 
     await this.record(actor, req, 'agency.profile.updated');

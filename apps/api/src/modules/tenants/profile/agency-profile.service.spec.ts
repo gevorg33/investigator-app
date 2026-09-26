@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agencyImage, agencyProfile, agencySettings } from '../../../../test/agency-fixtures';
 import { testPool } from '../../../../test/db';
 import { FakeStorage } from '../../../../test/media-fixtures';
@@ -260,6 +260,27 @@ describe('agency profile (T-084)', () => {
         as(a.owner, () => profiles.update(a.owner.actor, { version: 0, headline }, req()));
       const results = await Promise.allSettled([save('One'), save('Two')]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    });
+
+    it('refuses a first save that meets a profile saved in the meantime, whatever the timing', async () => {
+      // The race above lands here only when both saves overlap; run one after the other, the second
+      // meets the version check instead. This holds the insert's own refusal down deterministically:
+      // the read finds nothing, and by the insert another save has created the row.
+      const a = await setUp();
+      await agencyProfile(ownerSql, a.tenantId, { headline: 'First' });
+      const read = vi
+        .spyOn(profiles as unknown as { row: () => Promise<undefined> }, 'row')
+        .mockResolvedValueOnce(undefined);
+      try {
+        await expect(
+          as(a.owner, () =>
+            profiles.update(a.owner.actor, { version: 0, headline: 'Second' }, req()),
+          ),
+        ).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
+      } finally {
+        read.mockRestore();
+      }
+      expect((await stored(a.tenantId))!.headline).toBe('First');
     });
 
     it('takes the agency’s own uploaded logo and cover', async () => {
