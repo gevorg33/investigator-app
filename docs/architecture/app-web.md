@@ -134,7 +134,11 @@ production Caddy routes it. Errors arrive in the API's contract shape and are sh
 (`GET /legal/required?for=INVESTIGATOR|CUSTOMER`), shown and accepted in the same form. This is the
 one action outstanding acceptance blocks — the API's role-activation gate — and it is offered only
 to a confirmed address. With both roles, "Show the platform as" sets the `active_role` cookie for
-the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Role`.
+the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Role`. The cookie is
+httpOnly, so the browser is told the role instead: `WorkspaceScope` pins it, and every browser call —
+`callApi` and the assistant's client alike — sends it as `X-Active-Role` too (T-145). Before that,
+someone with both roles who chose to act as a customer was their full self for every call made from
+the browser.
 
 **Time zone.** Stored on the account (`users.timezone`, validated as an IANA name — a fixed offset
 is refused because it ignores daylight saving). Every date on these screens is formatted in it. The
@@ -286,9 +290,9 @@ reference. The rest was driven in the browser at 375px against the real API.
 ## Workspaces and agency onboarding (T-092)
 
 - **Which workspace a page is in.** The workspace layout reads `GET /workspaces` and renders
-  inside `WorkspaceScope`, keyed by the current workspace's id. The scope pins that id for
-  `callApi` and the assistant's client, which send it as `X-Workspace` on every browser call
-  (`lib/api/workspace.ts`). The module is pinned in the browser only: on the server it would be
+  inside `WorkspaceScope`, keyed by the current workspace's id. The scope pins that id, and the
+  chosen role, for `callApi` and the assistant's client, which send them as `X-Workspace` and
+  `X-Active-Role` on every browser call (`scopeHeaders` in `lib/api/workspace.ts`). The module is pinned in the browser only: on the server it would be
   shared across requests, and server renders use the session's default instead
   (`tenancy.md`, resolution).
 - **The switcher** (`WorkspaceSwitcher`) appears only with more than one workspace: a

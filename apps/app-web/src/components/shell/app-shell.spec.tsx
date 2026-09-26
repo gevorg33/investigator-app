@@ -30,9 +30,7 @@ describe('the app shell', () => {
         locale={locale}
         messages={{ nav: catalogs[locale].nav, assistant: catalogs[locale].assistant }}
       >
-        <AssistantProvider audience="CUSTOMER" activeRole={null}>
-          {frame}
-        </AssistantProvider>
+        <AssistantProvider audience="CUSTOMER">{frame}</AssistantProvider>
       </I18nProvider>,
     );
   };

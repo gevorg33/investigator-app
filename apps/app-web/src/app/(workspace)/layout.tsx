@@ -37,11 +37,8 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   const investigator = account.roles.includes('INVESTIGATOR') && account.activeRole !== 'CUSTOMER';
   const customer = account.roles.includes('CUSTOMER');
   return (
-    <WorkspaceScope key={current?.id ?? 'none'} workspace={current}>
-      <AssistantProvider
-        audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}
-        activeRole={account.activeRole}
-      >
+    <WorkspaceScope key={current?.id ?? 'none'} workspace={current} activeRole={account.activeRole}>
+      <AssistantProvider audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}>
         <AppShell
           workspaces={
             all.length > 1

@@ -3,7 +3,7 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { callApi } from '@/lib/api/browser';
-import { pinWorkspace } from '@/lib/api/workspace';
+import { pinRole, pinWorkspace } from '@/lib/api/workspace';
 import { navigate } from '@/lib/navigate';
 import { api, apiError } from '@/test/api';
 import { agencyWorkspace, workspace } from '@/test/fixtures';
@@ -26,6 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   pinWorkspace(null);
+  pinRole(null);
   vi.restoreAllMocks();
 });
 
@@ -33,7 +34,7 @@ describe('the workspace a page was rendered in', () => {
   it('is named by every browser call from inside it', async () => {
     api.on('GET /workspaces', 200, []);
     renderIntl(
-      <WorkspaceScope workspace={AGENCY}>
+      <WorkspaceScope workspace={AGENCY} activeRole={null}>
         <p>inside</p>
       </WorkspaceScope>,
     );
@@ -42,10 +43,34 @@ describe('the workspace a page was rendered in', () => {
     expect(api.calls[0]!.headers).toEqual({ 'x-workspace': 'ws-ararat' });
   });
 
+  it('names the role the reader chose to act as, and forgets it when they unchoose (T-145)', async () => {
+    api.on('GET /workspaces', 200, []);
+    const { rerender } = renderIntl(
+      <WorkspaceScope workspace={AGENCY} activeRole="CUSTOMER">
+        {null}
+      </WorkspaceScope>,
+    );
+    await callApi('/workspaces', { method: 'GET' });
+    rerender(
+      <WorkspaceScope workspace={AGENCY} activeRole={null}>
+        {null}
+      </WorkspaceScope>,
+    );
+    await callApi('/workspaces', { method: 'GET' });
+    expect(api.calls.map((c) => c.headers)).toEqual([
+      { 'x-workspace': 'ws-ararat', 'x-active-role': 'CUSTOMER' },
+      { 'x-workspace': 'ws-ararat' },
+    ]);
+  });
+
   it('is not named when the API listed none', async () => {
     pinWorkspace('ws-left-over');
     api.on('GET /workspaces', 200, []);
-    renderIntl(<WorkspaceScope workspace={null}>{null}</WorkspaceScope>);
+    renderIntl(
+      <WorkspaceScope workspace={null} activeRole={null}>
+        {null}
+      </WorkspaceScope>,
+    );
     await callApi('/workspaces', { method: 'GET' });
     expect(api.calls[0]!.headers).toEqual({});
   });

@@ -6815,7 +6815,7 @@ pnpm --filter app-web test assistant && pnpm --filter api test ai
 ---
 
 ### T-145 — Browser calls do not say which role the reader acts as
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `WorkspaceScope` pins the chosen role beside the workspace; `scopeHeaders()` (`lib/api/workspace.ts`) is the one source of `X-Workspace` and `X-Active-Role` for `callApi` and `assistantApi()`, which lost its `role` parameter. Specs in `browser.spec.ts`, `workspace.spec.tsx`, `assistant.spec.ts` seen failing without the header
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6832,8 +6832,8 @@ widens. The assistant sends the header itself (`assistantApi(role)`). Make `call
 the rule holds in one place.
 
 **Acceptance criteria**
-- [ ] Every browser call carries the chosen role when there is one; a spec asserts it
-- [ ] `assistantApi` uses the shared path rather than its own header
+- [x] Every browser call carries the chosen role when there is one; a spec asserts it
+- [x] `assistantApi` uses the shared path rather than its own header
 
 **Validation**
 ```bash
