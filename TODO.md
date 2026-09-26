@@ -7241,7 +7241,7 @@ pnpm --filter api test http-exception bootstrap && pnpm --filter app-web test fo
 ---
 
 ### T-158 — Accept an invitation (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `/invitations/accept` in the `(auth)` group (`no-referrer`, token dropped from the address bar) with `AcceptInvitation`: joins on a press, activates the workspace, loads Home; each refusal (404, 409 member / suspended, 403) says what to do. `next` carried through sign-in ↔ sign-up and onto check-email's new **Continue**. Specs in `accept-invitation.spec.tsx`, `invitations/invitations.spec.tsx`, `auth-pages`/`auth-forms`. Seen in the browser against the real API, in Russian: invited → signed out → create account → check email → signed in unconfirmed → confirmed in another tab → Continue → joined, landing in the agency (375 and 768px); the used link refused with its message (1280px). KB `kb-agency-employees` v3 (en; ru/hy drafts); `app-web.md`; inventory. Filed T-161
 - **Priority:** P2
 - **Depends on:** T-085
 - **Risk:** LOW
@@ -7260,9 +7260,9 @@ account, used, cancelled, expired — one message), address not confirmed yet, a
 suspended. T-093 builds the rest of the agency console; this should not wait for teams.
 
 **Acceptance criteria**
-- [ ] An invitee signed in with the invited, confirmed address joins and lands in the agency
-- [ ] Signed out, the link survives sign-in and sign-up and comes back to the accept screen
-- [ ] Each refusal says what to do next; checked in the browser at three widths
+- [x] An invitee signed in with the invited, confirmed address joins and lands in the agency
+- [x] Signed out, the link survives sign-in and sign-up and comes back to the accept screen
+- [x] Each refusal says what to do next; checked in the browser at three widths
 
 **Validation**
 ```bash
@@ -7326,6 +7326,59 @@ measure the step's wall time either way, and do not raise single tests' timeouts
 **Validation**
 ```bash
 pnpm test:coverage
+```
+
+---
+
+### T-161 — The workspace switcher overflows the sidebar at tablet width
+- **Status:** DONE — 2026-09-27. The trigger (`workspace-switcher.tsx`) takes `min-w-0`: as a grid item at the default `min-width: auto` it sized the sidebar's column to the whole name. Spec in `workspace.spec.tsx` (menu and sheet) seen failing first. Measured in the browser with a 41-character agency name: trigger 12–227px inside the 240px sidebar, name truncated, heading clear, at 768 and 1280 in en, ru and hy; the phone sheet's trigger 16–359px at 375. Filed T-162
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/workspace/workspace-switcher.tsx, the workspace shell
+
+**Description**
+Found in T-158's browser check. At 768px, in an agency named "Halfway Renamed Agency", the
+switcher's trigger measured 275px wide inside a 227px sidebar column, and covered the first letters
+of the page heading ("Главная" read "лавная"). A long agency or Personal name should truncate inside
+the column, as the switcher's own rows already do (`truncate`), not push the button past it.
+
+**Acceptance criteria**
+- [x] The trigger never exceeds its column; a long name truncates, with the full name in its accessible name
+- [x] Checked in the browser at 768 and 1280 with a long agency name, in en, ru and hy
+
+**Validation**
+```bash
+pnpm --filter app-web test workspace
+```
+
+---
+
+### T-162 — The account page scrolls sideways at tablet width: the time zone button
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/account/time-zone-form.tsx
+
+**Description**
+Found in T-161's browser check. On `/account` at 768px, in Russian, the time zone card's submit
+("Сохранить часовой пояс") measured 603–829px inside a card ending at 736px — 93px past it — and
+the page's scroll width was 829px in a 768px viewport: a horizontal page scroll, which CLAUDE.md §10
+rules out. The select and the button sit in one row that does not wrap; the longer Russian label is
+what pushes it over.
+
+**Acceptance criteria**
+- [ ] No horizontal page scroll on `/account` at 375, 768 and 1280, in en, ru and hy
+- [ ] The select and its button stack or wrap rather than overflow, and the button stays ≥ 44px
+
+**Validation**
+```bash
+pnpm --filter app-web test account
 ```
 
 ---

@@ -573,6 +573,32 @@ It reads the same whatever the reason. The API answers an unpublished profile, a
 article and another customer's mission exactly as it answers one that is not there, and the page
 must not undo that by telling them apart.
 
+## Accepting an invitation (T-158)
+
+The invitation email links to `/invitations/accept?token=…`, in the `(auth)` group so it works signed
+out. The page decides between four states from the token and `GET /me`:
+
+| State | Shown |
+|---|---|
+| No token | "incomplete link", and Home |
+| Signed out | **Sign in** / **Create an account**, each carrying `next` back here |
+| Signed in, address not confirmed | confirm first, a link to `/check-email` carrying `next` |
+| Signed in and confirmed | `AcceptInvitation`: the signed-in address, and **Join the agency** |
+
+As `/verify-email`: `referrer: 'no-referrer'`, and the token leaves the address bar on load
+(`forgetQuery`, and `ForgetQuery` for the states with no form). Nothing is spent on load — mail
+scanners open links — only on the press: `POST /invitations/accept`, then
+`POST /workspaces/:id/activate`, `SWITCHED_KEY`, and a full load of Home, as creating an agency does.
+Refusals, each saying what to do: 404 — one message for another address, used, cancelled or expired,
+naming the signed-in address; 409 `MEMBER` — go Home, where the agency is in the menu; 409
+`SUSPENDED` — ask the agency; 403 — confirm the address. Anything else is `FormError`, and the
+button stays.
+
+**The way back.** `next` survives sign-in ↔ sign-up (each page's link to the other keeps it) and
+sign-up's "check your email", which then says to confirm and **Continue** — `/sign-in?next=…`, which
+sends someone already signed in straight on. The confirming link opens where the mail app puts it,
+usually another tab; this one keeps the way back. `next` always passes `safeNext`.
+
 ## Browser flows (T-139)
 
 `apps/app-web/e2e/` drives Chromium through the built app and the built API, against a database

@@ -18,6 +18,7 @@ const PERSONAL = workspace();
 const AGENCY = agencyWorkspace();
 const BUILDING = agencyWorkspace({ id: 'ws-new', name: 'Sevan', status: 'CREATING' });
 const ALL = [PERSONAL, AGENCY, BUILDING];
+const PERSONAL_ELSEWHERE = workspace({ current: false });
 
 beforeEach(() => {
   api.install();
@@ -114,6 +115,23 @@ describe('the workspace switcher', () => {
     renderIntl(<WorkspaceSwitcher workspaces={all} layout={layout} />);
   const trigger = (name = 'Personal') =>
     screen.getByRole('button', { name: `Switch workspace, now ${name}` });
+
+  /**
+   * T-161. In the sidebar's grid, a trigger with the default `min-width: auto` sized its column to
+   * the whole name: at 768px "Halfway Renamed Agency" measured 275px in a 227px column and covered
+   * the page heading. jsdom does no layout, so this holds the two classes that make the name
+   * truncate inside the column; the browser check in T-161 is the measurement.
+   */
+  it.each(['menu', 'sheet'] as const)(
+    'keeps a long name inside its column as a %s, and whole in the accessible name',
+    (layout) => {
+      const long = agencyWorkspace({ current: true, name: 'Halfway Renamed Agency of Yerevan' });
+      switcher(layout, [PERSONAL_ELSEWHERE, long]);
+      const button = trigger(long.name!);
+      expect(button).toHaveClass('w-full', 'min-w-0');
+      expect(within(button).getByText(long.name!)).toHaveClass('min-w-0', 'flex-1', 'truncate');
+    },
+  );
 
   describe('as a menu, from the sidebar', () => {
     const open = async () => {

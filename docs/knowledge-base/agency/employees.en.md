@@ -4,7 +4,7 @@ title: Your agency's employees — inviting, roles, teams, suspending and removi
 audience: agency
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
 updated: 2026-09-27
 source_of_truth: docs
@@ -13,6 +13,7 @@ related_code:
   - apps/api/src/modules/tenants/employees
   - apps/api/src/database/migrations/0028_add_employees.sql
   - apps/api/src/modules/teams
+  - apps/app-web/src/app/(auth)/invitations
 tags: [agency, employees, invitations, roles, members, suspend, remove, teams]
 ---
 
@@ -25,6 +26,18 @@ get a link that works once and for 7 days. They join by opening it while signed 
 with that email address, confirmed. Nobody can join an agency any other way.
 
 If they have no account yet, they create one with that address, confirm it, and then open the link.
+
+## What happens when I open an invitation link?
+
+A page asks you to join, with a **Join the agency** button. Nothing happens until you press it, so a
+mail program that checks links cannot use the invitation up. Once you join, the app switches you
+into the agency and says so on Home; the agency is then in your workspace menu, next to Personal.
+
+If you are signed out, the page asks you to sign in or create an account with the address the
+invitation was sent to, and brings you back to it afterwards. If you have just created the account,
+confirm your address from the email first, then choose **Continue** on the "check your email" page.
+If the page says the invitation cannot be used, it was sent to another address than the one you are
+signed in with, or it was used, cancelled or has expired: ask the agency to send it again.
 
 ## Can someone else use the link?
 
@@ -97,5 +110,6 @@ its own copy.
 
 ## Where is this in the app?
 
-The screens for managing employees are still being built. What this article describes is how it
-works, and the app will follow it.
+Joining by invitation works in the app: the link opens the page that joins you. The screens for
+inviting and managing employees are still being built; what this article describes is how they will
+work.

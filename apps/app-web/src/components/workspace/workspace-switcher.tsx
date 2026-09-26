@@ -102,7 +102,9 @@ function Trigger({
       aria-busy={target !== null}
       disabled={target !== null}
       {...props}
-      className="w-full justify-start"
+      // `min-w-0`: in the sidebar's grid a trigger at the default `min-width: auto` widened its
+      // column to the whole name and covered the page beside it (T-161); this lets it truncate.
+      className="w-full min-w-0 justify-start"
     >
       <Icon w={target ?? current} />
       <span className="min-w-0 flex-1 truncate text-left">

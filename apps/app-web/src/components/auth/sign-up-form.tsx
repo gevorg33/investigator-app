@@ -20,7 +20,14 @@ import { deviceTimeZone } from '@/lib/navigate';
  * Whatever the address, success looks the same: "check your email". Whether it was already
  * registered is something only its owner learns, by email.
  */
-export function SignUpForm({ documents }: { documents: readonly LegalDocument[] }) {
+export function SignUpForm({
+  documents,
+  next = '/',
+}: {
+  documents: readonly LegalDocument[];
+  /** Where the reader was going — kept through "check your email" (T-158). */
+  next?: string;
+}) {
   const t = useTranslations();
   const tl = t as unknown as LooseT;
   const locale = useLocale();
@@ -36,7 +43,8 @@ export function SignUpForm({ documents }: { documents: readonly LegalDocument[] 
           timezone: deviceTimeZone(),
         },
       }),
-    () => router.push('/check-email'),
+    () =>
+      router.push(next === '/' ? '/check-email' : `/check-email?next=${encodeURIComponent(next)}`),
   );
   const fields = fieldErrorKeys(error, tl);
   return (

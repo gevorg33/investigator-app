@@ -143,6 +143,15 @@ describe('signing up', () => {
     expect(router.push).toHaveBeenCalledWith('/check-email');
   });
 
+  it('keeps where the reader was going through “check your email” (T-158)', async () => {
+    api.on('POST /auth/register', 202);
+    renderIntl(<SignUpForm documents={documents} next="/invitations/accept?token=tok-9" />);
+    await signUp();
+    expect(router.push).toHaveBeenCalledWith(
+      '/check-email?next=%2Finvitations%2Faccept%3Ftoken%3Dtok-9',
+    );
+  });
+
   it('cannot be sent without accepting — the browser holds it back', async () => {
     renderIntl(<SignUpForm documents={documents} />);
     await signUp(false);

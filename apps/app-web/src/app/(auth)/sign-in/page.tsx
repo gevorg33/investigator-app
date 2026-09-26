@@ -45,7 +45,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
         <p className="flex flex-wrap items-center gap-x-2">
           <span className="text-text-muted">{t('auth.sign_in.new_here')}</span>
           <Link
-            href="/sign-up"
+            // Somewhere to come back to — an invitation (T-158) — survives choosing to sign up.
+            href={target === '/' ? '/sign-up' : `/sign-up?next=${encodeURIComponent(target)}`}
             className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
           >
             {t('auth.sign_in.create_account')}
