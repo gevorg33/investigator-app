@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import * as agencies from './agency-fixtures';
 import * as ai from './ai-fixtures';
 import * as assignments from './assignment-fixtures';
 import * as legal from './legal-fixtures';
@@ -49,6 +50,8 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   assignments: 'assignment-fixtures.assignment',
   investigation_sources: 'assignment-fixtures.investigationSource',
   ai_sessions: 'ai-fixtures.aiSession',
+  tenant_profiles: 'agency-fixtures.agencyProfile',
+  tenant_settings: 'agency-fixtures.agencySettings',
 };
 
 /** Tables a factory must NOT write, because something else is what makes them true. */
@@ -100,6 +103,7 @@ describe('factories', () => {
 
   it('name factories that exist', () => {
     const modules: Record<string, Record<string, unknown>> = {
+      'agency-fixtures': agencies,
       'ai-fixtures': ai,
       'assignment-fixtures': assignments,
       'media-fixtures': media,

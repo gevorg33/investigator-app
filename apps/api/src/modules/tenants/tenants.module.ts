@@ -1,14 +1,25 @@
 import { Module } from '@nestjs/common';
 import { LegalModule } from '../legal/legal.module';
+import { MediaModule } from '../media/media.module';
 import { AgenciesController } from './agencies.controller';
 import { AgenciesService } from './agencies.service';
+import { AgencyProfileController } from './profile/agency-profile.controller';
+import { AgencyProfileService } from './profile/agency-profile.service';
+import { AgencySettingsController } from './settings/agency-settings.controller';
+import { AgencySettingsService } from './settings/agency-settings.service';
 import { WorkspacesController } from './workspaces.controller';
 import { WorkspacesService } from './workspaces.service';
 
-// Creating an agency records the terms its owner accepted, in the same transaction (T-021).
+// Creating an agency records the terms its owner accepted, in the same transaction (T-021). Its
+// profile's logo and cover are signed by the one place that issues media links (T-084).
 @Module({
-  imports: [LegalModule],
-  controllers: [WorkspacesController, AgenciesController],
-  providers: [WorkspacesService, AgenciesService],
+  imports: [LegalModule, MediaModule],
+  controllers: [
+    WorkspacesController,
+    AgenciesController,
+    AgencyProfileController,
+    AgencySettingsController,
+  ],
+  providers: [WorkspacesService, AgenciesService, AgencyProfileService, AgencySettingsService],
 })
 export class TenantsModule {}

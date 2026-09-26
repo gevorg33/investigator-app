@@ -8,7 +8,27 @@ import {
 
 describe('media policy', () => {
   it('lists exactly the categories it has rules for', () => {
-    expect([...MEDIA_CATEGORIES].sort()).toEqual(['PROFILE_IMAGE', 'VERIFICATION_DOCUMENT']);
+    expect([...MEDIA_CATEGORIES].sort()).toEqual([
+      'AGENCY_COVER',
+      'AGENCY_LOGO',
+      'PROFILE_IMAGE',
+      'VERIFICATION_DOCUMENT',
+    ]);
+  });
+
+  it('lets an agency’s look be uploaded by whoever may change its settings, in the agency (T-084)', () => {
+    for (const category of ['AGENCY_LOGO', 'AGENCY_COVER'] as const) {
+      expect(MEDIA_POLICY[category]).toMatchObject({
+        uploader: { permission: 'settings.update', workspace: 'AGENCY' },
+        visibility: 'PUBLIC_PROFILE',
+      });
+      expect(Object.keys(MEDIA_POLICY[category].formats).sort()).toEqual([
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      ]);
+    }
+    expect(MEDIA_POLICY.AGENCY_LOGO.maxBytes).toBeLessThan(MEDIA_POLICY.AGENCY_COVER.maxBytes);
   });
 
   it('keeps verification documents for staff review, never on a public profile', () => {

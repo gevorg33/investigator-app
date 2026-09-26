@@ -53,6 +53,28 @@ export async function personalContext(
 }
 
 /**
+ * `userId`'s context in the agency `tenantId`, with what their roles there grant — as the resolver
+ * builds it for a request carrying `X-Workspace` (T-075, T-078). The membership must exist.
+ */
+export async function agencyContext(
+  owner: postgres.Sql,
+  userId: string,
+  tenantId: string,
+): Promise<ExecutionContext> {
+  const [row] = await owner<{ membership: string }[]>`
+    SELECT id AS membership FROM tenant_memberships
+     WHERE tenant_id = ${tenantId} AND user_id = ${userId}`;
+  return {
+    tenantId,
+    tenantKind: 'AGENCY',
+    userId,
+    membershipId: row!.membership,
+    sessionId: randomUUID(),
+    permissions: await permissionsOf(owner, row!.membership),
+  };
+}
+
+/**
  * What the membership's roles grant, read from the catalog — the same query the resolver makes
  * (T-078). A context with an empty permission list would refuse everything the way no other
  * caller does, so a spec would be testing the harness rather than the service.

@@ -171,6 +171,36 @@ describe('tenant permissions', () => {
     });
   });
 
+  describe('an agency’s own affairs stay in an agency (T-084)', () => {
+    it('is allowed there', async () => {
+      const me = await member(owner);
+      const { tenantId } = await agency(owner, [{ userId: me.actor.userId }]);
+      const context = await resolver.resolve(me.actor, tenantId);
+      await expect(
+        runInContext(context, () => authz.requireAgencyWorkspace(me.actor, ctx('probe.agency'))),
+      ).resolves.toBeUndefined();
+    });
+
+    it('is refused in a Personal workspace, and audited as such', async () => {
+      const me = await member(owner);
+      const context = await resolver.resolve(me.actor, me.personalId);
+      const c = ctx('probe.personal_agency');
+      await expect(
+        runInContext(context, () => authz.requireAgencyWorkspace(me.actor, c)),
+      ).rejects.toMatchObject({ status: 403 });
+      const [row] = await denialsFor(c.correlationId);
+      expect(row).toMatchObject({ reason: 'workspace_kind_forbidden' });
+    });
+
+    it('is refused outside any workspace', async () => {
+      const { actor } = await member(owner);
+      const c = ctx('probe.no_workspace_agency');
+      await expect(authz.requireAgencyWorkspace(actor, c)).rejects.toMatchObject({ status: 403 });
+      const [row] = await denialsFor(c.correlationId);
+      expect(row).toMatchObject({ reason: 'workspace_context_missing' });
+    });
+  });
+
   it('never decides from a role name: what a role grants lives in one place', async () => {
     // Two roles with different names and the same grants must be indistinguishable to a check.
     // AGENCY_STAFF and VIEWER are exactly that today (tenancy.md §3, "Open").
@@ -188,11 +218,15 @@ describe('tenant permissions', () => {
     // A typo would be a check that can never pass. The type stops it at compile time; this
     // states it at runtime too, for the ones already in the services.
     const used: TenantPermission[] = [
+      'company.read',
+      'company.update',
       'investigations.create',
       'investigations.read',
       'investigations.update',
       'investigators.read',
       'investigators.update',
+      'settings.read',
+      'settings.update',
     ];
     const known = await owner<{ key: string }[]>`
       SELECT key FROM permissions WHERE key = ANY(${used})`;

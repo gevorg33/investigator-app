@@ -841,6 +841,20 @@ export const en = {
       service_unavailable: 'This is not available right now. Try again later.',
     },
     validation: {
+      settings: { unknown: 'This setting does not exist here. Reload the page and try again.' },
+      branding: {
+        colour: 'Enter a colour as # followed by six characters, such as #1d4ed8.',
+        low_contrast: 'This colour is too hard to read against. Choose a darker or a stronger one.',
+      },
+      agency_profile: {
+        agency_setup:
+          'Finish setting up the agency first: name, country, business email, time zone and currency.',
+        headline: 'Add a headline — one line that says what the agency does.',
+        image: 'Choose one of this agency’s own uploaded images of the right kind.',
+        display_name_length: 'Use 2 to 120 characters for the name.',
+        headline_length: 'Use at most 160 characters for the headline.',
+        about_length: 'Use at most 3,000 characters.',
+      },
       country_code: { invalid: 'Choose a country from the list.' },
       email: { invalid: 'Enter a valid email address.' },
       password: {
