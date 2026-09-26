@@ -1,8 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
+import { Test } from '@nestjs/testing';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { readyPasswords } from '../../../test/passwords';
 import { PasswordService } from './password.service';
 
+// argon2 as it is, with every call counted — so a test can say how much work a call did without
+// a stopwatch, whatever the service calls it through.
+vi.mock('@node-rs/argon2', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@node-rs/argon2')>();
+  return { ...real, hash: vi.fn(real.hash), verify: vi.fn(real.verify) };
+});
+
 describe('PasswordService', () => {
-  const svc = new PasswordService();
+  let svc: PasswordService;
+
+  beforeAll(async () => {
+    svc = await readyPasswords();
+  });
 
   it('produces an argon2id hash, not bcrypt or plain', async () => {
     const h = await svc.hash('correct horse battery staple');
@@ -45,9 +58,10 @@ describe('PasswordService', () => {
    *   no-op decoy is ~1000x faster.
    *
    * T-069: the timing proof used to take one sample of each, and the decoy's sample was its
-   * **first** call, which also computes the decoy hash — so the ratio sat at ~2x before any
-   * noise, and reached 4.55x under load (5.58x once, in T-010). It now warms the decoy up, then
-   * compares medians of interleaved pairs, so load drifts both sides equally.
+   * **first** call, which also computed the decoy hash — so the ratio sat at ~2x before any
+   * noise, and reached 4.55x under load (5.58x once, in T-010). It then warmed the decoy up and
+   * compared medians of interleaved pairs, so load drifts both sides equally. Since T-129 the
+   * first call is not special — the decoy is made at startup — so there is no warm-up to do.
    */
   it('verifies the decoy against a hash with the same cost as a real one', async () => {
     const real = await svc.hash('real');
@@ -62,9 +76,60 @@ describe('PasswordService', () => {
     expect(cost(real)).toMatch(/^argon2id\$v=19\$m=\d+,t=\d+,p=\d+$/);
   });
 
+  /**
+   * T-129. The decoy used to be made on the first unknown-address login in each process, which
+   * then cost a hash and a verification — about twice a real one, and a tell. Counted, not timed:
+   * the first call makes one verification and no hash at all.
+   */
+  it('costs one verification on its very first call, because the decoy was made at startup', async () => {
+    // A fresh copy of the module, as in a process that has just started: nothing made yet.
+    vi.resetModules();
+    const argon2 = await import('@node-rs/argon2');
+    const { PasswordService: Fresh } = await import('./password.service');
+    const fresh = new Fresh();
+    await fresh.onModuleInit();
+    vi.mocked(argon2.hash).mockClear();
+    vi.mocked(argon2.verify).mockClear();
+
+    await fresh.verifyDecoy('first attempt');
+    expect(argon2.hash).not.toHaveBeenCalled();
+    expect(argon2.verify).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to run the decoy if it was never initialised, rather than making one late', async () => {
+    const verifies = vi.spyOn(PasswordService.prototype, 'verify');
+    try {
+      await expect(new PasswordService().verifyDecoy('x')).rejects.toThrow(/before onModuleInit/);
+      expect(verifies).not.toHaveBeenCalled();
+    } finally {
+      verifies.mockRestore();
+    }
+  });
+
+  it('is initialised by the application before it serves anything', async () => {
+    const mod = await Test.createTestingModule({ providers: [PasswordService] }).compile();
+    const app = mod.createNestApplication();
+    await app.init();
+    const verifies = vi.spyOn(app.get(PasswordService), 'verify');
+    await app.get(PasswordService).verifyDecoy('x');
+    expect(verifies).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('keeps an application that cannot make the decoy from starting', async () => {
+    const failing = vi
+      .spyOn(PasswordService.prototype, 'hash')
+      .mockRejectedValue(new Error('argon2 unavailable'));
+    try {
+      const mod = await Test.createTestingModule({ providers: [PasswordService] }).compile();
+      await expect(mod.createNestApplication().init()).rejects.toThrow('argon2 unavailable');
+    } finally {
+      failing.mockRestore();
+    }
+  });
+
   it('spends comparable time on a decoy, closing the timing oracle', async () => {
     const h = await svc.hash('real');
-    await svc.verifyDecoy('warm-up'); // the first call also computes the decoy hash
 
     const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
     const timed = async (fn: () => Promise<unknown>) => {

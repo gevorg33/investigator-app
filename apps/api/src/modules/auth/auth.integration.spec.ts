@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
+import { readyPasswords } from '../../../test/passwords';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
@@ -10,7 +11,6 @@ import { SessionRepository } from './session.repository';
 import * as schema from '../../database/schema';
 import { auditLogs, tenants, userSessions } from '../../database/schema';
 import { AuthService } from './auth.service';
-import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
@@ -43,7 +43,7 @@ describe('auth end to end', () => {
     correlationId: randomUUID(),
   });
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = testPool();
     db = scopedDb(sql);
     // max 2: one connection holds the documents lock while fixtures use the other (T-022).
@@ -52,7 +52,7 @@ describe('auth end to end', () => {
     const tokens = new TokenService();
     auth = new AuthService(
       db,
-      new PasswordService(),
+      await readyPasswords(),
       tokens,
       new SessionService(tokens),
       // Fresh store per suite so limits from one test do not exhaust another.

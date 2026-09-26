@@ -6275,7 +6275,7 @@ JavaScript and outlasts an Armenian browser; the cookie is host-only, HTTP-only,
 ---
 
 ### T-129 — Compute the login decoy at startup, not on first use
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26, approved by the owner in chat. `PasswordService.onModuleInit` makes the decoy hash, per instance; `verifyDecoy` throws if it was never made rather than making it late. Startup cost: one argon2id hash, median 11.8 ms (max 15.4 ms, 15 runs) on the development machine. Specs in `password.service.spec.ts` count argon2 calls on a freshly imported module (first call: 0 hashes, 1 verification) and prove Nest will not start without the decoy; 3 seen failing on the old service. Seen on the built API: after a restart, the first unknown-address login (42 ms) costs what a first wrong-password login does (35 ms) — both are warm-up — and then both paths take 19–24 ms. `test/passwords.ts` gives specs an initialised service
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -6291,9 +6291,9 @@ registered, the oracle the decoy exists to close. Computing the decoy when the m
 initialises removes it.
 
 **Acceptance criteria**
-- [ ] The decoy hash exists before the first request is served (the app refuses to become ready without it)
-- [ ] A test proves the first `verifyDecoy` call costs one verification, not two, using the structural check T-069 added and not only a clock
-- [ ] Startup time impact measured and recorded
+- [x] The decoy hash exists before the first request is served (the app refuses to become ready without it)
+- [x] A test proves the first `verifyDecoy` call costs one verification, not two, using the structural check T-069 added and not only a clock
+- [x] Startup time impact measured and recorded
 
 **Validation**
 ```bash
