@@ -6694,7 +6694,7 @@ pnpm --filter api test search discovery
 ---
 
 ### T-141 — `next build` fails in agent shells, and so does `scripts/setup.sh`
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `.claude/settings.json` no longer sets `NODE_ENV`; the Next apps build with `NODE_ENV=production` themselves. `pnpm build` passed with `NODE_ENV=development` exported; `./scripts/setup.sh` passed from a Node 20 + `NODE_ENV=development` shell. Specs in `apps/api/test/workspace-scripts.spec.ts`
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6711,8 +6711,8 @@ launch configuration already works around it with `env -u NODE_ENV`. Decide whet
 needed at all; if it is, make the build scripts immune to it rather than every caller remembering.
 
 **Acceptance criteria**
-- [ ] `pnpm build` and `./scripts/setup.sh` pass in an agent shell with no workaround
-- [ ] Whatever needed `NODE_ENV=development` still gets it
+- [x] `pnpm build` and `./scripts/setup.sh` pass in an agent shell with no workaround
+- [x] Whatever needed `NODE_ENV=development` still gets it
 
 **Validation**
 ```bash
@@ -6843,7 +6843,7 @@ pnpm --filter app-web test
 ---
 
 ### T-146 — Agent shells run Node 20, and two API specs fail on it
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `session-start.sh` puts the `.nvmrc` Node first on PATH through `CLAUDE_ENV_FILE`, or prints `WRONG NODE`; four specs in `apps/api/test/workspace-scripts.spec.ts` drive the hook with fake installs. `pnpm test:coverage` passed on the switched PATH. `node -v` in a fresh session is to be seen on the next session start (this one began before the hook existed)
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6859,8 +6859,8 @@ does not notice reports a failure that is not the code's. Related to T-141 (the 
 `NODE_ENV`). Make agent shells use the pinned version (the `.nvmrc`), or fail loudly when they do not.
 
 **Acceptance criteria**
-- [ ] `node -v` in an agent shell matches `.nvmrc`, or the session start says it does not
-- [ ] `pnpm test:coverage` passes in an agent shell with no PATH workaround
+- [x] `node -v` in an agent shell matches `.nvmrc`, or the session start says it does not
+- [x] `pnpm test:coverage` passes in an agent shell with no PATH workaround
 
 **Validation**
 ```bash

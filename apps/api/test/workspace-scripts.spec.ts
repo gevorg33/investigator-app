@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { chmodSync, globSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { globSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = join(__dirname, '../../..');
@@ -108,5 +109,99 @@ describe('CI runs what it says it runs', () => {
     expect(steps.indexOf('pnpm fixtures:load')).toBeGreaterThan(
       steps.indexOf('pnpm --filter api migration:run'),
     );
+  });
+});
+
+/**
+ * T-141: `NODE_ENV=development` in an agent shell made `next build` fail its 404 prerender, while
+ * CI and a plain terminal passed. The harness no longer sets it, and the Next apps build as
+ * production whatever the caller exported.
+ */
+describe('builds do not depend on the caller’s NODE_ENV (T-141)', () => {
+  const nextApps = packages.filter((p) =>
+    /\bnext build\b/.test(p.manifest.scripts?.['build'] ?? ''),
+  );
+
+  it('found the Next apps', () => {
+    expect(nextApps.map((p) => p.path).sort()).toEqual([
+      'apps/admin-web/package.json',
+      'apps/app-web/package.json',
+    ]);
+  });
+
+  it('builds each as production', () => {
+    for (const p of nextApps) {
+      expect(p.manifest.scripts?.['build']).toBe('NODE_ENV=production next build');
+    }
+  });
+
+  it('does not set NODE_ENV for every agent shell', () => {
+    const settings = JSON.parse(read('.claude/settings.json')) as { env?: Record<string, string> };
+    expect(settings.env?.['NODE_ENV']).toBeUndefined();
+  });
+});
+
+/**
+ * T-146: agent shells started on nvm's default Node (20) while `.nvmrc` pins 24, and specs using
+ * Node 22+ APIs failed for reasons that were not the code's. The session-start hook puts the
+ * pinned version first on PATH through CLAUDE_ENV_FILE, or says loudly that it cannot.
+ */
+describe('agent shells run the pinned Node (T-146)', () => {
+  const pinned = read('.nvmrc').trim();
+  const hook = join(ROOT, '.claude/hooks/session-start.sh');
+
+  /** A fake `node` that prints `version`, in its own bin directory. */
+  const fakeNode = (dir: string, version: string): string => {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, 'node'), `#!/bin/sh\necho v${version}\n`);
+    chmodSync(join(bin, 'node'), 0o755);
+    return bin;
+  };
+
+  const run = (opts: { onPath: string; installed?: string; envFile: boolean }) => {
+    const tmp = mkdtempSync(join(tmpdir(), 'session-start-'));
+    const onPath = fakeNode(join(tmp, 'default'), opts.onPath);
+    const nvm = join(tmp, 'nvm');
+    const installed =
+      opts.installed === undefined
+        ? undefined
+        : fakeNode(join(nvm, 'versions/node', `v${opts.installed}`), opts.installed);
+    const envFile = join(tmp, 'env');
+    writeFileSync(envFile, '');
+    const stdout = execFileSync('bash', [hook], {
+      encoding: 'utf8',
+      env: {
+        PATH: `${onPath}:/usr/bin:/bin`,
+        HOME: tmp,
+        NVM_DIR: nvm,
+        CLAUDE_PROJECT_DIR: ROOT,
+        ...(opts.envFile ? { CLAUDE_ENV_FILE: envFile } : {}),
+      },
+    });
+    return { stdout, exported: readFileSync(envFile, 'utf8'), installed };
+  };
+
+  it('puts the pinned version first on PATH for later commands', () => {
+    const r = run({ onPath: '20.20.2', installed: `${pinned}.1.0`, envFile: true });
+    expect(r.exported).toBe(`export PATH="${r.installed}:$PATH"\n`);
+    expect(r.stdout).toContain(`switched to v${pinned}.1.0 (.nvmrc)`);
+  });
+
+  it('warns when the pinned version is not installed', () => {
+    const r = run({ onPath: '20.20.2', envFile: true });
+    expect(r.exported).toBe('');
+    expect(r.stdout).toContain(`but .nvmrc pins ${pinned} — WRONG NODE`);
+  });
+
+  it('warns when it has nowhere to write the switch', () => {
+    const r = run({ onPath: '20.20.2', installed: `${pinned}.1.0`, envFile: false });
+    expect(r.stdout).toContain('WRONG NODE');
+  });
+
+  it('says nothing when the shell already runs the pinned version', () => {
+    const r = run({ onPath: `${pinned}.1.0`, envFile: true });
+    expect(r.exported).toBe('');
+    expect(r.stdout).not.toMatch(/^node:/m);
   });
 });

@@ -39,6 +39,17 @@ python3 .claude/hooks/test-guard.py
 Hooks fail closed. If a legitimate command is blocked, amend the hook deliberately — do
 not work around it.
 
+## The agent shell's environment
+
+Agent shells should run what CI runs, so nothing here sets `NODE_ENV`: Next.js fails `next
+build` under `development`, and the specs expect Vitest's `test` (T-141). The Next apps' `build`
+scripts pin `NODE_ENV=production` themselves, so an exported value cannot break them either. The
+API gets `development` from `.env.local` or the `api` entry in `.claude/launch.json`.
+
+`session-start.sh` checks `node` against `.nvmrc`. When they differ it puts the pinned nvm
+install first on `PATH` for every later command (through `CLAUDE_ENV_FILE`), or prints
+`WRONG NODE` when it cannot (T-146). Covered by `apps/api/test/workspace-scripts.spec.ts`.
+
 ## Adding a skill
 
 ```

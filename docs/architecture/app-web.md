@@ -481,6 +481,8 @@ in `.claude/launch.json` starts it against the local database with `NODE_ENV=dev
 session cookie is sent over plain HTTP and emailed links are written to the API's log).
 
 `pnpm build` at the root builds the tokens first. `next-env.d.ts` is generated and gitignored.
+The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
+404 prerender (T-141).
 
 ## Not built here
 
