@@ -144,7 +144,7 @@ describe('POST /api/v1/agencies', () => {
 
 describe('GET and PATCH /api/v1/agencies/current (T-150)', () => {
   let app: INestApplication | undefined;
-  const details = { ...created, version: 2 };
+  const details = { ...created, version: 2, mayChange: true };
 
   afterEach(async () => {
     await closeApp(app);

@@ -211,6 +211,18 @@ describe('mission intake', () => {
       expect(await screen.findByRole('button', { name: en.cancel.action })).toBeVisible();
     });
 
+    it('cancels nothing while what is waiting cannot be saved, and says why', async () => {
+      api.on(`PATCH /missions/me/${ID}`, 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
+      open(saved(), 'need');
+      const u = user();
+      await u.type(screen.getByLabelText(en.intake.need.title), 'A');
+      await u.click(screen.getByRole('button', { name: en.cancel.action }));
+      await u.click(screen.getByRole('button', { name: en.cancel.confirm }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(catalogs.en.error.common.internal);
+      expect(writes().map((w) => w.path)).toEqual([`/missions/me/${ID}`]);
+      expect(router.push).not.toHaveBeenCalled();
+    });
+
     it('saves what is waiting first, then cancels the version that save returned', async () => {
       api.on(`PATCH /missions/me/${ID}`, 200, saved({ version: 2 }));
       api.on(`POST /missions/me/${ID}/cancel`, 200, saved({ status: 'CANCELLED', version: 3 }));

@@ -4,6 +4,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
+import { currentContext } from '../../common/context/execution-context';
 import type { RequestContext } from '../../common/http/request-context';
 import { IdempotencyService } from '../../common/idempotency/idempotency.service';
 import { DB, type Db, type Tx } from '../../database/database.module';
@@ -33,6 +34,11 @@ export interface AgencyView {
 /** The agency's core details as its members read them, with the version a change must name. */
 export interface AgencyDetails extends AgencyView {
   version: number;
+  /**
+   * Whether the reader holds `company.update_details` here — so a screen offers the change only to
+   * whoever may make it. Shown, never trusted: the change checks the permission itself.
+   */
+  mayChange: boolean;
 }
 
 /** The workspace the request acts in — from the context, never from code (tenancy.md §6). */
@@ -313,4 +319,6 @@ const view = (row: typeof tenants.$inferSelect): AgencyView => ({
 const details = (row: typeof tenants.$inferSelect): AgencyDetails => ({
   ...view(row),
   version: row.version,
+  // Every caller has passed requireAgencyWorkspace, so there is a context to read.
+  mayChange: currentContext()!.permissions.includes('company.update_details'),
 });

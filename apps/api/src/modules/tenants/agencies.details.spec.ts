@@ -99,7 +99,9 @@ describe('agency core details (T-150)', () => {
       currency: 'AMD',
       missing: [],
       version: 1,
+      mayChange: false,
     });
+    expect(await read(a.owner)).toMatchObject({ mayChange: true });
   });
 
   it('says what an agency being set up still needs', async () => {
