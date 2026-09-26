@@ -36,7 +36,7 @@
     "cookie-parser": "1.4.7",
     "drizzle-orm": "0.45.2",
     "ioredis": "5.11.1",
-    "nestjs-pino": "4.6.1",
+    "nestjs-pino": "5.2.0",
     "pino": "10.3.1",
     "pino-http": "11.0.0",
     "postgres": "3.4.9",

@@ -214,7 +214,7 @@ importers:
         version: 1.43.0(react@19.2.8)
       next:
         specifier: 15.5.25
-        version: 15.5.25(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.9.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 15.5.25(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.63.0)(@types/node@24.9.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -313,8 +313,8 @@ importers:
         specifier: 5.11.1
         version: 5.11.1(supports-color@7.2.0)
       nestjs-pino:
-        specifier: 4.6.1
-        version: 4.6.1(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
+        specifier: 5.2.0
+        version: 5.2.0(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.3)(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
       pino:
         specifier: 10.3.1
         version: 10.3.1
@@ -3863,13 +3863,14 @@ packages:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
 
-  nestjs-pino@4.6.1:
-    resolution: {integrity: sha512-nuARXa0xpdJ1lY2+fgycIQr6H3g0VgqAWNK3xMYjOFcj2DoPETNXj0lV3Y86nRuI7BUfQp5PGiVoZvT4dTWbpQ==}
-    engines: {node: '>= 14'}
+  nestjs-pino@5.2.0:
+    resolution: {integrity: sha512-w7zIidjqzhvB7TSDBttC//NxKBAz2rr2d6pNctsglWqb/VqNbDj/Hko2VsgHMYmLpIoZ5pka5gASbGc60V8Qvw==}
+    engines: {node: '>=22.12.0'}
     peerDependencies:
-      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
-      pino: ^7.5.0 || ^8.0.0 || ^9.0.0 || ^10.0.0
-      pino-http: ^6.4.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0
+      '@nestjs/common': ^11.0.8 || ^12.0.2
+      '@nestjs/core': ^11.0.8 || ^12.0.2
+      pino: ^10.0.0
+      pino-http: ^11.0.0
       rxjs: ^7.1.0
 
   next@15.5.25:
@@ -7439,9 +7440,10 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  nestjs-pino@4.6.1(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2):
+  nestjs-pino@5.2.0(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.3)(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2):
     dependencies:
       '@nestjs/common': 11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@nestjs/core': 11.2.3(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/platform-express@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       pino: 10.3.1
       pino-http: 11.0.0
       rxjs: 7.8.2
@@ -7465,30 +7467,6 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 15.5.25
       '@next/swc-win32-x64-msvc': 15.5.25
       '@playwright/test': 1.63.0
-      sharp: 0.35.4(@types/node@24.9.2)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@types/node'
-      - babel-plugin-macros
-
-  next@15.5.25(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.9.2)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
-    dependencies:
-      '@next/env': 15.5.25
-      '@swc/helpers': 0.5.15
-      caniuse-lite: 1.0.30001810
-      postcss: 8.5.23
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-      styled-jsx: 5.1.6(@babel/core@7.29.7(supports-color@7.2.0))(react@19.2.8)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 15.5.25
-      '@next/swc-darwin-x64': 15.5.25
-      '@next/swc-linux-arm64-gnu': 15.5.25
-      '@next/swc-linux-arm64-musl': 15.5.25
-      '@next/swc-linux-x64-gnu': 15.5.25
-      '@next/swc-linux-x64-musl': 15.5.25
-      '@next/swc-win32-arm64-msvc': 15.5.25
-      '@next/swc-win32-x64-msvc': 15.5.25
       sharp: 0.35.4(@types/node@24.9.2)
     transitivePeerDependencies:
       - '@babel/core'
