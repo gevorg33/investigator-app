@@ -7289,6 +7289,38 @@ pnpm --filter api test invitations teams
 
 ---
 
+### T-160 — App-web tests time out in CI under parallel coverage
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .github/workflows/pr.yml, apps/*/vitest.config.ts, package.json
+
+**Description**
+Found on PR #85 (T-086, API-only): `mission-browse.spec.tsx` › "shows what is applied, and turns
+every choice into the address at once" timed out at 5,000 ms in CI's coverage step. The same test
+takes 305 ms locally, and 469 ms under coverage — CI ran it about ten times slower, because
+`pnpm -r test:coverage` runs every package's suite at once on one runner. Swapping its role queries
+for label queries (the fix `onboarding.spec.tsx` used) saved only ~12%, so this is contention, not
+one heavy test: any test near half a second is at the same risk, and T-155 may be the same thing.
+Decide the fix across the board — run the packages' coverage one at a time
+(`--workspace-concurrency=1`), cap Vitest's workers in CI, or a deliberate `testTimeout` for CI —
+measure the step's wall time either way, and do not raise single tests' timeouts to hide it.
+
+**Acceptance criteria**
+- [ ] The cause is shown with numbers (per-test times in CI before and after)
+- [ ] Ten consecutive CI runs of the coverage step without a timeout
+- [ ] The coverage step's wall time is recorded before and after
+
+**Validation**
+```bash
+pnpm test:coverage
+```
+
+---
+
 ## Backlog
 
 Captured, not yet scheduled. Move into a phase when a dependency lands.
