@@ -43,6 +43,12 @@ looks the public ID up. Nothing the client says about its upload is used at comp
 |---|---|---|---|---|
 | `PROFILE_IMAGE` | Investigator | JPEG, PNG, WebP | 5 MB | `PUBLIC_PROFILE` |
 | `VERIFICATION_DOCUMENT` | Investigator | PDF, JPEG, PNG | 15 MB | `STAFF_REVIEW_ONLY` |
+| `AGENCY_LOGO` | A member holding `settings.update`, in an agency | JPEG, PNG, WebP | 2 MB | `PUBLIC_PROFILE` |
+| `AGENCY_COVER` | A member holding `settings.update`, in an agency | JPEG, PNG, WebP | 5 MB | `PUBLIC_PROFILE` |
+
+An agency's images belong to the agency (`tenant_id`), not to the member who uploaded them: the
+uploader is `owner_id`, and completing the upload stays theirs, but any member who may change the
+agency's settings can use the file on the profile (T-084).
 
 Size limits are provisional engineering defaults. Mission, evidence and message media arrive
 with the entities they attach to.
@@ -56,10 +62,16 @@ with the entities they attach to.
 
 Everyone else gets **404**, identical to an id that does not exist.
 
-**Profile images are owner-only for now.** Showing one to other users must respect the
-profile's published state — a draft profile's photo must be as invisible as the draft
-(T-007) — and that link between image and profile does not exist yet. Until it does, the
-restrictive answer applies.
+**An investigator's profile image is still owner-only.** Showing one to other users must respect
+the profile's published state — a draft profile's photo must be as invisible as the draft (T-007) —
+and that link does not exist yet for investigator profiles.
+
+**An agency's logo and cover have that link (T-084).** They are shown through the agency's
+published profile and nowhere else: `MediaService.profileImageLinks` signs them — the one place that
+issues media links — for a reader the database lets see them (`public_branding_read`, migration
+0024: a file a *published* profile names), and only when READY and scanned CLEAN. The same
+five-minute links; not audited, because showing a published logo is not a sensitive access. A draft
+profile's images are invisible outside the agency.
 
 ## Fails closed
 

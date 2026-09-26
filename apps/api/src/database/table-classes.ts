@@ -90,6 +90,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   verification_requests: { class: 'tenant_owned', columns: ['tenant_id'] },
   verification_request_documents: { class: 'tenant_owned', columns: ['tenant_id'] },
   verification_decisions: { class: 'tenant_owned', columns: ['tenant_id'] },
+  tenant_profiles: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'public projection: any workspace reads it while published; agencies only, one per agency; the agency behind it (tenants) and its logo and cover (media_assets) are readable through it (T-084)',
+  },
+  tenant_settings: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'private to the workspace; one row per saved section, an absent section being its defaults (T-084)',
+  },
   idempotency_keys: {
     class: 'tenant_owned',
     columns: ['tenant_id'],

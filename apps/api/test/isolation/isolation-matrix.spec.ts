@@ -32,8 +32,13 @@ import { seedGraph, type SeededGraph } from './graph';
  */
 type Outcome = 'no rows' | 'refused' | 'REACHED';
 
-/** Every scoped table is keyed by `id`, except the one that is keyed by what it joins. */
-const KEY_COLUMN: Readonly<Record<string, string>> = { membership_roles: 'membership_id' };
+/** Every scoped table is keyed by `id`, except those keyed by what they join or belong to. */
+const KEY_COLUMN: Readonly<Record<string, string>> = {
+  membership_roles: 'membership_id',
+  // One per agency, and one row per agency in the graph (T-084).
+  tenant_profiles: 'tenant_id',
+  tenant_settings: 'tenant_id',
+};
 const keyOf = (table: string): string => KEY_COLUMN[table] ?? 'id';
 
 /**
@@ -278,6 +283,47 @@ describe('the isolation matrix', () => {
         expect(await rowsSeen(customer, table)).toBe(1);
         expect(await rowsSeen(supplier, table)).toBe(1);
         expect(await rowsSeen(outsider, table)).toBe(0);
+      }
+    });
+  });
+
+  describe('an agency’s profile (T-084)', () => {
+    const visible = async (context: ExecutionContext, table: string, column: string, value: string) => {
+      const [row] = await as(context, (tx) =>
+        tx.unsafe<{ n: number }[]>(`SELECT count(*)::int AS n FROM ${table} WHERE ${column} = $1`, [
+          value,
+        ]),
+      );
+      return row!.n;
+    };
+
+    it('shows a published profile, its agency and its logo to any workspace — never its settings', async () => {
+      const agencyId = graph.rows['tenant_profiles']!;
+      expect(await visible(outsider, 'tenants', 'id', agencyId)).toBe(0);
+      expect(await visible(outsider, 'media_assets', 'id', graph.agencyLogo)).toBe(0);
+      await owner`UPDATE tenant_profiles SET published_at = now() WHERE tenant_id = ${agencyId}`;
+      try {
+        expect(await rowsSeen(outsider, 'tenant_profiles')).toBe(1);
+        expect(await visible(outsider, 'tenants', 'id', agencyId)).toBe(1);
+        expect(await visible(outsider, 'media_assets', 'id', graph.agencyLogo)).toBe(1);
+        expect(await rowsSeen(outsider, 'tenant_settings')).toBe(0);
+        // The supplier's verification document is in another workspace, and no profile names it.
+        expect(await rowsSeen(outsider, 'media_assets')).toBe(0);
+      } finally {
+        await owner`UPDATE tenant_profiles SET published_at = NULL WHERE tenant_id = ${agencyId}`;
+      }
+      expect(await visible(outsider, 'media_assets', 'id', graph.agencyLogo)).toBe(0);
+    });
+
+    it('shows a published agency’s image only while the profile names it', async () => {
+      const agencyId = graph.rows['tenant_profiles']!;
+      await owner`UPDATE tenant_profiles SET published_at = now(), logo_media_id = NULL
+                   WHERE tenant_id = ${agencyId}`;
+      try {
+        expect(await visible(outsider, 'media_assets', 'id', graph.agencyLogo)).toBe(0);
+      } finally {
+        await owner`UPDATE tenant_profiles SET published_at = NULL, logo_media_id = ${graph.agencyLogo}
+                     WHERE tenant_id = ${agencyId}`;
       }
     });
   });

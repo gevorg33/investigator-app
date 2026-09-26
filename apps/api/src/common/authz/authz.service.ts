@@ -142,6 +142,20 @@ export class AuthzService {
   }
 
   /**
+   * An agency's own affairs — its public profile and its settings (T-084) — exist only in an
+   * agency workspace. A Personal workspace has neither, and asking for them there is refused the
+   * same way a customer action outside a Personal workspace is: 403, audited
+   * `workspace_kind_forbidden`.
+   */
+  async requireAgencyWorkspace(actor: Actor, ctx: AuthzContext): Promise<void> {
+    const context = currentContext();
+    if (context === undefined) await this.deny(actor, ctx, 'workspace_context_missing');
+    else if (context.tenantKind !== 'AGENCY') {
+      await this.deny(actor, ctx, 'workspace_kind_forbidden');
+    }
+  }
+
+  /**
    * Customer work happens in a Personal workspace, and only there (tenancy.md §3).
    *
    * Agencies are supplier-only in v1, and a row takes the workspace of the context it was

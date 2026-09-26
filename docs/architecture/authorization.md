@@ -263,6 +263,15 @@ and customer actions keep their platform-role checks until an agency version of 
 | List own quotes | `investigations.read` |
 | Read own investigator profile, service areas, verification applications | `investigators.read` |
 | Change them, or apply for verification | `investigators.update` |
+| Read the agency's own public profile, published or not (T-084) | `company.read` |
+| Change the agency's public profile, publish or unpublish it | `company.update` |
+| Read the agency's settings | `settings.read` |
+| Change a settings section · upload an agency logo or cover | `settings.update` |
+
+The agency's profile and settings exist only in an agency workspace:
+`AuthzService.requireAgencyWorkspace` refuses them elsewhere, 403 audited as
+`workspace_kind_forbidden` — the mirror of `requirePersonalWorkspace`. Reading a **published**
+agency's profile needs only an active account.
 
 ### Customer work happens in a Personal workspace
 
