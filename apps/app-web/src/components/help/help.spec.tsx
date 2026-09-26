@@ -86,9 +86,7 @@ describe('help articles (T-059)', () => {
     expect(screen.getByRole('heading', { level: 1, name: catalogs.en.help.title })).toBeVisible();
     expect(screen.getByRole('heading', { level: 2, name: confirm_first.title })).toBeVisible();
     expect(screen.getByText(confirm_first.body)).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: catalogs.en.account.profile.resend }),
-    ).toBeVisible();
+    expect(screen.getByRole('button', { name: catalogs.en.account.profile.resend })).toBeVisible();
     expect((await generateMetadata({ params })).title).toBe(catalogs.en.help.title);
     expect(api.calls.map((c) => c.path)).toEqual(['/me', '/me']);
   });
