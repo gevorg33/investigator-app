@@ -43,10 +43,7 @@ export async function OwnMissions({ locale, now }: { locale: Locale; now: Date }
       <ul className="grid gap-3" aria-label={t('missions.own.list')}>
         {missions.map((m) => (
           <li key={m.id}>
-            <Link
-              href={`/missions/${m.id}`}
-              className="block rounded-xl hover:bg-surface-sunken"
-            >
+            <Link href={`/missions/${m.id}`} className="block rounded-xl hover:bg-surface-sunken">
               <Card>
                 <CardHeader>
                   <CardTitle className={m.title === null ? 'text-text-muted' : undefined}>

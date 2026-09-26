@@ -1,23 +1,16 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsIn } from 'class-validator';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/authz/actor.decorator';
 import { ActorGuard } from '../../common/authz/actor.guard';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import { requestContext } from '../../common/http/request-context';
-import { KNOWLEDGE_LOCALES, type KnowledgeLocale } from '../../database/schema';
 import {
   KnowledgeDocumentsService,
   type KnowledgeDocumentView,
 } from './knowledge-documents.service';
-
-export class ReadDocumentQuery {
-  /** The reader's language; the English version when the article has none in it. */
-  @IsIn(KNOWLEDGE_LOCALES)
-  locale!: KnowledgeLocale;
-}
+import { ReadDocumentQuery } from './knowledge.dto';
 
 /** A document key as the knowledge base writes them (`knowledge-source.ts`): `kb-…`. */
 const DOC_KEY = /^kb-[a-z0-9]+(-[a-z0-9]+)*$/;

@@ -57,8 +57,28 @@ for one ID and `404` for another tells an attacker which IDs are real.
 
 Namespaced by domain: `MISSION_*`, `QUOTE_*`, `ASSIGNMENT_*`, `EVIDENCE_*`, `PAYMENT_*`,
 `AUTH_*`. Each new code ships with its translation key in en, ru and hy in the same task —
-`documentation-first`.
+`documentation-first` — and a test refuses one that does not (below).
 
 Codes that must exist before the first module: `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`,
 `VALIDATION_FAILED`, `STATE_CONFLICT`, `RATE_LIMITED`, `IDEMPOTENCY_KEY_REUSED`,
 `INTERNAL_ERROR`.
+
+## Every message key has words, in every locale (T-135)
+
+The API sends keys; `packages/i18n` holds their sentences, in `error.*` beside the UI catalogs, so
+the typed parity check keeps ru and hy in step with en.
+
+- **A key is written out whole** in the API — `'error.validation.legal.agency_agreement'`, never
+  `` `error.validation.legal.${type}` ``. Where a key depends on a value, a map names each one
+  (`ACCEPTANCE_REQUIRED_KEY`, a `Record` over the document types, so a new type does not
+  compile without its key).
+- **A test holds it**: `apps/app-web/src/lib/api/error-catalog.spec.ts` reads every
+  `'error.…'` string in the API's source and fails for any without a sentence in en, ru and hy,
+  and for any key assembled from parts, which it could not see.
+- **A field's own message reaches the reader.** A validation failure's title is generic ("Some
+  details need correcting"); `FormError` lists each field's specific message under it — "You can
+  have up to 10 service areas" — unless the form shows that field's message beside the field
+  (`shown`).
+
+Adding a code or a validation key therefore means adding its sentence in the same change; CI
+refuses the change otherwise.

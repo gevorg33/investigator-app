@@ -225,7 +225,7 @@ describe('agency profile (T-084)', () => {
           {
             field: 'displayName',
             code: 'LENGTH',
-            messageKey: 'error.validation.agency_profile.displayName_length',
+            messageKey: 'error.validation.agency_profile.display_name_length',
           },
           { field: 'headline', code: 'LENGTH' },
           { field: 'about', code: 'LENGTH' },

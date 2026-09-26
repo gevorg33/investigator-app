@@ -72,7 +72,12 @@ describe('env validation', () => {
 
     it('accepts a complete production configuration', () => {
       expect(() =>
-        validateEnv({ ...valid, ...cloud, NODE_ENV: 'production', CLOUDINARY_FOLDER: 'investigator/production' }),
+        validateEnv({
+          ...valid,
+          ...cloud,
+          NODE_ENV: 'production',
+          CLOUDINARY_FOLDER: 'investigator/production',
+        }),
       ).not.toThrow();
     });
 

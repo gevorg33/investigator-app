@@ -60,6 +60,12 @@ type ProfileRow = typeof tenantProfiles.$inferSelect;
 /** The workspace the request acts in — from the context, never from code (tenancy.md §6). */
 const THIS_WORKSPACE = sql`app_current_tenant()`;
 
+/** What each missing thing is called to the reader — written out whole for the catalog check (T-135). */
+const MISSING_KEY: Readonly<Record<OwnAgencyProfile['missing'][number], string>> = {
+  agency_setup: 'error.validation.agency_profile.agency_setup',
+  headline: 'error.validation.agency_profile.headline',
+};
+
 /** Text as stored: trimmed, and blank is no text. */
 const clean = (value: string | null | undefined): string | null | undefined =>
   value === undefined || value === null ? value : value.trim() === '' ? null : value.trim();
@@ -226,7 +232,7 @@ export class AgencyProfileService {
             missing.map((field): FieldIssue => ({
               field,
               code: 'REQUIRED',
-              messageKey: `error.validation.agency_profile.${field}`,
+              messageKey: MISSING_KEY[field],
             })),
           );
         }
@@ -262,18 +268,19 @@ export class AgencyProfileService {
 
   /** Lengths the database holds too (tenant_profiles_text_lengths), said as field errors first. */
   private requireLengths(changes: ProfileChanges): void {
-    const issues = (
-      [
-        ['displayName', 2, 120],
-        ['headline', 1, 160],
-        ['about', 1, 3000],
-      ] as const
-    ).flatMap(([field, min, max]): FieldIssue[] => {
-      const value = clean(changes[field]);
-      return typeof value === 'string' && (value.length < min || value.length > max)
-        ? [{ field, code: 'LENGTH', messageKey: `error.validation.agency_profile.${field}_length` }]
-        : [];
-    });
+    const issues = // Each key written out whole, so the app's catalog check can find it (T-135).
+      (
+        [
+          ['displayName', 2, 120, 'error.validation.agency_profile.display_name_length'],
+          ['headline', 1, 160, 'error.validation.agency_profile.headline_length'],
+          ['about', 1, 3000, 'error.validation.agency_profile.about_length'],
+        ] as const
+      ).flatMap(([field, min, max, messageKey]): FieldIssue[] => {
+        const value = clean(changes[field]);
+        return typeof value === 'string' && (value.length < min || value.length > max)
+          ? [{ field, code: 'LENGTH', messageKey }]
+          : [];
+      });
     if (issues.length > 0) throw AppError.validation(issues);
   }
 

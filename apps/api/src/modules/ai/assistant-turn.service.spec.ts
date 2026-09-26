@@ -293,7 +293,12 @@ describe('a turn in a conversation (T-056)', () => {
       await follow(
         turns,
         me,
-        await turns.ask(me, session.id, { content: 'Find someone to read my wife’s messages' }, req()),
+        await turns.ask(
+          me,
+          session.id,
+          { content: 'Find someone to read my wife’s messages' },
+          req(),
+        ),
       );
       expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
         source: 'discovery',
@@ -344,7 +349,11 @@ describe('a turn in a conversation (T-056)', () => {
           proposing({ intent: 'discovery', nearest: true }),
         );
         const respond = vi.spyOn(discovery, 'respond');
-        await follow(turns, me, await turns.ask(me, session.id, { content: 'The nearest one' }, req()));
+        await follow(
+          turns,
+          me,
+          await turns.ask(me, session.id, { content: 'The nearest one' }, req()),
+        );
         expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
           answer: { status: 'clarification', clarification: { code: 'location' } },
         });
@@ -373,7 +382,11 @@ describe('a turn in a conversation (T-056)', () => {
         });
 
         // Asked again, answered in words: the place is read together with the question.
-        await follow(turns, me, await turns.ask(me, session.id, { content: 'The nearest one' }, req()));
+        await follow(
+          turns,
+          me,
+          await turns.ask(me, session.id, { content: 'The nearest one' }, req()),
+        );
         await follow(
           turns,
           me,
@@ -388,7 +401,11 @@ describe('a turn in a conversation (T-056)', () => {
           proposing({ intent: 'discovery', policyConcern: true, place: { city: nowhere() } }),
         );
         const respond = vi.spyOn(discovery, 'respond');
-        await follow(turns, me, await turns.ask(me, session.id, { content: 'Find where he lives' }, req()));
+        await follow(
+          turns,
+          me,
+          await turns.ask(me, session.id, { content: 'Find where he lives' }, req()),
+        );
         expect((await history(sessions, me, session.id))[1]?.metadata).toMatchObject({
           answer: { status: 'clarification', clarification: { code: 'purpose' } },
         });
@@ -419,7 +436,12 @@ describe('a turn in a conversation (T-056)', () => {
           return proposing();
         });
         // Discovery asked which of two it meant.
-        await sessions.append(me, session.id, { role: 'USER', content: 'Someone for due diligence' }, req());
+        await sessions.append(
+          me,
+          session.id,
+          { role: 'USER', content: 'Someone for due diligence' },
+          req(),
+        );
         await sessions.append(
           me,
           session.id,
@@ -480,14 +502,22 @@ describe('a turn in a conversation (T-056)', () => {
       it('refuses an answer to a question nobody asked, and an answer with no question flag', async () => {
         const { turns, sessions, me, session } = await start(() => proposing());
         // Discovery's last word was results, not a question: nothing to answer.
-        await sessions.append(me, session.id, { role: 'USER', content: 'Someone in Gyumri' }, req());
+        await sessions.append(
+          me,
+          session.id,
+          { role: 'USER', content: 'Someone in Gyumri' },
+          req(),
+        );
         await sessions.append(
           me,
           session.id,
           {
             role: 'ASSISTANT',
             content: '',
-            metadata: { source: 'discovery', answer: { status: 'no_results', clarification: null } },
+            metadata: {
+              source: 'discovery',
+              answer: { status: 'no_results', clarification: null },
+            },
           },
           req(),
         );
@@ -502,7 +532,12 @@ describe('a turn in a conversation (T-056)', () => {
           turns.ask(me, session.id, { content: 'Near me', near: { lon: 1, lat: 1 } }, req()),
         ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
         await expect(
-          turns.ask(me, session.id, { content: 'That one', taxonomyNodeIds: [randomUUID()] }, req()),
+          turns.ask(
+            me,
+            session.id,
+            { content: 'That one', taxonomyNodeIds: [randomUUID()] },
+            req(),
+          ),
         ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
       });
     });

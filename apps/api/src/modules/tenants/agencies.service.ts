@@ -124,9 +124,7 @@ export class AgenciesService {
         .select({ id: roles.id })
         .from(roles)
         .where(and(eq(roles.key, OWNER_ROLE_KEY), isNull(roles.tenantId)));
-      await tx
-        .insert(membershipRoles)
-        .values({ membershipId: membership!.id, roleId: owner!.id });
+      await tx.insert(membershipRoles).values({ membershipId: membership!.id, roleId: owner!.id });
 
       await this.legal.accept(
         {

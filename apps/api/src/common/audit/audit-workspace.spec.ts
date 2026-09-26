@@ -71,7 +71,6 @@ describe('an audit entry belongs to the workspace it happened in', () => {
     });
   });
 
-
   it('gives a caller no way to name a workspace, a membership or a session', () => {
     // Read from the source, not from a list kept in step by hand: the event type is where the
     // guarantee lives, and a field added there would show up here.

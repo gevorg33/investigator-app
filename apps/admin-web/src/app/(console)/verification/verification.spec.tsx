@@ -432,12 +432,18 @@ describe('the staff verification console (T-070)', () => {
       expect((await generateMetadata({ params: Promise.resolve({ id: ID }) })).title).toBe(
         t('verification.title'),
       );
-      api.on('GET /verification/requests/other', 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
+      api.on(
+        'GET /verification/requests/other',
+        500,
+        apiError('INTERNAL_ERROR', 'error.common.internal'),
+      );
       await expect(ReviewPage({ params: Promise.resolve({ id: 'other' }) })).rejects.toMatchObject({
         status: 500,
       });
       api.down('GET /verification/requests/third');
-      await expect(ReviewPage({ params: Promise.resolve({ id: 'third' }) })).rejects.toThrow(TypeError);
+      await expect(ReviewPage({ params: Promise.resolve({ id: 'third' }) })).rejects.toThrow(
+        TypeError,
+      );
     });
 
     it('titles the page by its date', async () => {

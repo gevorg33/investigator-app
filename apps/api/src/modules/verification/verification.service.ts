@@ -235,52 +235,53 @@ export class VerificationService {
       { scope: 'VERIFICATION', purpose: 'verification.queue' },
       req,
       async () => {
-      const limit = clampLimit(query.limit);
-      const after = query.cursor === undefined ? undefined : decodeQueueCursor(query.cursor);
+        const limit = clampLimit(query.limit);
+        const after = query.cursor === undefined ? undefined : decodeQueueCursor(query.cursor);
 
-      const rows = await this.db
-        .select({
-          id: verificationRequests.id,
-          profileId: verificationRequests.profileId,
-          submittedAt: verificationRequests.submittedAt,
-          // A join, not a correlated subquery: inside a `sql` fragment drizzle writes a column
-          // unqualified, and a bare "id" there binds to the documents table, not this one.
-          documentCount: sql<number>`count(${verificationRequestDocuments.id})::int`,
-        })
-        .from(verificationRequests)
-        .leftJoin(
-          verificationRequestDocuments,
-          eq(verificationRequestDocuments.requestId, verificationRequests.id),
-        )
-        .where(
-          and(
-            eq(verificationRequests.status, 'SUBMITTED'),
-            after === undefined
-              ? undefined
-              : or(
-                  sql`${submittedAtMs} > ${after.submittedAt.toISOString()}::timestamptz`,
-                  and(
-                    sql`${submittedAtMs} = ${after.submittedAt.toISOString()}::timestamptz`,
-                    gt(verificationRequests.id, after.id),
+        const rows = await this.db
+          .select({
+            id: verificationRequests.id,
+            profileId: verificationRequests.profileId,
+            submittedAt: verificationRequests.submittedAt,
+            // A join, not a correlated subquery: inside a `sql` fragment drizzle writes a column
+            // unqualified, and a bare "id" there binds to the documents table, not this one.
+            documentCount: sql<number>`count(${verificationRequestDocuments.id})::int`,
+          })
+          .from(verificationRequests)
+          .leftJoin(
+            verificationRequestDocuments,
+            eq(verificationRequestDocuments.requestId, verificationRequests.id),
+          )
+          .where(
+            and(
+              eq(verificationRequests.status, 'SUBMITTED'),
+              after === undefined
+                ? undefined
+                : or(
+                    sql`${submittedAtMs} > ${after.submittedAt.toISOString()}::timestamptz`,
+                    and(
+                      sql`${submittedAtMs} = ${after.submittedAt.toISOString()}::timestamptz`,
+                      gt(verificationRequests.id, after.id),
+                    ),
                   ),
-                ),
-          ),
-        )
-        .groupBy(verificationRequests.id)
-        .orderBy(asc(submittedAtMs), asc(verificationRequests.id))
-        .limit(limit + 1);
+            ),
+          )
+          .groupBy(verificationRequests.id)
+          .orderBy(asc(submittedAtMs), asc(verificationRequests.id))
+          .limit(limit + 1);
 
-      const hasNextPage = rows.length > limit;
-      const items = rows.slice(0, limit);
-      return {
-        items,
-        pageInfo: {
-          // A next page means this one is full, so it has a last row to continue from.
-          nextCursor: hasNextPage ? encodeQueueCursor(items.at(-1)!) : null,
-          hasNextPage,
-        },
-      };
-    });
+        const hasNextPage = rows.length > limit;
+        const items = rows.slice(0, limit);
+        return {
+          items,
+          pageInfo: {
+            // A next page means this one is full, so it has a last row to continue from.
+            nextCursor: hasNextPage ? encodeQueueCursor(items.at(-1)!) : null,
+            hasNextPage,
+          },
+        };
+      },
+    );
   }
 
   /** One application with everything a reviewer needs to decide it, including the history. */
@@ -293,67 +294,71 @@ export class VerificationService {
       { scope: 'VERIFICATION', purpose: 'verification.review' },
       req,
       async () => {
-      const [request] = await this.db
-        .select()
-        .from(verificationRequests)
-        .where(eq(verificationRequests.id, requestId));
-      const found = await this.authz.visible(actor, request, c);
+        const [request] = await this.db
+          .select()
+          .from(verificationRequests)
+          .where(eq(verificationRequests.id, requestId));
+        const found = await this.authz.visible(actor, request, c);
 
-      const [profile] = await this.db
-        .select()
-        .from(investigatorProfiles)
-        .where(eq(investigatorProfiles.id, found.profileId));
-      // profile_id is a restricting foreign key: the profile exists for as long as the request.
-      const p = profile!;
+        const [profile] = await this.db
+          .select()
+          .from(investigatorProfiles)
+          .where(eq(investigatorProfiles.id, found.profileId));
+        // profile_id is a restricting foreign key: the profile exists for as long as the request.
+        const p = profile!;
 
-      const documents = await this.db
-        .select({
-          mediaAssetId: mediaAssets.id,
-          declaredMimeType: mediaAssets.declaredMimeType,
-          bytes: mediaAssets.bytes,
-          scanStatus: mediaAssets.scanStatus,
-        })
-        .from(verificationRequestDocuments)
-        .innerJoin(mediaAssets, eq(mediaAssets.id, verificationRequestDocuments.mediaAssetId))
-        .where(eq(verificationRequestDocuments.requestId, found.id))
-        .orderBy(asc(verificationRequestDocuments.createdAt), asc(mediaAssets.id));
+        const documents = await this.db
+          .select({
+            mediaAssetId: mediaAssets.id,
+            declaredMimeType: mediaAssets.declaredMimeType,
+            bytes: mediaAssets.bytes,
+            scanStatus: mediaAssets.scanStatus,
+          })
+          .from(verificationRequestDocuments)
+          .innerJoin(mediaAssets, eq(mediaAssets.id, verificationRequestDocuments.mediaAssetId))
+          .where(eq(verificationRequestDocuments.requestId, found.id))
+          .orderBy(asc(verificationRequestDocuments.createdAt), asc(mediaAssets.id));
 
-      const history = await this.db
-        .select({ request: verificationRequests, decision: verificationDecisions })
-        .from(verificationRequests)
-        .leftJoin(verificationDecisions, eq(verificationDecisions.requestId, verificationRequests.id))
-        .where(eq(verificationRequests.profileId, found.profileId))
-        .orderBy(desc(verificationRequests.submittedAt), desc(verificationRequests.id));
+        const history = await this.db
+          .select({ request: verificationRequests, decision: verificationDecisions })
+          .from(verificationRequests)
+          .leftJoin(
+            verificationDecisions,
+            eq(verificationDecisions.requestId, verificationRequests.id),
+          )
+          .where(eq(verificationRequests.profileId, found.profileId))
+          .orderBy(desc(verificationRequests.submittedAt), desc(verificationRequests.id));
 
-      return {
-        id: found.id,
-        status: found.status,
-        submittedAt: found.submittedAt,
-        declaredScope: found.declaredScope,
-        profile: {
-          id: p.id,
-          userId: p.userId,
-          headline: p.headline,
-          verificationStatus: p.verificationStatus,
-          verifiedAt: p.verifiedAt,
-        },
-        documents,
-        trail: history.map(({ request: r, decision: d }) => ({
-          requestId: r.id,
-          status: r.status,
-          submittedAt: r.submittedAt,
-          decision:
-            d === null
-              ? null
-              : {
-                  outcome: d.outcome,
-                  reason: d.reason,
-                  decidedBy: d.decidedBy,
-                  decidedAt: d.decidedAt,
-                },
-        })),
-      };
-    });
+        return {
+          id: found.id,
+          status: found.status,
+          submittedAt: found.submittedAt,
+          declaredScope: found.declaredScope,
+          profile: {
+            id: p.id,
+            userId: p.userId,
+            headline: p.headline,
+            verificationStatus: p.verificationStatus,
+            verifiedAt: p.verifiedAt,
+          },
+          documents,
+          trail: history.map(({ request: r, decision: d }) => ({
+            requestId: r.id,
+            status: r.status,
+            submittedAt: r.submittedAt,
+            decision:
+              d === null
+                ? null
+                : {
+                    outcome: d.outcome,
+                    reason: d.reason,
+                    decidedBy: d.decidedBy,
+                    decidedAt: d.decidedAt,
+                  },
+          })),
+        };
+      },
+    );
   }
 
   /**
@@ -377,106 +382,107 @@ export class VerificationService {
       { scope: 'VERIFICATION', purpose: 'verification.decide' },
       req,
       async () => {
-      return this.db.transaction(async (tx) => {
-        const [request] = await tx
-          .select()
-          .from(verificationRequests)
-          .where(eq(verificationRequests.id, requestId))
-          .for('update');
-        const found = await this.authz.visible(actor, request, c);
+        return this.db.transaction(async (tx) => {
+          const [request] = await tx
+            .select()
+            .from(verificationRequests)
+            .where(eq(verificationRequests.id, requestId))
+            .for('update');
+          const found = await this.authz.visible(actor, request, c);
 
-        const [profile] = await tx
-          .select()
-          .from(investigatorProfiles)
-          .where(eq(investigatorProfiles.id, found.profileId))
-          .for('update');
-        const p = profile!;
+          const [profile] = await tx
+            .select()
+            .from(investigatorProfiles)
+            .where(eq(investigatorProfiles.id, found.profileId))
+            .for('update');
+          const p = profile!;
 
-        // Nobody verifies themselves. A reviewer who is also the applicant is refused as a state
-        // of this request, not hidden from it: they can already see it as its owner.
-        await this.authz.stateAllows(
-          actor,
-          found.status === 'SUBMITTED' && p.userId !== actor.userId,
-          c,
-        );
+          // Nobody verifies themselves. A reviewer who is also the applicant is refused as a state
+          // of this request, not hidden from it: they can already see it as its owner.
+          await this.authz.stateAllows(
+            actor,
+            found.status === 'SUBMITTED' && p.userId !== actor.userId,
+            c,
+          );
 
-        // The decision is timed by the database, never the application server, and never before
-        // the submission it decides. A wall clock is not monotonic — the dev database's clock
-        // was seen stepping back 74 ms under load, so even two now()s from the same server can
-        // run backwards. `greatest` records the decision no earlier than the submission; the
-        // CHECK that forbids the reverse stays as the backstop.
-        const [decided] = await tx
-          .update(verificationRequests)
-          .set({
-            status: dto.outcome,
-            decidedAt: sql`greatest(now(), ${verificationRequests.submittedAt})`,
-            version: found.version + 1,
-            updatedAt: sql`greatest(now(), ${verificationRequests.submittedAt})`,
-          })
-          .where(
-            and(
-              eq(verificationRequests.id, found.id),
-              eq(verificationRequests.status, 'SUBMITTED'),
-              eq(verificationRequests.version, found.version),
-            ),
-          )
-          .returning();
-        if (!decided) throw AppError.stateConflict();
-        // Set by the UPDATE above; the CHECK ties it to the status just written.
-        const now = decided.decidedAt!;
-
-        const [decision] = await tx
-          .insert(verificationDecisions)
-          .values({
-            requestId: found.id,
-            outcome: dto.outcome,
-            reason: dto.reason.trim(),
-            decidedBy: actor.userId,
-            decidedAt: now,
-          })
-          .returning();
-        const d = decision!;
-
-        if (dto.outcome === 'APPROVED') {
-          await tx
-            .update(investigatorProfiles)
+          // The decision is timed by the database, never the application server, and never before
+          // the submission it decides. A wall clock is not monotonic — the dev database's clock
+          // was seen stepping back 74 ms under load, so even two now()s from the same server can
+          // run backwards. `greatest` records the decision no earlier than the submission; the
+          // CHECK that forbids the reverse stays as the backstop.
+          const [decided] = await tx
+            .update(verificationRequests)
             .set({
-              verificationStatus: 'VERIFIED',
-              // "When the current VERIFIED status was granted" — an approved addition does not
-              // move it.
-              verifiedAt: p.verificationStatus === 'VERIFIED' ? p.verifiedAt : now,
-              updatedAt: now,
+              status: dto.outcome,
+              decidedAt: sql`greatest(now(), ${verificationRequests.submittedAt})`,
+              version: found.version + 1,
+              updatedAt: sql`greatest(now(), ${verificationRequests.submittedAt})`,
             })
-            .where(eq(investigatorProfiles.id, p.id));
-        } else if (p.verificationStatus !== 'VERIFIED') {
-          await tx
-            .update(investigatorProfiles)
-            .set({ verificationStatus: 'REJECTED', updatedAt: now })
-            .where(eq(investigatorProfiles.id, p.id));
-        }
+            .where(
+              and(
+                eq(verificationRequests.id, found.id),
+                eq(verificationRequests.status, 'SUBMITTED'),
+                eq(verificationRequests.version, found.version),
+              ),
+            )
+            .returning();
+          if (!decided) throw AppError.stateConflict();
+          // Set by the UPDATE above; the CHECK ties it to the status just written.
+          const now = decided.decidedAt!;
 
-        await this.record(
-          actor,
-          req,
-          dto.outcome === 'APPROVED' ? 'verification.approved' : 'verification.rejected',
-          found.id,
-          tx,
-          'STAFF',
-        );
+          const [decision] = await tx
+            .insert(verificationDecisions)
+            .values({
+              requestId: found.id,
+              outcome: dto.outcome,
+              reason: dto.reason.trim(),
+              decidedBy: actor.userId,
+              decidedAt: now,
+            })
+            .returning();
+          const d = decision!;
 
-        return {
-          requestId: decided.id,
-          status: decided.status,
-          submittedAt: decided.submittedAt,
-          decision: {
-            outcome: d.outcome,
-            reason: d.reason,
-            decidedBy: d.decidedBy,
-            decidedAt: d.decidedAt,
-          },
-        };
-      });
-    });
+          if (dto.outcome === 'APPROVED') {
+            await tx
+              .update(investigatorProfiles)
+              .set({
+                verificationStatus: 'VERIFIED',
+                // "When the current VERIFIED status was granted" — an approved addition does not
+                // move it.
+                verifiedAt: p.verificationStatus === 'VERIFIED' ? p.verifiedAt : now,
+                updatedAt: now,
+              })
+              .where(eq(investigatorProfiles.id, p.id));
+          } else if (p.verificationStatus !== 'VERIFIED') {
+            await tx
+              .update(investigatorProfiles)
+              .set({ verificationStatus: 'REJECTED', updatedAt: now })
+              .where(eq(investigatorProfiles.id, p.id));
+          }
+
+          await this.record(
+            actor,
+            req,
+            dto.outcome === 'APPROVED' ? 'verification.approved' : 'verification.rejected',
+            found.id,
+            tx,
+            'STAFF',
+          );
+
+          return {
+            requestId: decided.id,
+            status: decided.status,
+            submittedAt: decided.submittedAt,
+            decision: {
+              outcome: d.outcome,
+              reason: d.reason,
+              decidedBy: d.decidedBy,
+              decidedAt: d.decidedAt,
+            },
+          };
+        });
+      },
+    );
   }
 
   /**
@@ -501,33 +507,34 @@ export class VerificationService {
       { scope: 'VERIFICATION', purpose: 'verification.open_document' },
       req,
       async () => {
-      const [membership] = await this.db
-        .select({ requestId: verificationRequestDocuments.requestId })
-        .from(verificationRequestDocuments)
-        .where(
-          and(
-            eq(verificationRequestDocuments.requestId, requestId),
-            eq(verificationRequestDocuments.mediaAssetId, mediaAssetId),
-          ),
-        );
-      // A document that is not part of this application is answered as absent, whether or not
-      // the asset exists: the application is the only door to it here.
-      await this.authz.visible(actor, membership, c);
+        const [membership] = await this.db
+          .select({ requestId: verificationRequestDocuments.requestId })
+          .from(verificationRequestDocuments)
+          .where(
+            and(
+              eq(verificationRequestDocuments.requestId, requestId),
+              eq(verificationRequestDocuments.mediaAssetId, mediaAssetId),
+            ),
+          );
+        // A document that is not part of this application is answered as absent, whether or not
+        // the asset exists: the application is the only door to it here.
+        await this.authz.visible(actor, membership, c);
 
-      const url = await this.media.getDeliveryUrl(actor, mediaAssetId, req);
-      await this.audit.record({
-        correlationId: req.correlationId,
-        ipAddress: req.ip,
-        userAgent: req.userAgent,
-        actorId: actor.userId,
-        actorRole: 'STAFF',
-        action: 'verification.document_opened',
-        resourceType: 'verification_request',
-        resourceId: requestId,
-        reason: mediaAssetId,
-      });
-      return url;
-    });
+        const url = await this.media.getDeliveryUrl(actor, mediaAssetId, req);
+        await this.audit.record({
+          correlationId: req.correlationId,
+          ipAddress: req.ip,
+          userAgent: req.userAgent,
+          actorId: actor.userId,
+          actorRole: 'STAFF',
+          action: 'verification.document_opened',
+          resourceType: 'verification_request',
+          resourceId: requestId,
+          reason: mediaAssetId,
+        });
+        return url;
+      },
+    );
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -39,7 +39,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
       <p className="text-text-muted">{t('auth.reset.note')}</p>
-      <FormError error={error} overrides={{ UNAUTHENTICATED: 'auth.reset.invalid' }} />
+      <FormError
+        error={error}
+        overrides={{ UNAUTHENTICATED: 'auth.reset.invalid' }}
+        shown={['password']}
+      />
       {error?.code === 'UNAUTHENTICATED' && (
         <Link
           href="/forgot-password"

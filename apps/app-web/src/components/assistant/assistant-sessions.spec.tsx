@@ -432,7 +432,11 @@ describe('conversations — the list and what can be done with one (T-057)', () 
 
     it('says why a delete was refused, keeps the conversation, and gives focus back to its options', async () => {
       await onA();
-      api.on(`DELETE /ai/sessions/${A.id}`, 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
+      api.on(
+        `DELETE /ai/sessions/${A.id}`,
+        500,
+        apiError('INTERNAL_ERROR', 'error.common.internal'),
+      );
       await menu(en.actions.delete);
       await userEvent.click(await screen.findByRole('button', { name: en.delete.confirm }));
       expect(await screen.findByRole('alert')).toHaveTextContent(catalogs.en.error.common.internal);
@@ -461,58 +465,67 @@ describe('conversations — the list and what can be done with one (T-057)', () 
     it.each([
       ['arrives', 200, { ...emptyPage, items: [A] }],
       ['fails', 500, apiError('INTERNAL_ERROR', 'error.common.internal')],
-    ] as const)('a first opening that %s after another conversation was chosen', async (_l, status, body) => {
-      const release = api.hold(LATEST, status, body);
-      api.on(newest(A.id), 200, newestFirst(span(1, 6)));
-      api.on(CURRENT, 200, { ...emptyPage, items: [A, B] });
-      api.on(newest(B.id), 200, newestFirst(span(1, 2)));
-      await openAssistant();
-      await openList();
-      await userEvent.click(await screen.findByRole('button', { name: /Refund question/ }));
-      await screen.findByRole('heading', { name: B.title! });
-      release();
-      // Long enough for what was released to arrive, and be ignored.
-      await act(() => new Promise((r) => setTimeout(r, 50)));
-      expect(screen.queryByText(en.load.failed)).toBeNull();
-      expect(screen.getByRole('heading', { name: B.title! })).toBeInTheDocument();
-      expect(entries()).toHaveLength(2);
-    });
+    ] as const)(
+      'a first opening that %s after another conversation was chosen',
+      async (_l, status, body) => {
+        const release = api.hold(LATEST, status, body);
+        api.on(newest(A.id), 200, newestFirst(span(1, 6)));
+        api.on(CURRENT, 200, { ...emptyPage, items: [A, B] });
+        api.on(newest(B.id), 200, newestFirst(span(1, 2)));
+        await openAssistant();
+        await openList();
+        await userEvent.click(await screen.findByRole('button', { name: /Refund question/ }));
+        await screen.findByRole('heading', { name: B.title! });
+        release();
+        // Long enough for what was released to arrive, and be ignored.
+        await act(() => new Promise((r) => setTimeout(r, 50)));
+        expect(screen.queryByText(en.load.failed)).toBeNull();
+        expect(screen.getByRole('heading', { name: B.title! })).toBeInTheDocument();
+        expect(entries()).toHaveLength(2);
+      },
+    );
 
     it.each([
       ['arrives', 200, newestFirst(span(1, 8))],
       ['fails', 500, apiError('INTERNAL_ERROR', 'error.common.internal')],
-    ] as const)('an opening that %s after the reader chose another', async (_label, status, body) => {
-      await onA();
-      const release = api.hold(newest(B.id), status, body);
-      await openList();
-      await userEvent.click(await screen.findByRole('button', { name: /Refund question/ }));
-      await openList();
-      api.on(newest(A.id), 200, newestFirst(span(1, 2)));
-      // B is the one open now, still on its way; choosing A again reads A afresh.
-      await userEvent.click(await screen.findByRole('button', { name: /Quote validity/ }));
-      await screen.findByRole('heading', { name: A.title! });
-      release();
-      // Long enough for what was released to arrive, and be ignored.
-      await act(() => new Promise((r) => setTimeout(r, 50)));
-      expect(screen.getByRole('heading', { name: A.title! })).toBeInTheDocument();
-      expect(entries()).toHaveLength(2);
-      expect(screen.queryByText(en.load.failed)).toBeNull();
-    });
+    ] as const)(
+      'an opening that %s after the reader chose another',
+      async (_label, status, body) => {
+        await onA();
+        const release = api.hold(newest(B.id), status, body);
+        await openList();
+        await userEvent.click(await screen.findByRole('button', { name: /Refund question/ }));
+        await openList();
+        api.on(newest(A.id), 200, newestFirst(span(1, 2)));
+        // B is the one open now, still on its way; choosing A again reads A afresh.
+        await userEvent.click(await screen.findByRole('button', { name: /Quote validity/ }));
+        await screen.findByRole('heading', { name: A.title! });
+        release();
+        // Long enough for what was released to arrive, and be ignored.
+        await act(() => new Promise((r) => setTimeout(r, 50)));
+        expect(screen.getByRole('heading', { name: A.title! })).toBeInTheDocument();
+        expect(entries()).toHaveLength(2);
+        expect(screen.queryByText(en.load.failed)).toBeNull();
+      },
+    );
 
     it.each([
       ['arrive', 200, newestFirst(span(1, 30))],
       ['fail', 500, apiError('INTERNAL_ERROR', 'error.common.internal')],
-    ] as const)('earlier messages that %s after a new conversation began', async (_label, status, body) => {
-      await onA(span(31, 60), 'a/31');
-      const release = api.hold(newest(A.id, 'a/31'), status, body);
-      await userEvent.click(await screen.findByRole('button', { name: en.earlier }));
-      await userEvent.click(screen.getByRole('button', { name: en.new }));
-      release();
-      // Long enough for what was released to arrive, and be ignored.
-      await act(() => new Promise((r) => setTimeout(r, 50)));
-      expect(screen.getByRole('heading', { name: en.empty.title })).toBeInTheDocument();
-      expect(screen.queryByRole('log')).toBeNull();
-    });
+    ] as const)(
+      'earlier messages that %s after a new conversation began',
+      async (_label, status, body) => {
+        await onA(span(31, 60), 'a/31');
+        const release = api.hold(newest(A.id, 'a/31'), status, body);
+        await userEvent.click(await screen.findByRole('button', { name: en.earlier }));
+        await userEvent.click(screen.getByRole('button', { name: en.new }));
+        release();
+        // Long enough for what was released to arrive, and be ignored.
+        await act(() => new Promise((r) => setTimeout(r, 50)));
+        expect(screen.getByRole('heading', { name: en.empty.title })).toBeInTheDocument();
+        expect(screen.queryByRole('log')).toBeNull();
+      },
+    );
 
     it.each([
       ['arrives', 200, { ...emptyPage, items: [A, B] }],

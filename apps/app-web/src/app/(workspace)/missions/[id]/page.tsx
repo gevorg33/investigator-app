@@ -73,7 +73,8 @@ export default async function MissionPage({
         timeZone={account!.timezone}
         names={{
           category: options.categories.find((c) => c.id === mission.taxonomyNodeId)?.label ?? null,
-          country: mission.countryCode === null ? null : name(options.countries, mission.countryCode),
+          country:
+            mission.countryCode === null ? null : name(options.countries, mission.countryCode),
           languages: mission.languages.map((code) => name(options.languages, code)),
         }}
       />

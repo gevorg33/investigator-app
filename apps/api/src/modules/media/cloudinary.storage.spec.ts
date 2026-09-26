@@ -12,7 +12,9 @@ const expectedSignature = (params: Record<string, string>, secret: string): stri
     .sort()
     .map((k) => `${k}=${params[k]}`)
     .join('&');
-  return createHash('sha1').update(toSign + secret).digest('hex');
+  return createHash('sha1')
+    .update(toSign + secret)
+    .digest('hex');
 };
 
 describe('Cloudinary storage adapter', () => {

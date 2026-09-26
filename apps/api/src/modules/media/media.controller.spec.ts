@@ -19,9 +19,17 @@ describe('media controller', () => {
 
   beforeEach(async () => {
     media = {
-      authorizeUpload: vi.fn().mockResolvedValue({ assetId: ID, expiresAt: new Date(), upload: { url: 'u', fields: {} } }),
-      completeUpload: vi.fn().mockResolvedValue({ assetId: ID, uploadStatus: 'READY', scanStatus: 'PENDING' }),
-      getDeliveryUrl: vi.fn().mockResolvedValue({ signedUrl: 'https://storage.test/x', expiresAt: new Date() }),
+      authorizeUpload: vi.fn().mockResolvedValue({
+        assetId: ID,
+        expiresAt: new Date(),
+        upload: { url: 'u', fields: {} },
+      }),
+      completeUpload: vi
+        .fn()
+        .mockResolvedValue({ assetId: ID, uploadStatus: 'READY', scanStatus: 'PENDING' }),
+      getDeliveryUrl: vi
+        .fn()
+        .mockResolvedValue({ signedUrl: 'https://storage.test/x', expiresAt: new Date() }),
     };
     const mod = await Test.createTestingModule({
       controllers: [MediaController],
@@ -32,7 +40,9 @@ describe('media controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    );
     await listenOnce(app);
   });
 

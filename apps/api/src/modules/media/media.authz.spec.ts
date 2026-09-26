@@ -18,7 +18,6 @@ import { MediaService } from './media.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
-
 describe('who can obtain a delivery link', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -90,10 +89,17 @@ describe('who can obtain a delivery link', () => {
       // The criterion T-008 names. 404 rather than 403 so the refusal confirms nothing.
       const { assetId } = await asset();
       const stranger = await person(ownerDb);
-      const notYours = await deliver(stranger, assetId).catch((e: { status?: number; code?: string }) => e);
-      const missing = await deliver(stranger, randomUUID()).catch((e: { status?: number; code?: string }) => e);
+      const notYours = await deliver(stranger, assetId).catch(
+        (e: { status?: number; code?: string }) => e,
+      );
+      const missing = await deliver(stranger, randomUUID()).catch(
+        (e: { status?: number; code?: string }) => e,
+      );
       expect(notYours).toMatchObject({ status: 404, code: 'NOT_FOUND' });
-      expect({ status: (notYours as { status?: number }).status, code: (notYours as { code?: string }).code }).toEqual({
+      expect({
+        status: (notYours as { status?: number }).status,
+        code: (notYours as { code?: string }).code,
+      }).toEqual({
         status: (missing as { status?: number }).status,
         code: (missing as { code?: string }).code,
       });
@@ -102,7 +108,9 @@ describe('who can obtain a delivery link', () => {
 
     it('a customer gets 404', async () => {
       const { assetId } = await asset();
-      await expect(deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
+      await expect(
+        deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId),
+      ).rejects.toMatchObject({
         status: 404,
       });
     });
@@ -111,7 +119,9 @@ describe('who can obtain a delivery link', () => {
       // Serving it to others must respect the profile's published state; until that link
       // exists the restrictive answer applies.
       const { assetId } = await asset('PROFILE_IMAGE');
-      await expect(deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId)).rejects.toMatchObject({
+      await expect(
+        deliver(await person(ownerDb, { roles: ['CUSTOMER'] }), assetId),
+      ).rejects.toMatchObject({
         status: 404,
       });
       const reviewer = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
@@ -128,7 +138,10 @@ describe('who can obtain a delivery link', () => {
 
     it('with any other scope cannot — a moderator is not a verification reviewer', async () => {
       const { assetId } = await asset();
-      const moderator = await person(ownerDb, { roles: ['STAFF'], staffScopes: ['MODERATION', 'PAYMENTS'] });
+      const moderator = await person(ownerDb, {
+        roles: ['STAFF'],
+        staffScopes: ['MODERATION', 'PAYMENTS'],
+      });
       // 404, not 403: staff outside the scope should not learn the document exists either.
       await expect(deliver(moderator, assetId)).rejects.toMatchObject({ status: 404 });
     });
@@ -176,7 +189,10 @@ describe('who can obtain a delivery link', () => {
 
     it('refuses a soft-deleted asset as if it did not exist', async () => {
       const { owner, assetId } = await asset();
-      await ownerDb.update(mediaAssets).set({ deletedAt: new Date() }).where(eq(mediaAssets.id, assetId));
+      await ownerDb
+        .update(mediaAssets)
+        .set({ deletedAt: new Date() })
+        .where(eq(mediaAssets.id, assetId));
       await expect(deliver(owner, assetId)).rejects.toMatchObject({ status: 404 });
     });
 
@@ -195,7 +211,10 @@ describe('who can obtain a delivery link', () => {
       const r = req();
       const { signedUrl } = await media.getDeliveryUrl(reviewer, assetId, r);
 
-      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows).toContainEqual(
         expect.objectContaining({
           action: 'media.delivered',
@@ -212,7 +231,10 @@ describe('who can obtain a delivery link', () => {
       const { assetId } = await asset();
       const r = req();
       await media.getDeliveryUrl(await person(ownerDb), assetId, r).catch(() => undefined);
-      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows.map((x) => x.action)).toContain('authz.denied.media.deliver');
     });
   });
@@ -229,7 +251,10 @@ describe('who can obtain a delivery link', () => {
       wrongState: {
         actor: owner,
         setup: async () => {
-          await ownerDb.update(mediaAssets).set({ scanStatus: 'PENDING' }).where(eq(mediaAssets.id, assetId));
+          await ownerDb
+            .update(mediaAssets)
+            .set({ scanStatus: 'PENDING' })
+            .where(eq(mediaAssets.id, assetId));
         },
       },
     });

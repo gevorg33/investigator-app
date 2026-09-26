@@ -32,7 +32,9 @@ describe('service areas controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+    );
     await listenOnce(app);
   });
 
@@ -41,7 +43,12 @@ describe('service areas controller', () => {
   });
 
   const http = () => request(app.getHttpServer());
-  const radius = { kind: 'RADIUS', label: 'Yerevan', centre: { lon: 44.52, lat: 40.19 }, radiusKm: 10 };
+  const radius = {
+    kind: 'RADIUS',
+    label: 'Yerevan',
+    centre: { lon: 44.52, lat: 40.19 },
+    radiusKm: 10,
+  };
   const polygon = {
     kind: 'POLYGON',
     label: 'District',

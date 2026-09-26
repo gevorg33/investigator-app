@@ -42,7 +42,11 @@ export function DecisionForm({ requestId }: { requestId: string }) {
       const reason = String(form.get('reason')).trim();
       // Spaces alone are not a reason. The API refuses them; this says so without asking it.
       if (reason === '') {
-        throw new ApiError(422, 'VALIDATION_FAILED', 'error.validation.verification.reason_required');
+        throw new ApiError(
+          422,
+          'VALIDATION_FAILED',
+          'error.validation.verification.reason_required',
+        );
       }
       return callApi(`/verification/requests/${encodeURIComponent(requestId)}/decision`, {
         body: { outcome: form.get('outcome'), reason },

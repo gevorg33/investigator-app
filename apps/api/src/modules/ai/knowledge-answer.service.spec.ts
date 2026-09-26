@@ -265,7 +265,10 @@ describe('answering from the knowledge base (T-017)', () => {
         { onStep: (s) => steps.push(s) },
       );
       expect(steps[0]).toEqual({ step: 'searching' });
-      expect(steps[1]).toEqual({ step: 'writing', sources: model.prompts[0]!.user.split('<source ').length - 1 });
+      expect(steps[1]).toEqual({
+        step: 'writing',
+        sources: model.prompts[0]!.user.split('<source ').length - 1,
+      });
       expect(steps).toHaveLength(2);
     });
 

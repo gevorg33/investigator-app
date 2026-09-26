@@ -112,4 +112,52 @@ describe('a form’s error', () => {
     rerender(<FormError error={new ApiError(502, 'INTERNAL_ERROR', 'error.common.internal')} />);
     expect(screen.queryByText(/Reference/)).toBeNull();
   });
+
+  describe('a refusal of particular fields (T-135)', () => {
+    const v = catalogs.en.error.validation;
+    const refused = (...details: Array<{ field: string; code: string; messageKey: string }>) =>
+      new ApiError(422, 'VALIDATION_FAILED', 'error.common.validation_failed', details);
+
+    it('names what to fix under the title, once each, and nothing generic', () => {
+      renderIntl(
+        <FormError
+          error={refused(
+            issue('kind', 'error.validation.service_area.limit_reached'),
+            issue('email'),
+            issue('other', 'error.validation.service_area.limit_reached'),
+            issue('notes'),
+            issue('ghost', 'error.validation.not_a_key'),
+          )}
+        />,
+      );
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent(catalogs.en.error.common.validation_failed);
+      // The specific message, the email field's default, each once; the generic and the unknown
+      // say nothing a reader could act on, so they add nothing.
+      expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+        v.service_area.limit_reached,
+        v.email.invalid,
+      ]);
+    });
+
+    it('leaves out the fields the form shows beside themselves, or all of them', () => {
+      const error = refused(
+        issue('email', 'error.validation.email.invalid'),
+        issue('acceptedDocumentIds', 'error.validation.legal.privacy_policy'),
+      );
+      const { unmount } = renderIntl(<FormError error={error} shown={['email']} />);
+      expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+        v.legal.privacy_policy,
+      ]);
+      unmount();
+      renderIntl(<FormError error={error} shown="all" />);
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.queryByRole('list')).toBeNull();
+    });
+
+    it('lists nothing for a refusal that is not about fields', () => {
+      renderIntl(<FormError error={new ApiError(403, 'FORBIDDEN', 'error.auth.forbidden')} />);
+      expect(screen.queryByRole('list')).toBeNull();
+    });
+  });
 });

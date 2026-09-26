@@ -42,7 +42,11 @@ export function blocks(markdown: string): Block[] {
     } else if (first.startsWith('>')) {
       out.push({ kind: 'quote', text: lines.map((l) => l.replace(/^>\s?/, '')).join(' ') });
     } else if (first.startsWith('|')) {
-      const cells = (l: string) => l.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+      const cells = (l: string) =>
+        l
+          .replace(/^\||\|$/g, '')
+          .split('|')
+          .map((c) => c.trim());
       const [head, , ...rows] = lines;
       out.push({ kind: 'table', head: cells(head!), rows: rows.map(cells) });
     } else {

@@ -7,7 +7,13 @@ import { currentContext } from '../../common/context/execution-context';
 import { WorkspaceResolver } from '../../common/context/workspace.resolver';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
-import { membershipRoles, roles, tenantMemberships, tenants, userSessions } from '../../database/schema';
+import {
+  membershipRoles,
+  roles,
+  tenantMemberships,
+  tenants,
+  userSessions,
+} from '../../database/schema';
 
 /** A workspace as its member sees it in the switcher. */
 export interface WorkspaceView {

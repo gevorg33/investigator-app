@@ -43,7 +43,8 @@ export const en = {
       intro: 'Verified investigators who are taking on work. Filters only narrow the list.',
       filters: 'Filters',
       active: '{count, plural, one {# filter on} other {# filters on}}',
-      sheet_body: 'Choose what an investigator must offer. Only verified investigators taking on work are ever listed.',
+      sheet_body:
+        'Choose what an investigator must offer. Only verified investigators taking on work are ever listed.',
       close: 'Close',
       show: 'Show investigators',
       reset: 'Reset',
@@ -64,9 +65,11 @@ export const en = {
       pricing_any: 'Any way',
       near: 'Near me',
       locating: 'Finding your location',
-      near_on: 'Using your location, rounded to about a kilometre. It is never saved or put in the address.',
+      near_on:
+        'Using your location, rounded to about a kilometre. It is never saved or put in the address.',
       near_off: 'Stop using my location',
-      denied: 'Location is blocked. Allow it for this site in your browser settings, then try again.',
+      denied:
+        'Location is blocked. Allow it for this site in your browser settings, then try again.',
       failed: 'Your device could not find its location. Try again somewhere with a clearer signal.',
       radius: 'How far from you',
       radius_covers: 'Covers me',
@@ -197,7 +200,8 @@ export const en = {
       saving: 'Saving…',
       saved: 'Saved',
       required: 'Answer this to continue.',
-      conflict: 'This draft was changed somewhere else, perhaps in another tab. Reload to see the latest version.',
+      conflict:
+        'This draft was changed somewhere else, perhaps in another tab. Reload to see the latest version.',
       returned: {
         title: 'A reviewer asked for changes',
         body: 'Change what they asked for, then send it again.',
@@ -208,7 +212,8 @@ export const en = {
         title: 'In a few words',
         title_hint: 'For example: check a supplier before we sign a contract.',
         description: 'Tell us more',
-        description_hint: 'What you know already, what you want to learn, and anything an investigator should be careful about.',
+        description_hint:
+          'What you know already, what you want to learn, and anything an investigator should be careful about.',
       },
       kind: {
         question: 'Which of these is closest?',
@@ -216,7 +221,8 @@ export const en = {
         search: 'Search the kinds of help',
         none: 'Nothing matches. Try another word.',
         required: 'Choose one to continue.',
-        unavailable: 'No kinds of help are available yet, so a mission cannot be sent. Your answers are saved — come back later.',
+        unavailable:
+          'No kinds of help are available yet, so a mission cannot be sent. Your answers are saved — come back later.',
       },
       where: {
         question: 'Where does the work need to happen?',
@@ -259,7 +265,8 @@ export const en = {
         question: 'Who is this about?',
         hint: 'Whether the work can be done lawfully depends on who is asking, so the reviewer needs to know.',
         relationship: 'The person or organisation is…',
-        protective: 'Is there a protective order or similar restriction between you and this person?',
+        protective:
+          'Is there a protective order or similar restriction between you and this person?',
         protective_hint: 'A restraining order, a no-contact order, or anything like them.',
         yes: 'Yes',
         no: 'No',
@@ -268,7 +275,8 @@ export const en = {
         question: 'Why do you need this?',
         hint: 'In your own words. The reviewer reads this to decide whether the work can be done lawfully.',
         purpose: 'Your reason',
-        purpose_hint: 'For example: we are about to sign a contract and want to know the company is real.',
+        purpose_hint:
+          'For example: we are about to sign a contract and want to know the company is real.',
       },
       review: {
         question: 'Check your brief',
@@ -277,7 +285,8 @@ export const en = {
         confirm_required: 'Tick this to send your mission.',
         policy: 'What cannot be requested',
         send: 'Send for review',
-        incomplete: 'Some questions are not answered yet. Each is marked above — use Change to answer it.',
+        incomplete:
+          'Some questions are not answered yet. Each is marked above — use Change to answer it.',
         refused: 'Your mission was not sent. Fix these, then send it again:',
       },
     },
@@ -388,7 +397,8 @@ export const en = {
       accept: 'I accept the agency terms',
       submit: 'Create agency',
       unavailable_title: 'Agencies cannot be created yet',
-      unavailable_body: 'Creating one needs the agency terms, which are not published yet. Your personal workspace works as before.',
+      unavailable_body:
+        'Creating one needs the agency terms, which are not published yet. Your personal workspace works as before.',
     },
   },
   investigator: {
@@ -579,7 +589,8 @@ export const en = {
       untitled: 'Untitled conversation',
       here: 'Open now',
       empty_current: 'No conversations yet. Ask the assistant something, and it will be kept here.',
-      empty_archived: 'Nothing archived. Archive a conversation to tidy this list — it can always be brought back.',
+      empty_archived:
+        'Nothing archived. Archive a conversation to tidy this list — it can always be brought back.',
       no_match: 'No conversation mentions “{q}”.',
       failed: 'Your conversations could not be read.',
     },
@@ -830,6 +841,20 @@ export const en = {
       service_unavailable: 'This is not available right now. Try again later.',
     },
     validation: {
+      settings: { unknown: 'This setting does not exist here. Reload the page and try again.' },
+      branding: {
+        colour: 'Enter a colour as # followed by six characters, such as #1d4ed8.',
+        low_contrast: 'This colour is too hard to read against. Choose a darker or a stronger one.',
+      },
+      agency_profile: {
+        agency_setup:
+          'Finish setting up the agency first: name, country, business email, time zone and currency.',
+        headline: 'Add a headline — one line that says what the agency does.',
+        image: 'Choose one of this agency’s own uploaded images of the right kind.',
+        display_name_length: 'Use 2 to 120 characters for the name.',
+        headline_length: 'Use at most 160 characters for the headline.',
+        about_length: 'Use at most 3,000 characters.',
+      },
       country_code: { invalid: 'Choose a country from the list.' },
       email: { invalid: 'Enter a valid email address.' },
       password: {
@@ -848,7 +873,12 @@ export const en = {
         relevance_needs_text: 'Enter words to order by.',
         text_orders_only: 'Words to look for set the order themselves.',
       },
-      service_area: { unknown: 'That is not one of your service areas.' },
+      service_area: {
+        unknown: 'That is not one of your service areas.',
+        limit_reached: 'You can have up to 10 service areas. Remove one to add another.',
+        shape:
+          'This area is too small, its outline crosses itself, or it has too many points. Draw a larger, simpler shape.',
+      },
       saved_search: {
         name_taken: 'You already have a saved search with this name.',
         limit: 'You can keep up to 20 saved searches. Delete one to save another.',
@@ -867,6 +897,52 @@ export const en = {
         required: 'Confirm that your request is for a lawful purpose.',
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
+      assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
+      coverage: { range: 'Choose a distance and a number of results within the limits.' },
+      idempotency_key: {
+        required: 'This request could not be sent safely. Reload the page and try again.',
+      },
+      investigation_source: {
+        rationale_required: 'Say why you rate this source as you do.',
+      },
+      media: {
+        rejected: 'This file is not what it says it is, or is too large. Choose another.',
+        too_large: 'This file is too large.',
+        type_not_allowed: 'This kind of file cannot be uploaded here.',
+      },
+      platform: { reason: 'Say why you need this access, in a few words.' },
+      policy: { ground_required: 'Describe the policy concern in at least a sentence.' },
+      policy_review: {
+        only_unsubstantiated: 'Bad faith can only be found when the refusal was not substantiated.',
+        not_for_decline: 'This outcome cannot be chosen when the investigator declined.',
+        required: 'Choose this before deciding.',
+        not_for_resume: 'No refund applies when the assignment resumes.',
+        exceeds_price: 'The investigator cannot be paid more than the agreed price.',
+      },
+      quote: {
+        already_quoted:
+          'You have already quoted on this mission. Withdraw that quote to send a new one.',
+        expiry_range: 'Choose an expiry between an hour and 90 days from now.',
+      },
+      review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
+      taxonomy: {
+        locale: 'Choose English, Russian or Armenian.',
+        parent_unknown: 'That parent specialty does not exist.',
+        parent_deprecated: 'That parent specialty is retired. Choose a current one.',
+        slug_taken: 'Another specialty already uses this address. Choose another.',
+        children_active: 'Retire the specialties under this one first.',
+      },
+      taxonomy_node: {
+        unknown: 'One of these specialties does not exist. Choose from the list.',
+        deprecated:
+          'One of these specialties is retired and cannot be added. Choose a current one.',
+      },
+      verification: {
+        document_not_found: 'One of these documents could not be found. Upload it again.',
+        document_not_ready:
+          'One of these documents is still being checked, or failed the check. Try again in a moment, or upload it again.',
+        reason_required: 'Give the reason for this decision. The investigator sees it.',
+      },
       legal: {
         privacy_policy: 'Accept the privacy policy to continue.',
         terms_of_service: 'Accept the terms of service to continue.',
@@ -874,7 +950,8 @@ export const en = {
         lawful_use_policy: 'Accept the lawful use policy to continue.',
         investigator_agreement: 'Accept the investigator agreement to continue.',
         agency_agreement: 'Accept the agency agreement to continue.',
-        not_current: 'These terms changed while the page was open. Reload the page to read the version now in force.',
+        not_current:
+          'These terms changed while the page was open. Reload the page to read the version now in force.',
       },
     },
   },

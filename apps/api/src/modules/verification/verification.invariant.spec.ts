@@ -52,7 +52,9 @@ const build = (over: { insert?: () => Promise<unknown[]> } = {}) => {
     audit as never,
     { getDeliveryUrl: vi.fn() } as never,
     profiles as never,
-    { asStaff: (_actor: unknown, _access: unknown, _req: unknown, fn: () => unknown) => fn() } as never,
+    {
+      asStaff: (_actor: unknown, _access: unknown, _req: unknown, fn: () => unknown) => fn(),
+    } as never,
   );
   return { service, audit };
 };

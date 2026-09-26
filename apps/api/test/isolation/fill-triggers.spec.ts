@@ -174,14 +174,18 @@ describe('filling a row’s workspace under row-level security', () => {
       activeRole: undefined,
     };
     const [decision] = await runInContext(outsider, () =>
-      platform.asStaff(staff as never, { scope: 'VERIFICATION', purpose: 'verification.decide' }, {}, () =>
-        scoped.begin(
-          (tx) => tx<{ id: string }[]>`
+      platform.asStaff(
+        staff as never,
+        { scope: 'VERIFICATION', purpose: 'verification.decide' },
+        {},
+        () =>
+          scoped.begin(
+            (tx) => tx<{ id: string }[]>`
             INSERT INTO verification_decisions (request_id, outcome, reason, decided_by)
             VALUES (${applicant.requestId}, 'REJECTED', 'filled',
                     ${outsider.userId})
             RETURNING id`,
-        ),
+          ),
       ),
     );
     expect(await workspaceOf('verification_decisions', decision!.id)).toBe(
