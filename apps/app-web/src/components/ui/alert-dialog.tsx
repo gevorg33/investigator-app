@@ -86,7 +86,11 @@ function AlertDialogAction({
   Pick<ComponentProps<typeof Button>, 'variant'>) {
   return (
     <Button variant={variant} asChild>
-      <AlertDialogPrimitive.Action data-slot="alert-dialog-action" className={className} {...props} />
+      <AlertDialogPrimitive.Action
+        data-slot="alert-dialog-action"
+        className={className}
+        {...props}
+      />
     </Button>
   );
 }
@@ -97,7 +101,11 @@ function AlertDialogCancel({
 }: ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
     <Button variant="outline" asChild>
-      <AlertDialogPrimitive.Cancel data-slot="alert-dialog-cancel" className={className} {...props} />
+      <AlertDialogPrimitive.Cancel
+        data-slot="alert-dialog-cancel"
+        className={className}
+        {...props}
+      />
     </Button>
   );
 }

@@ -160,10 +160,16 @@ describe('assistant turn controller (T-056)', () => {
     ['a workspace', { content: 'How long?', tenantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }],
     // Answering discovery's question (T-059): each part typed and bounded.
     ['a clarification flag that is not a boolean', { content: 'Corporate', clarifies: 'yes' }],
-    ['a specialty that is not an id', { content: 'Corporate', clarifies: true, taxonomyNodeIds: ['x'] }],
+    [
+      'a specialty that is not an id',
+      { content: 'Corporate', clarifies: true, taxonomyNodeIds: ['x'] },
+    ],
     ['a point off the globe', { content: 'Here', clarifies: true, near: { lon: 0, lat: 95 } }],
     ['a point with extras', { content: 'Here', clarifies: true, near: { lon: 0, lat: 0, alt: 3 } }],
-    ['a radius past the limit', { content: 'Here', clarifies: true, near: { lon: 0, lat: 0 }, radiusKm: 100000 }],
+    [
+      'a radius past the limit',
+      { content: 'Here', clarifies: true, near: { lon: 0, lat: 0 }, radiusKm: 100000 },
+    ],
   ])('refuses %s', async (_label, body) => {
     expect((await ask(body)).status).toBe(400);
     expect(turns.ask).not.toHaveBeenCalled();

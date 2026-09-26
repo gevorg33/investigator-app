@@ -29,7 +29,13 @@ function MarkerIcon({ className, ...props }: ComponentProps<'span'>) {
 }
 
 function MarkerContent({ className, ...props }: ComponentProps<'span'>) {
-  return <span data-slot="marker-content" className={cn('min-w-0 wrap-break-word', className)} {...props} />;
+  return (
+    <span
+      data-slot="marker-content"
+      className={cn('min-w-0 wrap-break-word', className)}
+      {...props}
+    />
+  );
 }
 
 export { Marker, MarkerContent, MarkerIcon };

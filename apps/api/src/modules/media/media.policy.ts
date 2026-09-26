@@ -3,10 +3,7 @@ import type { TenantPermission } from '../../common/authz/permissions';
 
 export type MediaCategory = 'PROFILE_IMAGE' | 'VERIFICATION_DOCUMENT' | 'AGENCY_LOGO' | 'AGENCY_COVER';
 export type MediaVisibility =
-  | 'PUBLIC_PROFILE'
-  | 'PARTICIPANT_ONLY'
-  | 'EVIDENCE_RESTRICTED'
-  | 'STAFF_REVIEW_ONLY';
+  'PUBLIC_PROFILE' | 'PARTICIPANT_ONLY' | 'EVIDENCE_RESTRICTED' | 'STAFF_REVIEW_ONLY';
 
 /**
  * Who may upload into a category. A person's own files are theirs by platform role; an agency's

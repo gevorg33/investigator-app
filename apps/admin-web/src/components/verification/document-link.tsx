@@ -18,7 +18,15 @@ import { callApi } from '@/lib/api/browser';
  * back), and sent to the link when it arrives; if none arrives, the tab is closed. If the browser
  * blocks the tab, no link is asked for at all.
  */
-export function DocumentLink({ requestId, assetId, n }: { requestId: string; assetId: string; n: number }) {
+export function DocumentLink({
+  requestId,
+  assetId,
+  n,
+}: {
+  requestId: string;
+  assetId: string;
+  n: number;
+}) {
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -49,7 +57,13 @@ export function DocumentLink({ requestId, assetId, n }: { requestId: string; ass
 
   return (
     <div className="grid gap-2">
-      <Button variant="outline" onClick={() => void open()} disabled={pending} aria-busy={pending} className="self-start">
+      <Button
+        variant="outline"
+        onClick={() => void open()}
+        disabled={pending}
+        aria-busy={pending}
+        className="self-start"
+      >
         <ExternalLink aria-hidden />
         {t('review.documents.open', { n })}
       </Button>

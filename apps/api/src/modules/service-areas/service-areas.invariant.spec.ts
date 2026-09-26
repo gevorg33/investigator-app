@@ -4,7 +4,12 @@ import { ServiceAreasService } from './service-areas.service';
 
 const actor = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const req = { correlationId: 'c' };
-const dto = { kind: 'RADIUS' as const, label: 'x', centre: { lon: 44.52, lat: 40.19 }, radiusKm: 10 };
+const dto = {
+  kind: 'RADIUS' as const,
+  label: 'x',
+  centre: { lon: 44.52, lat: 40.19 },
+  radiusKm: 10,
+};
 
 const build = (insert: () => unknown) => {
   const db = {
@@ -21,7 +26,12 @@ const build = (insert: () => unknown) => {
   const audit = { record: vi.fn().mockResolvedValue(undefined) };
   const profiles = { findMine: vi.fn().mockResolvedValue({ id: 'p1' }) };
   return {
-    service: new ServiceAreasService(db as never, authz as never, audit as never, profiles as never),
+    service: new ServiceAreasService(
+      db as never,
+      authz as never,
+      audit as never,
+      profiles as never,
+    ),
     audit,
   };
 };
@@ -29,7 +39,9 @@ const build = (insert: () => unknown) => {
 describe('service area invariants', () => {
   it('fails loudly when the insert returns no row', async () => {
     const { service, audit } = build(async () => []);
-    await expect(service.createMine(actor, dto, req)).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+    await expect(service.createMine(actor, dto, req)).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+    });
     expect(audit.record).not.toHaveBeenCalled();
   });
 

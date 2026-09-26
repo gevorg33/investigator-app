@@ -6288,7 +6288,7 @@ pnpm --filter api test password
 ---
 
 ### T-130 — `pnpm format:check` fails on 21 files, and nothing notices
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26; format:check green, now a PR gate
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6466,7 +6466,7 @@ cursor value; seen to fail when the verification comparison is put back. The rul
 ---
 
 ### T-135 — Error message catalogs in en, ru and hy
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26 (ru and hy await native-speaker review: ACTIONS-FOR-ME #23)
 - **Priority:** P2
 - **Depends on:** T-091
 - **Risk:** LOW
@@ -6487,12 +6487,12 @@ password, time zone, each legal document); app-web renders them by key. Still op
 validation `messageKey`, the assistant codes, and the test below.
 
 **Acceptance criteria**
-- [ ] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
+- [x] A catalog entry in en, ru and hy for every key in `ERROR_MESSAGE_KEY`, and for every
       `messageKey` a validation error can carry
-- [ ] The assistant's discovery reason codes (`matched.*`, `not_matched.specialty`), clarification
+- [x] The assistant's discovery reason codes (`matched.*`, `not_matched.specialty`), clarification
       codes and `location.anywhere` (T-018) — the API sends codes and data, never sentences
-- [ ] A test fails when an API error key has no entry in every locale
-- [ ] The entries live in `packages/i18n` beside the UI catalogs (T-128), so the typed parity check covers them for free
+- [x] A test fails when an API error key has no entry in every locale
+- [x] The entries live in `packages/i18n` beside the UI catalogs (T-128), so the typed parity check covers them for free
 - [ ] ru and hy reviewed by a native speaker before they are marked current
 
 **Validation**
@@ -6500,10 +6500,32 @@ validation `messageKey`, the assistant codes, and the test below.
 pnpm test
 ```
 
+**DONE — 2026-09-26**
+
+*Catalogs.* 29 keys the API could send had no sentence in any language — media, quotes, service
+areas, taxonomy, verification, policy reviews, the idempotency key and more. All now have en, ru and
+hy entries in `packages/i18n` (`error.validation.*`). The assistant's reason and clarification codes
+were already rendered by T-059's cards (`assistant.discovery.reason.*`, `clarify.*`, `anywhere`).
+
+*The test.* `apps/app-web/src/lib/api/error-catalog.spec.ts` reads every `'error.…'` string in the
+API's source and fails for any without a sentence in each locale, and for any key assembled from
+parts. The API's three assembled families are now written out: `ACCEPTANCE_REQUIRED_KEY` (a `Record`
+over the legal document types), the policy-review refusal keys, and the taxonomy keys at each call.
+Negative controls: a new unmapped key fails all three locales; an assembled key fails the second test.
+
+*Found in the browser, fixed.* A catalog entry alone did not reach anyone: the service-area form (and
+20 others) showed only "Some details need correcting" — the specific message sits in the error's
+field details, which only 7 forms displayed. `FormError` now lists each field's own message under its
+title, except fields a form shows itself (`shown`); three forms that hand-rolled that list use it.
+Verified: an eleventh service area → "You can have up to 10 service areas. Remove one to add
+another.", in English and Russian.
+
+*Not done.* The native-speaker review of ru and hy (ACTIONS-FOR-ME #23).
+
 ---
 
 ### T-136 — OpenAPI lists no request properties for any DTO
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -6519,13 +6541,33 @@ plugin or explicit `@ApiProperty`, so the published contract says nothing about 
 takes, and `packages/api-client` cannot be generated from it.
 
 **Acceptance criteria**
-- [ ] Every request DTO's properties, types and bounds appear in the OpenAPI document
-- [ ] A test fails when a DTO property is missing from the document
+- [x] Every request DTO's properties, types and bounds appear in the OpenAPI document
+- [x] A test fails when a DTO property is missing from the document
 
 **Validation**
 ```bash
 pnpm --filter api test openapi
 ```
+
+**DONE — 2026-09-26**
+
+*How.* The API builds with plain `tsc`, so `@nestjs/swagger`'s compiler plugin never ran.
+`src/common/openapi/metadata.generator.ts` runs the plugin's own `ReadonlyVisitor` over the source
+(the Nest CLI's approach for SWC builds, without the CLI) and prints `src/metadata.ts` — committed,
+with static imports because a dynamic `import()` under Node16 in this CommonJS package would need
+`.js` on every path. `bootstrap.ts` loads it (`configureApp` is now async), then `addValidationBounds`
+writes every class-validator bound as the running API enforces it — the plugin reads only literal
+arguments, so `@Max(MAX_SEARCH_RADIUS_KM)` had been dropped. `pnpm --filter api openapi:metadata`
+regenerates.
+
+*Test.* `openapi.spec.ts`, over the real module graph's real document: metadata fresh; every body
+DTO's properties in its schema; every `@Query()` class's properties on its own route (mapped through
+Nest's route metadata, not by name); every bound equal to class-validator's. Negative controls: a DTO
+property added without regenerating fails three tests; removing the bounds pass fails one.
+
+*Found and fixed.* Two base DTOs (`VersionedDto`, `Reasoned`) were not exported, so the plugin
+skipped them and `version`/`reason` vanished from every subclass schema. `ReadDocumentQuery` sat in
+a controller file, so `GET /knowledge/documents/{docKey}` listed no `locale` — now `knowledge.dto.ts`.
 
 ---
 

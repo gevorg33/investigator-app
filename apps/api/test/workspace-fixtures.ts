@@ -19,7 +19,11 @@ export async function member(
   const [personal] = await owner<{ id: string }[]>`
     SELECT id FROM tenants WHERE personal_owner_id = ${user!.id}`;
   return {
-    actor: testActor({ userId: user!.id, sessionId: session!.id, roles: opts.roles ?? ['CUSTOMER'] }),
+    actor: testActor({
+      userId: user!.id,
+      sessionId: session!.id,
+      roles: opts.roles ?? ['CUSTOMER'],
+    }),
     personalId: personal!.id,
   };
 }

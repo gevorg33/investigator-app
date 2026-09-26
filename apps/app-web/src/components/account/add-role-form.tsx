@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
-import { fieldErrorKeys, type LooseT } from '@/components/form/errors';
 import { FormError } from '@/components/form/form-error';
 import { useSubmit } from '@/components/form/use-submit';
 import { LegalDocuments } from '@/components/legal-documents';
@@ -25,7 +24,6 @@ export function AddRoleForm({
   documents: readonly LegalDocument[];
 }) {
   const t = useTranslations();
-  const tl = t as unknown as LooseT;
   const router = useRouter();
   const { pending, error, onSubmit } = useSubmit(
     (form) =>
@@ -34,17 +32,10 @@ export function AddRoleForm({
       }),
     () => router.refresh(),
   );
-  const refused = Object.values(fieldErrorKeys(error, tl));
   return (
     <form onSubmit={onSubmit} className="grid gap-3">
+      {/* Names each document the API says is missing, under its title (T-135). */}
       <FormError error={error} />
-      {refused.length > 0 && (
-        <ul className="grid gap-1 text-sm text-danger">
-          {refused.map((key) => (
-            <li key={key}>{tl(key)}</li>
-          ))}
-        </ul>
-      )}
       <LegalDocuments
         documents={documents}
         intro={t('account.roles.accept_first')}

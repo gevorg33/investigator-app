@@ -60,7 +60,8 @@ const en = {
   'review.documents.open': 'Open document {n}',
   'review.documents.kind': '{type}, {size}',
   'review.documents.unknown_size': 'size unknown',
-  'review.documents.blocked': 'Your browser blocked the new tab. Allow pop-ups for this console, then open the document again.',
+  'review.documents.blocked':
+    'Your browser blocked the new tab. Allow pop-ups for this console, then open the document again.',
   'review.documents.scan.PENDING': 'Still being scanned — it cannot be opened yet',
   'review.documents.scan.INFECTED': 'Flagged by the malware scan — it cannot be opened',
   'review.documents.scan.FAILED': 'The scan failed — it cannot be opened',

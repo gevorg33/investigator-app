@@ -53,7 +53,9 @@ describe('the six checks', () => {
       testActor({ userId: 'u1', roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: active });
 
     it('allows the role switched to', async () => {
-      expect(await statusOf(authz.requireRole(both('INVESTIGATOR'), 'INVESTIGATOR', ctx))).toBe('ok');
+      expect(await statusOf(authz.requireRole(both('INVESTIGATOR'), 'INVESTIGATOR', ctx))).toBe(
+        'ok',
+      );
     });
 
     it('refuses the other held role while narrowed to one', async () => {
@@ -102,7 +104,10 @@ describe('the six checks', () => {
       await expect(authz.visible(testActor({ userId: 'u1' }), row, ctx)).resolves.toBe(row);
     });
 
-    for (const [label, value] of [['undefined', undefined], ['null', null]] as const) {
+    for (const [label, value] of [
+      ['undefined', undefined],
+      ['null', null],
+    ] as const) {
       it(`answers 404 for ${label}, never 403`, async () => {
         // 403 would confirm the id is real to somebody who should not know it exists.
         expect(await statusOf(authz.visible(testActor({ userId: 'u1' }), value, ctx))).toBe(404);

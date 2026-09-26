@@ -18,7 +18,6 @@ import { MediaService } from './media.service';
 import { testPool } from '../../../test/db';
 import { asRequests, personalContext, scopedDb } from '../../../test/workspace-context';
 
-
 describe('media upload flow', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -66,7 +65,11 @@ describe('media upload flow', () => {
 
   const rowOf = async (id: string) =>
     (await ownerDb.select().from(mediaAssets).where(eq(mediaAssets.id, id)))[0];
-  const pdf = { category: 'VERIFICATION_DOCUMENT' as const, mimeType: 'application/pdf', bytes: 2048 };
+  const pdf = {
+    category: 'VERIFICATION_DOCUMENT' as const,
+    mimeType: 'application/pdf',
+    bytes: 2048,
+  };
 
   describe('authorizing an upload', () => {
     it('records the authorization and signs a server-chosen path', async () => {
@@ -121,7 +124,10 @@ describe('media upload flow', () => {
     it('audits the authorization', async () => {
       const r = req();
       const out = await media.authorizeUpload(await person(ownerDb), pdf, r);
-      const rows = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
+      const rows = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, r.correlationId));
       expect(rows).toContainEqual(
         expect.objectContaining({ action: 'media.upload.authorized', resourceId: out.assetId }),
       );
@@ -129,12 +135,16 @@ describe('media upload flow', () => {
 
     it('refuses a role the category does not admit', async () => {
       const customer = await person(ownerDb, { roles: ['CUSTOMER'] });
-      await expect(media.authorizeUpload(customer, pdf, req())).rejects.toMatchObject({ status: 403 });
+      await expect(media.authorizeUpload(customer, pdf, req())).rejects.toMatchObject({
+        status: 403,
+      });
     });
 
     it('refuses a suspended account', async () => {
       const suspended = await person(ownerDb, { status: 'SUSPENDED' });
-      await expect(media.authorizeUpload(suspended, pdf, req())).rejects.toMatchObject({ status: 403 });
+      await expect(media.authorizeUpload(suspended, pdf, req())).rejects.toMatchObject({
+        status: 403,
+      });
     });
 
     it.each(['image/svg+xml', 'text/html', 'application/octet-stream'])(
@@ -173,7 +183,10 @@ describe('media upload flow', () => {
         throw new Error('not configured');
       });
       await expect(media.authorizeUpload(actor, pdf, req())).rejects.toThrow('not configured');
-      const rows = await ownerDb.select().from(mediaAssets).where(eq(mediaAssets.ownerId, actor.userId));
+      const rows = await ownerDb
+        .select()
+        .from(mediaAssets)
+        .where(eq(mediaAssets.ownerId, actor.userId));
       expect(rows).toHaveLength(0);
     });
   });
@@ -215,7 +228,9 @@ describe('media upload flow', () => {
 
     it('answers 409 when nothing has been uploaded yet, and allows a retry', async () => {
       const { owner, assetId, publicId } = await authorized();
-      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({ status: 409 });
+      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({
+        status: 409,
+      });
       expect((await rowOf(assetId))?.uploadStatus).toBe('AUTHORIZED');
 
       storage.put(publicId);
@@ -232,16 +247,26 @@ describe('media upload flow', () => {
         .set({ authorizationExpiresAt: new Date(Date.now() - 1000) })
         .where(eq(mediaAssets.id, assetId));
 
-      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({ status: 409 });
+      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({
+        status: 409,
+      });
       expect((await rowOf(assetId))?.uploadStatus).toBe('EXPIRED');
       expect(storage.destroyed).toContain(publicId);
     });
 
     it.each([
       ['a format other than the one declared', { format: 'jpg' }, 'FORMAT_MISMATCH'],
-      ['a file larger than the category allows', { bytes: MEDIA_POLICY.VERIFICATION_DOCUMENT.maxBytes + 1 }, 'TOO_LARGE'],
+      [
+        'a file larger than the category allows',
+        { bytes: MEDIA_POLICY.VERIFICATION_DOCUMENT.maxBytes + 1 },
+        'TOO_LARGE',
+      ],
       ['a file stored as public', { type: 'upload' }, 'NOT_PRIVATE'],
-      ['an asset under a different public ID', { publicId: 'somewhere/else' }, 'PUBLIC_ID_MISMATCH'],
+      [
+        'an asset under a different public ID',
+        { publicId: 'somewhere/else' },
+        'PUBLIC_ID_MISMATCH',
+      ],
     ] as const)('rejects %s, destroys it, and records why', async (_label, over, reason) => {
       const r = req();
       const { owner, assetId, publicId } = await authorized();
@@ -252,8 +277,13 @@ describe('media upload flow', () => {
       });
       expect((await rowOf(assetId))?.uploadStatus).toBe('REJECTED');
       expect(storage.destroyed).toContain(publicId);
-      const audit = await ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, r.correlationId));
-      expect(audit).toContainEqual(expect.objectContaining({ action: 'media.upload.rejected', reason }));
+      const audit = await ownerDb
+        .select()
+        .from(auditLogs)
+        .where(eq(auditLogs.correlationId, r.correlationId));
+      expect(audit).toContainEqual(
+        expect.objectContaining({ action: 'media.upload.rejected', reason }),
+      );
     });
 
     it('keeps the row AUTHORIZED if destroying a rejected file fails', async () => {
@@ -261,7 +291,9 @@ describe('media upload flow', () => {
       const { owner, assetId, publicId } = await authorized();
       storage.put(publicId, { format: 'jpg' });
       storage.failDestroy = true;
-      await expect(media.completeUpload(owner, assetId, req())).rejects.toThrow('storage unavailable');
+      await expect(media.completeUpload(owner, assetId, req())).rejects.toThrow(
+        'storage unavailable',
+      );
       expect((await rowOf(assetId))?.uploadStatus).toBe('AUTHORIZED');
     });
 
@@ -269,7 +301,9 @@ describe('media upload flow', () => {
       const { owner, assetId, publicId } = await authorized();
       storage.put(publicId);
       await media.completeUpload(owner, assetId, req());
-      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({ status: 403 });
+      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({
+        status: 403,
+      });
     });
 
     it('lets only one of two concurrent completions win', async () => {
@@ -280,13 +314,17 @@ describe('media upload flow', () => {
         storage.onFind = undefined;
         await makeReady(ownerDb, assetId, 'PENDING');
       };
-      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({ status: 403 });
+      await expect(media.completeUpload(owner, assetId, req())).rejects.toMatchObject({
+        status: 403,
+      });
     });
 
     it('will not let another user complete someone else’s upload', async () => {
       const { assetId, publicId } = await authorized();
       storage.put(publicId);
-      await expect(media.completeUpload(await person(ownerDb), assetId, req())).rejects.toMatchObject({
+      await expect(
+        media.completeUpload(await person(ownerDb), assetId, req()),
+      ).rejects.toMatchObject({
         status: 404,
       });
       expect((await rowOf(assetId))?.uploadStatus).toBe('AUTHORIZED');

@@ -24,9 +24,9 @@ describe('a conversation’s state (T-056)', () => {
     const failed = run([{ type: 'load_failed', error: unavailable }], loading);
     expect([failed.status, failed.loadError]).toEqual(['failed', unavailable]);
     expect(run([{ type: 'load' }], failed).loadError).toBeNull();
-    expect(run([{ type: 'loaded', session: null, messages: [question], earlier: null }]).messages).toEqual([
-      question,
-    ]);
+    expect(
+      run([{ type: 'loaded', session: null, messages: [question], earlier: null }]).messages,
+    ).toEqual([question]);
   });
 
   it('follows a turn: unsent question, stored, each step, the reply, done', () => {
@@ -89,7 +89,10 @@ describe('a conversation’s state (T-056)', () => {
 
   it('keeps an unsent question when stopped or refused before storing, and not after', () => {
     const unsent = run([{ type: 'start', question: { content: 'q' }, stored: false }], ready);
-    expect(run([{ type: 'stopped' }], unsent).turn).toEqual({ phase: 'stopped', unsent: { content: 'q' } });
+    expect(run([{ type: 'stopped' }], unsent).turn).toEqual({
+      phase: 'stopped',
+      unsent: { content: 'q' },
+    });
     expect(run([{ type: 'failed', error: unavailable }], unsent).turn).toEqual({
       phase: 'failed',
       error: unavailable,
@@ -128,7 +131,10 @@ describe('a conversation’s state (T-056)', () => {
   describe('reading back what the server holds', () => {
     it('learns a stopped question was stored after all, so trying again answers it', () => {
       const stopped = run(
-        [{ type: 'start', question: { content: question.content! }, stored: false }, { type: 'stopped' }],
+        [
+          { type: 'start', question: { content: question.content! }, stored: false },
+          { type: 'stopped' },
+        ],
         ready,
       );
       const s = run([{ type: 'synced', messages: [question] }], stopped);
@@ -137,7 +143,10 @@ describe('a conversation’s state (T-056)', () => {
 
     it('keeps it unsent when the server has something else last, or nothing', () => {
       const stopped = run(
-        [{ type: 'start', question: { content: 'Something else?' }, stored: false }, { type: 'stopped' }],
+        [
+          { type: 'start', question: { content: 'Something else?' }, stored: false },
+          { type: 'stopped' },
+        ],
         ready,
       );
       expect(run([{ type: 'synced', messages: [question] }], stopped).turn).toEqual({
@@ -179,9 +188,9 @@ describe('a conversation’s state (T-056)', () => {
 
   describe('what can be tried again', () => {
     it('is nothing while a turn runs, or once the last word is the assistant’s', () => {
-      expect(awaitingRetry(run([{ type: 'start', question: { content: 'q' }, stored: false }], ready))).toBe(
-        false,
-      );
+      expect(
+        awaitingRetry(run([{ type: 'start', question: { content: 'q' }, stored: false }], ready)),
+      ).toBe(false);
       expect(awaitingRetry(run([{ type: 'synced', messages: [question, aiReply()] }], ready))).toBe(
         false,
       );

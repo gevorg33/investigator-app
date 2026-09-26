@@ -50,5 +50,7 @@ export class ViewableMediaRepository extends ActorScopedRepository<MediaAssetRow
 /** Staff holding the VERIFICATION scope, acting as staff right now. */
 export function reviewsVerification(actor: Actor): boolean {
   const actingAsStaff = actor.activeRole === undefined || actor.activeRole === 'STAFF';
-  return actingAsStaff && actor.roles.includes('STAFF') && actor.staffScopes.includes('VERIFICATION');
+  return (
+    actingAsStaff && actor.roles.includes('STAFF') && actor.staffScopes.includes('VERIFICATION')
+  );
 }

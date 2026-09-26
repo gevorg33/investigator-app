@@ -37,7 +37,11 @@ export interface MediaStorage {
    * already in storage.
    */
   publicIdFor(category: string): string;
-  signUpload(input: { publicId: string; resourceType: string; allowedFormats: string[] }): SignedUpload;
+  signUpload(input: {
+    publicId: string;
+    resourceType: string;
+    allowedFormats: string[];
+  }): SignedUpload;
   findAsset(publicId: string, resourceType: string): Promise<StoredAsset | undefined>;
   destroy(publicId: string, resourceType: string): Promise<void>;
   signedDownloadUrl(input: {

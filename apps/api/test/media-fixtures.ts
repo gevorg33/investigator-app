@@ -20,14 +20,21 @@ export class FakeStorage implements MediaStorage {
   /** The real adapter derives this from the execution context (T-080); so does this one. */
   publicIdFor = vi.fn((category: string) => {
     const tenantId = currentContext()?.tenantId;
-    if (tenantId === undefined) throw new Error('no workspace context: nothing to derive a path from');
+    if (tenantId === undefined)
+      throw new Error('no workspace context: nothing to derive a path from');
     return `test/tenant/${tenantId}/${category.toLowerCase().replace(/_/g, '-')}/${randomUUID()}`;
   });
 
-  signUpload = vi.fn((input: { publicId: string; resourceType: string; allowedFormats: string[] }) => ({
-    url: `https://storage.test/${input.resourceType}/upload`,
-    fields: { public_id: input.publicId, allowed_formats: input.allowedFormats.join(','), signature: 'sig' },
-  }));
+  signUpload = vi.fn(
+    (input: { publicId: string; resourceType: string; allowedFormats: string[] }) => ({
+      url: `https://storage.test/${input.resourceType}/upload`,
+      fields: {
+        public_id: input.publicId,
+        allowed_formats: input.allowedFormats.join(','),
+        signature: 'sig',
+      },
+    }),
+  );
 
   async findAsset(publicId: string): Promise<StoredAsset | undefined> {
     await this.onFind?.();
@@ -66,7 +73,12 @@ export class FakeStorage implements MediaStorage {
 /** A real user row (media_assets.owner_id restricts), and the Actor for it. */
 export async function person(
   db: TestDb,
-  opts: { roles?: Role[]; staffScopes?: StaffScope[]; status?: Actor['status']; activeRole?: Role } = {},
+  opts: {
+    roles?: Role[];
+    staffScopes?: StaffScope[];
+    status?: Actor['status'];
+    activeRole?: Role;
+  } = {},
 ): Promise<Actor> {
   const [user] = await db
     .insert(schema.users)

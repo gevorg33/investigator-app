@@ -10,7 +10,6 @@ import { TokenService } from '../../modules/auth/token.service';
 import { ActorService } from './actor.service';
 import { testPool } from '../../../test/db';
 
-
 describe('resolving the actor', () => {
   let sql: postgres.Sql;
   let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -31,11 +30,13 @@ describe('resolving the actor', () => {
   });
 
   /** A user with the given roles and scopes, and a live session. Returns its token. */
-  const seed = async (opts: {
-    roles?: Array<'CUSTOMER' | 'INVESTIGATOR' | 'STAFF'>;
-    scopes?: Array<'VERIFICATION' | 'MODERATION' | 'DISPUTES' | 'PAYMENTS'>;
-    status?: 'ACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED';
-  } = {}): Promise<{ token: string; userId: string }> => {
+  const seed = async (
+    opts: {
+      roles?: Array<'CUSTOMER' | 'INVESTIGATOR' | 'STAFF'>;
+      scopes?: Array<'VERIFICATION' | 'MODERATION' | 'DISPUTES' | 'PAYMENTS'>;
+      status?: 'ACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION' | 'DELETED';
+    } = {},
+  ): Promise<{ token: string; userId: string }> => {
     const [user] = await db
       .insert(users)
       .values({
@@ -145,10 +146,7 @@ describe('resolving the actor', () => {
 
     it('drops a revoked role on the very next request', async () => {
       const { token, userId } = await seed({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
-      await db
-        .update(userRoles)
-        .set({ revokedAt: new Date() })
-        .where(eq(userRoles.userId, userId));
+      await db.update(userRoles).set({ revokedAt: new Date() }).where(eq(userRoles.userId, userId));
       const actor = await actors.fromRefreshToken(token);
       expect(actor.roles).toEqual([]);
     });

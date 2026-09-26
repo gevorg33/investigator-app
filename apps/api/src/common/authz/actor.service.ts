@@ -82,7 +82,8 @@ export class ActorService {
       staffScopes: Object.freeze(staffScopes),
       // The narrowing rule, in one line: intersect, never union. A caller naming a role
       // it does not hold gets undefined — no narrowing — and never the role itself.
-      activeRole: isRole(requestedRole) && roles.includes(requestedRole) ? requestedRole : undefined,
+      activeRole:
+        isRole(requestedRole) && roles.includes(requestedRole) ? requestedRole : undefined,
     });
   }
 }
