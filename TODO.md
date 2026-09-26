@@ -7331,7 +7331,7 @@ pnpm test:coverage
 ---
 
 ### T-161 — The workspace switcher overflows the sidebar at tablet width
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. The trigger (`workspace-switcher.tsx`) takes `min-w-0`: as a grid item at the default `min-width: auto` it sized the sidebar's column to the whole name. Spec in `workspace.spec.tsx` (menu and sheet) seen failing first. Measured in the browser with a 41-character agency name: trigger 12–227px inside the 240px sidebar, name truncated, heading clear, at 768 and 1280 in en, ru and hy; the phone sheet's trigger 16–359px at 375. Filed T-162
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7346,12 +7346,39 @@ of the page heading ("Главная" read "лавная"). A long agency or Per
 the column, as the switcher's own rows already do (`truncate`), not push the button past it.
 
 **Acceptance criteria**
-- [ ] The trigger never exceeds its column; a long name truncates, with the full name in its accessible name
-- [ ] Checked in the browser at 768 and 1280 with a long agency name, in en, ru and hy
+- [x] The trigger never exceeds its column; a long name truncates, with the full name in its accessible name
+- [x] Checked in the browser at 768 and 1280 with a long agency name, in en, ru and hy
 
 **Validation**
 ```bash
 pnpm --filter app-web test workspace
+```
+
+---
+
+### T-162 — The account page scrolls sideways at tablet width: the time zone button
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/account/time-zone-form.tsx
+
+**Description**
+Found in T-161's browser check. On `/account` at 768px, in Russian, the time zone card's submit
+("Сохранить часовой пояс") measured 603–829px inside a card ending at 736px — 93px past it — and
+the page's scroll width was 829px in a 768px viewport: a horizontal page scroll, which CLAUDE.md §10
+rules out. The select and the button sit in one row that does not wrap; the longer Russian label is
+what pushes it over.
+
+**Acceptance criteria**
+- [ ] No horizontal page scroll on `/account` at 375, 768 and 1280, in en, ru and hy
+- [ ] The select and its button stack or wrap rather than overflow, and the button stays ≥ 44px
+
+**Validation**
+```bash
+pnpm --filter app-web test account
 ```
 
 ---
