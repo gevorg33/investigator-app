@@ -13,7 +13,7 @@ import * as schema from '../../src/database/schema';
 import { scopedClient } from '../../src/database/scoped-client';
 import { TABLE_CLASSES } from '../../src/database/table-classes';
 import { testPool } from '../db';
-import { personalContext } from '../workspace-context';
+import { agencyContext, personalContext } from '../workspace-context';
 import { agency, member } from '../workspace-fixtures';
 import { seedGraph, type SeededGraph } from './graph';
 
@@ -338,6 +338,178 @@ describe('the isolation matrix', () => {
         await owner`UPDATE tenant_profiles SET published_at = NULL, logo_media_id = ${graph.agencyLogo}
                      WHERE tenant_id = ${agencyId}`;
       }
+    });
+  });
+
+  describe('joining an agency by invitation (T-085)', () => {
+    /** A person with a confirmed address, their Personal workspace as their context. */
+    const person = async () => {
+      const who = await member(owner);
+      const [row] = await owner<
+        { email: string }[]
+      >`SELECT email FROM users WHERE id = ${who.actor.userId}`;
+      return { ...who, email: row!.email, context: await personalContext(owner, who.actor.userId) };
+    };
+
+    /** An invitation into `tenantId` for `email`, written by the owner as the service would. */
+    const invitation = async (
+      tenantId: string,
+      email: string,
+      over: { role?: string; status?: string; expires?: string } = {},
+    ) => {
+      const [row] = await owner<{ id: string }[]>`
+        INSERT INTO tenant_invitations (tenant_id, email, role_id, token_hash, status, expires_at,
+                                        invited_by, cancelled_at)
+        SELECT ${tenantId}, ${email}, r.id, ${randomUUID()}, ${over.status ?? 'PENDING'}::invitation_status,
+               now() + ${over.expires ?? '1 day'}::interval, ${graph.supplier.userId},
+               CASE WHEN ${over.status ?? 'PENDING'} = 'CANCELLED' THEN now() END
+          FROM roles r WHERE r.key = ${over.role ?? 'VIEWER'} AND r.tenant_id IS NULL
+        RETURNING id`;
+      return row!.id;
+    };
+
+    const join = (context: ExecutionContext, tenantId: string, userId: string, status = 'ACTIVE') =>
+      as(
+        context,
+        (tx) => tx<{ id: string }[]>`
+        INSERT INTO tenant_memberships (tenant_id, tenant_kind, user_id, status)
+        VALUES (${tenantId}, 'AGENCY', ${userId}, ${status}::membership_status) RETURNING id`,
+      );
+
+    const grant = (context: ExecutionContext, membershipId: string, role: string) =>
+      as(
+        context,
+        (tx) => tx`
+        INSERT INTO membership_roles (membership_id, role_id)
+        SELECT ${membershipId}, id FROM roles WHERE key = ${role} AND tenant_id IS NULL`,
+      );
+
+    /** An agency owned by someone outside the graph, so no graph user's memberships change. */
+    const newAgency = async (...others: string[]) =>
+      agency(owner, [
+        { userId: (await person()).actor.userId },
+        ...others.map((userId) => ({ userId })),
+      ]);
+
+    it('lets a person join with a live invitation for their address — as themselves, with its role only', async () => {
+      const { tenantId } = await newAgency();
+      const p = await person();
+      await invitation(tenantId, p.email.toUpperCase());
+      // Not someone else, and not straight into suspension.
+      const other = await person();
+      await expect(join(p.context, tenantId, other.actor.userId)).rejects.toThrow(
+        /row-level security/,
+      );
+      await expect(join(p.context, tenantId, p.actor.userId, 'SUSPENDED')).rejects.toThrow(
+        /row-level security/,
+      );
+      const [joined] = await join(p.context, tenantId, p.actor.userId);
+      await expect(grant(p.context, joined!.id, 'ADMIN')).rejects.toThrow(/row-level security/);
+      await grant(p.context, joined!.id, 'VIEWER');
+      const [row] = await owner<{ roles: string[] }[]>`
+        SELECT array_agg(r.key) AS roles FROM membership_roles mr JOIN roles r ON r.id = mr.role_id
+         WHERE mr.membership_id = ${joined!.id}`;
+      expect(row!.roles).toEqual(['VIEWER']);
+    });
+
+    it('lets nobody join without one: none, another address, expired, cancelled, unconfirmed', async () => {
+      const { tenantId } = await newAgency();
+      const cases: Array<[string, (p: Awaited<ReturnType<typeof person>>) => Promise<unknown>]> = [
+        ['none', async () => undefined],
+        ['another address', async () => invitation(tenantId, `else-${randomUUID()}@example.test`)],
+        ['expired', async (p) => invitation(tenantId, p.email, { expires: '-1 minute' })],
+        ['cancelled', async (p) => invitation(tenantId, p.email, { status: 'CANCELLED' })],
+        [
+          'unconfirmed',
+          async (p) => {
+            await owner`UPDATE users SET email_verified_at = NULL WHERE id = ${p.actor.userId}`;
+            return invitation(tenantId, p.email);
+          },
+        ],
+      ];
+      for (const [name, arrange] of cases) {
+        const p = await person();
+        await arrange(p);
+        await expect(join(p.context, tenantId, p.actor.userId), name).rejects.toThrow(
+          /row-level security/,
+        );
+      }
+    });
+
+    it('shows the invitee their own pending invitation and nothing else, and lets them only accept it', async () => {
+      const { tenantId } = await newAgency();
+      const p = await person();
+      const mine = await invitation(tenantId, p.email);
+      const theirs = await invitation(tenantId, `other-${randomUUID()}@example.test`);
+      const seen = await as(
+        p.context,
+        (tx) => tx<{ id: string }[]>`
+        SELECT id FROM tenant_invitations WHERE id IN (${mine}, ${theirs})`,
+      );
+      expect(seen.map((r) => r.id)).toEqual([mine]);
+      const someoneElse = (await person()).actor.userId;
+      // Not accepted for somebody else, not kept alive longer, not anyone else's.
+      await expect(
+        as(
+          p.context,
+          (tx) => tx`
+          UPDATE tenant_invitations SET status = 'ACCEPTED', accepted_by = ${someoneElse},
+                 accepted_at = now() WHERE id = ${mine}`,
+        ),
+      ).rejects.toThrow(/row-level security/);
+      await expect(
+        as(
+          p.context,
+          (tx) => tx`
+          UPDATE tenant_invitations SET expires_at = now() + interval '1 year' WHERE id = ${mine}`,
+        ),
+      ).rejects.toThrow(/row-level security/);
+      const touched = await as(
+        p.context,
+        (tx) => tx`
+        UPDATE tenant_invitations SET status = 'ACCEPTED', accepted_by = ${p.actor.userId},
+               accepted_at = now() WHERE id = ${theirs}`,
+      );
+      expect(touched.count).toBe(0);
+      await as(
+        p.context,
+        (tx) => tx`
+        UPDATE tenant_invitations SET status = 'ACCEPTED', accepted_by = ${p.actor.userId},
+               accepted_at = now() WHERE id = ${mine}`,
+      );
+      const [row] = await owner<
+        { status: string }[]
+      >`SELECT status FROM tenant_invitations WHERE id = ${mine}`;
+      expect(row!.status).toBe('ACCEPTED');
+    });
+
+    it('brings a removed member back with an invitation — never a suspended one', async () => {
+      const p = await person();
+      const { tenantId, memberships } = await newAgency(p.actor.userId);
+      await invitation(tenantId, p.email);
+      const rejoin = () =>
+        as(
+          p.context,
+          (tx) => tx`
+          UPDATE tenant_memberships SET status = 'ACTIVE' WHERE id = ${memberships[1]!}`,
+        );
+      await owner`UPDATE tenant_memberships SET status = 'SUSPENDED' WHERE id = ${memberships[1]!}`;
+      expect((await rejoin()).count).toBe(0);
+      await owner`UPDATE tenant_memberships SET status = 'REMOVED' WHERE id = ${memberships[1]!}`;
+      expect((await rejoin()).count).toBe(1);
+    });
+
+    it('lets a workspace give roles to its own members only, and add nobody itself', async () => {
+      const admin = await person();
+      const a = await newAgency(admin.actor.userId);
+      const b = await newAgency();
+      const inA = await agencyContext(owner, admin.actor.userId, a.tenantId);
+      await grant(inA, a.memberships[1]!, 'MANAGER');
+      await expect(grant(inA, b.memberships[0]!, 'VIEWER')).rejects.toThrow(/row-level security/);
+      const stranger = await person();
+      await expect(join(inA, a.tenantId, stranger.actor.userId)).rejects.toThrow(
+        /row-level security/,
+      );
     });
   });
 

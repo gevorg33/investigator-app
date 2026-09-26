@@ -21,7 +21,8 @@ export type DenialReason =
   | 'workspace_not_available'
   | 'workspace_context_missing'
   | 'workspace_kind_forbidden'
-  | 'permission_not_held';
+  | 'permission_not_held'
+  | 'exceeds_own_permissions';
 
 export interface AuthzContext {
   /** What is being attempted, e.g. 'mission.publish'. Audited on denial. */
@@ -138,6 +139,26 @@ export class AuthzService {
     if (context === undefined) await this.deny(actor, ctx, 'workspace_context_missing');
     else if (!context.permissions.includes(permission)) {
       await this.deny(actor, ctx, 'permission_not_held');
+    }
+  }
+
+  /**
+   * Check 3c — nothing upward (T-085, owner decision 2026-09-27). Granting a role, or acting on a
+   * member, needs every permission that role grants or that member holds: a member cannot make
+   * someone more than they are, nor suspend, remove or re-role someone who is more.
+   *
+   * Asked in permissions, like every check here, so it follows the catalog: no role is named, and
+   * a changed grant changes the answer. Refused 403, audited `exceeds_own_permissions`.
+   */
+  async requireHoldsAll(
+    actor: Actor,
+    permissions: readonly string[],
+    ctx: AuthzContext,
+  ): Promise<void> {
+    const context = currentContext();
+    if (context === undefined) await this.deny(actor, ctx, 'workspace_context_missing');
+    else if (permissions.some((p) => !context.permissions.includes(p))) {
+      await this.deny(actor, ctx, 'exceeds_own_permissions');
     }
   }
 

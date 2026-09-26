@@ -275,6 +275,14 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const logo = await agencyImage(owner, { tenantId: agencyId, uploadedBy: supplier.userId });
   await agencyProfile(owner, agencyId, { logoMediaId: logo });
   await agencySettings(owner, agencyId);
+  // An invitation the agency sent to an address nobody in the graph has (T-085), so no graph user
+  // is its invitee and only the agency's own workspace sees it.
+  const [invitation] = await owner<{ id: string }[]>`
+    INSERT INTO tenant_invitations (tenant_id, email, role_id, token_hash, expires_at, invited_by)
+    SELECT ${agencyId}, ${`graph-invitee-${randomUUID()}@example.test`}, r.id, ${randomUUID()},
+           now() + interval '1 day', ${supplier.userId}
+      FROM roles r WHERE r.key = 'VIEWER' AND r.tenant_id IS NULL
+    RETURNING id`;
 
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
@@ -323,6 +331,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       // Keyed by the agency (see KEY_COLUMN in the matrix).
       tenant_profiles: agencyId,
       tenant_settings: agencyId,
+      tenant_invitations: invitation!.id,
     },
     agencyLogo: logo,
   };

@@ -43,6 +43,10 @@ export const LIMITS = {
   // Every question is a paid model call. Provisional: far more than a person asking about the
   // platform needs, few enough that one account cannot run up the bill (T-017).
   assistantQuestionPerAccount: { max: 60, windowSeconds: 3600 },
+  // Every invitation, and every resend, is an email to an address the agency typed (T-085).
+  // Per workspace, so no agency can use the platform to mail strangers in bulk. Provisional:
+  // plenty for hiring a team in an afternoon.
+  invitationsPerWorkspace: { max: 20, windowSeconds: 3600 },
 } as const;
 
 /**

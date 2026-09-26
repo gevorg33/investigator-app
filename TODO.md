@@ -2495,6 +2495,7 @@ What makes a confirmation survive a browser close, and keeps 10,000 records out 
 - [ ] Large tool results stored and referenced by `result_id` with summary, top-N and cursor
 - [ ] A test proves a large result set never enters a prompt in full
 - [ ] A killed worker is replaced by another that resumes from persisted state
+- [ ] A member who leaves (suspended or removed, T-085) has their pending confirmations in that workspace voided — their sessions are already archived by a trigger then; the confirmations must follow
 - [ ] Plan rows are workspace-scoped (`tenant_id` under RLS, ADR-0011). **No DAG orchestration here**: it lands in T-096 over these rows (ADR-0012). No learned risk engine
 
 **Validation**
@@ -4681,7 +4682,7 @@ validator 0 errors. No browser surface — this is API only; the screens are T-0
 ---
 
 ### T-085 — Employees: invitations and the membership lifecycle (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27; migration 0028, `modules/tenants/employees/`, invitee policies, `requireHoldsAll`
 - **Priority:** P1
 - **Depends on:** T-083
 - **Risk:** HIGH
@@ -4697,11 +4698,22 @@ validator 0 errors. No browser surface — this is API only; the screens are T-0
   are read from the user, never copied.
 
 **Acceptance criteria**
-- [ ] Suspension and removal take effect on the member's next request (tested over HTTP)
-- [ ] An invitation cannot be accepted by a different account; resent tokens void the old one
-- [ ] The last OWNER is protected; invitations are rate-limited per workspace
-- [ ] When AI sessions exist (T-045), a removed member's sessions in that workspace close and their pending confirmations void
-- [ ] Knowledge base: `kb-agency-employees`
+- [x] Suspension and removal take effect on the member's next request (tested over HTTP)
+      — `memberships.spec.ts` boots `AppModule` with real sessions: the member's next request is 403,
+      their Personal workspace still works, reactivating lets them back; roles take effect likewise
+- [x] An invitation cannot be accepted by a different account; resent tokens void the old one
+      — held by the database: invitee policies key on `app_current_confirmed_email()`; a stranger,
+      the agency's own owner, an unconfirmed account, used/cancelled/expired and unknown tokens all
+      404 (HTTP) and are refused at the row (isolation matrix). Resend: old token 404, new one works.
+      Negative control: the address check removed from both policies let a stranger in
+- [x] The last OWNER is protected; invitations are rate-limited per workspace
+      — the deferred database trigger, said as 409 `last_owner` (demote, remove; suspend is
+      unreachable: not yourself, nothing upward); 20 invitations+resends an hour per workspace (429)
+- [x] When AI sessions exist (T-045), a removed member's sessions in that workspace close and their pending confirmations void
+      — sessions: archived by `archive_departed_member_sessions` when a membership leaves ACTIVE
+      (owner decision; third access-raising function, body pinned by `rls.spec.ts`; negative control
+      failed without it). **Confirmations do not exist yet** — voiding them is added to T-048
+- [x] Knowledge base: `kb-agency-employees` — en current, ru/hy drafts; validator 0 errors
 
 **Validation**
 ```bash
@@ -4722,6 +4734,10 @@ pnpm --filter api test memberships invitations
 **Description**
 Teams and team members. A member may belong to several teams. Teams feed assignment staffing
 and `investigations.read` (T-089), and notification routing (T-036).
+
+> **From T-085:** an invitation grants one role today. When teams exist, an invitation may also
+> name the teams its member joins (tenancy.md §2) — `tenant_invitations` and the invitee's
+> `invited_role_insert` policy are where that goes; `team_members` needs the same invitee door.
 
 **Acceptance criteria**
 - [ ] CRUD behind `teams.*`; removing a member from the workspace removes their team memberships
@@ -4748,6 +4764,9 @@ A profile belongs to a workspace and is held by one membership. An agency create
 profiles for its members with `investigators.*`; an independent investigator's profile stays in
 their Personal workspace. Discovery shows the agency a profile belongs to. Eligibility gains
 "the workspace is ACTIVE". Whether agency verification also gates listing is decided in T-088.
+
+> **From T-085:** an invitation may also name an investigator profile the new member takes over
+> (tenancy.md §2); that half was left for this task.
 
 **Acceptance criteria**
 - [ ] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
@@ -7203,6 +7222,37 @@ catalog key becomes `messageKey` and `field` is always the property. The same pa
 **Validation**
 ```bash
 pnpm --filter api test http-exception bootstrap && pnpm --filter app-web test form
+```
+
+---
+
+### T-158 — Accept an invitation (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-085
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**
+
+**Description**
+Found in T-085. The invitation email links to `/invitations/accept?token=…` on the app, and no
+such screen exists — an invitee lands on a 404. Build the one screen: the token out of the address
+bar on load and `Referrer-Policy: no-referrer` (as `/verify-email`), accepting on a button press
+(mail scanners open links), `POST /invitations/accept`, then activate the workspace it returns
+(`POST /workspaces/:id/activate`) and land in it. Signed out: sign in or create the account with
+that address, and come back here (`next`). Say, in the reader's language: not found (another
+account, used, cancelled, expired — one message), address not confirmed yet, already a member,
+suspended. T-093 builds the rest of the agency console; this should not wait for teams.
+
+**Acceptance criteria**
+- [ ] An invitee signed in with the invited, confirmed address joins and lands in the agency
+- [ ] Signed out, the link survives sign-in and sign-up and comes back to the accept screen
+- [ ] Each refusal says what to do next; checked in the browser at three widths
+
+**Validation**
+```bash
+pnpm --filter app-web test invitation
 ```
 
 ---

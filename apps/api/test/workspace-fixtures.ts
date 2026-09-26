@@ -12,7 +12,8 @@ export async function member(
   opts: { roles?: Role[] } = {},
 ): Promise<{ actor: Actor; personalId: string }> {
   const [user] = await owner<{ id: string }[]>`
-    INSERT INTO users (email, status) VALUES (${`ws-${randomUUID()}@example.test`}, 'ACTIVE') RETURNING id`;
+    INSERT INTO users (email, status, email_verified_at)
+    VALUES (${`ws-${randomUUID()}@example.test`}, 'ACTIVE', now()) RETURNING id`;
   const [session] = await owner<{ id: string }[]>`
     INSERT INTO user_sessions (user_id, refresh_token_hash, family_id, expires_at)
     VALUES (${user!.id}, ${randomUUID()}, ${randomUUID()}, now() + interval '1 day') RETURNING id`;

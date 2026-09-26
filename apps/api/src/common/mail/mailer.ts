@@ -5,7 +5,7 @@ export const MAILER = Symbol('MAILER');
 export interface MailMessage {
   to: string;
   /** Template identifier, not a subject line — copy is translated at the transport. */
-  template: 'email_verification' | 'password_reset';
+  template: 'email_verification' | 'password_reset' | 'workspace_invitation';
   /** Substitutions. Carries the one-time link; never persisted, never audited. */
   variables: Record<string, string>;
 }

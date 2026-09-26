@@ -79,6 +79,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   tenants: { class: 'tenancy' },
   tenant_memberships: { class: 'tenancy', columns: ['tenant_id'] },
   membership_roles: { class: 'tenancy', note: 'scoped through its membership' },
+  tenant_invitations: {
+    class: 'tenancy',
+    columns: ['tenant_id'],
+    note: 'its workspace reads and writes it; the invitee reads their own pending one and accepts it, keyed on their account’s confirmed email (T-085)',
+  },
 
   customer_profiles: { class: 'tenant_owned', columns: ['tenant_id'] },
   investigator_profiles: { class: 'tenant_owned', columns: ['tenant_id'] },

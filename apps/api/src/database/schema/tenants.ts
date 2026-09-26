@@ -103,6 +103,15 @@ export const tenantMemberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'no action' }),
     status: membershipStatus('status').notNull().default('ACTIVE'),
+    /**
+     * The employee's own details in this workspace (T-085). Name, email and avatar are the user's,
+     * read from `users`, never copied here. Locale and time zone override the user's own for this
+     * workspace's work; null is "as the account says".
+     */
+    jobTitle: text('job_title'),
+    department: text('department'),
+    locale: text('locale'),
+    timezone: text('timezone'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

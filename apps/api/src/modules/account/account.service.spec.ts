@@ -37,6 +37,8 @@ describe('the signed-in account (T-127)', () => {
 
   it('describes the caller, their roles and preferences — and whether the address is confirmed', async () => {
     const { actor } = await member(owner, { roles: ['CUSTOMER', 'INVESTIGATOR'] });
+    // Fixture accounts arrive confirmed, as an ACTIVE account is (T-085); this one starts not.
+    await ownerDb.update(users).set({ emailVerifiedAt: null }).where(eq(users.id, actor.userId));
     const view = await service.me({ ...actor, activeRole: 'INVESTIGATOR' });
     expect(view).toEqual({
       id: actor.userId,

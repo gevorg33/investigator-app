@@ -28,6 +28,6 @@ import { SessionRepository } from './session.repository';
     { provide: RATE_LIMIT_STORE, useClass: MemoryRateLimitStore },
   ],
   // RateLimitService is shared: other modules budget their own endpoint classes with it.
-  exports: [AuthService, RateLimitService],
+  exports: [AuthService, RateLimitService, TokenService],
 })
 export class AuthModule {}
