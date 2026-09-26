@@ -807,6 +807,7 @@ export const en = {
     },
   },
   help: {
+    title: 'Help',
     fallback: 'This article is not yet available in your language, so it is shown in English.',
   },
   not_found: {
@@ -816,6 +817,10 @@ export const en = {
     missions: 'Your missions',
   },
   account: {
+    confirm_first: {
+      title: 'Confirm your email address first',
+      body: 'This opens once your address is confirmed. Follow the link we sent you, or ask for a new one.',
+    },
     profile: {
       title: 'Your details',
       email: 'Email',

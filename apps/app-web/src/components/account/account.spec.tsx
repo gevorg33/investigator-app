@@ -97,6 +97,10 @@ describe('the profile', () => {
     api.on('POST /auth/verify-email/resend', 202);
     await show(ProfileSection({ account: account({ emailVerified: false }) }));
     expect(screen.getByText(en.profile.unverified)).toBeVisible();
+    // T-164: in Russian the label is wider than a phone; it wraps rather than scroll the page.
+    expect(screen.getByRole('button', { name: en.profile.resend })).toHaveClass(
+      'whitespace-normal',
+    );
     await userEvent.setup().click(screen.getByRole('button', { name: en.profile.resend }));
     expect(await screen.findByRole('status')).toHaveTextContent(en.profile.resent);
     expect(api.calls[0]).toMatchObject({

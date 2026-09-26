@@ -77,6 +77,23 @@ built by their own tasks (the core-loop hiring and messaging tasks). Above every
 owes — an unconfirmed address, documents to accept — as notices linking to where each is settled
 (`AccountNotices`). Notices, never blocks.
 
+**Before the address is confirmed** (T-164). An account is active only once its address is
+confirmed, and much of the API answers an active account only (`requireActive`), the workspace list
+among it. So the app does not ask for what would be refused: `getWorkspaces()` returns none for an
+unconfirmed reader without calling the API, and a page whose content the API keeps back shows
+`ConfirmFirst` in its place — what opens it, and **Send the confirmation link again**:
+
+| Page | For an unconfirmed reader |
+|---|---|
+| `/help/[docKey]` | titled **Help**, `ConfirmFirst` instead of the article |
+| `/agencies/[id]` | titled **Agency profile**, `ConfirmFirst` instead of the profile |
+| `/missions/investigators` | the Missions views, `ConfirmFirst` instead of the search |
+| `/missions/investigators/[id]` | the profile, `ConfirmFirst` under **Reviews** instead of the list |
+
+Account, language, time zone and sessions work as for anyone. The check is `emailVerified` from
+`GET /me`, before the call, rather than a caught 403: a refused request is an audited denial on the
+API, and a page that meets a refusal it did not expect still fails rather than hiding it.
+
 ## Strings and locale
 
 Every user-facing string is a key in `packages/i18n` (ADR-0013). Server components translate with

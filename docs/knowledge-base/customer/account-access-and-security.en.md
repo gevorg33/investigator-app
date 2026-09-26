@@ -4,9 +4,9 @@ title: Signing in, verifying your email, resetting your password and managing se
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-25
+updated: 2026-09-27
 source_of_truth: docs
 implementation_status: implemented
 related_code:
@@ -47,6 +47,14 @@ ask repeatedly in quick succession, later requests are declined for a while.
 Opening the link does not confirm the address by itself: the page asks you to press **Confirm my
 email address**. Email services open links to check them for danger, and a link that confirmed on
 opening would be used up before you ever saw it.
+
+## What can I use before my address is confirmed?
+
+You can sign in, and **Account** works as usual: your details, the language, the time zone and
+where you are signed in. Adding a role or an agency, finding investigators, reading an
+investigator's reviews or an agency's profile, and reading help articles wait until the address is
+confirmed. Where one of them would be, the page says so and offers **Send the confirmation link
+again**.
 
 ## How do I reset my password?
 

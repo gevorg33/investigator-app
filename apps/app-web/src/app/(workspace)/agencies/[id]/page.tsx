@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { AgencyProfileCard } from '@/components/agency/agency-profile-card';
 import { Page } from '@/components/page';
+import { getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
-import { serverApi } from '@/lib/api/server';
+import { getAccount, serverApi } from '@/lib/api/server';
 import type { PublicAgencyProfile } from '@/lib/api/types';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,14 +30,24 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  if (!(await getAccount())!.emailVerified) return { title: (await getT())('agency.title') };
   return { title: (await profileOf((await params).id)).name };
 }
 
 /**
  * A published agency, as anyone signed in sees it (T-094): the public projection and nothing else,
  * drawn by the component the agency previews itself with — so what it previewed is what this is.
+ * The API shows it to an active account only: until the address is confirmed, that comes first.
  */
 export default async function AgencyPublicPage({ params }: { params: Promise<{ id: string }> }) {
+  const account = (await getAccount())!;
+  if (!account.emailVerified) {
+    return (
+      <Page title={(await getT())('agency.title')}>
+        <ConfirmFirst email={account.email} />
+      </Page>
+    );
+  }
   const profile = await profileOf((await params).id);
   return (
     <Page title={profile.name}>

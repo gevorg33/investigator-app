@@ -7,8 +7,8 @@ import { SectionCard } from '@/components/section-card';
 import { Alert, AlertContent, AlertTitle } from '@/components/ui/alert';
 import { getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
-import { serverApi } from '@/lib/api/server';
-import type { BrandingSection, OwnAgencyProfile, WorkspaceView } from '@/lib/api/types';
+import { getWorkspaces, serverApi } from '@/lib/api/server';
+import type { BrandingSection, OwnAgencyProfile } from '@/lib/api/types';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('agency.title') };
@@ -32,7 +32,7 @@ async function unlessForbidden<T>(read: Promise<T | null>): Promise<T | null> {
  * role name here: a section the reader's role does not include says so instead of a form.
  */
 export default async function AgencyPage() {
-  const workspaces = (await serverApi<WorkspaceView[]>('/workspaces')) ?? [];
+  const workspaces = await getWorkspaces();
   const current = workspaces.find((w) => w.current);
   if (current?.kind !== 'AGENCY') redirect('/account#agencies');
   const registeredName = current.name!;

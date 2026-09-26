@@ -7416,7 +7416,7 @@ pnpm --filter api test agency-settings
 ---
 
 ### T-164 — An unconfirmed account opening `/account` gets "Application error"
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. Wider than filed: the `(workspace)` layout itself read `GET /workspaces`, which the API refuses a not-yet-active account (`requireActive`, since T-075), so no workspace page rendered for an unconfirmed reader; the layout spec mocked a 204 the API never sends. `getWorkspaces()` (cached, in `lib/api/server.ts`) does not ask for an unconfirmed reader; layout, Home, Account and Agency use it. Four pages whose content the API keeps back now show `ConfirmFirst` (`EmptyState` + `ResendVerification`) instead of asking: help article, agency profile, find investigators, an investigator's reviews. Checked before the call, not a caught 403 — a denial is an audited event. The resend button wraps (`whitespace-normal`): in ru its label ran 443px on a 375px `/account`. Specs seen failing first (layout with the real 403, the four pages). In the browser against the real API, unconfirmed: all 16 workspace routes render, redirect or 404 — no server exception; the four pages and `/account` at 375, 768 and 1280 in en, ru and hy with no horizontal scroll, the button 44px (66px where it wraps); resend → 202 and its status. Confirmed, the same pages show the reviews list and the search. `app-web.md`, KB `kb-customer-account-access-and-security` v3 (en; ru/hy drafts), component inventory. Filed T-165
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -7434,16 +7434,48 @@ The API rule stays as it is; the page should show what an unconfirmed reader can
 the link) instead of crashing. Check the other `(workspace)` pages for the same unhandled refusal.
 
 **Acceptance criteria**
-- [ ] An unconfirmed account opening `/account` sees a page that says to confirm the address, with a
+- [x] An unconfirmed account opening `/account` sees a page that says to confirm the address, with a
   way to resend the link — no server exception
-- [ ] Every `(workspace)` page an unconfirmed reader can reach is checked, and none throws
-- [ ] Spec seen failing first; checked in the browser against the real API at 375, 768 and 1280
+- [x] Every `(workspace)` page an unconfirmed reader can reach is checked, and none throws
+- [x] Spec seen failing first; checked in the browser against the real API at 375, 768 and 1280
 
 **Validation**
 ```bash
 pnpm --filter app-web test account
 ```
 
+
+---
+
+### T-165 — The assistant tells an unconfirmed reader only "You cannot do that here"
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/**
+
+**Description**
+Found in T-164's browser check. An unconfirmed account opening the assistant sees "The conversation
+could not be opened", "You cannot do that here" and **Try again**: `GET /ai/sessions` is refused 403,
+correctly — `AiSessionsService` calls `requireActive`, and an account is not active until its address
+is confirmed. Trying again cannot succeed. Like the pages T-164 fixed, the panel should say what opens
+it (confirm the address) and offer the new link, without asking the API for what it would refuse. The
+layout already knows `emailVerified`.
+
+Whether help articles and the assistant's public-policy answers should open to an unconfirmed account
+at all is an authorization question, not this task — asked of the owner in T-164's handoff.
+
+**Acceptance criteria**
+- [ ] An unconfirmed reader opening the assistant sees "confirm first" with **Send the confirmation
+  link again**, and no call to `/ai/*` is made
+- [ ] Spec seen failing first; checked in the browser at 375, 768 and 1280 in en, ru and hy
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant
+```
 ---
 
 ## Backlog

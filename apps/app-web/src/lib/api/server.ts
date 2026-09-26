@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { ACTIVE_ROLE_COOKIE, SESSION_COOKIE } from '@/lib/session-cookies';
 import { ApiError, bodyOf, toApiError } from './errors';
-import type { LegalDocument } from './types';
+import type { LegalDocument, WorkspaceView } from './types';
 
 /** Where the server reaches the API. In production, the internal address; in development, local. */
 const apiOrigin = (): string => process.env['API_INTERNAL_URL'] ?? 'http://localhost:3001';
@@ -53,6 +53,17 @@ export const getAccount = cache(async (): Promise<Account | null> => {
     if (e instanceof ApiError && e.status === 401) return null;
     throw e;
   }
+});
+
+/**
+ * The reader's workspaces — read once per request. The API lists them only to an active account,
+ * and an account is not active until its address is confirmed: an unconfirmed reader has none to
+ * use, so it is not asked, and is not refused (T-164).
+ */
+export const getWorkspaces = cache(async (): Promise<WorkspaceView[]> => {
+  const account = await getAccount();
+  if (account?.emailVerified !== true) return [];
+  return (await serverApi<WorkspaceView[]>('/workspaces'))!;
 });
 
 /** The documents this account still has to accept — read once per request. */

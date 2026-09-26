@@ -55,6 +55,7 @@ describe('the application routes', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    api.on('GET /me', 200, account());
   });
 
   it('is never indexed — by metadata and by header, so neither can be forgotten alone', async () => {
@@ -109,8 +110,9 @@ describe('the application routes', () => {
     request.cookies.set('investigator_session', 'tok');
     api.on('GET /me', 200, account({ emailVerified: false }));
     api.on('GET /legal/outstanding', 200, [legalDocument()]);
-    // Nothing listed: no workspace to name, and nothing to switch between.
-    api.on('GET /workspaces', 204);
+    // Unconfirmed, so not yet active: the API refuses the list (T-164), and the layout must not
+    // ask — no workspace to name, and nothing to switch between.
+    api.on('GET /workspaces', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
     const tree = await resolveServer(await WorkspaceLayout({ children: 'inside' }));
     render(
       <I18nProvider
@@ -287,14 +289,16 @@ describe('the application routes', () => {
     ]);
     // A Personal workspace has no agency to set up, and asks for none.
     api.install();
+    api.on('GET /me', 200, account());
     api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
     renderIntl(await resolveServer(await HomePage()));
-    expect(api.calls.map((c) => c.path)).toEqual(['/workspaces']);
+    expect(api.calls.map((c) => c.path)).toEqual(['/me', '/workspaces']);
     // Nor with no workspace listed at all.
     api.install();
-    api.on('GET /workspaces', 204);
+    api.on('GET /me', 200, account());
+    api.on('GET /workspaces', 200, []);
     renderIntl(await resolveServer(await HomePage()));
-    expect(api.calls.map((c) => c.path)).toEqual(['/workspaces']);
+    expect(api.calls.map((c) => c.path)).toEqual(['/me', '/workspaces']);
   });
 
   it('renders every page in the reader’s chosen language', async () => {
@@ -451,7 +455,7 @@ describe('the application routes', () => {
     it('asks for a confirmed address before an agency can be created', async () => {
       signedIn([]);
       // No workspaces listed: nothing to lead to, and nothing breaks.
-      api.on('GET /workspaces', 204);
+      api.on('GET /workspaces', 200, []);
       api.on('GET /me', 200, account({ timezone: 'Asia/Yerevan', emailVerified: false }));
       renderIntl(await resolveServer(await AccountPage()));
       const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
@@ -485,7 +489,7 @@ describe('the application routes', () => {
       expect(screen.queryByRole('link', { name: /^Agency details/ })).toBeNull();
       expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
       unmount();
-      api.on('GET /workspaces', 204);
+      api.on('GET /workspaces', 200, []);
       renderIntl(await resolveServer(await AccountPage()));
       expect(screen.queryByRole('link', { name: /^Agency details/ })).toBeNull();
       expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
@@ -507,7 +511,7 @@ describe('the application routes', () => {
     it('is only for an agency workspace: anywhere else it sends the reader to Account’s agencies', async () => {
       api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
       await expect(AgencyPage()).rejects.toEqual(new Redirected('/account#agencies'));
-      api.on('GET /workspaces', 204);
+      api.on('GET /workspaces', 200, []);
       await expect(AgencyPage()).rejects.toEqual(new Redirected('/account#agencies'));
     });
 
@@ -577,9 +581,20 @@ describe('the application routes', () => {
 
     it('is not found for an id that is not one, and for what the API does not show', async () => {
       await expect(AgencyPublicPage(params('not-an-id'))).rejects.toBeInstanceOf(NotFound);
-      expect(api.calls).toEqual([]);
+      expect(api.calls.filter((c) => c.path !== '/me')).toEqual([]);
       api.on(`GET /agencies/${id}/profile`, 404, apiError('NOT_FOUND', 'error.common.not_found'));
       await expect(AgencyPublicPage(params(id))).rejects.toBeInstanceOf(NotFound);
+    });
+
+    it('asks an unconfirmed reader to confirm first, and does not ask for what the API would refuse (T-164)', async () => {
+      api.on('GET /me', 200, account({ emailVerified: false }));
+      renderIntl(await resolveServer(await AgencyPublicPage(params(id))));
+      const { agency, account: copy } = catalogs.en;
+      expect(screen.getByRole('heading', { level: 1, name: agency.title })).toBeVisible();
+      expect(screen.getByRole('heading', { name: copy.confirm_first.title })).toBeVisible();
+      expect(screen.getByRole('button', { name: copy.profile.resend })).toBeVisible();
+      expect((await agencyPublicMeta(params(id))).title).toBe(agency.title);
+      expect(api.calls.map((c) => c.path)).toEqual(['/me', '/me']);
     });
 
     it('does not turn a failure into a 404', async () => {

@@ -545,6 +545,16 @@ describe('the find-investigators page', () => {
     expect(await screen.findByRole('heading', { name: en.none_title })).toBeVisible();
   });
 
+  it('asks an unconfirmed reader to confirm first, and does not search where the API would refuse (T-164)', async () => {
+    api.on('GET /me', 200, account({ roles: [], emailVerified: false }));
+    renderIntl(await resolveServer(await DiscoveryPage({ searchParams: Promise.resolve({}) })));
+    expect(screen.getByRole('link', { name: catalogs.en.missions.views.find })).toBeVisible();
+    const { confirm_first, profile } = catalogs.en.account;
+    expect(screen.getByRole('heading', { name: confirm_first.title })).toBeVisible();
+    expect(screen.getByRole('button', { name: profile.resend })).toBeVisible();
+    expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+  });
+
   it('sends someone working as an investigator back to Missions', async () => {
     api.on('GET /me', 200, account({ roles: ['INVESTIGATOR'] }));
     await expect(DiscoveryPage({ searchParams: Promise.resolve({}) })).rejects.toEqual(

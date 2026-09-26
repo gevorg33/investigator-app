@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProfilePage, { generateMetadata } from '@/app/(workspace)/missions/investigators/[id]/page';
 import type { ProfileReviews as Reviews, PublicReview } from '@/lib/api/types';
 import { api, apiError } from '@/test/api';
-import { ownProfile } from '@/test/fixtures';
+import { account, ownProfile } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
 import { NotFound } from '@/test/navigation';
 import { request } from '@/test/request';
@@ -45,6 +45,7 @@ const PUBLIC = (() => {
 beforeEach(() => {
   request.reset();
   api.install();
+  api.on('GET /me', 200, account());
 });
 
 describe('an investigator’s public profile page', () => {
@@ -107,7 +108,22 @@ describe('an investigator’s public profile page', () => {
     await expect(
       ProfilePage({ params: Promise.resolve({ id: 'not-an-id' }) }),
     ).rejects.toBeInstanceOf(NotFound);
-    expect(api.calls.map((c) => c.path)).toEqual([`/profiles/investigator/${ID}`]);
+    const asked = api.calls.map((c) => c.path).filter((path) => path !== '/me');
+    expect(asked).toEqual([`/profiles/investigator/${ID}`]);
+  });
+
+  it('shows an unconfirmed reader the profile, and what opens its reviews in their place (T-164)', async () => {
+    serve();
+    api.on('GET /me', 200, account({ emailVerified: false }));
+    await show();
+    expect(screen.getByRole('heading', { level: 1, name: 'Ani Petrosyan' })).toBeVisible();
+    const section = screen.getByRole('region', { name: en.reviews });
+    const { confirm_first, profile } = catalogs.en.account;
+    expect(within(section).getByRole('heading', { name: confirm_first.title })).toBeVisible();
+    expect(within(section).getByRole('button', { name: profile.resend })).toBeVisible();
+    expect(within(section).queryByRole('listitem')).toBeNull();
+    // Not asked for: the API shows reviews to an active account only.
+    expect(api.calls.map((c) => c.path)).not.toContain(`/profiles/investigator/${ID}/reviews`);
   });
 
   it('passes any other failure on', async () => {

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { ArticleBody } from '@/components/help/article-body';
 import { Page } from '@/components/page';
 import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
-import { serverApi } from '@/lib/api/server';
+import { getAccount, serverApi } from '@/lib/api/server';
 import type { HelpArticle } from '@/lib/api/types';
 import { slug } from '@/lib/slug';
 
@@ -16,7 +17,8 @@ type Params = Promise<{ docKey: string }>;
  * the API's decision, by the same rule the assistant retrieves with: another audience's article
  * is not found, exactly like one that does not exist. Each section can be linked to by its
  * heading; the first, which carries the article's own title, is its introduction. Read once per
- * request, for the title and the page alike.
+ * request, for the title and the page alike. The API opens articles to an active account only:
+ * until the address is confirmed, that comes first.
  */
 const read = cache(async (docKey: string): Promise<HelpArticle> => {
   const { locale } = await getLocale();
@@ -31,10 +33,19 @@ const read = cache(async (docKey: string): Promise<HelpArticle> => {
 });
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  if (!(await getAccount())!.emailVerified) return { title: (await getT())('help.title') };
   return { title: (await read((await params).docKey)).title };
 }
 
 export default async function HelpArticlePage({ params }: { params: Params }) {
+  const account = (await getAccount())!;
+  if (!account.emailVerified) {
+    return (
+      <Page title={(await getT())('help.title')}>
+        <ConfirmFirst email={account.email} />
+      </Page>
+    );
+  }
   const [t, article] = await Promise.all([getT(), read((await params).docKey)]);
   return (
     <Page title={article.title}>
