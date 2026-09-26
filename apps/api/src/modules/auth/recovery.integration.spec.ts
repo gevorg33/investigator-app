@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { readyPasswords } from '../../../test/passwords';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AuditService } from '../../common/audit/audit.service';
 import { LegalService } from '../legal/legal.service';
@@ -11,7 +12,6 @@ import { auditLogs, userSessions, userTokens } from '../../database/schema';
 import { AuthService } from './auth.service';
 import { SessionRepository } from './session.repository';
 import { AuthzService } from '../../common/authz/authz.service';
-import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
@@ -56,7 +56,7 @@ describe('verification and password reset', () => {
     return new URL(msg?.variables['url'] ?? '').searchParams.get('token') ?? '';
   };
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = testPool();
     db = scopedDb(sql);
     // max 2: one connection holds the documents lock while fixtures use the other (T-022).
@@ -69,7 +69,7 @@ describe('verification and password reset', () => {
     actors = new ActorService(db, tokens, new SessionService(tokens));
     auth = new AuthService(
       db,
-      new PasswordService(),
+      await readyPasswords(),
       tokens,
       new SessionService(tokens),
       new RateLimitService(new MemoryRateLimitStore()),

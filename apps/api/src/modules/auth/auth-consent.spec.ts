@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
+import { readyPasswords } from '../../../test/passwords';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { testActor } from '../../../test/actor';
 import { testPool } from '../../../test/db';
@@ -20,7 +21,6 @@ import {
 } from '../profiles/profiles.repository';
 import { ProfilesService } from '../profiles/profiles.service';
 import { AuthService } from './auth.service';
-import { PasswordService } from './password.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionRepository } from './session.repository';
 import { SessionService } from './session.service';
@@ -64,7 +64,7 @@ describe('the acceptance gate', () => {
     ...requiredForRole('INVESTIGATOR'),
   ];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sql = testPool({ max: 3 });
     ownerSql = testPool({ max: 3, role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
@@ -74,7 +74,7 @@ describe('the acceptance gate', () => {
     legal = new LegalService(db, audit);
     auth = new AuthService(
       db,
-      new PasswordService(),
+      await readyPasswords(),
       tokens,
       new SessionService(tokens),
       new RateLimitService(new MemoryRateLimitStore()),
