@@ -34,6 +34,10 @@ const MAY_READ_ROLE_TABLES = [
   // Creating a workspace assigns its owner's role. That is a write of the catalog's own role —
   // constrained by the policy to that one role — not a decision made from a name (T-083).
   'modules/tenants/agencies.service.ts',
+  // Employees (T-085): what a role grants and what a member holds, as permission sets — "no
+  // granting upward" compares those sets and never a name. The one file in the module that reads
+  // the tables; the services ask it.
+  'modules/tenants/employees/employee-roles.ts',
   'database/schema/index.ts',
   'database/schema/tenants.ts',
   'database/table-classes.ts',

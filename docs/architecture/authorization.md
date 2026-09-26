@@ -269,6 +269,16 @@ and customer actions keep their platform-role checks until an agency version of 
 | Change the agency's public profile, publish or unpublish it | `company.update` |
 | Read the agency's settings | `settings.read` |
 | Change a settings section · upload an agency logo or cover | `settings.update` |
+| List the agency's members and invitations (T-085) | `employees.read` |
+| Invite, resend or cancel an invitation | `employees.invite` |
+| Change a member's details or roles | `employees.update` |
+| Suspend or reactivate a member | `employees.suspend` |
+| Remove a member | `employees.remove` |
+
+**Nothing upward (T-085).** Beside the permission, `AuthzService.requireHoldsAll(actor, permissions,
+ctx)` refuses — 403, audited `exceeds_own_permissions` — granting a role that carries a permission
+the actor does not hold, and acting on a member who holds one. Accepting an invitation needs only an
+active account; which invitation is the caller's is the database's (`tenancy.md` §2).
 
 The agency's profile and settings exist only in an agency workspace:
 `AuthzService.requireAgencyWorkspace` refuses them elsewhere, 403 audited as

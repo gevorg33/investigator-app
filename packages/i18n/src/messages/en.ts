@@ -944,6 +944,17 @@ export const en = {
         colour: 'Enter a colour as # followed by six characters, such as #1d4ed8.',
         low_contrast: 'This colour is too hard to read against. Choose a darker or a stronger one.',
       },
+      employees: {
+        role_unknown: 'Choose a role from the list.',
+        role_required: 'Choose at least one role.',
+        text_length: 'Use at most 120 characters.',
+        last_owner:
+          'The agency must keep at least one active owner. Make someone else an owner first.',
+        not_yourself: 'You cannot suspend yourself. Another owner or admin can.',
+        already_member: 'This person is already a member of the agency.',
+        already_invited: 'This address already has an invitation waiting. Send it again instead.',
+        suspended: 'Your membership in this agency is suspended. Ask the agency to reactivate it.',
+      },
       agency_profile: {
         agency_setup:
           'Finish setting up the agency first: name, country, business email, time zone and currency.',

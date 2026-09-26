@@ -201,6 +201,42 @@ describe('tenant permissions', () => {
     });
   });
 
+  describe('nothing upward (T-085)', () => {
+    it('passes when the caller holds every permission asked about, and refuses — audited — when not', async () => {
+      const me = await member(owner);
+      const { tenantId } = await agency(owner, [
+        { userId: (await member(owner)).actor.userId },
+        { userId: me.actor.userId, role: 'ADMIN' },
+      ]);
+      const context = await resolver.resolve(me.actor, tenantId);
+      await expect(
+        runInContext(context, () =>
+          authz.requireHoldsAll(
+            me.actor,
+            ['employees.invite', 'settings.update'],
+            ctx('probe.holds'),
+          ),
+        ),
+      ).resolves.toBeUndefined();
+      const c = ctx('probe.upward');
+      await expect(
+        runInContext(context, () =>
+          authz.requireHoldsAll(me.actor, ['employees.invite', 'company.update_details'], c),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+      const [row] = await denialsFor(c.correlationId);
+      expect(row).toMatchObject({ reason: 'exceeds_own_permissions' });
+    });
+
+    it('is refused outside any workspace', async () => {
+      const { actor } = await member(owner);
+      const c = ctx('probe.no_workspace_holds');
+      await expect(authz.requireHoldsAll(actor, [], c)).rejects.toMatchObject({ status: 403 });
+      const [row] = await denialsFor(c.correlationId);
+      expect(row).toMatchObject({ reason: 'workspace_context_missing' });
+    });
+  });
+
   it('never decides from a role name: what a role grants lives in one place', async () => {
     // Two roles with different names and the same grants must be indistinguishable to a check.
     // AGENCY_STAFF and VIEWER are exactly that today (tenancy.md §3, "Open").

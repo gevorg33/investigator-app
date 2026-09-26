@@ -169,16 +169,33 @@ describe('row-level security', () => {
     ]);
   });
 
-  it('raises platform access in exactly two database functions, both integrity checks', async () => {
+  it('raises platform access in exactly three database functions, each doing one fixed thing', async () => {
     // A tenancy invariant must hold whoever is writing, so the two constraint triggers read with
-    // platform access — a SET clause on the function, restored when it returns. Nothing else in
-    // the database may do that; in the application, only PlatformContext can (tenant-plumbing).
+    // platform access — a SET clause on the function, restored when it returns. The third archives
+    // a departing member's own AI sessions in that workspace, which are private to them even from
+    // the admin who removed them (T-085, owner decision 2026-09-27). Nothing else in the database
+    // may do that; in the application, only PlatformContext can (tenant-plumbing).
     const elevated = await owner<{ name: string }[]>`
       SELECT proname AS name FROM pg_proc
        WHERE proconfig::text LIKE '%app.platform_access%'`;
     expect(elevated.map((r) => r.name).sort()).toEqual([
+      'archive_departed_member_sessions',
       'assert_personal_member_is_owner',
       'assert_tenant_has_owner',
+    ]);
+  });
+
+  it('lets the departing-member trigger archive and nothing else', async () => {
+    const [row] = await owner<{ src: string }[]>`
+      SELECT prosrc AS src FROM pg_proc WHERE proname = 'archive_departed_member_sessions'`;
+    const statements = row!.src
+      .replace(/--[^\n]*/g, '')
+      .split(';')
+      .map((s) => s.replace(/\s+/g, ' ').trim())
+      .filter((s) => s !== '' && s !== 'END');
+    expect(statements).toEqual([
+      'BEGIN UPDATE ai_sessions SET archived_at = now(), updated_at = now() WHERE tenant_id = NEW.tenant_id AND user_id = NEW.user_id AND archived_at IS NULL AND deleted_at IS NULL',
+      'RETURN NULL',
     ]);
   });
 

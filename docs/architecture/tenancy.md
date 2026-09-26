@@ -141,6 +141,47 @@ tenant_memberships:  ACTIVE ◄──► SUSPENDED
   sessions in that workspace close, and pending confirmations they created are voided.
 - The **last OWNER cannot be removed or demoted**, so an agency is never left unmanageable.
 
+> **Built in T-085** (migration 0028). Owner decisions, 2026-09-27: no granting upward; a departing
+> member's AI sessions archived by a trigger; one role per invitation; a confirmed address to accept.
+>
+> - **Invitations** (`tenant_invitations`): an address (`citext`), the one role it grants, the
+>   token's SHA-256 (never the token), 7 days to accept. EXPIRED is derived — a PENDING row past
+>   `expires_at`. One live invitation per address per agency; inviting an address whose invitation
+>   has expired cancels that one and sends a new one. Resending rotates the token and restarts the
+>   week, so the old link is dead. Every invitation and resend is an email, rate-limited to 20 an
+>   hour per workspace. `POST /agencies/current/invitations`, `…/:id/resend`, `…/:id/cancel`,
+>   `GET …/invitations` (`employees.invite`; the list `employees.read`).
+> - **Accepting** (`POST /invitations/accept`, from any workspace): an ACTIVE account whose
+>   **confirmed** address is the invitation's. The database decides that, not the request: the
+>   invitee's policies — `invitee_read`, `invitee_accept` on the invitation, `invited_insert` and
+>   `invited_rejoin` on the membership, `invited_role_insert` on its role — all key on
+>   `app_current_confirmed_email()`, the signed-in user's address when it is confirmed. So another
+>   account, an unconfirmed one, a used, cancelled or expired invitation and a made-up token all
+>   answer the same 404. A REMOVED member comes back as the same membership, with only the new
+>   invitation's role; a SUSPENDED one cannot use an invitation to get round the suspension (409).
+>   Inside the agency's own workspace its members can see every invitation, so the service also
+>   compares the address — the database would refuse the join anyway. The address is held twice:
+>   removing the check from the membership policy alone left the join refused, because the policy's
+>   subquery reads invitations under `invitee_read`; removing it from both let a stranger in
+>   (negative controls).
+> - **Members** (`GET|PATCH /agencies/current/members[/:id]`, `PUT …/:id/roles`, `POST …/:id/suspend`,
+>   `…/reactivate`, `…/remove`): job title, department, and locale and time zone overrides; the whole
+>   set of roles; suspend (not yourself), reactivate, remove (roles taken, row kept). Each lands on
+>   the member's **next** request — shown over HTTP. `membership_roles` gained `workspace_insert`, a
+>   workspace assigning roles to its own agency members.
+> - **Nothing upward**: `AuthzService.requireHoldsAll` — the actor must hold every permission a role
+>   they grant carries and every permission the member they act on holds. An ADMIN manages ADMINs
+>   and below, never an OWNER. Asked in permissions, so no role is named; `employee-roles.ts` is the
+>   one file in the module allowed to read the role tables (`role-names.spec.ts`).
+> - **The last owner** is the database's rule (deferred trigger, migration 0011), said to the reader
+>   as a 409 naming it.
+> - **AI sessions**: when a membership leaves ACTIVE, `archive_departed_member_sessions` archives that
+>   person's sessions in that workspace, whoever wrote the change. Sessions are private to their owner
+>   even from the admin, so this is the third function allowed to raise platform access; its body is
+>   held to the one UPDATE by `rls.spec.ts`. **Pending confirmations** do not exist yet: voiding a
+>   departed member's is T-048's to build.
+> - **Not yet:** teams in an invitation (T-086) and an investigator profile to take over (T-087).
+
 ---
 
 ## 3. Roles and permissions (inside a workspace)

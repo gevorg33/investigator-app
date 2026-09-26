@@ -45,7 +45,8 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `tenants` | **Personal:** with the user; removed with them by the retention workflow when empty. **Agency:** through its lifecycle (T-090); never hard-deleted while anything it holds is retained | Contract, dispute defence | The application holds no `DELETE`. Kind and owner never change (trigger) |
 | `tenant_profiles` | With the agency (T-090's lifecycle); unpublished rather than deleted | Contract | The application holds no `DELETE`. Holds only what the agency chose to show publicly. Its logo and cover follow the `media_assets` rule (T-084) |
 | `tenant_settings` | With the agency | Contract | The application holds no `DELETE`; a section goes back to its defaults by saving them. Records who last saved each section, by id without a foreign key, as in `audit_logs` (T-084) |
-| `tenant_memberships` | With the workspace; a REMOVED membership is kept, so attribution survives | Contract, dispute defence, audit | The application holds no `DELETE`. Workspace and person never change (trigger). An agency membership blocks the user's hard deletion, and the retention workflow handles it deliberately |
+| `tenant_memberships` | With the workspace; a REMOVED membership is kept, so attribution survives | Contract, dispute defence, audit | The application holds no `DELETE`. Workspace and person never change (trigger). An agency membership blocks the user's hard deletion, and the retention workflow handles it deliberately. Job title, department and locale/time zone overrides (T-085) go with the row; a REMOVED member's roles are deleted, their details kept for attribution |
+| `tenant_invitations` | **Provisional:** with the agency, as the record of who was asked and by whom; the **invitee's address** is personal data of someone who may never have joined — see below (T-085) | Contract (the agency's request to add a member), audit | The application holds no `DELETE`. Stores the token's hash only, never the token. A PENDING invitation expires after 7 days (derived, nothing runs); cancelled and expired rows stay |
 | `membership_roles` | With the membership | Audit | Assignments are added and removed, never edited in place. The last OWNER cannot be removed (trigger) |
 | `permissions`, `roles`, `role_permissions` | Indefinitely — reference data | Contract | Seeded by migration. Read-only to the application. Contain no personal data |
 | `verification_decisions` | With the request | Verification record, dispute defence | Append-only. The reviewer is recorded by id without a foreign key, as in `audit_logs`, so attribution survives the reviewer's account. The reason is free text written for the applicant |
@@ -59,7 +60,8 @@ grant (migration 0000, proven by `grants.spec.ts`).
 
 Each will be added as its table ships:
 
-evidence items · reports and versions · verification documents ·
+invitation addresses of people who never joined (T-085) · evidence items · reports and versions ·
+verification documents ·
 messages and attachments · payment and ledger records · consent records · AI sessions, messages
 and memory · investigation sources, notes, tasks and documents · ban identity hashes
 

@@ -46,13 +46,15 @@ import * as m42 from './modules/taxonomy/taxonomy.controller';
 import * as m43 from './modules/taxonomy/taxonomy.dto';
 import * as m44 from './modules/tenants/agencies.controller';
 import * as m45 from './modules/tenants/agencies.dto';
-import * as m46 from './modules/tenants/profile/agency-profile.controller';
-import * as m47 from './modules/tenants/profile/agency-profile.dto';
-import * as m48 from './modules/tenants/settings/agency-settings.controller';
-import * as m49 from './modules/tenants/settings/agency-settings.dto';
-import * as m50 from './modules/tenants/workspaces.controller';
-import * as m51 from './modules/verification/verification.controller';
-import * as m52 from './modules/verification/verification.dto';
+import * as m46 from './modules/tenants/employees/employees.controller';
+import * as m47 from './modules/tenants/employees/employees.dto';
+import * as m48 from './modules/tenants/profile/agency-profile.controller';
+import * as m49 from './modules/tenants/profile/agency-profile.dto';
+import * as m50 from './modules/tenants/settings/agency-settings.controller';
+import * as m51 from './modules/tenants/settings/agency-settings.dto';
+import * as m52 from './modules/tenants/workspaces.controller';
+import * as m53 from './modules/verification/verification.controller';
+import * as m54 from './modules/verification/verification.dto';
 
 export default async () => {
     const t = {["./modules/assignments/assignments.dto"]: m11, ["./modules/profiles/profiles.dto"]: m30, ["./modules/search/mission-browse.dto"]: m37, ["./modules/search/search.dto"]: m39, ["./modules/service-areas/service-areas.dto"]: m41};
@@ -114,7 +116,7 @@ export default async () => {
                     UpdateCustomerProfileDto: { organisationName: { required: false, type: () => String, maxLength: 200 }, contactPhone: { required: false, type: () => String, maxLength: 32 } },
                     ActivateRoleDto: { role: { required: true, enum: ["CUSTOMER", "INVESTIGATOR"] }, acceptedDocumentIds: { required: false, type: () => [String], description: "The documents being accepted, by id \u2014 so the record says which exact version and locale was\nshown (T-021). Empty is valid: with nothing published there is nothing to accept, and the\ngate refuses only when something required is in force and missing from this list.", maxItems: 12, minLength: 36, maxLength: 36 } }
                 }],
-            [m52, {
+            [m54, {
                     SubmitVerificationDto: { documentIds: { required: true, type: () => [String], format: "uuid", minItems: 1 } },
                     DecideVerificationDto: { outcome: { required: true, enum: ["APPROVED", "REJECTED"] }, reason: { required: true, type: () => String, minLength: 1, pattern: "\\S" } },
                     QueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
@@ -123,12 +125,18 @@ export default async () => {
                     CreateAgencyDto: { name: { required: true, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String, description: "Where the platform writes to the business, which is not the creator's personal address.", format: "email", minLength: 3, maxLength: 254 }, timezone: { required: false, type: () => String, minLength: 1, maxLength: 64 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, agreementDocumentId: { required: true, type: () => String, description: "The agency terms the creator is accepting, by id \u2014 so the record says which exact version and\nlocale they were shown (T-021), rather than the server deciding after the fact.", minLength: 36, maxLength: 36 } },
                     UpdateAgencyDetailsDto: { version: { required: true, type: () => Number, minimum: 1 }, name: { required: false, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String }, timezone: { required: false, type: () => String }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" } }
                 }],
-            [m47, {
+            [m49, {
                     ProfileVersionDto: { version: { required: true, type: () => Number, minimum: 0 } },
                     UpdateAgencyProfileDto: { displayName: { required: false, type: () => String, nullable: true, maxLength: 200 }, headline: { required: false, type: () => String, nullable: true, maxLength: 300 }, about: { required: false, type: () => String, nullable: true, maxLength: 4000 }, logoMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_LOGO uploads (`POST /media/uploads`).", format: "uuid" }, coverMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_COVER uploads.", format: "uuid" } }
                 }],
-            [m49, {
+            [m51, {
                     UpdateSettingsSectionDto: { version: { required: true, type: () => Number, minimum: 0 }, values: { required: true, type: "object", additionalProperties: true } }
+                }],
+            [m47, {
+                    InviteEmployeeDto: { email: { required: true, type: () => String }, role: { required: true, type: () => String, minLength: 1, maxLength: 64 } },
+                    AcceptInvitationDto: { token: { required: true, type: () => String, minLength: 20, maxLength: 200 } },
+                    UpdateEmployeeDto: { jobTitle: { required: false, type: () => String, nullable: true, minLength: 1, maxLength: 120 }, department: { required: false, type: () => String, nullable: true, minLength: 1, maxLength: 120 }, locale: { required: false, nullable: true, enum: ["en", "ru", "hy"] }, timezone: { required: false, type: () => String, nullable: true } },
+                    SetEmployeeRolesDto: { roles: { required: true, type: () => [String], minItems: 1, maxItems: 6, minLength: 1, maxLength: 64 } }
                 }],
             [m43, {
                     Reasoned: { reason: { required: true, type: () => String, minLength: 12, maxLength: 500 } },
@@ -284,7 +292,7 @@ export default async () => {
                         getCustomer: { type: Object }
                     }
                 }],
-            [m51, {
+            [m53, {
                     VerificationController: {
                         submit: { type: Object },
                         listMine: { type: [Object] },
@@ -301,7 +309,7 @@ export default async () => {
                         updateCurrent: { type: Object }
                     }
                 }],
-            [m46, {
+            [m48, {
                     AgencyProfileController: {
                         readOwn: { type: Object },
                         update: { type: Object },
@@ -310,16 +318,35 @@ export default async () => {
                         readPublished: { type: Object }
                     }
                 }],
-            [m48, {
+            [m50, {
                     AgencySettingsController: {
                         read: { type: Object },
                         update: { type: Object }
                     }
                 }],
-            [m50, {
+            [m52, {
                     WorkspacesController: {
                         list: { type: [Object] },
                         activate: {}
+                    }
+                }],
+            [m46, {
+                    MembersController: {
+                        list: { type: [Object] },
+                        update: { type: Object },
+                        setRoles: { type: Object },
+                        suspend: { type: Object },
+                        reactivate: { type: Object },
+                        remove: {}
+                    },
+                    InvitationsController: {
+                        list: { type: [Object] },
+                        invite: { type: Object },
+                        resend: { type: Object },
+                        cancel: { type: Object }
+                    },
+                    AcceptInvitationController: {
+                        accept: { type: Object }
                     }
                 }],
             [m42, {
