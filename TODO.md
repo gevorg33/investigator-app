@@ -7241,7 +7241,7 @@ pnpm --filter api test http-exception bootstrap && pnpm --filter app-web test fo
 ---
 
 ### T-158 — Accept an invitation (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `/invitations/accept` in the `(auth)` group (`no-referrer`, token dropped from the address bar) with `AcceptInvitation`: joins on a press, activates the workspace, loads Home; each refusal (404, 409 member / suspended, 403) says what to do. `next` carried through sign-in ↔ sign-up and onto check-email's new **Continue**. Specs in `accept-invitation.spec.tsx`, `invitations/invitations.spec.tsx`, `auth-pages`/`auth-forms`. Seen in the browser against the real API, in Russian: invited → signed out → create account → check email → signed in unconfirmed → confirmed in another tab → Continue → joined, landing in the agency (375 and 768px); the used link refused with its message (1280px). KB `kb-agency-employees` v3 (en; ru/hy drafts); `app-web.md`; inventory. Filed T-161
 - **Priority:** P2
 - **Depends on:** T-085
 - **Risk:** LOW
@@ -7260,9 +7260,9 @@ account, used, cancelled, expired — one message), address not confirmed yet, a
 suspended. T-093 builds the rest of the agency console; this should not wait for teams.
 
 **Acceptance criteria**
-- [ ] An invitee signed in with the invited, confirmed address joins and lands in the agency
-- [ ] Signed out, the link survives sign-in and sign-up and comes back to the accept screen
-- [ ] Each refusal says what to do next; checked in the browser at three widths
+- [x] An invitee signed in with the invited, confirmed address joins and lands in the agency
+- [x] Signed out, the link survives sign-in and sign-up and comes back to the accept screen
+- [x] Each refusal says what to do next; checked in the browser at three widths
 
 **Validation**
 ```bash
@@ -7326,6 +7326,32 @@ measure the step's wall time either way, and do not raise single tests' timeouts
 **Validation**
 ```bash
 pnpm test:coverage
+```
+
+---
+
+### T-161 — The workspace switcher overflows the sidebar at tablet width
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/workspace/workspace-switcher.tsx, the workspace shell
+
+**Description**
+Found in T-158's browser check. At 768px, in an agency named "Halfway Renamed Agency", the
+switcher's trigger measured 275px wide inside a 227px sidebar column, and covered the first letters
+of the page heading ("Главная" read "лавная"). A long agency or Personal name should truncate inside
+the column, as the switcher's own rows already do (`truncate`), not push the button past it.
+
+**Acceptance criteria**
+- [ ] The trigger never exceeds its column; a long name truncates, with the full name in its accessible name
+- [ ] Checked in the browser at 768 and 1280 with a long agency name, in en, ru and hy
+
+**Validation**
+```bash
+pnpm --filter app-web test workspace
 ```
 
 ---

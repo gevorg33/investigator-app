@@ -107,7 +107,7 @@ describe('the sign-up page', () => {
   it('sends someone already signed in home', async () => {
     request.cookies.set('investigator_session', 'tok');
     api.on('GET /me', 200, account());
-    await expect(SignUpPage()).rejects.toEqual(new Redirected('/'));
+    await expect(SignUpPage(search({}))).rejects.toEqual(new Redirected('/'));
   });
 
   it('shows what registration requires, as the API says, in the reader’s language', async () => {
@@ -116,7 +116,7 @@ describe('the sign-up page', () => {
     api.on('GET /legal/required?for=registration&locale=ru', 200, [
       legalDocument({ locale: 'ru', title: 'Политика конфиденциальности' }),
     ]);
-    await show(SignUpPage(), 'ru');
+    await show(SignUpPage(search({})), 'ru');
     const ru = catalogs.ru;
     expect(screen.getByRole('heading', { level: 1, name: ru.auth.sign_up.title })).toBeVisible();
     expect(screen.getByText('Политика конфиденциальности')).toBeVisible();
@@ -130,7 +130,7 @@ describe('the sign-up page', () => {
   it('asks nothing to be accepted when the API has nothing to show', async () => {
     signedOut();
     api.on('GET /legal/required?for=registration&locale=en', 204);
-    await show(SignUpPage());
+    await show(SignUpPage(search({})));
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });
@@ -142,7 +142,7 @@ describe('the pages email links open', () => {
   });
 
   it('check-email explains what happens next, and offers to send again', async () => {
-    await show(CheckEmailPage());
+    await show(CheckEmailPage(search({})));
     expect(screen.getByText(en.auth.check_email.body)).toBeVisible();
     expect(
       screen.getByRole('heading', { level: 2, name: en.auth.check_email.resend_title }),
@@ -175,4 +175,52 @@ describe('the pages email links open', () => {
       expect(screen.queryByRole('button')).toBeNull();
     },
   );
+});
+
+describe('the way back through signing in and up (T-158)', () => {
+  const back = '/invitations/accept?token=tok-9';
+  const encoded = encodeURIComponent(back);
+
+  beforeEach(() => {
+    request.reset();
+    api.install();
+  });
+
+  it('keeps it when a reader chooses to create an account instead of signing in', async () => {
+    signedOut();
+    await show(SignInPage(search({ next: back })));
+    expect(screen.getByRole('link', { name: en.auth.sign_in.create_account })).toHaveAttribute(
+      'href',
+      `/sign-up?next=${encoded}`,
+    );
+  });
+
+  it('keeps it the other way round, and sends someone already signed in on to it', async () => {
+    signedOut();
+    api.on('GET /legal/required?for=registration&locale=en', 204);
+    await show(SignUpPage(search({ next: back })));
+    expect(screen.getByRole('link', { name: en.auth.sign_up.sign_in })).toHaveAttribute(
+      'href',
+      `/sign-in?next=${encoded}`,
+    );
+
+    request.cookies.set('investigator_session', 'tok');
+    api.on('GET /me', 200, account());
+    await expect(SignUpPage(search({ next: back }))).rejects.toEqual(new Redirected(back));
+    await expect(SignUpPage(search({ next: '//evil.test' }))).rejects.toEqual(new Redirected('/'));
+  });
+
+  it('says on “check your email” how to come back once the address is confirmed', async () => {
+    await show(CheckEmailPage(search({ next: back })));
+    expect(screen.getByText(en.auth.check_email.then_continue)).toBeVisible();
+    expect(screen.getByRole('link', { name: en.auth.check_email.continue })).toHaveAttribute(
+      'href',
+      `/sign-in?next=${encoded}`,
+    );
+  });
+
+  it('adds nothing to “check your email” when there is nowhere to come back to', async () => {
+    await show(CheckEmailPage(search({ next: 'https://evil.test' })));
+    expect(screen.queryByText(en.auth.check_email.then_continue)).toBeNull();
+  });
 });

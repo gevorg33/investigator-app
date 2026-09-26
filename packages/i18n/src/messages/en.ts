@@ -900,6 +900,8 @@ export const en = {
       resend_title: 'Nothing arrived?',
       resend_submit: 'Send the link again',
       resent: 'If this address can be used, a new link is on its way.',
+      then_continue: 'Once you have confirmed it, continue to the invitation.',
+      continue: 'Continue',
     },
     verify: {
       title: 'Confirm your email address',
@@ -910,6 +912,27 @@ export const en = {
       invalid: 'This link has expired or has already been used. Ask for a new one.',
       missing: 'This link is incomplete. Open it again from your email, or ask for a new one.',
       request_new: 'Ask for a new link',
+    },
+    invitation: {
+      title: 'Join an agency',
+      body: 'You were invited to join an agency on Investigator. You are signed in as {email}.',
+      submit: 'Join the agency',
+      missing: 'This invitation link is incomplete. Open it again from your email.',
+      home: 'Go to Home',
+      signed_out:
+        'You were invited to join an agency. Sign in, or create an account, with the email address the invitation was sent to.',
+      sign_in: 'Sign in',
+      create_account: 'Create an account',
+      unconfirmed:
+        'Confirm your email address, {email}, before you join. Then open this invitation again.',
+      confirm_link: 'Confirm my email address',
+      refused: {
+        not_found:
+          'This invitation cannot be used. It may be for another address than {email}, or already used, cancelled or expired. Ask the agency to send a new one.',
+        member: 'You are already a member of this agency. Switch to it from the workspace menu.',
+        suspended: 'Your membership in this agency is suspended. Ask the agency to reactivate it.',
+        unconfirmed: 'Confirm your email address before you join, then open this invitation again.',
+      },
     },
     forgot: {
       title: 'Reset your password',
