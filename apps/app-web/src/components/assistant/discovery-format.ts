@@ -27,19 +27,29 @@ export function weekday(day: number, locale: Locale): string {
 export function clock(minutes: number, locale: Locale): string {
   // 1440 is the end of the day: shown as midnight, the way a person reads "until midnight".
   const at = new Date(Date.UTC(2024, 0, 1, 0, minutes % 1440));
-  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(
-    at,
-  );
+  return new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(at);
 }
 
 /** A weekly window as a day and hours. */
 export function windowParts(w: Window, locale: Locale) {
-  return { day: weekday(w.dayOfWeek, locale), from: clock(w.startMinute, locale), to: clock(w.endMinute, locale) };
+  return {
+    day: weekday(w.dayOfWeek, locale),
+    from: clock(w.startMinute, locale),
+    to: clock(w.endMinute, locale),
+  };
 }
 
 /** A place, most specific first: city, region, country. */
 export function placeName(p: Place, locale: Locale): string {
-  return [p.city, p.region, p.countryCode === undefined ? undefined : countryName(p.countryCode, locale)]
+  return [
+    p.city,
+    p.region,
+    p.countryCode === undefined ? undefined : countryName(p.countryCode, locale),
+  ]
     .filter((part) => part !== undefined)
     .join(', ');
 }

@@ -16,7 +16,8 @@ export function FormError({
   overrides?: Readonly<Partial<Record<string, MessageKey>>>;
 }) {
   if (error === null) return null;
-  const key = overrides[error.code] ?? (has(error.messageKey) ? error.messageKey : 'error.common.internal');
+  const key =
+    overrides[error.code] ?? (has(error.messageKey) ? error.messageKey : 'error.common.internal');
   const supportable = error.status >= 500 || error.code === 'NETWORK';
   return (
     <Alert variant="destructive">

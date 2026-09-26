@@ -103,23 +103,24 @@ describe('POST /api/v1/agencies', () => {
     expect(made.create).not.toHaveBeenCalled();
   });
 
-  it.each([['status', 'ACTIVE'], ['kind', 'PERSONAL'], ['verificationStatus', 'VERIFIED']])(
-    'refuses a body that tries to set %s',
-    async (field, value) => {
-      // These belong to the server. The DTO has no field for them, and the pipe refuses a body
-      // that names one rather than stripping it — so a hostile client is told no, not ignored.
-      const made = await make();
-      app = made.app;
+  it.each([
+    ['status', 'ACTIVE'],
+    ['kind', 'PERSONAL'],
+    ['verificationStatus', 'VERIFIED'],
+  ])('refuses a body that tries to set %s', async (field, value) => {
+    // These belong to the server. The DTO has no field for them, and the pipe refuses a body
+    // that names one rather than stripping it — so a hostile client is told no, not ignored.
+    const made = await make();
+    app = made.app;
 
-      const res = await request(app.getHttpServer())
-        .post('/api/v1/agencies')
-        .set('Idempotency-Key', 'another-key')
-        .send({ ...body, [field]: value });
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/agencies')
+      .set('Idempotency-Key', 'another-key')
+      .send({ ...body, [field]: value });
 
-      expect(res.status).toBe(400);
-      expect(made.create).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(400);
+    expect(made.create).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['no name', { ...body, name: undefined }],

@@ -12,7 +12,6 @@ import { testPool } from '../../../test/db';
 import { inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
 import type { Tx } from '../../database/database.module';
 
-
 describe('recording a screening', () => {
   let sql: postgres.Sql;
   let db: TestDb;
@@ -33,13 +32,14 @@ describe('recording a screening', () => {
     await ownerSql.end();
   });
 
-
   /**
    * Screening happens inside the customer's submission — in the customer's workspace, which is
    * where the mission and its screening row both live (T-077).
    */
-  const screenInWorkspace = <T>(row: { customerId: string }, fn: (tx: Tx) => Promise<T>): Promise<T> =>
-    inWorkspaceOf(ownerSql, row.customerId, () => db.transaction(fn));
+  const screenInWorkspace = <T>(
+    row: { customerId: string },
+    fn: (tx: Tx) => Promise<T>,
+  ): Promise<T> => inWorkspaceOf(ownerSql, row.customerId, () => db.transaction(fn));
 
   /** A real mission row, because screening reads its category's band from the database. */
   const mission = async (
@@ -198,21 +198,21 @@ describe('an AI classification is input, not a decision', () => {
       .returning();
     const result = await inWorkspaceOf(ownerSql, userId, () =>
       db.transaction(async (tx) =>
-      policy.screenSubmission(
-        tx,
-        {
-          id: row!.id,
-          taxonomyNodeId: row!.taxonomyNodeId,
-          title: row!.title,
-          description: row!.description,
-          purpose: row!.purpose,
-          locationLabel: row!.locationLabel,
-          subjectRelationship: row!.subjectRelationship,
-          protectiveOrderDeclared: row!.protectiveOrderDeclared,
-        },
-        row!.version,
-        classification,
-      ),
+        policy.screenSubmission(
+          tx,
+          {
+            id: row!.id,
+            taxonomyNodeId: row!.taxonomyNodeId,
+            title: row!.title,
+            description: row!.description,
+            purpose: row!.purpose,
+            locationLabel: row!.locationLabel,
+            subjectRelationship: row!.subjectRelationship,
+            protectiveOrderDeclared: row!.protectiveOrderDeclared,
+          },
+          row!.version,
+          classification,
+        ),
       ),
     );
     const [screening] = await ownerDb

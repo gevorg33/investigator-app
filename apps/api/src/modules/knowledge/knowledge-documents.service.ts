@@ -66,7 +66,8 @@ export class KnowledgeDocumentsService {
         ),
       );
     const readable = rows.filter((r) => mayRead(reader, r));
-    const doc = readable.find((r) => r.locale === locale) ?? readable.find((r) => r.locale === 'en');
+    const doc =
+      readable.find((r) => r.locale === locale) ?? readable.find((r) => r.locale === 'en');
     if (doc === undefined) throw AppError.notFound();
 
     const chunks = await this.db

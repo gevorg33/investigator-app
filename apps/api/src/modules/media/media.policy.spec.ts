@@ -22,7 +22,12 @@ describe('media policy', () => {
 
   it('refuses types that can carry script or executable content', () => {
     for (const policy of Object.values(MEDIA_POLICY)) {
-      for (const mime of ['image/svg+xml', 'text/html', 'application/x-msdownload', 'application/zip']) {
+      for (const mime of [
+        'image/svg+xml',
+        'text/html',
+        'application/x-msdownload',
+        'application/zip',
+      ]) {
         expect(policy.formats[mime]).toBeUndefined();
       }
     }

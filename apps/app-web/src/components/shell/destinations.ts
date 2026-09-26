@@ -13,8 +13,7 @@ import type { Catalog } from '@investigator/i18n';
  * (T-056): docked from `lg` up, a full-screen sheet below. It has no page of its own.
  */
 export type Destination = { label: keyof Catalog['nav']; icon: LucideIcon } & (
-  | { href: string; opens?: undefined }
-  | { opens: 'assistant'; href?: undefined }
+  { href: string; opens?: undefined } | { opens: 'assistant'; href?: undefined }
 );
 
 /**

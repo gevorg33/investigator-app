@@ -44,14 +44,31 @@ describe('workspaces', () => {
     const me = await member(owner);
     const boss = await member(owner);
     const mine = await agency(owner, [{ userId: me.actor.userId }]);
-    const theirs = await agency(owner, [{ userId: boss.actor.userId }, { userId: me.actor.userId, role: 'MANAGER' }]);
+    const theirs = await agency(owner, [
+      { userId: boss.actor.userId },
+      { userId: me.actor.userId, role: 'MANAGER' },
+    ]);
 
     const ctx = await resolver.resolve(me.actor, theirs.tenantId);
     const list = await runInContext(ctx, () => service.list(me.actor, req()));
 
-    expect(list[0]).toMatchObject({ id: me.personalId, kind: 'PERSONAL', name: null, roles: ['OWNER'], current: false });
-    expect(list.slice(1).map((w) => w.id).sort()).toEqual([mine.tenantId, theirs.tenantId].sort());
-    expect(list.find((w) => w.id === theirs.tenantId)).toMatchObject({ roles: ['MANAGER'], current: true });
+    expect(list[0]).toMatchObject({
+      id: me.personalId,
+      kind: 'PERSONAL',
+      name: null,
+      roles: ['OWNER'],
+      current: false,
+    });
+    expect(
+      list
+        .slice(1)
+        .map((w) => w.id)
+        .sort(),
+    ).toEqual([mine.tenantId, theirs.tenantId].sort());
+    expect(list.find((w) => w.id === theirs.tenantId)).toMatchObject({
+      roles: ['MANAGER'],
+      current: true,
+    });
   });
 
   it('leaves out workspaces the caller has left or that are stopped', async () => {
@@ -72,12 +89,20 @@ describe('workspaces', () => {
     await expect(
       inWorkspaceOf(owner, me.actor.userId, () => service.activate(me.actor, tenantId, r)),
     ).resolves.toEqual({ id: tenantId });
-    const [session] = await db.select().from(userSessions).where(eq(userSessions.id, me.actor.sessionId));
+    const [session] = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.id, me.actor.sessionId));
     expect(session?.defaultTenantId).toBe(tenantId);
     const [row] = await ownerDb
       .select()
       .from(auditLogs)
-      .where(and(eq(auditLogs.correlationId, r.correlationId), eq(auditLogs.action, 'workspace.activated')));
+      .where(
+        and(
+          eq(auditLogs.correlationId, r.correlationId),
+          eq(auditLogs.action, 'workspace.activated'),
+        ),
+      );
     expect(row).toMatchObject({ actorId: me.actor.userId, resourceId: tenantId });
   });
 
@@ -89,7 +114,10 @@ describe('workspaces', () => {
         service.activate(me.actor, other.personalId, req()),
       ),
     ).rejects.toMatchObject({ status: 403 });
-    const [session] = await db.select().from(userSessions).where(eq(userSessions.id, me.actor.sessionId));
+    const [session] = await db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.id, me.actor.sessionId));
     expect(session?.defaultTenantId).toBeNull();
   });
 

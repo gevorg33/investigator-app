@@ -2,10 +2,7 @@ import type { Role } from '../../common/authz/contract';
 
 export type MediaCategory = 'PROFILE_IMAGE' | 'VERIFICATION_DOCUMENT';
 export type MediaVisibility =
-  | 'PUBLIC_PROFILE'
-  | 'PARTICIPANT_ONLY'
-  | 'EVIDENCE_RESTRICTED'
-  | 'STAFF_REVIEW_ONLY';
+  'PUBLIC_PROFILE' | 'PARTICIPANT_ONLY' | 'EVIDENCE_RESTRICTED' | 'STAFF_REVIEW_ONLY';
 
 export interface CategoryPolicy {
   /** The role that may upload into this category. */

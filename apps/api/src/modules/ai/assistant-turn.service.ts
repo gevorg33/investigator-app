@@ -241,7 +241,13 @@ export class AssistantTurnService {
         // Structured, whole: the client renders it; nothing in it is the model's own wording.
         reply = { content: '', metadata: { source: 'discovery', answer: found } };
       } else {
-        const answer = await this.knowledge.respond(actor, turn.question, turn.admitted, req, options);
+        const answer = await this.knowledge.respond(
+          actor,
+          turn.question,
+          turn.admitted,
+          req,
+          options,
+        );
         if (signal.aborted) return;
         reply = {
           // "I don't have that" has no words of its own: the client says it, in the reader's

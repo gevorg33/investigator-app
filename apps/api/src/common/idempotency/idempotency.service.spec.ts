@@ -11,7 +11,6 @@ import { runInContext, type ExecutionContext } from '../context/execution-contex
 import type { Tx } from '../../database/database.module';
 import { scopedClient } from '../../database/scoped-client';
 
-
 describe('idempotency keys', () => {
   let sql: postgres.Sql;
   let ownerSql: postgres.Sql;
@@ -173,7 +172,11 @@ describe('idempotency keys across workspaces', () => {
     await ownerPool.end();
   });
 
-  const contextFor = (userId: string, tenantId: string, membershipId: string): ExecutionContext => ({
+  const contextFor = (
+    userId: string,
+    tenantId: string,
+    membershipId: string,
+  ): ExecutionContext => ({
     tenantId,
     tenantKind: 'AGENCY',
     userId,
@@ -186,7 +189,12 @@ describe('idempotency keys across workspaces', () => {
     const me = await member(ownerPool);
     const a = await agency(ownerPool, [{ userId: me.actor.userId }]);
     const b = await agency(ownerPool, [{ userId: me.actor.userId }]);
-    const scope = { actorId: me.actor.userId, endpoint: 'probe.cross', key: 'same-key', request: { x: 1 } };
+    const scope = {
+      actorId: me.actor.userId,
+      endpoint: 'probe.cross',
+      key: 'same-key',
+      request: { x: 1 },
+    };
 
     const run = (ctx: ExecutionContext, body: unknown) =>
       runInContext(ctx, () =>
@@ -201,7 +209,15 @@ describe('idempotency keys across workspaces', () => {
     const inB = contextFor(me.actor.userId, b.tenantId, b.memberships[0]!);
     expect(await run(inA, 'from A')).toEqual({ status: 'CLAIMED' });
     expect(await run(inB, 'from B')).toEqual({ status: 'CLAIMED' });
-    expect(await run(inA, 'ignored')).toEqual({ status: 'REPLAY', responseStatus: 200, responseBody: 'from A' });
-    expect(await run(inB, 'ignored')).toEqual({ status: 'REPLAY', responseStatus: 200, responseBody: 'from B' });
+    expect(await run(inA, 'ignored')).toEqual({
+      status: 'REPLAY',
+      responseStatus: 200,
+      responseBody: 'from A',
+    });
+    expect(await run(inB, 'ignored')).toEqual({
+      status: 'REPLAY',
+      responseStatus: 200,
+      responseBody: 'from B',
+    });
   });
 });

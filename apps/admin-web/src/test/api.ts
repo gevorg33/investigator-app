@@ -14,7 +14,6 @@ export interface ApiCall {
 
 type Reply = { status: number; body?: unknown };
 
-
 /**
  * A stand-in for the API behind `fetch`. A spec says what each route answers
  * (`api.on('GET /me', 200, account)`), then reads what was asked of it in `api.calls`. A route no

@@ -37,7 +37,11 @@ export function ConsoleShell({ email, children }: { email: string; children: Rea
           <SignOut />
         </div>
       </header>
-      <main id="content" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
+      <main
+        id="content"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10"
+      >
         {children}
       </main>
     </div>

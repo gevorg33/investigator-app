@@ -5,7 +5,9 @@ describe('console messages', () => {
   it('answers each key with its English string, its arguments filled', () => {
     expect(LOCALE).toBe('en');
     expect(t('sign_in.submit')).toBe('Sign in');
-    expect(t('shell.signed_in_as', { email: 'r@example.test' })).toBe('Signed in as r@example.test');
+    expect(t('shell.signed_in_as', { email: 'r@example.test' })).toBe(
+      'Signed in as r@example.test',
+    );
     // An argument not given stays visibly unfilled, rather than vanishing.
     expect(t('shell.signed_in_as')).toBe('Signed in as {email}');
   });

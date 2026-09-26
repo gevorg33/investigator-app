@@ -52,7 +52,8 @@ export abstract class ActorScopedRepository<TRow> {
    */
   async findOneForActor(actor: Actor, id: string): Promise<TRow | undefined> {
     const scope = this.scopeFor(actor);
-    const predicate = scope === undefined ? eq(this.table.id, id) : and(eq(this.table.id, id), scope);
+    const predicate =
+      scope === undefined ? eq(this.table.id, id) : and(eq(this.table.id, id), scope);
     const rows = (await this.db.select().from(this.table).where(predicate).limit(1)) as TRow[];
     return rows[0];
   }

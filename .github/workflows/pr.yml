@@ -73,6 +73,10 @@ jobs:
       - name: Knowledge base
         run: python3 scripts/validate-knowledge-base.py
 
+      # Was red and unnoticed until T-130 because nothing ran it.
+      - name: Format
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 
