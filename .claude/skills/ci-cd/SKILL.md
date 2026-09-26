@@ -38,7 +38,8 @@ never a force-push, never from an arbitrary branch.
 ```
 fresh environment → install → knowledge base → lint → typecheck
   → provision clean database → migrate → fixtures → tests + coverage gate
-  → build → no public source maps → dependency audit → image scan → secret scan
+  → build → bundle budgets → browser flows → knowledge sync → no public source maps
+  → dependency audit → image scan → secret scan
   → destroy environment
 ```
 
@@ -64,6 +65,8 @@ Rules:
 6. **One test step, not four.** There is one suite; naming a split the suite does not make
    produced three steps that each ran everything or nothing. Coverage runs the tests, so
    `pnpm test:coverage` is the step, and a failure in it names either the test or the number.
+   The browser flows (`pnpm --filter app-web test:e2e`, T-139) are a second suite, not a split of
+   the first: another runner, against the build, after it.
 
 ## Pinned, scanned, proposed, reviewed (T-028)
 

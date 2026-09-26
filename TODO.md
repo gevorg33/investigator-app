@@ -6637,7 +6637,7 @@ pnpm --filter api test request-context
 ---
 
 ### T-139 — Browser flows for sign-up, sign-in and the account page in CI
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26; `apps/app-web/e2e/`, Playwright against the built stack, a PR step
 - **Priority:** P2
 - **Depends on:** T-127
 - **Risk:** LOW
@@ -6655,10 +6655,19 @@ emailed link, sign in and land on the page asked for, the saved language restore
 browser, time zone saved, a role added, another session ended, sign out, reset a password.
 
 **Acceptance criteria**
-- [ ] The flows above run in CI against the API and a migrated database, at 375 and 1280px
-- [ ] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
-      the browser, not the API's unit tests
-- [ ] Accessibility checks pass on each signed-out screen and the account page
+- [x] The flows above run in CI against the API and a migrated database, at 375 and 1280px
+      — `account.e2e.ts`, 9 steps × 2 viewports; `global-setup.ts` drops, creates and migrates
+      `investigator_e2e`, publishes the registration and customer documents, and starts the built
+      API (runtime role, `NODE_ENV=test`) and app. 18/18 locally, twice in a row, ~9s. CI:
+      `e2e:browser` + `test:e2e` after the bundle budgets; `.output/` uploaded on failure. Emailed
+      links are read from the API's log (`support/mailbox.ts`); consent rows read back as owner
+- [x] The session cookie's attributes (HTTP-only, `SameSite=Strict`, host-only) are asserted from
+      the browser, not the API's unit tests — `context.cookies()` plus `Secure` and absence from
+      `document.cookie`. Mutation check: the API built with `sameSite: 'lax'` fails the step
+- [x] Accessibility checks pass on each signed-out screen and the account page — axe, WCAG 2.2
+      A/AA: sign-up, check-email, verify-email, sign-in (notice and refusal), forgot, reset,
+      account (before and after adding a role). No violations found; a probe page with an
+      unlabelled input and an image without alt failed the helper on `label` and `image-alt`
 
 **Validation**
 ```bash

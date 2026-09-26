@@ -9,9 +9,11 @@
     "build": "next build",
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
-    "typecheck:specs": "tsc --noEmit",
+    "typecheck:specs": "tsc --noEmit && tsc --noEmit -p e2e",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "e2e:browser": "playwright install --with-deps chromium",
     "budget": "node ../../scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
@@ -38,6 +40,8 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "6.9.1",
@@ -48,6 +52,7 @@
     "@types/react-dom": "19.2.5",
     "@vitest/coverage-v8": "4.1.11",
     "jsdom": "29.1.1",
+    "postgres": "3.4.9",
     "tailwindcss": "4.3.3",
     "vitest": "4.1.11"
   }
