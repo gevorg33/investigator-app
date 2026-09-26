@@ -5,9 +5,10 @@ import { brandingProblem, HEX, textOn } from './branding';
  * A workspace's settings sections (T-084, tenancy.md §12). The database holds the same list
  * (`tenant_settings_known_section`); `sections.spec.ts` keeps the two equal.
  *
- * **Only branding has settings yet.** The others exist so that the shape is settled — a section is
- * a place, with a default and a version — but each is empty until the task that first *reads* one
- * of its settings adds it. A setting nothing reads is a control that does nothing, and the
+ * **A section gains a setting when something first reads it**: branding's colours (T-084), and
+ * general's onboarding-checklist dismissal, which Home reads (T-149). The others exist so that the
+ * shape is settled — a section is a place, with a default and a version — but each is empty until
+ * the task that first *reads* one of its settings adds it. A setting nothing reads is a control that does nothing, and the
  * subtraction test says it does not ship (interaction-design). `billing` is reserved (T-099).
  */
 export const SETTINGS_SECTIONS = [
@@ -32,16 +33,23 @@ export interface BrandingSettings {
   reportHeaderColor: string | null;
 }
 
+/** The agency as a whole. Dismissing the onboarding checklist hides it for the workspace (T-149). */
+export interface GeneralSettings {
+  onboardingDismissed: boolean;
+}
+
 /** A section with no settings yet. */
 export type EmptySection = Record<string, never>;
 
 export type SectionValues<S extends SettingsSection> = S extends 'branding'
   ? BrandingSettings
-  : EmptySection;
+  : S extends 'general'
+    ? GeneralSettings
+    : EmptySection;
 
 /** Every section's defaults: what a workspace that never saved one has. */
 export const DEFAULTS: { readonly [S in SettingsSection]: SectionValues<S> } = {
-  general: {},
+  general: { onboardingDismissed: false },
   branding: { accentColor: null, reportHeaderColor: null },
   localisation: {},
   notifications: {},
@@ -60,6 +68,7 @@ const KEYS: { readonly [S in SettingsSection]: readonly string[] } = {
     SettingsSection,
     readonly string[]
   >),
+  general: ['onboardingDismissed'],
   branding: ['accentColor', 'reportHeaderColor'],
 };
 
@@ -99,11 +108,18 @@ export function applyPatch(
       issues.push(issue(key, 'UNKNOWN', 'error.validation.settings.unknown'));
       continue;
     }
-    // Branding is the only section with keys, and both of its keys are colours.
+    // Null puts a setting back to its default.
     if (raw === null) {
-      next[key] = null;
+      next[key] = (DEFAULTS[section] as Record<string, unknown>)[key];
       continue;
     }
+    // General's one setting is a switch.
+    if (section === 'general') {
+      if (typeof raw === 'boolean') next[key] = raw;
+      else issues.push(issue(key, 'INVALID', 'error.validation.settings.boolean'));
+      continue;
+    }
+    // What is left is branding, and both of its keys are colours.
     const colour = typeof raw === 'string' ? raw.toLowerCase() : '';
     if (!HEX.test(colour)) {
       issues.push(issue(key, 'INVALID', 'error.validation.branding.colour'));

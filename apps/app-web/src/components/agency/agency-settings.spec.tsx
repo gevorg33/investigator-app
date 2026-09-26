@@ -372,9 +372,13 @@ describe('the logo and cover', () => {
       ownAgencyProfile({ version: 2, cover: { mediaId: 'cover-2', link: deliveryUrl('c2') } }),
     );
     await choose(en.images.cover, file('cover.webp', 'image/webp'));
-    await within(group(en.images.cover))
-      .findByRole('status', {}, { timeout: 100 })
-      .catch(() => {});
+    // The replaced cover is shown once the profile answers with it (decorative: no img role).
+    await vi.waitFor(() =>
+      expect(group(en.images.cover).querySelector('img')).toHaveAttribute(
+        'src',
+        deliveryUrl('c2').signedUrl,
+      ),
+    );
     expect(api.calls.at(-1)).toMatchObject({ body: { version: 1, coverMediaId: 'cover-2' } });
     expect(api.calls[0]).toMatchObject({ body: { category: 'AGENCY_COVER' } });
 

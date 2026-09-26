@@ -4,7 +4,7 @@ title: Your agency's public profile, settings and branding
 audience: agency
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
 updated: 2026-09-27
 source_of_truth: docs
@@ -84,9 +84,16 @@ last a few minutes, so a copied link stops working soon after.
 Private settings that belong to the agency, grouped into sections: general, branding, localisation,
 notifications, AI, investigations, employees, security, privacy, integrations and billing.
 
-**Nothing has to be set to use the platform.** Every section has defaults. Today only branding has
-settings in it; the other sections fill in as the features that use them arrive, and billing is
-reserved.
+**Nothing has to be set to use the platform.** Every section has defaults. Today branding has
+settings in it, and general has one — whether the setup checklist on Home is hidden. The other
+sections fill in as the features that use them arrive, and billing is reserved.
+
+## What is the checklist on Home?
+
+When you own an agency, Home lists what is left of its setup: completing the agency's details and
+publishing its public profile. Each item takes you to where it is done and is ticked when it is.
+"Hide this list" hides it for the agency, on every device. Nothing on it is required to keep
+working.
 
 Owners and admins can change settings; managers can read them.
 

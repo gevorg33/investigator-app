@@ -5035,6 +5035,10 @@ Employees, invitations, teams and investigator profiles:
 - destructive actions (suspend, remove) confirmed in a sheet that names the person
 - bulk actions only where the API has a bulk command
 
+> **From T-149:** Home's onboarding checklist lists only items whose screens exist. When the
+> invite screen lands here, add "Invite your team" to `components/home/agency-checklist.tsx`,
+> ticked when the agency has a second member or a pending invitation.
+
 **Acceptance criteria**
 - [ ] Every action has a tap path, and a hover affordance is never the only path
 - [ ] Empty states say what to do next; errors say what failed and how to fix it
@@ -6976,7 +6980,7 @@ pnpm --filter api test profiles verification
 ---
 
 ### T-149 — Agency onboarding checklist (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27; Home checklist for the owner, dismissal in `general.onboardingDismissed`
 - **Priority:** P2
 - **Depends on:** T-092, T-084, T-085
 - **Risk:** LOW
@@ -6992,8 +6996,13 @@ the checklist on Home for an agency's owner once at least the first two exist �
 where it is done, done items ticked from real data, dismissal remembered per workspace.
 
 **Acceptance criteria**
-- [ ] Every item links to a screen that exists, and is ticked from the API, never from a local flag
-- [ ] Dismissed once, it stays dismissed for that workspace, on every device
+- [x] Every item links to a screen that exists, and is ticked from the API, never from a local flag
+      — the agency's details (`missing` → `/agencies/current`) and its public profile
+      (`publishedAt` → `/agency`); inviting employees waits for T-093's screen, verification for
+      T-088. Owner-only by the API's `mayChange`. Seen ticking in the browser as the profile publishes
+- [x] Dismissed once, it stays dismissed for that workspace, on every device — saved as the
+      `general` section's first setting (API: boolean only, null → default; version-checked);
+      `agency.e2e.ts` dismisses it, reloads, then signs in from a second browser: still hidden
 
 **Validation**
 ```bash

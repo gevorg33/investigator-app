@@ -19,8 +19,11 @@ describe('settings sections (T-084)', () => {
   it('all have defaults, so nothing must be configured to use the product', () => {
     expect(Object.keys(DEFAULTS)).toEqual([...SETTINGS_SECTIONS]);
     expect(DEFAULTS.branding).toEqual({ accentColor: null, reportHeaderColor: null });
-    // Branding is the one section with settings; every other is a place for them, empty for now.
+    expect(DEFAULTS.general).toEqual({ onboardingDismissed: false });
+    // A section gains a setting when something first reads one (T-084): branding's colours, and
+    // general's checklist dismissal (T-149). Every other is a place for them, empty for now.
     expect(SETTINGS_SECTIONS.filter((s) => Object.keys(DEFAULTS[s]).length > 0)).toEqual([
+      'general',
       'branding',
     ]);
   });
@@ -85,6 +88,34 @@ describe('settings sections (T-084)', () => {
       ],
     });
     expect(applyPatch('billing', {}, {})).toEqual({ values: {} });
+  });
+
+  it('take the onboarding checklist’s dismissal as true or false, and null as its default', () => {
+    expect(
+      applyPatch('general', { onboardingDismissed: false }, { onboardingDismissed: true }),
+    ).toEqual({
+      values: { onboardingDismissed: true },
+    });
+    expect(
+      applyPatch('general', { onboardingDismissed: true }, { onboardingDismissed: null }),
+    ).toEqual({
+      values: { onboardingDismissed: false },
+    });
+    for (const wrong of ['yes', 1, {}]) {
+      expect(applyPatch('general', {}, { onboardingDismissed: wrong })).toEqual({
+        issues: [
+          {
+            field: 'values.onboardingDismissed',
+            code: 'INVALID',
+            messageKey: 'error.validation.settings.boolean',
+          },
+        ],
+      });
+    }
+    // Branding's rule is branding's: a boolean is not a colour.
+    expect(applyPatch('branding', {}, { accentColor: true })).toMatchObject({
+      issues: [{ field: 'values.accentColor', messageKey: 'error.validation.branding.colour' }],
+    });
   });
 
   it('derive the text each branding colour carries, and nothing for other sections', () => {

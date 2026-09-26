@@ -251,10 +251,50 @@ describe('the application routes', () => {
     ['Home', HomePage, undefined, 'Nothing needs you yet'],
     ['Messages', MessagesPage, messagesMeta, 'No conversations yet'],
   ])('%s says what it is and what will appear there', async (title, Page, meta, empty) => {
+    api.on('GET /workspaces', 200, [workspace()]);
     render(await resolveServer(await Page()));
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: empty })).toBeInTheDocument();
     if (meta !== undefined) expect((await meta()).title).toBe(title);
+  });
+
+  it('puts an agency’s setup first on Home for its owner, above what will gather there (T-149)', async () => {
+    api.on('GET /workspaces', 200, [
+      workspace({ current: false }),
+      agencyWorkspace({ current: true }),
+    ]);
+    api.on('GET /agencies/current', 200, {
+      id: 'ws-ararat',
+      name: 'Ararat Investigations',
+      status: 'ACTIVE',
+      countryCode: 'AM',
+      businessEmail: 'office@ararat.test',
+      timezone: 'Asia/Yerevan',
+      currency: 'AMD',
+      missing: [],
+      version: 1,
+      mayChange: true,
+    });
+    api.on('GET /agencies/current/settings', 200, {
+      general: { version: 0, values: { onboardingDismissed: false } },
+    });
+    api.on('GET /agencies/current/profile', 200, ownAgencyProfile());
+    renderIntl(await resolveServer(await HomePage()));
+    expect(screen.getAllByRole('heading').map((h) => h.textContent)).toEqual([
+      'Home',
+      'Set up Ararat Investigations',
+      'Nothing needs you yet',
+    ]);
+    // A Personal workspace has no agency to set up, and asks for none.
+    api.install();
+    api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
+    renderIntl(await resolveServer(await HomePage()));
+    expect(api.calls.map((c) => c.path)).toEqual(['/workspaces']);
+    // Nor with no workspace listed at all.
+    api.install();
+    api.on('GET /workspaces', 204);
+    renderIntl(await resolveServer(await HomePage()));
+    expect(api.calls.map((c) => c.path)).toEqual(['/workspaces']);
   });
 
   it('renders every page in the reader’s chosen language', async () => {
