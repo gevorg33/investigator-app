@@ -6984,7 +6984,7 @@ pnpm --filter api test agencies && pnpm --filter app-web test workspace
 ---
 
 ### T-151 — A translated "not found" page (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `NotFoundPage` rendered by `(workspace)/not-found.tsx`, with a back link from `missions/[id]` and `missions/investigators/[id]`; `(workspace)/[...missing]` sends unknown addresses there too. New `not_found.*` keys in en/ru/hy. Specs in `routes.spec.tsx`
 - **Priority:** P3
 - **Depends on:** T-128
 - **Risk:** LOW
@@ -6999,8 +6999,8 @@ Add `not-found.tsx` in the workspace group, in the reader's language, inside the
 back (Home, and the list it came from where known).
 
 **Acceptance criteria**
-- [ ] A 404 inside the workspace keeps the navigation and speaks the reader's language
-- [ ] It says nothing about whether the thing exists (a draft profile and a missing one read the same)
+- [x] A 404 inside the workspace keeps the navigation and speaks the reader's language
+- [x] It says nothing about whether the thing exists (a draft profile and a missing one read the same)
 
 **Validation**
 ```bash

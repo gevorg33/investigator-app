@@ -19,14 +19,18 @@ import {
   workspace,
 } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
-import { Redirected } from '@/test/navigation';
+import { NotFound, Redirected } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
 import InvestigatorPage, {
   generateMetadata as investigatorMeta,
 } from './(workspace)/account/investigator/page';
 import AccountPage, { generateMetadata as accountMeta } from './(workspace)/account/page';
+import Missing from './(workspace)/[...missing]/page';
 import WorkspaceLayout from './(workspace)/layout';
+import InvestigatorNotFound from './(workspace)/missions/investigators/[id]/not-found';
+import MissionNotFound from './(workspace)/missions/[id]/not-found';
+import WorkspaceNotFound from './(workspace)/not-found';
 import MessagesPage, { generateMetadata as messagesMeta } from './(workspace)/messages/page';
 import MissionsPage, { generateMetadata as missionsMeta } from './(workspace)/missions/page';
 import HomePage from './(workspace)/page';
@@ -256,6 +260,57 @@ describe('the application routes', () => {
     expect(screen.getByText(catalogs.hy.missions.own.empty.body)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: catalogs.hy.missions.views.find })).toBeInTheDocument();
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
+  });
+
+  describe('a page that is not there (T-151)', () => {
+    const links = () =>
+      screen.getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')]);
+
+    it('says so in the reader’s language, with a way Home', async () => {
+      request.cookies.set('locale', 'ru');
+      render(await resolveServer(<WorkspaceNotFound />));
+      const ru = catalogs.ru.not_found;
+      expect(screen.getByRole('heading', { level: 1, name: ru.title })).toBeInTheDocument();
+      expect(screen.getByText(ru.body)).toBeInTheDocument();
+      expect(links()).toEqual([[ru.home, '/']]);
+    });
+
+    it('leads back to the list the page belongs to, when the route knows it', async () => {
+      const en = catalogs.en;
+      render(await resolveServer(<MissionNotFound />));
+      expect(links()).toEqual([
+        [en.not_found.missions, '/missions'],
+        [en.not_found.home, '/'],
+      ]);
+    });
+
+    it('reads the same for an unpublished profile as for a missing one: there is one page', async () => {
+      const en = catalogs.en;
+      render(await resolveServer(<InvestigatorNotFound />));
+      expect(screen.getByText(en.not_found.body)).toBeInTheDocument();
+      expect(links()).toEqual([
+        [en.missions.profile.back, '/missions/investigators'],
+        [en.not_found.home, '/'],
+      ]);
+    });
+
+    it('sends an address nothing answers to the workspace’s page, not Next’s', () => {
+      expect(() => Missing()).toThrow(NotFound);
+    });
+
+    it('keeps the shell around it', async () => {
+      request.cookies.set('investigator_session', 'tok');
+      api.on('GET /me', 200, account());
+      api.on('GET /legal/outstanding', 200, []);
+      api.on('GET /workspaces', 200, [workspace()]);
+      renderIntl(await resolveServer(await WorkspaceLayout({ children: <WorkspaceNotFound /> })));
+      expect(
+        screen.getByRole('heading', { level: 1, name: catalogs.en.not_found.title }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByRole('link', { name: catalogs.en.nav.missions }).length,
+      ).toBeGreaterThan(0);
+    });
   });
 
   describe('the missions page', () => {

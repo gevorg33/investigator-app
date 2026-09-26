@@ -342,7 +342,7 @@ decision, 2026-09-26). Someone working as an investigator is sent back to Missio
   with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
   the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
   reviewer. No areas: the public projection has none. Not published or not an id → 404.
-- **Not built:** the map (T-147's provider); a translated 404 page (T-151).
+- **Not built:** the map (T-147's provider).
 
 **Bundle** (the budget script's initial JS): `/missions/investigators` 206.2 kB, the profile page
 191.5 kB — within 250 kB.
@@ -429,7 +429,7 @@ the assistant closes it when it covers the page (the phone's sheet) and leaves i
 page on a desktop.
 
 **Help articles** — `/help/[docKey]` reads `GET /knowledge/documents/:docKey` as the reader; not
-found is Next's 404. `ArticleBody` renders the knowledge base's markdown subset — paragraphs, flat
+found is the workspace's 404 page. `ArticleBody` renders the knowledge base's markdown subset — paragraphs, flat
 lists, tables (scrolling in their own box), quotes, bold, code — and nothing else: every character
 is text React escapes.
 
@@ -487,6 +487,18 @@ session cookie is sent over plain HTTP and emailed links are written to the API'
 `pnpm build` at the root builds the tokens first. `next-env.d.ts` is generated and gitignored.
 The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
 404 prerender (T-141).
+
+## Not found (T-151)
+
+`notFound()` anywhere in the workspace renders `NotFoundPage` (`components/not-found-page.tsx`)
+inside the shell, in the reader's language: a title, one sentence, and a way back — Home always,
+and the list the page belongs to where the route knows it (a mission → your missions, an
+investigator's profile → the search). An address nothing answers reaches the same page through a
+catch-all, `(workspace)/[...missing]`, which named routes and the `/api` rewrite both outrank.
+
+It reads the same whatever the reason. The API answers an unpublished profile, another audience's
+article and another customer's mission exactly as it answers one that is not there, and the page
+must not undo that by telling them apart.
 
 ## Not built here
 

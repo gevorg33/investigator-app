@@ -707,6 +707,12 @@ export const en = {
   help: {
     fallback: 'This article is not yet available in your language, so it is shown in English.',
   },
+  not_found: {
+    title: 'Not found',
+    body: 'This page does not exist, or it is not open to you. If someone sent you the link, ask them to check it.',
+    home: 'Go to Home',
+    missions: 'Your missions',
+  },
   account: {
     profile: {
       title: 'Your details',
