@@ -151,8 +151,8 @@ role, locale, time zone), `PATCH /me/preferences` (`locale`, `timezone`; audited
 `POST /auth/register`, and `id` on every legal document response.
 
 **Tested** in Vitest against a stand-in for the API behind `fetch` (`src/test/api.ts`, which
-fails any request a spec did not expect), and in the browser against the real API — every flow in
-the table, at 375, 768 and 1280px. There is no automated browser run in CI yet.
+fails any request a spec did not expect), and in a real browser against the real API on every PR —
+see [Browser flows](#browser-flows-t-139).
 
 ## Missions: open missions for investigators (T-054)
 
@@ -481,6 +481,47 @@ in `.claude/launch.json` starts it against the local database with `NODE_ENV=dev
 session cookie is sent over plain HTTP and emailed links are written to the API's log).
 
 `pnpm build` at the root builds the tokens first. `next-env.d.ts` is generated and gitignored.
+
+## Browser flows (T-139)
+
+`apps/app-web/e2e/` drives Chromium through the built app and the built API, against a database
+migrated from empty — no stand-ins. `account.e2e.ts` is one reader's first hour, in order, on one
+account per viewport (375 and 1280px): sign up accepting the published documents (and the consent
+rows recorded, read back as the owner), confirm the address from the emailed link, sign in and land
+on the page asked for, the session cookie's attributes as the browser holds them (HTTP-only,
+`SameSite=Strict`, `Secure`, host-only, unreadable from `document.cookie`), the device's time zone
+stored at sign-up and a new one saved, the customer role added with its document, the saved
+language restored on a fresh browser, another device's session ended, sign out, and a password
+reset. axe (WCAG 2.2 A/AA) runs on every signed-out screen and the account page.
+
+```bash
+env -u NODE_ENV pnpm build                                # the suite runs the build, not dev servers
+pnpm --filter @investigator/app-web e2e:browser           # once: the Chromium @playwright/test pins
+pnpm --filter @investigator/app-web test:e2e
+```
+
+What `e2e/global-setup.ts` does, so a failure can be read:
+
+- **Its own database.** `investigator_e2e` is dropped, created, given the extensions and migrated
+  on every run (`MIGRATION_DATABASE_URL`, default the local owner), then the documents registration
+  and the customer role require are published into it. Publishing is global state — it changes
+  what every registration requires — so it never happens in the development database. The API
+  connects as the runtime role (`DATABASE_URL` with the database swapped), so row-level security
+  applies as in production.
+- **Its own servers.** The API on 3001 with `NODE_ENV=test` — a `Secure` cookie, as deployed;
+  Chromium accepts one on `http://localhost` — and the app on 3100. The API has to be on 3001
+  because Next resolves a rewrite's destination at **build** time: `API_INTERNAL_URL` given to
+  `next start` moves server-side reads, not the browser's `/api` calls. Setup refuses to start
+  while either port is taken, so stop the development servers first.
+- **The inbox is the API's log.** The development mailer writes each link to it
+  (`e2e/.output/api.log`), and `support/mailbox.ts` reads a link written after a given point —
+  only the token's hash is stored, so there is nowhere else to read it from.
+
+Specs find things by role and by the words in the catalog (`support/text.ts`), never by class or
+test id, so the suite reads the screen as a person does and a copy change moves both together. The
+journey stays inside the API's per-account sign-in limit (five in five minutes); a new step that
+signs in again has to account for it. Traces, screenshots and both servers' logs land in
+`e2e/.output/` (gitignored), which CI uploads when the step fails.
 
 ## Not built here
 
