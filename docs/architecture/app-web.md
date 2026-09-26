@@ -314,9 +314,14 @@ reference. The rest was driven in the browser at 375px against the real API.
   agency and loads the app in it. With no agency terms published, the page says agencies cannot
   be created yet instead of offering a form that would be refused; an unconfirmed account is
   asked to confirm its address first.
-- **Not built:** the dismissible onboarding checklist. What it would list — the agency's
-  profile and settings (T-084), inviting employees (T-085), agency verification (T-088) — does
-  not exist yet (filed as T-149).
+- **The onboarding checklist** (T-149) is on Home, for the agency's owner — the API's `mayChange`
+  on `GET /agencies/current` says who that is. Each item links to the screen where it is done and
+  is ticked from the API as it stands: the core details (`missing` empty → `/agencies/current`) and
+  the public profile (`publishedAt` → `/agency`). Inviting employees joins when its screen does
+  (T-093), verification when it exists (T-088). "Hide this list" saves
+  `general.onboardingDismissed` to the agency's settings against the version read, so it stays
+  hidden for the workspace on every device — checked in the browser from a second one. A
+  plan.md checklist, not a wizard: nothing in it blocks anything.
 
 ## An agency's profile and colours (T-094)
 
@@ -350,7 +355,7 @@ API: `tenancy.md` §12, `media.md`.
   Contrast is the API's rule; a refused colour is said beside its field. The sample shows the
   **saved** colours with the text colour the API derived, inside `data-theme="light"`: a branded
   fill is measured against the light theme and is never drawn on dark chrome (`design-system`).
-- **Only branding has settings.** The other ten sections are empty places (T-084's owner decision),
+- **Only branding has settings here.** `general` holds the checklist's dismissal (T-149), shown on Home; the other nine sections are empty places (T-084's owner decision),
   so the page shows no section with nothing in it.
 - **Permissions are the API's**: a section whose read answers 403 says the reader's role does not
   include it, instead of a form that would be refused. No role name is tested here.

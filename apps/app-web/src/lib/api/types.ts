@@ -341,3 +341,10 @@ export interface BrandingSection {
   /** The text colour each fill carries, chosen by the API for contrast. Null with no fill. */
   derived: { accentText: string | null; reportHeaderText: string | null };
 }
+
+/** The general section of an agency's settings: the onboarding checklist's dismissal (T-149). */
+export interface GeneralSection {
+  /** 0 for a section never saved: its defaults. */
+  version: number;
+  values: { onboardingDismissed: boolean };
+}

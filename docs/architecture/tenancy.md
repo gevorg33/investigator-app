@@ -738,8 +738,9 @@ Email and report branding read the same tokens.
 >   nothing must be configured and a new setting needs no backfill. The database holds the section
 >   list (`tenant_settings_known_section`) and that a value is an object; each section's shape and
 >   defaults are `modules/tenants/settings/sections.ts`, held equal to the database list by a spec.
->   **Only branding has settings yet.** The other ten are places with a version and an empty
->   default, each filled by the task that first *reads* a setting in it — a setting nothing reads is
+>   **Branding has settings, and `general` one** — `onboardingDismissed`, a boolean read by Home's
+>   onboarding checklist (T-149); null puts a setting back to its default. The other nine are places
+>   with a version and an empty default, each filled by the task that first *reads* a setting in it — a setting nothing reads is
 >   a control that does nothing (owner decision, 2026-09-27). A save names the section's version
 >   (0 for never saved); a stale one is a 409. `settings.read` reads, `settings.update` changes, in
 >   an agency workspace only.

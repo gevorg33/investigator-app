@@ -17,6 +17,8 @@ test.describe.configure({ mode: 'serial' });
 const AGENCY = 'Ararat Checks';
 const HEADLINE = 'Due diligence across the Caucasus';
 let page: Page;
+let email: string;
+const password = 'a long agency password';
 
 const heading = (name: string) => page.getByRole('heading', { level: 1, name });
 
@@ -34,8 +36,7 @@ test.beforeAll(async ({ browser }, info) => {
 
   // A confirmed account, set up through the API as the screens would — the account screens are
   // account.e2e.ts's subject, not this one's.
-  const email = `agency-${info.project.name}-${Date.now()}@example.test`;
-  const password = 'a long agency password';
+  email = `agency-${info.project.name}-${Date.now()}@example.test`;
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')
   ).json()) as Array<{ id: string }>;
@@ -68,6 +69,19 @@ test('creates an agency and reaches its profile from Account', async () => {
   await page.getByLabel(text('workspace.create_agency.accept')).check();
   await page.getByRole('button', { name: text('workspace.create_agency.submit') }).click();
   await expect(page).toHaveURL(/\/$/);
+
+  // Home shows its owner what is left (T-149): the details are complete — the form asked for them
+  // all — and the profile is not published yet.
+  const checklist = page.getByRole('region', {
+    name: text('home.checklist.title', { name: AGENCY }),
+  });
+  await expect(
+    checklist.getByRole('link', { name: new RegExp(text('home.checklist.details')) }),
+  ).toContainText(text('home.checklist.done'));
+  await expect(
+    checklist.getByRole('link', { name: new RegExp(text('home.checklist.profile')) }),
+  ).toContainText(text('home.checklist.todo'));
+  await expectAccessible(page);
 
   await page.goto('/account');
   await page.getByRole('link', { name: new RegExp(text('agency.link')) }).click();
@@ -115,6 +129,47 @@ test('previews unsaved text, and the public page is exactly what the preview sho
   const lines = (s: string) => s.split('\n').filter((l) => l.trim() !== '');
   expect(lines(await card.innerText())).toEqual(lines(shown).filter((l) => l !== AGENCY));
   await expectAccessible(page);
+});
+
+test('ticks the published profile on Home, and hides the list for every device once dismissed', async ({
+  browser,
+}, info) => {
+  await page.goto('/');
+  const checklist = page.getByRole('region', {
+    name: text('home.checklist.title', { name: AGENCY }),
+  });
+  await expect(checklist).toContainText(text('home.checklist.complete'));
+  await checklist.getByRole('button', { name: text('home.checklist.dismiss') }).click();
+  await expect(checklist).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: text('nav.home') })).toBeVisible();
+  await expect(checklist).toHaveCount(0);
+
+  // Another device: a fresh browser, the same account, the same agency — still hidden.
+  const other = await browser.newContext({
+    baseURL: info.project.use.baseURL!,
+    viewport: info.project.use.viewport!,
+  });
+  try {
+    const second = await other.newPage();
+    await second.goto('/sign-in');
+    await second.getByLabel(text('auth.email')).fill(email);
+    await second.getByLabel(text('auth.password'), { exact: true }).fill(password);
+    await second.getByRole('button', { name: text('auth.sign_in.submit') }).click();
+    await expect(second).not.toHaveURL(/\/sign-in/);
+    // Sessions open in the Personal workspace; the agency is chosen, as a person would.
+    const agencyId = (await (await second.request.get('/api/v1/workspaces')).json()).find(
+      (w: { kind: string }) => w.kind === 'AGENCY',
+    ).id as string;
+    expect((await second.request.post(`/api/v1/workspaces/${agencyId}/activate`)).ok()).toBe(true);
+    await second.goto('/');
+    await expect(second.getByRole('heading', { level: 1, name: text('nav.home') })).toBeVisible();
+    await expect(
+      second.getByRole('region', { name: text('home.checklist.title', { name: AGENCY }) }),
+    ).toHaveCount(0);
+  } finally {
+    await other.close();
+  }
 });
 
 test('refuses an unreadable colour beside its field, and draws a saved one on a light surface', async () => {

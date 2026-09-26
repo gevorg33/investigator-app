@@ -10,6 +10,17 @@ export async function expectAccessible(page: Page): Promise<void> {
   // Next streams a page's metadata after its first HTML, so the title can land a moment after the
   // page is otherwise ready. Waited for, not skipped: a page without one still fails here.
   await expect(page).toHaveTitle(/\S/);
+  // Measured as the reader settles on it, not mid-fade: a notice fading in from opacity 0 is
+  // briefly low-contrast by design (T-092's "Now working in …"). Finite animations and transitions
+  // only — a spinner never finishes, and waiting on it would hang.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();

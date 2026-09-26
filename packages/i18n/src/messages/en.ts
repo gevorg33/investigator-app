@@ -29,6 +29,16 @@ export const en = {
     account: 'Account',
   },
   home: {
+    checklist: {
+      title: 'Set up {name}',
+      body: 'A few steps, in any order, so customers can find the agency. You can hide this list at any time.',
+      complete: 'Everything here is done. You can hide this list.',
+      details: 'Complete the agency’s details',
+      profile: 'Publish the agency’s public profile',
+      done: 'Done',
+      todo: 'To do',
+      dismiss: 'Hide this list',
+    },
     empty: {
       title: 'Nothing needs you yet',
       body: 'Quotes to review, new messages and assignment updates will be gathered here as they arrive.',
@@ -939,7 +949,10 @@ export const en = {
       service_unavailable: 'This is not available right now. Try again later.',
     },
     validation: {
-      settings: { unknown: 'This setting does not exist here. Reload the page and try again.' },
+      settings: {
+        unknown: 'This setting does not exist here. Reload the page and try again.',
+        boolean: 'Choose on or off.',
+      },
       branding: {
         colour: 'Enter a colour as # followed by six characters, such as #1d4ed8.',
         low_contrast: 'This colour is too hard to read against. Choose a darker or a stronger one.',
