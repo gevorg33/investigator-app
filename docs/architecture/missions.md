@@ -14,6 +14,16 @@ A draft is private to its customer and can be saved incomplete. Submission is th
 that makes a mission visible to anyone else, and it never makes it visible to investigators:
 publication is a moderator's decision, always.
 
+Incomplete is not incoherent. Every save (`POST /missions/me`, `PATCH /missions/me/:id`) is
+refused with `422 VALIDATION_FAILED`, naming each field, when the draft as it would be stored has
+a budget minimum above its maximum (`budgetMaxMinor`, `error.validation.budget.range`), a start
+after its deadline (`deadline`, `error.validation.deadline.range`), or a title, description,
+purpose or place sent as an empty string (that field, `error.validation.mission.blank` — send
+`null` to clear one). A request that moves one end of a range is judged against the stored other
+end. The CHECK constraints `missions_budget_range`, `missions_timeline_order` and
+`missions_text_lengths` stay as the last line; before T-153 they were the only one, and each of
+these reached the client as a 500.
+
 ## One writer for the status column
 
 `MissionTransitionService.apply` is the only code that writes `missions.status`, and

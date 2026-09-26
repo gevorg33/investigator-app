@@ -708,6 +708,94 @@ describe('missions', () => {
       });
     });
 
+    // T-153: each of these reached the database's CHECK constraints and came back as a 500.
+    describe('what the constraints refuse, refused first as a field error', () => {
+      const fieldError = (field: string, messageKey: string) => ({
+        code: 'VALIDATION_FAILED',
+        details: [expect.objectContaining({ field, messageKey })],
+      });
+
+      it('a budget minimum above its maximum, on a new draft', async () => {
+        const { actor } = await customer(ownerDb);
+        await expect(
+          service.createDraft(actor, { budgetMinMinor: 900, budgetMaxMinor: 100 }, req()),
+        ).rejects.toMatchObject(fieldError('budgetMaxMinor', 'error.validation.budget.range'));
+      });
+
+      it('a minimum moved past the stored maximum it was not sent with', async () => {
+        const { actor, draft } = await withDraft();
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, budgetMinMinor: 150_001 },
+            req(),
+          ),
+        ).rejects.toMatchObject(fieldError('budgetMaxMinor', 'error.validation.budget.range'));
+      });
+
+      it('a start after the stored deadline', async () => {
+        const { actor, draft } = await withDraft({ deadline: inDays(10) });
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, startBy: inDays(11) },
+            req(),
+          ),
+        ).rejects.toMatchObject(fieldError('deadline', 'error.validation.deadline.range'));
+      });
+
+      it.each(['title', 'description', 'purpose', 'locationLabel'])(
+        'an empty %s, rather than a cleared one',
+        async (field) => {
+          const { actor, draft } = await withDraft();
+          await expect(
+            service.updateDraft(actor, draft.id, { version: draft.version, [field]: '' }, req()),
+          ).rejects.toMatchObject(fieldError(field, 'error.validation.mission.blank'));
+        },
+      );
+
+      it('names every field at once, and writes nothing', async () => {
+        const { actor, draft } = await withDraft();
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, title: '', budgetMaxMinor: 1, startBy: inDays(31) },
+            req(),
+          ),
+        ).rejects.toMatchObject({
+          details: [
+            expect.objectContaining({ field: 'title' }),
+            expect.objectContaining({ field: 'budgetMaxMinor' }),
+            expect.objectContaining({ field: 'deadline' }),
+          ],
+        });
+        expect((await service.getMine(actor, draft.id, req())).version).toBe(draft.version);
+      });
+
+      it('still allows an equal range and a start on the deadline', async () => {
+        const { actor, draft } = await withDraft();
+        const saved = await service.updateDraft(
+          actor,
+          draft.id,
+          {
+            version: draft.version,
+            budgetMinMinor: 150_000,
+            startBy: draft.deadline,
+            title: null,
+          },
+          req(),
+        );
+        expect(saved).toMatchObject({
+          budgetMinMinor: 150_000,
+          startBy: draft.deadline,
+          title: null,
+        });
+      });
+    });
+
     it('refuses a category that does not exist', async () => {
       const { actor, draft } = await withDraft();
       await expect(

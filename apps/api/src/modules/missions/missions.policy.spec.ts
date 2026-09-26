@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCalendarDate } from './missions.policy';
+import { draftIssues, isCalendarDate } from './missions.policy';
 
 /**
  * The regression this file exists for: `Date.parse('2026-02-31')` does not return NaN. It
@@ -34,5 +34,32 @@ describe('isCalendarDate', () => {
     ['nonsense', 'tomorrow'],
   ])('refuses %s', (_label, value) => {
     expect(isCalendarDate(value)).toBe(false);
+  });
+});
+
+describe('draftIssues', () => {
+  it('lets an open end of a range pass', () => {
+    const open = {
+      budgetMinMinor: 900,
+      budgetMaxMinor: null,
+      startBy: '2026-10-02',
+      deadline: null,
+    };
+    expect(draftIssues({}, open)).toEqual([]);
+    expect(draftIssues({}, { budgetMaxMinor: 1, deadline: '2026-01-01' })).toEqual([]);
+  });
+
+  it('judges text on what was sent, not on what is stored', () => {
+    expect(draftIssues({}, { title: '' })).toEqual([]);
+    expect(draftIssues({ title: null }, {})).toEqual([]);
+    expect(draftIssues({ title: '' }, {}).map((i) => i.field)).toEqual(['title']);
+  });
+
+  it('judges ranges on the draft as it would be stored', () => {
+    expect(
+      draftIssues({ budgetMinMinor: 5 }, { budgetMinMinor: 5, budgetMaxMinor: 4 }).map(
+        (i) => i.code,
+      ),
+    ).toEqual(['RANGE']);
   });
 });

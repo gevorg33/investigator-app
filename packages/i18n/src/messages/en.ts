@@ -892,6 +892,7 @@ export const en = {
         required: 'Answer this before sending.',
         deadline_past: 'The finish date has passed. Choose a later one.',
         category_unavailable: 'This kind of help is no longer offered. Choose another.',
+        blank: 'Write something here, or clear the field.',
       },
       lawful_purpose: {
         required: 'Confirm that your request is for a lawful purpose.',

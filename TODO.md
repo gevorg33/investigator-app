@@ -7039,7 +7039,7 @@ pnpm --filter api test staff-access
 ---
 
 ### T-153 — Draft saves that break a CHECK answer 500, not a field error
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `draftIssues` in `missions.policy.ts` checks each save against the draft as it would be stored, before the write; new key `error.validation.mission.blank` (en/ru/hy); documented in `docs/architecture/missions.md`. 9 service specs seen failing without the check
 - **Priority:** P2
 - **Depends on:** T-010
 - **Risk:** LOW
@@ -7056,8 +7056,8 @@ holds an inverted pair and sends an emptied field as `null`), but any other clie
 later, will. Map them as `service-areas.service.ts` maps its shape violations, or validate first.
 
 **Acceptance criteria**
-- [ ] Each of the three answers 422 `VALIDATION_FAILED` naming the field, with a translated `messageKey`
-- [ ] The CHECK constraints stay, as the last line
+- [x] Each of the three answers 422 `VALIDATION_FAILED` naming the field, with a translated `messageKey`
+- [x] The CHECK constraints stay, as the last line
 
 **Validation**
 ```bash
