@@ -18,6 +18,8 @@ export const en = {
     unverified: 'Confirm your email address — we sent you a link.',
     outstanding: 'Some documents need your acceptance.',
     review: 'Review',
+    agency_setup: '{name} is not set up yet.',
+    finish: 'Finish',
   },
   nav: {
     home: 'Home',
@@ -395,6 +397,18 @@ export const en = {
     agencies: {
       title: 'Agencies',
       body: 'An agency is a workspace of its own for a team working under one business, with its own missions and conversations. You can switch between it and your personal workspace at any time.',
+    },
+    agency_details: {
+      title: 'Agency details',
+      intro:
+        'Who the agency is to customers and to the platform. Only you, its owner, can change these.',
+      owner_only: 'Only the agency’s owner can change these.',
+      unfinished: 'This agency is not set up yet',
+      missing: 'Still needed: {fields}.',
+      save: 'Save',
+      saved: 'Saved.',
+      activated: 'Saved. The agency is set up and ready to use.',
+      link: 'Agency details',
     },
     create_agency: {
       title: 'Create an agency',

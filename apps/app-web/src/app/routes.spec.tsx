@@ -373,6 +373,7 @@ describe('the application routes', () => {
       api.on('GET /legal/outstanding', 200, outstanding);
       api.on('GET /legal/required?for=INVESTIGATOR&locale=en', 200, []);
       api.on('GET /auth/sessions', 200, { sessions: [session({ current: true })] });
+      api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
     };
     const sections = () => screen.getAllByRole('region').map((r) => r.id);
 
@@ -401,11 +402,31 @@ describe('the application routes', () => {
 
     it('asks for a confirmed address before an agency can be created', async () => {
       signedIn([]);
+      // No workspaces listed: nothing to lead to, and nothing breaks.
+      api.on('GET /workspaces', 204);
       api.on('GET /me', 200, account({ timezone: 'Asia/Yerevan', emailVerified: false }));
       renderIntl(await resolveServer(await AccountPage()));
       const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
       expect(agencies).toHaveTextContent(catalogs.en.account.roles.verify_first);
       expect(within(agencies).queryByRole('link')).toBeNull();
+    });
+
+    it('leads to the agency’s details from inside an agency, and only there (T-150)', async () => {
+      signedIn([]);
+      const details = catalogs.en.workspace.agency_details.link;
+      const { unmount } = renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.queryByRole('link', { name: details })).toBeNull();
+      unmount();
+
+      api.on('GET /workspaces', 200, [
+        workspace({ current: false }),
+        agencyWorkspace({ current: true }),
+      ]);
+      renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.getByRole('link', { name: details })).toHaveAttribute(
+        'href',
+        '/agencies/current',
+      );
     });
 
     it('has no documents section when nothing is outstanding', async () => {

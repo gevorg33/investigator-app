@@ -488,6 +488,20 @@ session cookie is sent over plain HTTP and emailed links are written to the API'
 The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
 404 prerender (T-141).
 
+## An agency's details (T-150)
+
+`/agencies/current` reads `GET /agencies/current` — the five details, what is missing, the
+`version` and `mayChange`. The owner gets `AgencyDetailsForm`, the same five inputs as creating an
+agency (`AgencyDetailsFields`, shared), sending only what changed with the version read; any other
+member gets them read-only and is told only the owner can change them. `mayChange` decides which is
+shown and nothing else — the PATCH checks `company.update_details` itself. In a Personal workspace
+the API answers 403 and the page sends the reader Home.
+
+While the current workspace is an agency still `CREATING`, `AgencySetupNotice` sits above every
+page with **Finish**, where "Being set up" in the switcher used to lead nowhere. The save that
+completes the minimum says the agency is ready and refreshes the shell, so the notice and the
+switcher change with it. Inside an agency, Account links to the page too.
+
 ## Cancelling a mission (T-154)
 
 `CancelMission` offers it where the customer can still take a mission back: at the foot of a draft

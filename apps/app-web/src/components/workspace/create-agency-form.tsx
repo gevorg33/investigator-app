@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { fieldErrorKeys, type LooseT } from '@/components/form/errors';
-import { Field } from '@/components/form/field';
 import { FormError } from '@/components/form/form-error';
-import { SelectField } from '@/components/form/select-field';
 import { useSubmit } from '@/components/form/use-submit';
 import { LegalDocuments } from '@/components/legal-documents';
 import { Button } from '@/components/ui/button';
@@ -13,16 +11,15 @@ import { callApi } from '@/lib/api/browser';
 import type { AgencyView, LegalDocument } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
 import { navigate } from '@/lib/navigate';
+import { AGENCY_DETAILS, type AgencyDetail } from './agency-details';
+import { AgencyDetailsFields } from './agency-details-fields';
 import { SWITCHED_KEY } from './workspace-scope';
-
-/** The fields the API may refuse, each shown under its own input. */
-type FieldName = 'name' | 'countryCode' | 'businessEmail' | 'timezone' | 'currency';
 
 /**
  * Creating an agency (T-092, on T-083's API): the five details that make it usable and the agency
  * terms, on one screen — then the new agency is the workspace, and the app opens in it. Every field
- * is required here, although the API accepts fewer: an agency missing one would be created
- * unusable, and nothing yet lets its details be completed afterwards.
+ * is required here, although the API accepts fewer: asking for all five now is one screen, where
+ * leaving one out means a second visit to Agency details (T-150) before the agency can be used.
  *
  * One idempotency key for the life of the form, so a retry after a dropped response returns the
  * agency already created rather than a second one.
@@ -70,7 +67,7 @@ export function CreateAgencyForm({
     },
   );
   const fields = fieldErrorKeys(error, tl);
-  const message = (field: FieldName) => fields[field] && tl(fields[field]);
+  const message = (field: AgencyDetail) => fields[field] && tl(fields[field]);
 
   return (
     <form onSubmit={onSubmit} className="mt-6 grid gap-4">
@@ -85,73 +82,13 @@ export function CreateAgencyForm({
           'agreementDocumentId',
         ]}
       />
-      <Field
-        label={t('name')}
-        name="name"
-        required
-        minLength={2}
-        maxLength={120}
-        autoComplete="organization"
-        error={message('name')}
+      <AgencyDetailsFields
+        values={{ timezone }}
+        errors={Object.fromEntries(AGENCY_DETAILS.map((f) => [f, message(f)]))}
+        countries={countries}
+        currencies={currencies}
+        timezones={timezones}
       />
-      <SelectField
-        label={t('country')}
-        hint={t('country_hint')}
-        error={message('countryCode')}
-        name="countryCode"
-        required
-        defaultValue=""
-      >
-        <option value="" disabled>
-          {t('choose')}
-        </option>
-        {countries.map((c) => (
-          <option key={c.code} value={c.code}>
-            {c.name}
-          </option>
-        ))}
-      </SelectField>
-      <Field
-        label={t('email')}
-        hint={t('email_hint')}
-        name="businessEmail"
-        type="email"
-        required
-        maxLength={254}
-        autoComplete="email"
-        error={message('businessEmail')}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField
-          label={t('timezone')}
-          error={message('timezone')}
-          name="timezone"
-          required
-          defaultValue={timezone}
-        >
-          {timezones.map((z) => (
-            <option key={z} value={z}>
-              {z.replaceAll('_', ' ')}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField
-          label={t('currency')}
-          error={message('currency')}
-          name="currency"
-          required
-          defaultValue=""
-        >
-          <option value="" disabled>
-            {t('choose')}
-          </option>
-          {currencies.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </SelectField>
-      </div>
       <LegalDocuments documents={[agreement]} intro={t('accept_intro')} accept={t('accept')} />
       {fields['agreementDocumentId'] && (
         <p className="text-sm text-danger">{tl(fields['agreementDocumentId'])}</p>

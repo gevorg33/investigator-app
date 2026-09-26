@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalOutstandingForm } from '@/components/account/legal-outstanding';
@@ -10,9 +10,11 @@ import { TimeZoneForm } from '@/components/account/time-zone-form';
 import { LanguageChoice } from '@/components/language-choice';
 import { Page } from '@/components/page';
 import { Button } from '@/components/ui/button';
+import { AGENCY_DETAILS_HREF } from '@/components/workspace/agency-setup-notice';
 import { CREATE_AGENCY_HREF } from '@/components/workspace/workspace-switcher';
 import { getLocale, getT } from '@/i18n/server';
-import { getAccount, getOutstanding } from '@/lib/api/server';
+import { getAccount, getOutstanding, serverApi } from '@/lib/api/server';
+import type { WorkspaceView } from '@/lib/api/types';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('nav.account') };
@@ -23,12 +25,15 @@ export async function generateMetadata(): Promise<Metadata> {
  * (T-092), language, time zone and sessions. The workspace layout has already required a session.
  */
 export default async function AccountPage() {
-  const [t, { locale }, account, outstanding] = await Promise.all([
+  const [t, { locale }, account, outstanding, workspaces] = await Promise.all([
     getT(),
     getLocale(),
     getAccount(),
     getOutstanding(),
+    serverApi<WorkspaceView[]>('/workspaces'),
   ]);
+  // In an agency, its details are a tap away (T-150); the page itself decides who may change them.
+  const inAgency = (workspaces ?? []).some((w) => w.current && w.kind === 'AGENCY');
   return (
     <Page title={t('nav.account')}>
       {outstanding.length > 0 && (
@@ -43,6 +48,14 @@ export default async function AccountPage() {
         title={t('workspace.agencies.title')}
         body={t('workspace.agencies.body')}
       >
+        {inAgency && (
+          <Button asChild variant="outline" className="mb-3 w-full sm:w-auto">
+            <Link href={AGENCY_DETAILS_HREF}>
+              <Building2 aria-hidden />
+              {t('workspace.agency_details.link')}
+            </Link>
+          </Button>
+        )}
         {account!.emailVerified ? (
           <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href={CREATE_AGENCY_HREF}>
