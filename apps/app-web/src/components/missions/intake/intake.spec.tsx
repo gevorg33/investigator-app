@@ -201,6 +201,45 @@ describe('mission intake', () => {
     });
   });
 
+  describe('cancelling the draft (T-154)', () => {
+    it('offers nothing to cancel until there is a draft', async () => {
+      api.on('POST /missions/me', 201, saved());
+      open(null, 'need');
+      expect(screen.queryByRole('button', { name: en.cancel.action })).toBeNull();
+      await user().type(screen.getByLabelText(en.intake.need.title), 'A');
+      await pause();
+      expect(await screen.findByRole('button', { name: en.cancel.action })).toBeVisible();
+    });
+
+    it('cancels nothing while what is waiting cannot be saved, and says why', async () => {
+      api.on(`PATCH /missions/me/${ID}`, 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
+      open(saved(), 'need');
+      const u = user();
+      await u.type(screen.getByLabelText(en.intake.need.title), 'A');
+      await u.click(screen.getByRole('button', { name: en.cancel.action }));
+      await u.click(screen.getByRole('button', { name: en.cancel.confirm }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(catalogs.en.error.common.internal);
+      expect(writes().map((w) => w.path)).toEqual([`/missions/me/${ID}`]);
+      expect(router.push).not.toHaveBeenCalled();
+    });
+
+    it('saves what is waiting first, then cancels the version that save returned', async () => {
+      api.on(`PATCH /missions/me/${ID}`, 200, saved({ version: 2 }));
+      api.on(`POST /missions/me/${ID}/cancel`, 200, saved({ status: 'CANCELLED', version: 3 }));
+      open(saved(), 'need');
+      const u = user();
+      await u.type(screen.getByLabelText(en.intake.need.title), 'A');
+      await u.click(screen.getByRole('button', { name: en.cancel.action }));
+      expect(screen.getByRole('alertdialog', { name: en.cancel.draft.title })).toBeVisible();
+      await u.click(screen.getByRole('button', { name: en.cancel.confirm }));
+      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/missions'));
+      expect(writes().map((w) => [w.method, w.path, w.body])).toEqual([
+        ['PATCH', `/missions/me/${ID}`, { title: 'A', version: 1 }],
+        ['POST', `/missions/me/${ID}/cancel`, { version: 2 }],
+      ]);
+    });
+  });
+
   describe('moving between questions', () => {
     it('does not move on with an answer missing, and takes the customer to it', async () => {
       open();

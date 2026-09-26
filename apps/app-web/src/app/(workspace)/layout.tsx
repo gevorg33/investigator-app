@@ -5,6 +5,7 @@ import { AccountNotices } from '@/components/account/notices';
 import { AssistantBeside } from '@/components/assistant/assistant-beside';
 import { AssistantProvider } from '@/components/assistant/assistant-provider';
 import { AppShell } from '@/components/shell/app-shell';
+import { AgencySetupNotice } from '@/components/workspace/agency-setup-notice';
 import { SwitchedNotice, WorkspaceScope } from '@/components/workspace/workspace-scope';
 import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher';
 import { getAccount, getOutstanding, serverApi } from '@/lib/api/server';
@@ -37,11 +38,8 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
   const investigator = account.roles.includes('INVESTIGATOR') && account.activeRole !== 'CUSTOMER';
   const customer = account.roles.includes('CUSTOMER');
   return (
-    <WorkspaceScope key={current?.id ?? 'none'} workspace={current}>
-      <AssistantProvider
-        audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}
-        activeRole={account.activeRole}
-      >
+    <WorkspaceScope key={current?.id ?? 'none'} workspace={current} activeRole={account.activeRole}>
+      <AssistantProvider audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}>
         <AppShell
           workspaces={
             all.length > 1
@@ -54,6 +52,7 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
           notices={
             <>
               {current !== null && <SwitchedNotice workspace={current} />}
+              {current !== null && <AgencySetupNotice workspace={current} />}
               <AccountNotices
                 unverified={!account.emailVerified}
                 outstanding={outstanding.length > 0}

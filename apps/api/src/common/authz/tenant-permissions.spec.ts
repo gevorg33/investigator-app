@@ -19,7 +19,7 @@ import { TENANT_PERMISSIONS, type TenantPermission } from './permissions';
  * What each tenant role may do, taken from the catalog rather than from a list written here
  * (T-078, docs/architecture/tenancy.md §3).
  *
- * Every role × permission pair is exercised — 6 × 40 — against a real membership resolved by the
+ * Every role × permission pair is exercised — 6 × 41 — against a real membership resolved by the
  * real resolver. Sampling would pass a catalog with one grant missing; this does not. The
  * expectation comes from `role_permissions`, so this is a test of the path from membership to
  * decision, and `tenants.spec.ts` is what holds the catalog itself to the document.
@@ -76,7 +76,7 @@ describe('tenant permissions', () => {
   const ROLES = ['OWNER', 'ADMIN', 'MANAGER', 'INVESTIGATOR', 'AGENCY_STAFF', 'VIEWER'];
 
   describe.each(ROLES)('a member whose role is %s', (role) => {
-    it('holds exactly what the catalog grants that role, and requirePermission agrees on all 40', async () => {
+    it('holds exactly what the catalog grants that role, and requirePermission agrees on all 41', async () => {
       const expected = await granted(role);
       const { actor, context } = await memberWith(role);
       expect(context.permissions).toEqual(expected);

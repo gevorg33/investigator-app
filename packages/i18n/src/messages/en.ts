@@ -18,6 +18,8 @@ export const en = {
     unverified: 'Confirm your email address — we sent you a link.',
     outstanding: 'Some documents need your acceptance.',
     review: 'Review',
+    agency_setup: '{name} is not set up yet.',
+    finish: 'Finish',
   },
   nav: {
     home: 'Home',
@@ -137,6 +139,20 @@ export const en = {
       DISPUTED: 'In dispute',
       SUSPENDED: 'On hold',
       EXPIRED: 'Expired',
+    },
+    cancel: {
+      action: 'Cancel this mission',
+      draft: {
+        title: 'Cancel this draft?',
+        body: 'It closes for good and can no longer be sent. You can still read it under your missions; to go ahead later, start a new one.',
+      },
+      review: {
+        title: 'Withdraw this mission from review?',
+        body: 'The review stops and the mission closes for good. No investigator has seen it. You can still read it under your missions; to go ahead later, start a new one.',
+      },
+      confirm: 'Cancel mission',
+      keep: 'Keep it',
+      conflict: 'This mission changed while you were deciding. It is shown as it stands now.',
     },
     view: {
       sent: 'Sent {date}',
@@ -381,6 +397,19 @@ export const en = {
     agencies: {
       title: 'Agencies',
       body: 'An agency is a workspace of its own for a team working under one business, with its own missions and conversations. You can switch between it and your personal workspace at any time.',
+    },
+    agency_details: {
+      title: 'Agency details',
+      intro:
+        'Who the agency is to customers and to the platform. Only you, its owner, can change these.',
+      owner_only: 'Only the agency’s owner can change these.',
+      unfinished: 'This agency is not set up yet',
+      missing: 'Still needed: {fields}.',
+      save: 'Save',
+      saved: 'Saved.',
+      activated: 'Saved. The agency is set up and ready to use.',
+      link: 'Agency details',
+      link_body: 'The name, country, business email, time zone and currency of {name}.',
     },
     create_agency: {
       title: 'Create an agency',
@@ -770,6 +799,12 @@ export const en = {
   help: {
     fallback: 'This article is not yet available in your language, so it is shown in English.',
   },
+  not_found: {
+    title: 'Not found',
+    body: 'This page does not exist, or it is not open to you. If someone sent you the link, ask them to check it.',
+    home: 'Go to Home',
+    missions: 'Your missions',
+  },
   account: {
     profile: {
       title: 'Your details',
@@ -955,6 +990,7 @@ export const en = {
         required: 'Answer this before sending.',
         deadline_past: 'The finish date has passed. Choose a later one.',
         category_unavailable: 'This kind of help is no longer offered. Choose another.',
+        blank: 'Write something here, or clear the field.',
       },
       lawful_purpose: {
         required: 'Confirm that your request is for a lawful purpose.',

@@ -160,6 +160,23 @@ describe('the mission pages', () => {
       expect(screen.getByText(title)).toBeInTheDocument();
     });
 
+    it('offers to withdraw a mission under review, and nothing past it (T-154)', async () => {
+      context({ status: 'UNDER_REVIEW', submittedAt: '2026-09-24T09:00:00.000Z', version: 4 });
+      const { unmount } = await show();
+      const u = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await u.click(screen.getByRole('button', { name: en.cancel.action }));
+      expect(screen.getByRole('alertdialog', { name: en.cancel.review.title })).toBeVisible();
+      unmount();
+
+      for (const status of ['QUOTED', 'CANCELLED', 'REJECTED', 'IN_PROGRESS'] as const) {
+        api.install();
+        context({ status, submittedAt: '2026-09-24T09:00:00.000Z' });
+        const shown = await show();
+        expect(screen.queryByRole('button', { name: en.cancel.action })).toBeNull();
+        shown.unmount();
+      }
+    });
+
     it('shows only where it stands, when there is nothing more to explain', async () => {
       context({
         status: 'IN_PROGRESS',

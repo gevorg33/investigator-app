@@ -248,6 +248,13 @@ export interface AgencyView {
   missing: string[];
 }
 
+/** The agency the request acts in, as its members read it (T-150). */
+export interface AgencyDetails extends AgencyView {
+  version: number;
+  /** Whether this reader may change the details — the owner. Shown only; the API checks again. */
+  mayChange: boolean;
+}
+
 /** Why a search listed an investigator — only what was asked for (`discovery.md`, T-011). */
 export interface MatchedOn {
   taxonomyNodeIds: string[];

@@ -16,6 +16,7 @@ import { ApiError, callApi } from '@/lib/api/browser';
 import type { FieldIssue } from '@/lib/api/errors';
 import type { MissionFields, OwnMission } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
+import { CancelMission } from '../cancel-mission';
 import { Brief } from './brief';
 import {
   BudgetQuestion,
@@ -342,6 +343,14 @@ export function MissionIntake({
         <Button type="button" variant="ghost" onClick={() => void later()}>
           {t('later')}
         </Button>
+        {/* Only once there is a draft to close: a new one not yet saved is simply left. */}
+        {draft.mission !== null && (
+          <CancelMission
+            mission={draft.mission}
+            stage="draft"
+            prepare={async () => ((await flush()) ? latest() : null)}
+          />
+        )}
       </div>
     </div>
   );

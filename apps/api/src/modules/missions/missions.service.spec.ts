@@ -84,7 +84,8 @@ describe('missions', () => {
       .select()
       .from(missionStatusHistory)
       .where(eq(missionStatusHistory.missionId, missionId))
-      .orderBy(missionStatusHistory.occurredAt);
+      // Written order: moves in one transaction share an `occurred_at` (T-155).
+      .orderBy(missionStatusHistory.seq);
 
   describe('drafting', () => {
     it('saves an empty draft, so a customer can start without having decided everything', async () => {
@@ -414,6 +415,11 @@ describe('missions', () => {
       mission: { id: string; version: number },
       to: 'REJECTED' | 'DRAFT' | 'QUOTED',
       reason: string | null,
+      /**
+       * What the clock said, against the moves before it: its own transaction's start if unset,
+       * the same time as the last move, or a second before it.
+       */
+      clock?: 'tied' | 'stepped_back',
     ) => {
       await ownerSql.begin(async (tx) => {
         await tx`UPDATE missions SET status = ${to}, version = ${mission.version + 1},
@@ -421,9 +427,16 @@ describe('missions', () => {
                                                     ELSE lawful_purpose_confirmed_at END
                  WHERE id = ${mission.id}`;
         await tx`INSERT INTO mission_status_history
-                   (mission_id, from_status, to_status, actor_kind, actor_id, staff_scope, reason)
+                   (mission_id, from_status, to_status, actor_kind, actor_id, staff_scope, reason,
+                    occurred_at)
                  VALUES (${mission.id}, 'UNDER_REVIEW', ${to}, 'STAFF', ${randomUUID()},
-                         'MODERATION', ${reason})`;
+                         'MODERATION', ${reason},
+                         CASE ${clock ?? null}::text
+                           WHEN 'tied' THEN (SELECT max(occurred_at) FROM mission_status_history
+                                             WHERE mission_id = ${mission.id})
+                           WHEN 'stepped_back' THEN (SELECT max(occurred_at) FROM mission_status_history
+                                                     WHERE mission_id = ${mission.id}) - interval '1 second'
+                           ELSE now() END)`;
       });
       return { id: mission.id, version: mission.version + 1 };
     };
@@ -477,6 +490,21 @@ describe('missions', () => {
         req(),
       );
       expect(edited.review).toEqual(read.review);
+    });
+
+    // T-155: `occurred_at` is each transaction's start time. Moves in one transaction tie, and a
+    // wall-clock step in the Docker VM once put a moderator's later move before the submission —
+    // and the customer was told nothing. The latest move is the last one written, whatever the
+    // clock said.
+    it.each([
+      ['the clock stepped back between the two', 'stepped_back' as const],
+      ['both carry the same time', 'tied' as const],
+    ])('reads the latest move by the order it was written, when %s', async (_label, clock) => {
+      const { actor, mission } = await submitted();
+      await moderate(mission, 'DRAFT', 'Say which city the work is in.', clock);
+      expect((await service.getMine(actor, mission.id, req())).review).toMatchObject({
+        outcome: 'CHANGES_REQUESTED',
+      });
     });
 
     it('forgets the request for changes once the mission is submitted again', async () => {
@@ -575,6 +603,22 @@ describe('missions', () => {
           .insert(missions)
           .values({ customerId: userId, budgetMinMinor: 900, budgetMaxMinor: 100 }),
       ).rejects.toMatchObject({ cause: { constraint_name: 'missions_budget_range' } });
+    });
+
+    it('numbers history in the order it is written, and lets no writer choose the number', async () => {
+      const { actor, draft } = await withDraft();
+      await service.submit(
+        actor,
+        draft.id,
+        { version: draft.version, lawfulPurposeConfirmed: true },
+        req(),
+      );
+      const rows = await historyOf(draft.id);
+      expect(rows.map((r) => r.toStatus)).toEqual(['DRAFT', 'SUBMITTED', 'UNDER_REVIEW']);
+      await expect(
+        ownerSql`INSERT INTO mission_status_history (mission_id, to_status, actor_kind, seq)
+                 VALUES (${draft.id}, 'DRAFT', 'CUSTOMER', 1)`,
+      ).rejects.toMatchObject({ code: '428C9' });
     });
 
     it('refuses a location more precise than about a kilometre', async () => {
@@ -705,6 +749,94 @@ describe('missions', () => {
       ).rejects.toMatchObject({
         code: 'VALIDATION_FAILED',
         details: [expect.objectContaining({ field: 'startBy' })],
+      });
+    });
+
+    // T-153: each of these reached the database's CHECK constraints and came back as a 500.
+    describe('what the constraints refuse, refused first as a field error', () => {
+      const fieldError = (field: string, messageKey: string) => ({
+        code: 'VALIDATION_FAILED',
+        details: [expect.objectContaining({ field, messageKey })],
+      });
+
+      it('a budget minimum above its maximum, on a new draft', async () => {
+        const { actor } = await customer(ownerDb);
+        await expect(
+          service.createDraft(actor, { budgetMinMinor: 900, budgetMaxMinor: 100 }, req()),
+        ).rejects.toMatchObject(fieldError('budgetMaxMinor', 'error.validation.budget.range'));
+      });
+
+      it('a minimum moved past the stored maximum it was not sent with', async () => {
+        const { actor, draft } = await withDraft();
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, budgetMinMinor: 150_001 },
+            req(),
+          ),
+        ).rejects.toMatchObject(fieldError('budgetMaxMinor', 'error.validation.budget.range'));
+      });
+
+      it('a start after the stored deadline', async () => {
+        const { actor, draft } = await withDraft({ deadline: inDays(10) });
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, startBy: inDays(11) },
+            req(),
+          ),
+        ).rejects.toMatchObject(fieldError('deadline', 'error.validation.deadline.range'));
+      });
+
+      it.each(['title', 'description', 'purpose', 'locationLabel'])(
+        'an empty %s, rather than a cleared one',
+        async (field) => {
+          const { actor, draft } = await withDraft();
+          await expect(
+            service.updateDraft(actor, draft.id, { version: draft.version, [field]: '' }, req()),
+          ).rejects.toMatchObject(fieldError(field, 'error.validation.mission.blank'));
+        },
+      );
+
+      it('names every field at once, and writes nothing', async () => {
+        const { actor, draft } = await withDraft();
+        await expect(
+          service.updateDraft(
+            actor,
+            draft.id,
+            { version: draft.version, title: '', budgetMaxMinor: 1, startBy: inDays(31) },
+            req(),
+          ),
+        ).rejects.toMatchObject({
+          details: [
+            expect.objectContaining({ field: 'title' }),
+            expect.objectContaining({ field: 'budgetMaxMinor' }),
+            expect.objectContaining({ field: 'deadline' }),
+          ],
+        });
+        expect((await service.getMine(actor, draft.id, req())).version).toBe(draft.version);
+      });
+
+      it('still allows an equal range and a start on the deadline', async () => {
+        const { actor, draft } = await withDraft();
+        const saved = await service.updateDraft(
+          actor,
+          draft.id,
+          {
+            version: draft.version,
+            budgetMinMinor: 150_000,
+            startBy: draft.deadline,
+            title: null,
+          },
+          req(),
+        );
+        expect(saved).toMatchObject({
+          budgetMinMinor: 150_000,
+          startBy: draft.deadline,
+          title: null,
+        });
       });
     });
 

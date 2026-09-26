@@ -62,7 +62,7 @@ const openWith = async ({
   if (!held) api.on(LATEST, 200, { ...emptyPage, items: latest === null ? [] : [latest] });
   if (latest !== null) api.on(MESSAGES, 200, newestFirst(messages));
   renderIntl(
-    <AssistantProvider audience={audience} activeRole={null}>
+    <AssistantProvider audience={audience}>
       <Opener />
       <AssistantPanel />
     </AssistantProvider>,

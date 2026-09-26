@@ -1,3 +1,5 @@
+import type { FieldIssue } from '../../common/errors/app-error';
+
 /** Field limits, mirrored by CHECK constraints in migration 0007. */
 export const TITLE_MAX = 120;
 export const DESCRIPTION_MAX = 5000;
@@ -27,4 +29,53 @@ export function isCalendarDate(value: string): boolean {
     built.getUTCMonth() === month - 1 &&
     built.getUTCDate() === day
   );
+}
+
+/** The draft's free-text fields: each may be absent (`null`), never present and empty. */
+const TEXT_FIELDS = ['title', 'description', 'purpose', 'locationLabel'] as const;
+
+type DraftShape = {
+  title?: string | null | undefined;
+  description?: string | null | undefined;
+  purpose?: string | null | undefined;
+  locationLabel?: string | null | undefined;
+  budgetMinMinor?: number | null | undefined;
+  budgetMaxMinor?: number | null | undefined;
+  startBy?: string | null | undefined;
+  deadline?: string | null | undefined;
+};
+
+/**
+ * The rules `missions_text_lengths`, `missions_budget_range` and `missions_timeline_order`
+ * enforce, checked first so each reaches the client as the field error it is rather than as a
+ * 500 (T-153). The constraints stay as the last line.
+ *
+ * `patch` is what the request sends; `merged` is the draft as it would be stored. Text is
+ * judged on the patch alone — a stored value already passed the constraint — and the pairs on
+ * the merged draft, because a request may move one end of a range past the other end it did not
+ * send.
+ */
+export function draftIssues(patch: DraftShape, merged: DraftShape): FieldIssue[] {
+  const issues: FieldIssue[] = TEXT_FIELDS.filter((f) => patch[f] === '').map((field) => ({
+    field,
+    code: 'BLANK',
+    messageKey: 'error.validation.mission.blank',
+  }));
+  const { budgetMinMinor: min, budgetMaxMinor: max, startBy, deadline } = merged;
+  if (min != null && max != null && min > max) {
+    issues.push({
+      field: 'budgetMaxMinor',
+      code: 'RANGE',
+      messageKey: 'error.validation.budget.range',
+    });
+  }
+  // ISO dates order as strings.
+  if (startBy != null && deadline != null && startBy > deadline) {
+    issues.push({
+      field: 'deadline',
+      code: 'RANGE',
+      messageKey: 'error.validation.deadline.range',
+    });
+  }
+  return issues;
 }

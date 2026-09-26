@@ -18,6 +18,7 @@ export const TENANT_PERMISSIONS = [
   'company.delete',
   'company.read',
   'company.update',
+  'company.update_details',
   'employees.invite',
   'employees.read',
   'employees.remove',

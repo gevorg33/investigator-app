@@ -29,11 +29,15 @@ import InvestigatorPage, {
   generateMetadata as investigatorMeta,
 } from './(workspace)/account/investigator/page';
 import AccountPage, { generateMetadata as accountMeta } from './(workspace)/account/page';
+import Missing from './(workspace)/[...missing]/page';
 import AgencyPublicPage, {
   generateMetadata as agencyPublicMeta,
 } from './(workspace)/agencies/[id]/page';
 import AgencyPage, { generateMetadata as agencyMeta } from './(workspace)/agency/page';
 import WorkspaceLayout from './(workspace)/layout';
+import InvestigatorNotFound from './(workspace)/missions/investigators/[id]/not-found';
+import MissionNotFound from './(workspace)/missions/[id]/not-found';
+import WorkspaceNotFound from './(workspace)/not-found';
 import MessagesPage, { generateMetadata as messagesMeta } from './(workspace)/messages/page';
 import MissionsPage, { generateMetadata as missionsMeta } from './(workspace)/missions/page';
 import HomePage from './(workspace)/page';
@@ -266,6 +270,57 @@ describe('the application routes', () => {
     expect((await missionsMeta()).title).toBe(catalogs.hy.nav.missions);
   });
 
+  describe('a page that is not there (T-151)', () => {
+    const links = () =>
+      screen.getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')]);
+
+    it('says so in the reader’s language, with a way Home', async () => {
+      request.cookies.set('locale', 'ru');
+      render(await resolveServer(<WorkspaceNotFound />));
+      const ru = catalogs.ru.not_found;
+      expect(screen.getByRole('heading', { level: 1, name: ru.title })).toBeInTheDocument();
+      expect(screen.getByText(ru.body)).toBeInTheDocument();
+      expect(links()).toEqual([[ru.home, '/']]);
+    });
+
+    it('leads back to the list the page belongs to, when the route knows it', async () => {
+      const en = catalogs.en;
+      render(await resolveServer(<MissionNotFound />));
+      expect(links()).toEqual([
+        [en.not_found.missions, '/missions'],
+        [en.not_found.home, '/'],
+      ]);
+    });
+
+    it('reads the same for an unpublished profile as for a missing one: there is one page', async () => {
+      const en = catalogs.en;
+      render(await resolveServer(<InvestigatorNotFound />));
+      expect(screen.getByText(en.not_found.body)).toBeInTheDocument();
+      expect(links()).toEqual([
+        [en.missions.profile.back, '/missions/investigators'],
+        [en.not_found.home, '/'],
+      ]);
+    });
+
+    it('sends an address nothing answers to the workspace’s page, not Next’s', () => {
+      expect(() => Missing()).toThrow(NotFound);
+    });
+
+    it('keeps the shell around it', async () => {
+      request.cookies.set('investigator_session', 'tok');
+      api.on('GET /me', 200, account());
+      api.on('GET /legal/outstanding', 200, []);
+      api.on('GET /workspaces', 200, [workspace()]);
+      renderIntl(await resolveServer(await WorkspaceLayout({ children: <WorkspaceNotFound /> })));
+      expect(
+        screen.getByRole('heading', { level: 1, name: catalogs.en.not_found.title }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByRole('link', { name: catalogs.en.nav.missions }).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
   describe('the missions page', () => {
     const missions = async (over: Parameters<typeof account>[0]) => {
       api.on('GET /me', 200, account(over));
@@ -355,6 +410,8 @@ describe('the application routes', () => {
 
     it('asks for a confirmed address before an agency can be created', async () => {
       signedIn([]);
+      // No workspaces listed: nothing to lead to, and nothing breaks.
+      api.on('GET /workspaces', 204);
       api.on('GET /me', 200, account({ timezone: 'Asia/Yerevan', emailVerified: false }));
       renderIntl(await resolveServer(await AccountPage()));
       const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
@@ -362,7 +419,7 @@ describe('the application routes', () => {
       expect(within(agencies).queryByRole('link')).toBeNull();
     });
 
-    it('leads to the agency’s profile and colours while working in an agency — and only then', async () => {
+    it('leads to the agency’s details (T-150) and its profile and colours (T-094) while working in an agency', async () => {
       signedIn([]);
       api.on('GET /workspaces', 200, [
         workspace({ current: false }),
@@ -370,6 +427,11 @@ describe('the application routes', () => {
       ]);
       renderIntl(await resolveServer(await AccountPage()));
       const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
+      const details = within(agencies).getByRole('link', { name: /^Agency details/ });
+      expect(details).toHaveAttribute('href', '/agencies/current');
+      expect(details).toHaveTextContent(
+        'The name, country, business email, time zone and currency of Ararat Investigations.',
+      );
       const link = within(agencies).getByRole('link', { name: /Agency profile and colours/ });
       expect(link).toHaveAttribute('href', '/agency');
       expect(link).toHaveTextContent(
@@ -377,12 +439,15 @@ describe('the application routes', () => {
       );
     });
 
-    it('offers no agency profile from a Personal workspace, or when none is listed', async () => {
+    it('offers neither from a Personal workspace, or when none is listed', async () => {
       signedIn([]);
-      renderIntl(await resolveServer(await AccountPage()));
+      const { unmount } = renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.queryByRole('link', { name: /^Agency details/ })).toBeNull();
       expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
+      unmount();
       api.on('GET /workspaces', 204);
       renderIntl(await resolveServer(await AccountPage()));
+      expect(screen.queryByRole('link', { name: /^Agency details/ })).toBeNull();
       expect(screen.queryByRole('link', { name: /Agency profile/ })).toBeNull();
     });
 

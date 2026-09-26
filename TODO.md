@@ -5964,6 +5964,10 @@ projection has none. Reviews rendering is verified in specs only — the dev dat
 - **Tracking:** the assignment timeline shows status, the investigator's acceptance window, and
   updates.
 
+> **From T-154:** cancelling a mission is offered for a draft and a mission under review. A `QUOTED`
+> mission is not: cancelling it closes its open quotes, so it belongs here, beside them, with
+> `CancelMission` (`components/missions/cancel-mission.tsx`) reused and a `quoted` stage in its copy.
+
 **Acceptance criteria**
 - [ ] The UI never shows "paid" or "assigned" from the client's own callback, only from server state (tested)
 - [ ] Idempotent acceptance: a double-tap produces one payment
@@ -6713,7 +6717,7 @@ pnpm --filter api test search discovery
 ---
 
 ### T-141 — `next build` fails in agent shells, and so does `scripts/setup.sh`
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `.claude/settings.json` no longer sets `NODE_ENV`; the Next apps build with `NODE_ENV=production` themselves. `pnpm build` passed with `NODE_ENV=development` exported; `./scripts/setup.sh` passed from a Node 20 + `NODE_ENV=development` shell. Specs in `apps/api/test/workspace-scripts.spec.ts`
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6730,8 +6734,8 @@ launch configuration already works around it with `env -u NODE_ENV`. Decide whet
 needed at all; if it is, make the build scripts immune to it rather than every caller remembering.
 
 **Acceptance criteria**
-- [ ] `pnpm build` and `./scripts/setup.sh` pass in an agent shell with no workaround
-- [ ] Whatever needed `NODE_ENV=development` still gets it
+- [x] `pnpm build` and `./scripts/setup.sh` pass in an agent shell with no workaround
+- [x] Whatever needed `NODE_ENV=development` still gets it
 
 **Validation**
 ```bash
@@ -6834,7 +6838,7 @@ pnpm --filter app-web test assistant && pnpm --filter api test ai
 ---
 
 ### T-145 — Browser calls do not say which role the reader acts as
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `WorkspaceScope` pins the chosen role beside the workspace; `scopeHeaders()` (`lib/api/workspace.ts`) is the one source of `X-Workspace` and `X-Active-Role` for `callApi` and `assistantApi()`, which lost its `role` parameter. Specs in `browser.spec.ts`, `workspace.spec.tsx`, `assistant.spec.ts` seen failing without the header
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6851,8 +6855,8 @@ widens. The assistant sends the header itself (`assistantApi(role)`). Make `call
 the rule holds in one place.
 
 **Acceptance criteria**
-- [ ] Every browser call carries the chosen role when there is one; a spec asserts it
-- [ ] `assistantApi` uses the shared path rather than its own header
+- [x] Every browser call carries the chosen role when there is one; a spec asserts it
+- [x] `assistantApi` uses the shared path rather than its own header
 
 **Validation**
 ```bash
@@ -6862,7 +6866,7 @@ pnpm --filter app-web test
 ---
 
 ### T-146 — Agent shells run Node 20, and two API specs fail on it
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `session-start.sh` puts the `.nvmrc` Node first on PATH through `CLAUDE_ENV_FILE`, or prints `WRONG NODE`; four specs in `apps/api/test/workspace-scripts.spec.ts` drive the hook with fake installs. `pnpm test:coverage` passed on the switched PATH. `node -v` in a fresh session is to be seen on the next session start (this one began before the hook existed)
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -6878,8 +6882,8 @@ does not notice reports a failure that is not the code's. Related to T-141 (the 
 `NODE_ENV`). Make agent shells use the pinned version (the `.nvmrc`), or fail loudly when they do not.
 
 **Acceptance criteria**
-- [ ] `node -v` in an agent shell matches `.nvmrc`, or the session start says it does not
-- [ ] `pnpm test:coverage` passes in an agent shell with no PATH workaround
+- [x] `node -v` in an agent shell matches `.nvmrc`, or the session start says it does not
+- [x] `pnpm test:coverage` passes in an agent shell with no PATH workaround
 
 **Validation**
 ```bash
@@ -6975,7 +6979,7 @@ pnpm --filter app-web test onboarding
 ---
 
 ### T-150 — Complete or change an agency's core details
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `GET`/`PATCH /agencies/current` (owner only, `company.update_details`, migration 0026; version-checked, 409 on a stale read; audited `agency.details_updated` with field names, plus `agency.activated` when a CREATING agency completes). Screen `/agencies/current`: form for the owner, read-only list for other members; the shell's "not set up yet" notice links to it. Specs in `agencies.details.spec.ts`, `agencies.controller.spec.ts`, `agency-details.spec.tsx`; resolver spec updated to 41 permissions. Verified in the browser against the local API and database at 375 and 1280px: CREATING → ACTIVE on save (audit rows checked), rename reflected in the switcher, stale version shows the conflict message, a VIEWER sees the read-only view and gets 403 from `PATCH`, Personal redirects home
 - **Priority:** P2
 - **Depends on:** T-083, T-092
 - **Risk:** MEDIUM
@@ -6992,8 +6996,8 @@ settings and branding, not these five. Add an owner-only update (audited; becomi
 minimum is complete) and the screen for it.
 
 **Acceptance criteria**
-- [ ] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
-- [ ] Only an owner can change the five details; every change is audited
+- [x] A `CREATING` agency becomes `ACTIVE` when its owner supplies what is missing
+- [x] Only an owner can change the five details; every change is audited
 
 **Validation**
 ```bash
@@ -7003,7 +7007,7 @@ pnpm --filter api test agencies && pnpm --filter app-web test workspace
 ---
 
 ### T-151 — A translated "not found" page (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `NotFoundPage` rendered by `(workspace)/not-found.tsx`, with a back link from `missions/[id]` and `missions/investigators/[id]`; `(workspace)/[...missing]` sends unknown addresses there too. New `not_found.*` keys in en/ru/hy. Specs in `routes.spec.tsx`
 - **Priority:** P3
 - **Depends on:** T-128
 - **Risk:** LOW
@@ -7018,8 +7022,8 @@ Add `not-found.tsx` in the workspace group, in the reader's language, inside the
 back (Home, and the list it came from where known).
 
 **Acceptance criteria**
-- [ ] A 404 inside the workspace keeps the navigation and speaks the reader's language
-- [ ] It says nothing about whether the thing exists (a draft profile and a missing one read the same)
+- [x] A 404 inside the workspace keeps the navigation and speaks the reader's language
+- [x] It says nothing about whether the thing exists (a draft profile and a missing one read the same)
 
 **Validation**
 ```bash
@@ -7058,7 +7062,7 @@ pnpm --filter api test staff-access
 ---
 
 ### T-153 — Draft saves that break a CHECK answer 500, not a field error
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `draftIssues` in `missions.policy.ts` checks each save against the draft as it would be stored, before the write; new key `error.validation.mission.blank` (en/ru/hy); documented in `docs/architecture/missions.md`. 9 service specs seen failing without the check
 - **Priority:** P2
 - **Depends on:** T-010
 - **Risk:** LOW
@@ -7075,8 +7079,8 @@ holds an inverted pair and sends an emptied field as `null`), but any other clie
 later, will. Map them as `service-areas.service.ts` maps its shape violations, or validate first.
 
 **Acceptance criteria**
-- [ ] Each of the three answers 422 `VALIDATION_FAILED` naming the field, with a translated `messageKey`
-- [ ] The CHECK constraints stay, as the last line
+- [x] Each of the three answers 422 `VALIDATION_FAILED` naming the field, with a translated `messageKey`
+- [x] The CHECK constraints stay, as the last line
 
 **Validation**
 ```bash
@@ -7086,7 +7090,7 @@ pnpm --filter api test missions
 ---
 
 ### T-154 — Cancel a mission from the app
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. `CancelMission` (`components/missions/cancel-mission.tsx`) in the draft intake and under a mission in review; KB `creating-a-mission` v3 (en/ru/hy) says how. QUOTED left to T-121, which shows the quotes that close
 - **Priority:** P2
 - **Depends on:** T-119
 - **Risk:** LOW
@@ -7102,8 +7106,8 @@ customer cancel, confirmed in an `AlertDialog` that says what closes. A `QUOTED`
 open quotes — decide with T-121 whether that belongs here.
 
 **Acceptance criteria**
-- [ ] A draft and a mission under review can be cancelled, after a confirmation; the list says so
-- [ ] A 409 (it moved on meanwhile) says so and reloads
+- [x] A draft and a mission under review can be cancelled, after a confirmation; the list says so
+- [x] A 409 (it moved on meanwhile) says so and reloads
 
 **Validation**
 ```bash
@@ -7113,7 +7117,7 @@ pnpm --filter app-web test missions
 ---
 
 ### T-155 — A T-119 spec failed once under full load
-- **Status:** TODO
+- **Status:** DONE — 2026-09-26. Cause: ordering. `occurred_at` is `now()`, the transaction start, so moves in one transaction tie and a clock step reorders two; `reviewsOf` then picked the submission and said nothing. Migration 0025 adds `mission_status_history.seq` (identity) and `reviewsOf` orders by it. Two specs (clock stepped back, tied) reproduce `review: null` on the old ordering and pass on `seq`; reverse-sequence run green
 - **Priority:** P3
 - **Depends on:** T-119
 - **Risk:** LOW
@@ -7131,11 +7135,38 @@ transactions, or something in that first run's order. If it is ordering, the rev
 depend on clock order alone (e.g. a monotonic sequence on the history table).
 
 **Acceptance criteria**
-- [ ] The cause is found and fixed, or the spec is shown sound and the note closed with evidence
+- [x] The cause is found and fixed, or the spec is shown sound and the note closed with evidence
 
 **Validation**
 ```bash
 VITEST_SEQUENCE=reverse pnpm --filter api test missions
+```
+
+---
+
+### T-156 — The latest consent is chosen by clock, not by write order
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-155
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — legal consent (AGENTS.md)
+- **Owner agent:** database (schema) + backend-domain (service)
+- **Affected:** apps/api/src/modules/legal/**, apps/api/src/database/schema/legal.ts
+
+**Description**
+Found in T-155. `LegalService.consentState` takes a person's latest `user_consents` row for a
+document type by `occurred_at`, which is its transaction's start time — the ordering that made T-155's
+review lookup unreliable. A withdrawal and a re-acceptance written close together, or across a
+wall-clock step, can be read in the wrong order, and the gate then says the wrong thing. Same fix as
+T-155: an identity `seq`, ordered by it.
+
+**Acceptance criteria**
+- [ ] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
+- [ ] Ties in `occurred_at` are resolved by write order
+
+**Validation**
+```bash
+pnpm --filter api test legal
 ```
 
 ---

@@ -177,16 +177,19 @@ export default tseslint.config(
 
   // The web apps: Next.js's own rules (the core-web-vitals set catches `<img>` without sizes,
   // synchronous scripts and the like) and two content rules: RAW_VALUES and UI_LITERALS, above.
-  {
-    files: ['apps/app-web/src/**/*.{ts,tsx}', 'apps/admin-web/src/**/*.{ts,tsx}'],
+  // One block per app, each with its own `rootDir`: `no-html-link-for-pages` checks a link against
+  // the routes of the app it is in. A shared list checked admin-web's links against app-web's
+  // routes too, which app-web's catch-all (T-151) made match every address.
+  ...['apps/app-web/', 'apps/admin-web/'].map((app) => ({
+    files: [`${app}src/**/*.{ts,tsx}`],
     plugins: { '@next/next': nextPlugin },
-    settings: { next: { rootDir: ['apps/app-web/', 'apps/admin-web/'] } },
+    settings: { next: { rootDir: app } },
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
       'no-restricted-syntax': ['error', ...RAW_VALUES, ...UI_LITERALS],
     },
-  },
+  })),
   // Tests assert on rendered text, so literals are theirs to use; raw values are still not.
   {
     files: ['apps/app-web/src/**/*.spec.{ts,tsx}', 'apps/admin-web/src/**/*.spec.{ts,tsx}'],

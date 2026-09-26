@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "typecheck:specs": "tsc --noEmit && tsc --noEmit -p e2e",

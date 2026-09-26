@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, apiError } from '@/test/api';
 import { aiMessage, aiReply, aiSession, emptyPage } from '@/test/fixtures';
 import { assistantApi, knowledgeReply, sseParser, type TurnEvent } from './assistant';
 import { ApiError } from './errors';
+import { pinRole } from './workspace';
 
 const ID = aiSession().id;
 
@@ -29,9 +30,10 @@ describe('reading server-sent events (T-056)', () => {
 
 describe('the assistant API from the browser', () => {
   beforeEach(() => api.install());
+  afterEach(() => pinRole(null));
 
   it('reads the latest conversation, or none', async () => {
-    const client = assistantApi(null);
+    const client = assistantApi();
     api.on('GET /ai/sessions?limit=1', 200, { ...emptyPage, items: [aiSession()] });
     expect(await client.latest()).toEqual(aiSession());
     api.on('GET /ai/sessions?limit=1', 200, emptyPage);
@@ -40,10 +42,11 @@ describe('the assistant API from the browser', () => {
     expect(api.calls[0]!.init.credentials).toBe('same-origin');
   });
 
-  it('sends the role the reader acts as, and a JSON body only with a body', async () => {
+  it('sends the role the reader acts as, as every browser call does, and a JSON body only with a body', async () => {
     api.on('POST /ai/sessions', 201, aiSession());
     api.on('GET /workspaces', 200, []);
-    const client = assistantApi('CUSTOMER');
+    pinRole('CUSTOMER');
+    const client = assistantApi();
     await client.create();
     await client.workspaces();
     expect(api.calls.map((c) => [c.method, c.path, c.headers, c.body])).toEqual([
@@ -58,7 +61,7 @@ describe('the assistant API from the browser', () => {
   });
 
   it('reads a conversation from its end backwards, a page at a time, in reading order (T-057)', async () => {
-    const client = assistantApi(null);
+    const client = assistantApi();
     api.on(`GET /ai/sessions/${ID}/messages?order=newest&limit=30`, 200, {
       items: [aiReply(), aiMessage()],
       pageInfo: { nextCursor: 'c/1', hasNextPage: true },
@@ -69,7 +72,7 @@ describe('the assistant API from the browser', () => {
   });
 
   it('lists, searches, opens and changes conversations — a delete answering with nothing', async () => {
-    const client = assistantApi(null);
+    const client = assistantApi();
     const archived = aiSession({ status: 'ARCHIVED' });
     api.on('GET /ai/sessions?archived=false&limit=20', 200, { ...emptyPage, items: [aiSession()] });
     api.on('GET /ai/sessions?archived=true&limit=20&cursor=a%2F2', 200, {
@@ -100,7 +103,7 @@ describe('the assistant API from the browser', () => {
 
   it('refuses in the API’s own words', async () => {
     api.on('GET /workspaces', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
-    await expect(assistantApi(null).workspaces()).rejects.toMatchObject({
+    await expect(assistantApi().workspaces()).rejects.toMatchObject({
       status: 403,
       code: 'FORBIDDEN',
     });
@@ -117,7 +120,8 @@ describe('the assistant API from the browser', () => {
         { type: 'step', step: { step: 'searching' } },
         { type: 'done' },
       ]);
-      await assistantApi('INVESTIGATOR').turn(
+      pinRole('INVESTIGATOR');
+      await assistantApi().turn(
         ID,
         { content: 'Is a quote binding?' },
         collect,
@@ -136,7 +140,7 @@ describe('the assistant API from the browser', () => {
 
     it('retries the unanswered question, sending nothing of its own', async () => {
       api.streamed(`POST /ai/sessions/${ID}/turns/retry`, [{ type: 'done' }]);
-      await assistantApi(null).turn(ID, { retry: true }, collect, new AbortController().signal);
+      await assistantApi().turn(ID, { retry: true }, collect, new AbortController().signal);
       expect(api.calls[0]!.body).toEqual({});
     });
 
@@ -147,7 +151,7 @@ describe('the assistant API from the browser', () => {
         apiError('SERVICE_UNAVAILABLE', 'error.common.service_unavailable'),
       );
       await expect(
-        assistantApi(null).turn(ID, { content: 'q?' }, collect, new AbortController().signal),
+        assistantApi().turn(ID, { content: 'q?' }, collect, new AbortController().signal),
       ).rejects.toMatchObject({ status: 503, code: 'SERVICE_UNAVAILABLE' });
       expect(events).toEqual([]);
     });
@@ -158,14 +162,14 @@ describe('the assistant API from the browser', () => {
         vi.fn(async () => new Response(null, { status: 200 })),
       );
       await expect(
-        assistantApi(null).turn(ID, { content: 'q?' }, collect, new AbortController().signal),
+        assistantApi().turn(ID, { content: 'q?' }, collect, new AbortController().signal),
       ).rejects.toEqual(new ApiError(0, 'NETWORK', 'error.common.internal'));
     });
 
     it('stops reading when stopped, rejecting as an abort', async () => {
       const stream = api.stream(`POST /ai/sessions/${ID}/turns`);
       const stop = new AbortController();
-      const turn = assistantApi(null).turn(ID, { content: 'q?' }, collect, stop.signal);
+      const turn = assistantApi().turn(ID, { content: 'q?' }, collect, stop.signal);
       stream.send({ type: 'step', step: { step: 'searching' } });
       await vi.waitFor(() => expect(events).toHaveLength(1));
       stop.abort();

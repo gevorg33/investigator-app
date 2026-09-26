@@ -14,6 +14,16 @@ A draft is private to its customer and can be saved incomplete. Submission is th
 that makes a mission visible to anyone else, and it never makes it visible to investigators:
 publication is a moderator's decision, always.
 
+Incomplete is not incoherent. Every save (`POST /missions/me`, `PATCH /missions/me/:id`) is
+refused with `422 VALIDATION_FAILED`, naming each field, when the draft as it would be stored has
+a budget minimum above its maximum (`budgetMaxMinor`, `error.validation.budget.range`), a start
+after its deadline (`deadline`, `error.validation.deadline.range`), or a title, description,
+purpose or place sent as an empty string (that field, `error.validation.mission.blank` — send
+`null` to clear one). A request that moves one end of a range is judged against the stored other
+end. The CHECK constraints `missions_budget_range`, `missions_timeline_order` and
+`missions_text_lengths` stay as the last line; before T-153 they were the only one, and each of
+these reached the client as a 500.
+
 ## One writer for the status column
 
 `MissionTransitionService.apply` is the only code that writes `missions.status`, and
@@ -153,6 +163,11 @@ field — whatever wrote it.
 | `mission_status_history` | S/I | Append-only. A history that can be edited settles no dispute |
 | `mission_screenings` | S/I | Append-only. A result that can be rewritten explains nothing |
 | `outbox_events` | S/I/U | The relay marks rows published; no DELETE, pruning is a retention job |
+
+**Order is `seq`, not `occurred_at`.** `occurred_at` is its transaction's start time, so the moves
+one transaction writes share it, and a wall-clock step can put a later move before an earlier one.
+The latest move — what `reviewsOf` reads to tell a customer about a rejection or a request for
+changes — is the highest `seq`, an identity assigned at insert (migration 0025, T-155).
 
 > **A GRANT alone decides nothing here.** Migration 0000 sets `ALTER DEFAULT PRIVILEGES`
 > granting SELECT, INSERT, UPDATE and DELETE on every table created in this schema, so a new

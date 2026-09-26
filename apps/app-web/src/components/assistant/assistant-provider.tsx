@@ -49,15 +49,12 @@ const AssistantContext = createContext<AssistantValue | null>(null);
  */
 export function AssistantProvider({
   audience,
-  activeRole,
   children,
 }: {
   audience: AssistantAudience;
-  /** The role the reader chose to act as, forwarded so answers are for that role. */
-  activeRole: string | null;
   children: ReactNode;
 }) {
-  const api = useMemo(() => assistantApi(activeRole), [activeRole]);
+  const api = useMemo(() => assistantApi(), []);
   const conversation = useConversation(api);
   const [open, setOpenState] = useState(false);
   const opener = useRef<HTMLElement | null>(null);

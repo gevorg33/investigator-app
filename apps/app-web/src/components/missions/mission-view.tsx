@@ -7,6 +7,7 @@ import { getT } from '@/i18n/server';
 import type { OwnMission } from '@/lib/api/types';
 import { Brief, type BriefNames } from './intake/brief';
 import { POLICY_HREF } from './intake/steps';
+import { CancelMission } from './cancel-mission';
 import { ReviseMission } from './revise-mission';
 
 /** What the customer is told about a sent mission, by where it stands. Others show the brief only. */
@@ -61,6 +62,12 @@ export async function MissionView({
             <p>{t(`missions.view.${explained.key}.body`)}</p>
           </AlertContent>
         </Alert>
+      )}
+
+      {/* The one sent status the customer can still take back here; a published mission's quotes
+          close with it, which belongs with the quotes screen (T-121). */}
+      {mission.status === 'UNDER_REVIEW' && (
+        <CancelMission mission={{ id: mission.id, version: mission.version }} stage="review" />
       )}
 
       {rejected && (

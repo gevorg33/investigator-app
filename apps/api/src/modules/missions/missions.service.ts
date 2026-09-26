@@ -24,7 +24,7 @@ import type {
   SubmitMissionDto,
   UpdateMissionDraftDto,
 } from './missions.dto';
-import { isCalendarDate } from './missions.policy';
+import { draftIssues, isCalendarDate } from './missions.policy';
 import { OwnMissionRepository, type MissionReview, type MissionRow } from './missions.repository';
 
 /** A mission as its own customer sees it. Screening flags are staff-only and never appear here. */
@@ -110,6 +110,7 @@ export class MissionsService {
     const c = this.ctx('mission.create', req);
     await this.requireCustomer(actor, c);
     const patch = this.patch(dto);
+    requireCoherent(patch, patch);
 
     return this.db.transaction(async (tx) => {
       await this.requireUsableCategory(tx, patch.taxonomyNodeId ?? null);
@@ -149,6 +150,7 @@ export class MissionsService {
       // mission, changing it under them is what produces disputes.
       await this.authz.stateAllows(actor, mission.status === 'DRAFT', c);
       requireVersion(mission, dto.version);
+      requireCoherent(patch, { ...mission, ...patch });
       await this.requireUsableCategory(
         tx,
         patch.taxonomyNodeId === undefined ? mission.taxonomyNodeId : patch.taxonomyNodeId,
@@ -409,6 +411,12 @@ export class MissionsService {
 
 /** Today in UTC, as a date string, for comparison with a `date` column. */
 const today = (): string => new Date().toISOString().slice(0, 10);
+
+/** A draft the constraints would refuse, refused first as the field errors it is (T-153). */
+const requireCoherent = (...args: Parameters<typeof draftIssues>): void => {
+  const issues = draftIssues(...args);
+  if (issues.length > 0) throw AppError.validation(issues);
+};
 
 const requireVersion = (mission: MissionRow, expected: number): void => {
   // Somebody else changed this mission since the client read it. Re-read rather than overwrite.

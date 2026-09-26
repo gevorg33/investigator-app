@@ -10,6 +10,7 @@ import { TimeZoneForm } from '@/components/account/time-zone-form';
 import { LanguageChoice } from '@/components/language-choice';
 import { Page } from '@/components/page';
 import { Button } from '@/components/ui/button';
+import { AGENCY_DETAILS_HREF } from '@/components/workspace/agency-setup-notice';
 import { CREATE_AGENCY_HREF } from '@/components/workspace/workspace-switcher';
 import { getLocale, getT } from '@/i18n/server';
 import { getAccount, getOutstanding, serverApi } from '@/lib/api/server';
@@ -33,7 +34,17 @@ export default async function AccountPage() {
     getOutstanding(),
     serverApi<WorkspaceView[]>('/workspaces'),
   ]);
+  // In an agency, its details (T-150) and its profile (T-094) are a tap away; each page decides
+  // what the reader may change.
   const agency = (workspaces ?? []).find((w) => w.current && w.kind === 'AGENCY');
+  const agencyLinks = [
+    {
+      href: AGENCY_DETAILS_HREF,
+      title: 'workspace.agency_details.link',
+      body: 'workspace.agency_details.link_body',
+    },
+    { href: '/agency', title: 'agency.link', body: 'agency.link_body' },
+  ] as const;
   return (
     <Page title={t('nav.account')}>
       {outstanding.length > 0 && (
@@ -48,20 +59,22 @@ export default async function AccountPage() {
         title={t('workspace.agencies.title')}
         body={t('workspace.agencies.body')}
       >
-        {agency !== undefined && (
-          <Link
-            href="/agency"
-            className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-4 py-3 hover:bg-surface-sunken"
-          >
-            <span className="grid gap-0.5">
-              <span className="font-medium">{t('agency.link')}</span>
-              <span className="text-sm text-text-muted">
-                {t('agency.link_body', { name: agency.name! })}
+        {agency !== undefined &&
+          agencyLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-4 py-3 hover:bg-surface-sunken"
+            >
+              <span className="grid gap-0.5">
+                <span className="font-medium">{t(link.title)}</span>
+                <span className="text-sm text-text-muted">
+                  {t(link.body, { name: agency.name! })}
+                </span>
               </span>
-            </span>
-            <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
-          </Link>
-        )}
+              <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
+            </Link>
+          ))}
         {account!.emailVerified ? (
           <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href={CREATE_AGENCY_HREF}>

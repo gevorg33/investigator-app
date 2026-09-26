@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
-import { pinWorkspace } from '@/lib/api/workspace';
+import { pinRole, pinWorkspace } from '@/lib/api/workspace';
 import type { WorkspaceView } from '@/lib/api/types';
 
 /** Set just before the page reloads into a newly chosen workspace; read once when it arrives. */
@@ -15,19 +15,23 @@ export function useWorkspaceName(): (w: WorkspaceView) => string {
 }
 
 /**
- * The workspace this page was rendered in (T-092). Every browser call from inside names it as
- * `X-Workspace` (`lib/api/workspace.ts`). The workspace layout keys this by the workspace's id, so
+ * The workspace this page was rendered in (T-092), and the role the reader chose to act as (T-145).
+ * Every browser call from inside names both (`lib/api/workspace.ts`). The workspace layout keys this by the workspace's id, so
  * nothing held in a client component — a conversation, a draft, a list — outlives a switch.
  */
 export function WorkspaceScope({
   workspace,
+  activeRole,
   children,
 }: {
   workspace: WorkspaceView | null;
+  /** The `active_role` cookie as the server read it; `null` when the reader has not chosen. */
+  activeRole: string | null;
   children: ReactNode;
 }) {
   // During render, not in an effect: children's effects run first, and one of them may call the API.
   pinWorkspace(workspace?.id ?? null);
+  pinRole(activeRole);
   return children;
 }
 

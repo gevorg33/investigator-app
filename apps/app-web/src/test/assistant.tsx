@@ -50,7 +50,7 @@ export const newestFirst = (messages: AiMessage[], earlier: string | null = null
 /** Renders the assistant as the workspace layout mounts it, and opens it. */
 export async function openAssistant(audience: AssistantAudience = 'CUSTOMER') {
   renderIntl(
-    <AssistantProvider audience={audience} activeRole={null}>
+    <AssistantProvider audience={audience}>
       <Opener />
       <AssistantPanel />
     </AssistantProvider>,

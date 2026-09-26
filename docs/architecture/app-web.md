@@ -134,7 +134,11 @@ production Caddy routes it. Errors arrive in the API's contract shape and are sh
 (`GET /legal/required?for=INVESTIGATOR|CUSTOMER`), shown and accepted in the same form. This is the
 one action outstanding acceptance blocks — the API's role-activation gate — and it is offered only
 to a confirmed address. With both roles, "Show the platform as" sets the `active_role` cookie for
-the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Role`.
+the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Role`. The cookie is
+httpOnly, so the browser is told the role instead: `WorkspaceScope` pins it, and every browser call —
+`callApi` and the assistant's client alike — sends it as `X-Active-Role` too (T-145). Before that,
+someone with both roles who chose to act as a customer was their full self for every call made from
+the browser.
 
 **Time zone.** Stored on the account (`users.timezone`, validated as an IANA name — a fixed offset
 is refused because it ignores daylight saving). Every date on these screens is formatted in it. The
@@ -286,9 +290,9 @@ reference. The rest was driven in the browser at 375px against the real API.
 ## Workspaces and agency onboarding (T-092)
 
 - **Which workspace a page is in.** The workspace layout reads `GET /workspaces` and renders
-  inside `WorkspaceScope`, keyed by the current workspace's id. The scope pins that id for
-  `callApi` and the assistant's client, which send it as `X-Workspace` on every browser call
-  (`lib/api/workspace.ts`). The module is pinned in the browser only: on the server it would be
+  inside `WorkspaceScope`, keyed by the current workspace's id. The scope pins that id, and the
+  chosen role, for `callApi` and the assistant's client, which send them as `X-Workspace` and
+  `X-Active-Role` on every browser call (`scopeHeaders` in `lib/api/workspace.ts`). The module is pinned in the browser only: on the server it would be
   shared across requests, and server renders use the session's default instead
   (`tenancy.md`, resolution).
 - **The switcher** (`WorkspaceSwitcher`) appears only with more than one workspace: a
@@ -380,7 +384,7 @@ decision, 2026-09-26). Someone working as an investigator is sent back to Missio
   with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
   the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
   reviewer. No areas: the public projection has none. Not published or not an id → 404.
-- **Not built:** the map (T-147's provider); a translated 404 page (T-151).
+- **Not built:** the map (T-147's provider).
 
 **Bundle** (the budget script's initial JS): `/missions/investigators` 206.2 kB, the profile page
 191.5 kB — within 250 kB.
@@ -467,7 +471,7 @@ the assistant closes it when it covers the page (the phone's sheet) and leaves i
 page on a desktop.
 
 **Help articles** — `/help/[docKey]` reads `GET /knowledge/documents/:docKey` as the reader; not
-found is Next's 404. `ArticleBody` renders the knowledge base's markdown subset — paragraphs, flat
+found is the workspace's 404 page. `ArticleBody` renders the knowledge base's markdown subset — paragraphs, flat
 lists, tables (scrolling in their own box), quotes, bold, code — and nothing else: every character
 is text React escapes.
 
@@ -523,6 +527,46 @@ in `.claude/launch.json` starts it against the local database with `NODE_ENV=dev
 session cookie is sent over plain HTTP and emailed links are written to the API's log).
 
 `pnpm build` at the root builds the tokens first. `next-env.d.ts` is generated and gitignored.
+The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
+404 prerender (T-141).
+
+## An agency's details (T-150)
+
+`/agencies/current` reads `GET /agencies/current` — the five details, what is missing, the
+`version` and `mayChange`. The owner gets `AgencyDetailsForm`, the same five inputs as creating an
+agency (`AgencyDetailsFields`, shared), sending only what changed with the version read; any other
+member gets them read-only and is told only the owner can change them. `mayChange` decides which is
+shown and nothing else — the PATCH checks `company.update_details` itself. In a Personal workspace
+the API answers 403 and the page sends the reader Home.
+
+While the current workspace is an agency still `CREATING`, `AgencySetupNotice` sits above every
+page with **Finish**, where "Being set up" in the switcher used to lead nowhere. The save that
+completes the minimum says the agency is ready and refreshes the shell, so the notice and the
+switcher change with it. Inside an agency, Account's Agencies section links to it ("Agency
+details") above the profile and colours (T-094) — who the agency is, then how it is shown. Publishing
+a profile needs these five complete; the notice is above `/agency` too while they are not.
+
+## Cancelling a mission (T-154)
+
+`CancelMission` offers it where the customer can still take a mission back: at the foot of a draft
+in the intake (once there is a draft to close — a new one not yet saved is simply left), and under
+a mission that is being reviewed. It asks first, in an `AlertDialog` that says what closes;
+cancelling is final. The intake finishes any save under way before cancelling, and cancels the
+version that save returned. Done, the customer lands on their missions, where it is listed as
+**Cancelled**. A 409 — it moved on meanwhile — says so and refreshes the page to where it stands.
+A published mission is not offered here (T-121).
+
+## Not found (T-151)
+
+`notFound()` anywhere in the workspace renders `NotFoundPage` (`components/not-found-page.tsx`)
+inside the shell, in the reader's language: a title, one sentence, and a way back — Home always,
+and the list the page belongs to where the route knows it (a mission → your missions, an
+investigator's profile → the search). An address nothing answers reaches the same page through a
+catch-all, `(workspace)/[...missing]`, which named routes and the `/api` rewrite both outrank.
+
+It reads the same whatever the reason. The API answers an unpublished profile, another audience's
+article and another customer's mission exactly as it answers one that is not there, and the page
+must not undo that by telling them apart.
 
 ## Browser flows (T-139)
 
@@ -575,6 +619,5 @@ starts from zero. Traces, screenshots and both servers' logs land in
 - An app icon: the favicon request 404s until there is a brand mark to use.
 - Google sign-in (T-062), and changing an email address or password from the account page.
 - The workspace switcher and every real screen — T-092 and the core-loop tasks.
-- Cancelling a mission from the app (T-154), and attachments on a mission (T-066).
-- Finishing an agency's core details after creation (T-150): a profile that lists `agency_setup` as missing
-  says so, but there is nowhere to finish it yet.
+- Attachments on a mission (T-066); cancelling a mission already open for quotes, which closes
+  its quotes and belongs with the quotes screen (T-121).

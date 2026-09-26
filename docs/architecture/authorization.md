@@ -263,6 +263,8 @@ and customer actions keep their platform-role checks until an agency version of 
 | List own quotes | `investigations.read` |
 | Read own investigator profile, service areas, verification applications | `investigators.read` |
 | Change them, or apply for verification | `investigators.update` |
+| Read the agency's core details — name, country, business email, time zone, currency (T-150) | `company.read` |
+| Complete or change them — the OWNER only | `company.update_details` |
 | Read the agency's own public profile, published or not (T-084) | `company.read` |
 | Change the agency's public profile, publish or unpublish it | `company.update` |
 | Read the agency's settings | `settings.read` |

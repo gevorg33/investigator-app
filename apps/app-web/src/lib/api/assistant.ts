@@ -1,5 +1,5 @@
 import { ApiError, toApiError } from './errors';
-import { workspaceHeader } from './workspace';
+import { scopeHeaders } from './workspace';
 
 /** A conversation with the assistant, as `/ai/sessions` returns it (T-045). */
 export interface AiSession {
@@ -185,15 +185,14 @@ export function sseParser(): (chunk: string) => TurnEvent[] {
 }
 
 /**
- * The assistant's API, from the browser (same-origin `/api`, ADR-0002). `role` is the role the
- * reader chose to act as, sent as `X-Active-Role` so the assistant reads the documentation for
- * that role — the API only ever narrows by it.
+ * The assistant's API, from the browser (same-origin `/api`, ADR-0002). It carries what every
+ * browser call does (`scopeHeaders`): among them the role the reader chose to act as, so the
+ * assistant reads the documentation for that role — the API only ever narrows by it.
  */
-export function assistantApi(role: string | null) {
+export function assistantApi() {
   const headers = (json: boolean): Record<string, string> => ({
-    ...workspaceHeader(),
+    ...scopeHeaders(),
     ...(json ? { 'content-type': 'application/json' } : {}),
-    ...(role === null ? {} : { 'x-active-role': role }),
   });
 
   const call = async <T>(path: string, method = 'GET', body?: unknown): Promise<T> => {

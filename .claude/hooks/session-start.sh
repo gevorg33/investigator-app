@@ -5,6 +5,22 @@ cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 
 echo "=== Investigator harness ==="
 
+# T-146: agent shells start on nvm's default Node, not the pinned one, and some specs need the
+# pinned one (node:fs globSync is Node 22+). Put the .nvmrc version first on PATH for every
+# later Bash call through CLAUDE_ENV_FILE, and say so loudly when that is not possible.
+want="$(cat .nvmrc 2>/dev/null || true)"
+have="$(node --version 2>/dev/null | sed 's/^v//' | cut -d. -f1)"
+if [ -n "$want" ] && [ "$have" != "$want" ]; then
+  pinned="$(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/v"$want".*/bin 2>/dev/null | sort -V | tail -1)"
+  if [ -n "$pinned" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+    echo "export PATH=\"$pinned:\$PATH\"" >>"$CLAUDE_ENV_FILE"
+    echo "node: v$have on PATH, switched to $("$pinned/node" --version) (.nvmrc) for this session"
+  else
+    echo "node: v${have:-none} on PATH but .nvmrc pins $want — WRONG NODE."
+    echo "  >> Tests and builds may fail for reasons that are not the code's. Run: nvm use $want (nvm install $want if missing)"
+  fi
+fi
+
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "branch: $(git branch --show-current 2>/dev/null || echo detached)"
   changed=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')

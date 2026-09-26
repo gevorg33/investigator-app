@@ -4,7 +4,7 @@ title: Setting up an agency on the platform
 audience: agency
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
 updated: 2026-09-26
 source_of_truth: docs
@@ -45,6 +45,18 @@ Everything else — legal name, company type, size, languages, the areas and ser
 cover, specialities, credentials, experience, working hours and branding — belongs to the
 agency's settings, which are arriving later.
 
+## Can I change the agency's details later?
+
+Yes, if you are its owner. Inside the agency, open Account and choose **Agency details** — or,
+while an agency is not set up yet, **Finish** in the notice at the top of every page. The same
+five details are there to change. Other members can read them there too, but only an owner can
+change them: they are who the agency is to customers and to the platform.
+
+An agency missing one of the five is **not set up yet**: the switcher says "Being set up", and
+the page lists what is still needed. The save that fills in the last one makes the agency ready
+to use. If someone else changed the details while you had the page open, you are asked to
+reload rather than overwrite what they saved.
+
 ## How do I switch between my personal workspace and an agency?
 
 Once you belong to more than one workspace, the switcher shows the one you are in: at the top
@@ -79,7 +91,6 @@ decision — invitations, roles and teams are covered in their own articles as t
 
 ## What can I not do yet?
 
-Some of this is still being built. Today you can create an agency and switch between it and
-your personal workspace. Changing its details after it is created, inviting employees,
-teams, agency-owned investigator profiles and agency verification are arriving in later
-releases.
+Some of this is still being built. Today you can create an agency, complete or change its
+details, and switch between it and your personal workspace. Inviting employees, teams,
+agency-owned investigator profiles and agency verification are arriving in later releases.
