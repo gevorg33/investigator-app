@@ -54,12 +54,14 @@ export const ownerUrl = (database = E2E_DATABASE): string => withDatabase(OWNER_
 export const runtimeUrl = (): string => withDatabase(RUNTIME_URL, E2E_DATABASE);
 
 /**
- * What registration and the customer role require, so sign-up and adding a role each show a
- * document and record its acceptance. Which types are required is the API's policy
+ * What registration, the customer role and creating an agency require, so each shows a document
+ * and records its acceptance. Which types are required is the API's policy
  * (`legal.policy.ts`); these are published so that policy has something to require.
  */
 export const PUBLISHED = [
   { type: 'PRIVACY_POLICY', title: 'Privacy policy (test)' },
   { type: 'TERMS_OF_SERVICE', title: 'Terms of service (test)' },
   { type: 'TERMS_AND_CONDITIONS', title: 'Customer terms (test)' },
+  // Creating an agency needs its agreement (T-092, T-094).
+  { type: 'AGENCY_AGREEMENT', title: 'Agency agreement (test)' },
 ] as const;

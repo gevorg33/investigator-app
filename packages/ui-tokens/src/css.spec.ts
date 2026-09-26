@@ -22,6 +22,18 @@ describe('tokens.css', () => {
     expect(dark).toContain('color-scheme: dark;');
   });
 
+  it('keeps a light scope after the dark swap, for what must stay on a light surface in dark mode', () => {
+    // Branded fills (T-084, T-094) are measured against the light theme only, so they are drawn in
+    // `data-theme="light"`. Equal specificity to `:root`, so it wins by coming after the swap.
+    const [beforeScope, scope] = css.split('[data-theme="light"] {') as [string, string];
+    expect(beforeScope).toContain('@media (prefers-color-scheme: dark)');
+    const block = scope.split('}')[0]!;
+    expect(block).toContain('color-scheme: light;');
+    for (const [role, value] of Object.entries(colors.light)) {
+      expect(block).toContain(`--${role}: ${value};`);
+    }
+  });
+
   it('turns every duration to zero under reduced motion — the change stays, the movement goes', () => {
     const reduced = css.split('@media (prefers-reduced-motion: reduce)')[1]!.split('@theme')[0]!;
     for (const name of Object.keys(duration)) expect(reduced).toContain(`--duration-${name}: 0ms;`);

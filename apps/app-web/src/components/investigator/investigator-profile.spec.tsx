@@ -10,7 +10,7 @@ import { AvailabilityEditor, fromClock, toClock } from './availability-editor';
 import { DetailsForm } from './details-form';
 import { LanguagesEditor } from './languages-editor';
 import { PublicProfileCard } from './public-profile-card';
-import { SectionCard } from './section-card';
+import { SectionCard } from '@/components/section-card';
 import { coarse, RADII, ServiceAreas } from './service-areas';
 import { SpecialtiesPicker } from './specialties-picker';
 import { StatusCard } from './status-card';

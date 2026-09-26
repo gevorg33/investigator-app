@@ -18,6 +18,10 @@ export interface OwnImage {
 
 /** The profile as the agency's own members see it, published or not. */
 export interface OwnAgencyProfile {
+  /** The agency's id and country: with the fields below, everything the public projection holds,
+   * so the agency's preview is built from this view and cannot drift from it (T-094). */
+  id: string;
+  countryCode: string | null;
   /** The name customers see: the display name if set, the registered name otherwise. */
   name: string;
   displayName: string | null;
@@ -324,6 +328,8 @@ export class AgencyProfileService {
     const image = (id: string | null): OwnImage | null =>
       id === null ? null : { mediaId: id, link: links.get(id) ?? null };
     return {
+      id: agency.id,
+      countryCode: agency.countryCode,
       name: row?.displayName ?? agency.name,
       displayName: row?.displayName ?? null,
       headline: row?.headline ?? null,
@@ -343,14 +349,19 @@ export class AgencyProfileService {
     ];
   }
 
-  /** This agency's own row: its registered name and whether it is finished. */
+  /** This agency's own row: its id, registered name, country and whether it is finished. */
   private async agency(db: Db | Tx): Promise<AgencyRow> {
     const [row] = await db
-      .select({ name: tenants.name, status: tenants.status })
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        countryCode: tenants.countryCode,
+        status: tenants.status,
+      })
       .from(tenants)
       .where(eq(tenants.id, THIS_WORKSPACE));
     // The agency workspace was required already; its own row is always visible to its members.
-    return { name: row!.name!, status: row!.status };
+    return { id: row!.id, name: row!.name!, countryCode: row!.countryCode, status: row!.status };
   }
 
   private async row(db: Db | Tx, lock = false): Promise<ProfileRow | undefined> {
@@ -395,6 +406,8 @@ export class AgencyProfileService {
 }
 
 interface AgencyRow {
+  id: string;
   name: string;
+  countryCode: string | null;
   status: (typeof tenants.$inferSelect)['status'];
 }

@@ -7,6 +7,9 @@ import { expect, type Page } from '@playwright/test';
  * It complements the keyboard and screen-reader review; it does not replace it.
  */
 export async function expectAccessible(page: Page): Promise<void> {
+  // Next streams a page's metadata after its first HTML, so the title can land a moment after the
+  // page is otherwise ready. Waited for, not skipped: a page without one still fails here.
+  await expect(page).toHaveTitle(/\S/);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();

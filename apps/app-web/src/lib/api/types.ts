@@ -280,3 +280,57 @@ export interface ProfileReviews {
   items: PublicReview[];
   pageInfo: { nextCursor: string | null; hasNextPage: boolean };
 }
+
+/** A short-lived signed link to a file the API authorised (media.md). Never logged, never kept. */
+export interface DeliveryUrl {
+  signedUrl: string;
+  expiresAt: string;
+}
+
+/** An agency's image, as its own members see it (T-084). */
+export interface OwnImage {
+  mediaId: string;
+  /** Null until the file is ready and scanned clean — then this is what customers see too. */
+  link: DeliveryUrl | null;
+}
+
+/** The agency's profile as its members see it, published or not (`GET /agencies/current/profile`). */
+export interface OwnAgencyProfile {
+  id: string;
+  countryCode: string | null;
+  /** The display name if set, the registered name otherwise. */
+  name: string;
+  displayName: string | null;
+  headline: string | null;
+  about: string | null;
+  logo: OwnImage | null;
+  cover: OwnImage | null;
+  publishedAt: string | null;
+  /** The version a change is made against; 0 for a profile never saved. */
+  version: number;
+  /** What stands between this profile and publishing it. Empty when it can be published. */
+  missing: Array<'agency_setup' | 'headline'>;
+}
+
+/**
+ * A published agency as anyone signed in sees it (`GET /agencies/:id/profile`): these fields and
+ * nothing else — no settings, members, customers or money.
+ */
+export interface PublicAgencyProfile {
+  id: string;
+  name: string;
+  headline: string;
+  about: string | null;
+  countryCode: string | null;
+  logo: DeliveryUrl | null;
+  cover: DeliveryUrl | null;
+}
+
+/** The branding section of an agency's settings (T-084): each colour `#rrggbb`, or the platform's. */
+export interface BrandingSection {
+  /** 0 for a section never saved: its defaults. */
+  version: number;
+  values: { accentColor: string | null; reportHeaderColor: string | null };
+  /** The text colour each fill carries, chosen by the API for contrast. Null with no fill. */
+  derived: { accentText: string | null; reportHeaderText: string | null };
+}

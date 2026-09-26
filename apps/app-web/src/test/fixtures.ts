@@ -1,8 +1,10 @@
 import type { AiMessage, AiSession, DiscoveryAnswer, InvestigatorMatch } from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
 import type {
+  BrandingSection,
   LegalDocument,
   MissionListing,
+  OwnAgencyProfile,
   OwnInvestigatorProfile,
   OwnMission,
   OwnServiceArea,
@@ -285,3 +287,33 @@ export const agencyWorkspace = (over: Partial<WorkspaceView> = {}): WorkspaceVie
     current: false,
     ...over,
   });
+
+/** An agency's own profile (T-084): a draft that says what it does, with no images. */
+export const ownAgencyProfile = (over: Partial<OwnAgencyProfile> = {}): OwnAgencyProfile => ({
+  id: '0b8e5c61-6a4b-4b8a-9d7e-2f0c7b1d5e11',
+  countryCode: 'AM',
+  name: 'Ararat Investigations',
+  displayName: null,
+  headline: 'Due diligence across the Caucasus',
+  about: null,
+  logo: null,
+  cover: null,
+  publishedAt: null,
+  version: 1,
+  missing: [],
+  ...over,
+});
+
+/** An agency's branding section, never saved: the platform's own colours. */
+export const brandingSection = (over: Partial<BrandingSection> = {}): BrandingSection => ({
+  version: 0,
+  values: { accentColor: null, reportHeaderColor: null },
+  derived: { accentText: null, reportHeaderText: null },
+  ...over,
+});
+
+/** A signed image link, as the API gives one out. */
+export const deliveryUrl = (name: string) => ({
+  signedUrl: `https://res.example.test/${name}.png?signature=sig`,
+  expiresAt: '2026-09-27T12:00:00.000Z',
+});
