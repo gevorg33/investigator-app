@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,7 @@ import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { ReviewModerationController } from './review-moderation.controller';
 import { ReviewsController } from './reviews.controller';
 import { ReviewsService } from './reviews.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ASSIGNMENT = '00000000-0000-4000-8000-0000000000a7';
 const PROFILE = '00000000-0000-4000-8000-0000000000b7';
@@ -51,9 +52,7 @@ describe('review routes', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return instance;

@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import metadata from './metadata';
 import { AppExceptionFilter } from './common/errors/http-exception.filter';
 import { addValidationBounds } from './common/openapi/validation-bounds';
+import { validationPipe } from './common/validation/pipe';
 
 /**
  * Everything the running application applies globally.
@@ -25,16 +26,9 @@ export async function configureApp(app: INestApplication): Promise<void> {
 
   app.setGlobalPrefix('api/v1');
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      // Mass assignment protection. A client must never set a field we did not
-      // declare — see platform-security-review.
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: { enableImplicitConversion: false },
-    }),
-  );
+  // Mass assignment protection, transformation and the shape of a refusal: one pipe, shared with
+  // every route spec (`common/validation/pipe.ts`).
+  app.useGlobalPipes(validationPipe());
 
   app.useGlobalFilters(new AppExceptionFilter());
 

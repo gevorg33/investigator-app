@@ -1,4 +1,4 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppError } from '../../common/errors/app-error';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -11,6 +11,7 @@ import { workspaceResolverStub } from '../../../test/context';
 import { ActorService } from '../../common/authz/actor.service';
 import { LegalController } from './legal.controller';
 import { LegalService, type PublishedDocument } from './legal.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 /**
  * The one thing a client can do with this before it has an account: read the terms (T-021).
@@ -57,7 +58,7 @@ describe('GET /api/v1/legal/documents/:type', () => {
     const moduleRef = await Test.createTestingModule({ imports: [TestModule] }).compile();
     const created = moduleRef.createNestApplication();
     created.setGlobalPrefix('api/v1');
-    created.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    created.useGlobalPipes(validationPipe());
     created.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(created);
     return created;
@@ -209,9 +210,7 @@ describe('what an account still has to accept', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return instance;

@@ -1,4 +1,4 @@
-import { Global, Module, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Global, Module, Patch, ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { configureApp } from './bootstrap';
 import { DB } from './database/database.module';
 import { HealthModule } from './modules/health/health.module';
+import { UpdateInvestigatorProfileDto } from './modules/profiles/profiles.dto';
 import { closeApp, listenOnce } from '../test/http';
 
 // configureApp never touches AppModule, and importing the real one validates the
@@ -15,6 +16,15 @@ vi.mock('./app.module', () => ({ AppModule: class AppModule {} }));
 @Global()
 @Module({ providers: [{ provide: DB, useValue: { execute: async () => [] } }], exports: [DB] })
 class StubDatabaseModule {}
+
+/** A route taking a real DTO, so a refusal is the one a client of the profile endpoint gets. */
+@Controller('probe')
+class ProbeController {
+  @Patch()
+  update(@Body() dto: UpdateInvestigatorProfileDto): UpdateInvestigatorProfileDto {
+    return dto;
+  }
+}
 
 describe('global application configuration', () => {
   const originalEnv = process.env['NODE_ENV'];
@@ -34,6 +44,7 @@ describe('global application configuration', () => {
     process.env['NODE_ENV'] = nodeEnv;
     const mod = await Test.createTestingModule({
       imports: [StubDatabaseModule, HealthModule],
+      controllers: [ProbeController],
     }).compile();
     app = mod.createNestApplication();
     beforeConfigure?.(app);
@@ -74,6 +85,31 @@ describe('global application configuration', () => {
     const options = (pipe as { validatorOptions: Record<string, unknown> }).validatorOptions;
     // Mass assignment: an undeclared field is an error, not something silently dropped.
     expect(options).toMatchObject({ whitelist: true, forbidNonWhitelisted: true });
+  });
+
+  it('names the refused field, and carries the message its DTO wrote for it (T-157)', async () => {
+    const a = await make('test');
+    const blank = await request(a.getHttpServer())
+      .patch('/api/v1/probe')
+      .send({ displayName: '   ' })
+      .expect(400);
+    expect(blank.body.error).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      details: [
+        {
+          field: 'displayName',
+          code: 'INVALID',
+          messageKey: 'error.validation.display_name.blank',
+        },
+      ],
+    });
+    const undeclared = await request(a.getHttpServer())
+      .patch('/api/v1/probe')
+      .send({ status: 'VERIFIED' })
+      .expect(400);
+    expect(undeclared.body.error.details).toEqual([
+      { field: 'status', code: 'NOT_ALLOWED', messageKey: 'error.common.validation_failed' },
+    ]);
   });
 
   it('parses cookies, which carry the refresh token', async () => {

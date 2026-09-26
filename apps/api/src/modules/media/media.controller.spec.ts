@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,6 +8,7 @@ import { MediaController } from './media.controller';
 import { MediaService } from './media.service';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -40,9 +40,7 @@ describe('media controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     await listenOnce(app);
   });
 

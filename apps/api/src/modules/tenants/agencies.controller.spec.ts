@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -10,6 +9,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { AgenciesController } from './agencies.controller';
 import { AgenciesService, type AgencyView } from './agencies.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 /**
  * What the endpoint accepts and what it refuses to hear (T-083). The workspace the request acts
@@ -61,14 +61,7 @@ describe('POST /api/v1/agencies', () => {
     instance.setGlobalPrefix('api/v1');
     // Exactly what bootstrap.ts installs: a body naming anything the server owns is refused,
     // not quietly stripped.
-    instance.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return { app: instance, create };
@@ -164,14 +157,7 @@ describe('GET and PATCH /api/v1/agencies/current (T-150)', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     app = instance;

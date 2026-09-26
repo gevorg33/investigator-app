@@ -1,6 +1,6 @@
 import { request as httpRequest, type IncomingMessage } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { ValidationPipe } from '@nestjs/common';
+
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -14,6 +14,7 @@ import { ErrorCode } from '../../common/errors/error-codes';
 import { AppExceptionFilter } from '../../common/errors/http-exception.filter';
 import { AssistantTurnController, sseFrame } from './assistant-turn.controller';
 import { AssistantTurnService, type Turn, type TurnEvent } from './assistant-turn.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['CUSTOMER'] });
 const ID = '00000000-0000-4000-8000-000000000056';
@@ -63,9 +64,7 @@ describe('assistant turn controller (T-056)', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     app.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(app);
   };

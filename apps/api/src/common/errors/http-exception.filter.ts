@@ -63,20 +63,18 @@ function mapStatus(status: number): ErrorCodeValue {
   }
 }
 
-/** Nest's validation pipe returns messages as strings; surface them as field issues. */
+/**
+ * The field issues `validationPipe()` attached to its 400 (`common/validation/pipe.ts`), passed on
+ * as they are. Any other 400 — a malformed id from `ParseUUIDPipe`, unparseable JSON — has none,
+ * and says only that the request was refused.
+ *
+ * Issues are never recovered from the text of a message: a message can be a catalog key, which
+ * names no property (T-157).
+ */
 function extractValidationDetails(body: unknown): unknown {
-  if (typeof body === 'object' && body !== null && 'message' in body) {
-    const msg = (body as { message: unknown }).message;
-    if (Array.isArray(msg)) {
-      return msg.map((m) => ({
-        // The text before the first space is the property name. `replace` rather than
-        // `split(' ')[0] ?? ''`: split always yields at least one element, so that fallback
-        // could never run, and an unreachable branch is untestable by definition.
-        field: String(m).replace(/ [\s\S]*$/, ''),
-        code: 'INVALID',
-        messageKey: 'error.common.validation_failed',
-      }));
-    }
+  if (typeof body === 'object' && body !== null && 'details' in body) {
+    const details = (body as { details: unknown }).details;
+    if (Array.isArray(details) && details.length > 0) return details;
   }
   return undefined;
 }

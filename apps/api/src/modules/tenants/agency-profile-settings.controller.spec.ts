@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,6 +11,7 @@ import { AgencyProfileController } from './profile/agency-profile.controller';
 import { AgencyProfileService } from './profile/agency-profile.service';
 import { AgencySettingsController } from './settings/agency-settings.controller';
 import { AgencySettingsService } from './settings/agency-settings.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 /**
  * The profile and settings routes (T-084): which agency they act on is the request's workspace,
@@ -52,14 +52,7 @@ describe('agency profile and settings routes', () => {
     }).compile();
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
-    instance.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     app = instance;

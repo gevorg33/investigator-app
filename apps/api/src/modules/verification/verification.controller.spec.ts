@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -10,6 +9,7 @@ import { VerificationController } from './verification.controller';
 import { VerificationService } from './verification.service';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['STAFF'], staffScopes: ['VERIFICATION'] });
 const ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -43,14 +43,7 @@ describe('verification controller', () => {
     app = mod.createNestApplication();
     // As bootstrap.ts installs them: implicit conversion off, so a query-string limit is only a
     // number because the DTO says so.
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-        transformOptions: { enableImplicitConversion: false },
-      }),
-    );
+    app.useGlobalPipes(validationPipe());
     app.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(app);
   });

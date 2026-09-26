@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,6 +8,7 @@ import { closeApp, listenOnce } from '../../../test/http';
 import { ActorService } from '../../common/authz/actor.service';
 import { MissionBrowseController } from './mission-browse.controller';
 import { MissionBrowseService } from './mission-browse.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ACTOR = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
 const EMPTY = { items: [], pageInfo: { nextCursor: null, hasNextPage: false } };
@@ -34,9 +34,7 @@ describe('mission browse controller', () => {
       ],
     }).compile();
     app = mod.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     await listenOnce(app);
   });
 

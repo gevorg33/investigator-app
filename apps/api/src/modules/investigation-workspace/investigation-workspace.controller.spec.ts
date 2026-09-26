@@ -1,4 +1,4 @@
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
+import { validationPipe } from '../../common/validation/pipe';
 
 const ASSIGNMENT = '00000000-0000-4000-8000-0000000000a4';
 const NOTE = '00000000-0000-4000-8000-0000000000b4';
@@ -57,9 +58,7 @@ describe('investigation notes and tasks routes', () => {
     const instance = moduleRef.createNestApplication();
     instance.setGlobalPrefix('api/v1');
     // As bootstrap.ts sets it: an undeclared field is refused, not dropped.
-    instance.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    instance.useGlobalPipes(validationPipe());
     instance.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(instance);
     return instance;

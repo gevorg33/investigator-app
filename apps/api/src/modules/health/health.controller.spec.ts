@@ -1,4 +1,4 @@
-import { Global, Module, ValidationPipe } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,6 +9,7 @@ import { DB } from '../../database/database.module';
 import { DATABASE_CHECK_TIMEOUT_MS, HealthController } from './health.controller';
 import { HealthModule } from './health.module';
 import { closeApp, listenOnce } from '../../../test/http';
+import { validationPipe } from '../../common/validation/pipe';
 
 /** A stand-in database whose one query behaves as told. */
 const databaseThat = (execute: () => Promise<unknown>) => {
@@ -33,7 +34,7 @@ describe('GET /api/v1/health', () => {
     }).compile();
     app = mod.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
+    app.useGlobalPipes(validationPipe());
     app.useGlobalFilters(new AppExceptionFilter());
     await listenOnce(app);
     return app;

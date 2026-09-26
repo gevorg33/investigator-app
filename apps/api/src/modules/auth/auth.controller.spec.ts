@@ -1,4 +1,3 @@
-import { ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
@@ -11,6 +10,7 @@ import { ActorService } from '../../common/authz/actor.service';
 import { testActor } from '../../../test/actor';
 import { closeApp, listenOnce } from '../../../test/http';
 import { workspaceResolverStub } from '../../../test/context';
+import { validationPipe } from '../../common/validation/pipe';
 
 const CREDENTIALS = { email: 'probe@example.test', password: 'a-sufficiently-long-password' };
 const COOKIE = 'investigator_session';
@@ -57,9 +57,7 @@ describe('auth controller', () => {
       (req as unknown as { id?: unknown }).id = requestId;
       next();
     });
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    app.useGlobalPipes(validationPipe());
     await listenOnce(app);
   });
 

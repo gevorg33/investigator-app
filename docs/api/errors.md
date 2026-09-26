@@ -82,3 +82,29 @@ the typed parity check keeps ru and hy in step with en.
 
 Adding a code or a validation key therefore means adding its sentence in the same change; CI
 refuses the change otherwise.
+
+## A request the DTO refuses (T-157)
+
+`validationPipe()` (`apps/api/src/common/validation/pipe.ts`) is the one pipe: `bootstrap.ts`
+installs it, and every route spec installs the same, so a spec sees what a client gets. A body or
+query its DTO refuses answers **400** `VALIDATION_FAILED` — the shape was wrong — while a rule the
+service applies after reading state answers **422** through `AppError.validation`. Both carry
+`details` in the same form:
+
+```json
+{ "field": "displayName", "code": "INVALID", "messageKey": "error.validation.display_name.blank" }
+```
+
+- **`field` is the property**, always — `address.city` for a nested one. It comes from the
+  validation error, never from the text of a message.
+- **`messageKey` is the DTO's own message when that message is a catalog key**
+  (`@Matches(/\S/, { message: 'error.validation.display_name.blank' })`, every `EmailField`), and
+  `error.common.validation_failed` when it is class-validator's English, which is never sent.
+- **`code` is `INVALID`**, or **`NOT_ALLOWED`** for a field the DTO does not declare
+  (`forbidNonWhitelisted`) — reported under its own name.
+- **One entry per property**, however many of its rules failed.
+
+A 400 from anything else — a malformed id from `ParseUUIDPipe`, JSON that does not parse — has no
+`details`. Before T-157 the filter took the first word of each message as the field, so a keyed
+message arrived as `field: "error.validation…"` and an undeclared field as `field: "property"`; forms
+then showed only the generic title.
