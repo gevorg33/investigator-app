@@ -7515,7 +7515,7 @@ pnpm --filter app-web test assistant
 ---
 
 ### T-167 — A policy-refusal spec orders money decisions by clock
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. The order is not part of the claim — no product code reads money decisions in order — so the spec no longer sorts by `decided_at`: each test reads the hold after the halt, and asserts what the review added by row id (`moneySince`), never by date. `stepClockBack` dates the review's decision an hour before the hold (the trigger that keeps decisions immutable is set aside for that one owner transaction), reproducing CI's `[SPLIT, HOLD]` on the old assertions in both order-dependent tests; it stays in them, so a clock step now happens on every run. 20/20 runs of the file at load average ~19 (app-web's suite looping beside it). A first attempt at load ran the whole API suite concurrently: the two runs share the per-worker test databases and broke each other wholesale — not a way to load it
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7534,9 +7534,9 @@ whether the order is part of the claim (then the table needs a write-order colum
 `seq`) or not (then the spec compares without order), and show the reorder reproduced first.
 
 **Acceptance criteria**
-- [ ] The reorder is reproduced (e.g. `decided_at` of the second row stepped back) and the spec no
+- [x] The reorder is reproduced (e.g. `decided_at` of the second row stepped back) and the spec no
       longer depends on it
-- [ ] 20 runs of the file under the full suite's load with no failure
+- [x] 20 runs of the file under the full suite's load with no failure
 
 **Validation**
 ```bash
