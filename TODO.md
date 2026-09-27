@@ -7480,7 +7480,7 @@ pnpm --filter app-web test assistant
 ---
 
 ### T-166 — The assistant's phone sheet is not full-screen
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. Cause: `max-h-sheet` is our own `@utility`, which tailwind-merge did not know is a max-height, so `cn` kept it beside the panel's `max-h-dvh` and the cascade chose it. `cn` now extends tailwind-merge with each `@utility` `globals.css` defines (`max-h-sheet`; `pb-safe` and `pb-bottom-nav`, the same blind spot) by the property it sets; `globals.css` and `app-web.md` say a new one is added there too. Specs (`utils.spec.ts`, the assistant sheet's classes) seen failing first. In the browser: the assistant sheet at 375×812 and 768×1024 is top 0, height = viewport; the discovery filter sheet, which passes no height, still stops at 85dvh on a phone (690 of 812) and is its full-height side sheet at 768
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7499,9 +7499,9 @@ affected. Decide how the override should win (the variant's order, or the panel 
 default), and check the other sheets that pass their own height.
 
 **Acceptance criteria**
-- [ ] The assistant's sheet fills the viewport at 375 and 768 (measured top 0, height = viewport)
-- [ ] The other `DrawerContent` sheets keep the height they are meant to have
-- [ ] Spec seen failing first; checked in the browser
+- [x] The assistant's sheet fills the viewport at 375 and 768 (measured top 0, height = viewport)
+- [x] The other `DrawerContent` sheets keep the height they are meant to have
+- [x] Spec seen failing first; checked in the browser
 
 **Validation**
 ```bash

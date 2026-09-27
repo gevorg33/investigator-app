@@ -516,9 +516,13 @@ It is per app — the root file was removed in T-014, and the shadcn MCP is star
 Adopted components live in `src/components/ui/` and are recorded in
 `docs/product/component-inventory.md`. After every `shadcn add`, read the diff: CLI 4.21 wrote
 `import { cn } from "cn"` and installed shadcn's new two-day-old `cn` npm package instead of using
-our `@/lib/utils` alias. Our `cn` is plain `clsx` + `tailwind-merge`, which already merges the
-token names correctly (`shadow-raised` then `shadow-overlay` keeps the second); a test keeps
-checking that across upgrades.
+our `@/lib/utils` alias. Our `cn` is `clsx` + `tailwind-merge`, which already merges the token
+names correctly (`shadow-raised` then `shadow-overlay` keeps the second); a test keeps checking
+that across upgrades. The `@utility` classes `globals.css` defines itself (`max-h-sheet`,
+`pb-safe`, `pb-bottom-nav`) are unknown to it, so `cn` lists each with the property it sets. **A
+new `@utility` is added there too**, or a caller's override sits beside the default and the
+cascade picks one: until T-166, the assistant's `max-h-dvh` lost to the drawer's `max-h-sheet`,
+and its "full-screen" phone sheet was 85% of the screen.
 
 ## Performance
 

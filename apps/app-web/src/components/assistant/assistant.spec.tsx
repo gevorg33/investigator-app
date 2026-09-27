@@ -103,6 +103,9 @@ describe('the assistant (T-056)', () => {
       await openWith();
       const sheet = await screen.findByRole('dialog', { name: en.untitled });
       expect(sheet).toHaveClass('h-dvh');
+      // The drawer's own 85dvh cap gives way to the panel's, or the sheet is not full-screen (T-166).
+      expect(sheet).not.toHaveClass('data-[vaul-drawer-direction=bottom]:max-h-sheet');
+      expect(sheet).toHaveClass('data-[vaul-drawer-direction=bottom]:max-h-dvh');
       expect(sheet.querySelector('.rounded-full.w-12')).toBeNull();
       await waitFor(() => expect(composer()).toHaveFocus());
       await userEvent.click(within(sheet).getByRole('button', { name: en.close }));

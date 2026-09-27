@@ -3,6 +3,9 @@
    the tokens reset Tailwind's own palette and scales (packages/ui-tokens). */
 @import '@investigator/ui-tokens/tokens.css';
 
+/* Every @utility here is also listed in `cn`'s tailwind-merge config (src/lib/utils.ts), or an
+   override passed through `cn` cannot replace it (T-166). */
+
 /* Space for the fixed bottom navigation on phones, including the home indicator (responsive-design:
    respect safe areas). Built from the spacing unit, never a pixel value. */
 @utility pb-bottom-nav {
