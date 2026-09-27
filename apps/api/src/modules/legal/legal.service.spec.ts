@@ -276,6 +276,56 @@ describe('legal consent', () => {
   });
 
   describe('whether the product may proceed', () => {
+    /**
+     * A consent written as the person's last, dated by `clock` against their latest so far: the
+     * same time, or a second before it. `occurred_at` is its transaction's start (T-155), so
+     * both happen — a tie within a moment, a step when the VM's clock moves back.
+     */
+    const writeLast = (
+      userId: string,
+      document: { id: string; version: number; contentHash: string; locale: string },
+      action: 'ACCEPTED' | 'WITHDRAWN',
+      clock: 'tied' | 'stepped_back',
+    ) => ownerSql`
+      INSERT INTO user_consents (user_id, legal_document_id, document_type, document_version,
+                                 content_hash, locale_shown, action, context, occurred_at)
+      VALUES (${userId}, ${document.id}, ${TYPE}, ${document.version}, ${document.contentHash},
+              ${document.locale}, ${action}, 'REACCEPTANCE',
+              (SELECT max(occurred_at) FROM user_consents
+                WHERE user_id = ${userId} AND document_type = ${TYPE})
+              - CASE ${clock}::text WHEN 'stepped_back' THEN interval '1 second'
+                                    ELSE interval '0' END)`;
+
+    // T-156: the latest consent is the last one written, whatever the clock said.
+    it.each([
+      ['the clock stepped back between the two', 'stepped_back' as const],
+      ['both carry the same time', 'tied' as const],
+    ])('lets a re-acceptance written after a withdrawal decide, when %s', async (_label, clock) => {
+      const document = await publish();
+      const userId = await user();
+      await legal.accept({ userId, documentId: document.id, context: 'REGISTRATION' }, req());
+      await legal.withdraw({ userId, documentId: document.id, context: 'REACCEPTANCE' }, req());
+      await writeLast(userId, document, 'ACCEPTED', clock);
+      expect(await legal.consentState(userId, TYPE)).toMatchObject({
+        acceptedVersion: 1,
+        satisfied: true,
+      });
+    });
+
+    it.each([
+      ['the clock stepped back between the two', 'stepped_back' as const],
+      ['both carry the same time', 'tied' as const],
+    ])('lets a withdrawal written after an acceptance decide, when %s', async (_label, clock) => {
+      const document = await publish();
+      const userId = await user();
+      await legal.accept({ userId, documentId: document.id, context: 'REGISTRATION' }, req());
+      await writeLast(userId, document, 'WITHDRAWN', clock);
+      expect(await legal.consentState(userId, TYPE)).toMatchObject({
+        acceptedVersion: null,
+        satisfied: false,
+      });
+    });
+
     it('is not satisfied by someone who never accepted', async () => {
       await publish();
       expect(await legal.consentState(await user(), TYPE)).toMatchObject({

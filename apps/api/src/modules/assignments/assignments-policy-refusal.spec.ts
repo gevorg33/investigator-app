@@ -102,12 +102,25 @@ describe('policy refusal and halt (T-050)', () => {
     (
       await ownerDb.select().from(policyReviews).where(eq(policyReviews.assignmentId, assignmentId))
     )[0];
+  // In no order: `decided_at` is a clock, and a clock step reorders two transactions (T-167).
   const moneyOf = (assignmentId: string) =>
-    ownerDb
-      .select()
-      .from(moneyDecisions)
-      .where(eq(moneyDecisions.assignmentId, assignmentId))
-      .orderBy(moneyDecisions.decidedAt);
+    ownerDb.select().from(moneyDecisions).where(eq(moneyDecisions.assignmentId, assignmentId));
+  /** The money decisions written since `seen` was read — told apart by row, never by date. */
+  const moneySince = async (assignmentId: string, seen: Array<{ id: string }>) => {
+    const before = new Set(seen.map((m) => m.id));
+    return (await moneyOf(assignmentId)).filter((m) => !before.has(m.id));
+  };
+  /**
+   * The clock stepping back between two transactions, as it does in a loaded Docker VM (T-167):
+   * the decision a review wrote is dated an hour before the hold. Money decisions are immutable by
+   * trigger, so it is set aside for this one transaction — the owner is a superuser.
+   */
+  const stepClockBack = (assignmentId: string) =>
+    owner.begin(async (tx) => {
+      await tx`SET LOCAL session_replication_role = replica`;
+      await tx`UPDATE money_decisions SET decided_at = decided_at - interval '1 hour'
+                WHERE assignment_id = ${assignmentId} AND decision <> 'HOLD'`;
+    });
   const statusOf = async (id: string) =>
     (await ownerDb.select().from(assignments).where(eq(assignments.id, id)))[0]!.status;
   const resolve = (reviewId: string, dto: Partial<ResolvePolicyReviewDto>, as: Actor = moderator) =>
@@ -302,19 +315,26 @@ describe('policy refusal and halt (T-050)', () => {
     it('resumes a halted assignment and releases the hold', async () => {
       const { investigator, id } = await work('IN_PROGRESS');
       await service.halt(investigator, id, GROUND, req());
+      const held = await moneyOf(id);
+      expect(held.map((m) => m.decision)).toEqual(['HOLD']);
       const review = await reviewOf(id);
       const decided = await resolve(review!.id, {
         finding: 'SUBSTANTIATED',
         disposition: 'RESUME',
       });
+      // Whatever the clock did between the two, the hold came first and the review added one.
+      await stepClockBack(id);
       expect([decided.finding, decided.disposition]).toEqual(['SUBSTANTIATED', 'RESUME']);
       expect(await statusOf(id)).toBe('IN_PROGRESS');
-      expect((await moneyOf(id)).map((m) => m.decision)).toEqual(['HOLD', 'RESUME']);
+      expect((await moneySince(id, held)).map((m) => m.decision)).toEqual(['RESUME']);
+      expect(await moneyOf(id)).toHaveLength(2);
     });
 
     it('cancels a halted assignment with the money decided separately', async () => {
       const { investigator, id, price } = await work('IN_PROGRESS');
       await service.halt(investigator, id, GROUND, req());
+      const held = await moneyOf(id);
+      expect(held.map((m) => [m.decision, m.investigatorAmountMinor])).toEqual([['HOLD', null]]);
       const review = await reviewOf(id);
       await resolve(review!.id, {
         disposition: 'CANCEL',
@@ -324,12 +344,12 @@ describe('policy refusal and halt (T-050)', () => {
           reason: 'Half the work was done lawfully',
         },
       });
+      await stepClockBack(id);
       expect(await statusOf(id)).toBe('CANCELLED');
-      const money = await moneyOf(id);
-      expect(money.map((m) => [m.decision, m.investigatorAmountMinor])).toEqual([
-        ['HOLD', null],
-        ['SPLIT', Math.floor(price / 2)],
-      ]);
+      expect(
+        (await moneySince(id, held)).map((m) => [m.decision, m.investigatorAmountMinor]),
+      ).toEqual([['SPLIT', Math.floor(price / 2)]]);
+      expect(await moneyOf(id)).toHaveLength(2);
       // Two decisions, two audit entries: the review and the money are recorded apart.
       const resolved = await ownerDb
         .select()

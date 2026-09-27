@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateEnv } from './env.schema';
+import { parseTrustedProxies, validateEnv } from './env.schema';
 
 const valid = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/db',
@@ -77,6 +77,7 @@ describe('env validation', () => {
           ...cloud,
           NODE_ENV: 'production',
           CLOUDINARY_FOLDER: 'investigator/production',
+          TRUSTED_PROXIES: '10.20.0.2,10.20.0.3',
         }),
       ).not.toThrow();
     });
@@ -88,6 +89,60 @@ describe('env validation', () => {
       } catch (e) {
         expect((e as Error).message).not.toContain('secret');
       }
+    });
+  });
+
+  describe('the proxies in front of the API (T-138)', () => {
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      CLOUDINARY_CLOUD_NAME: 'cloud',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret',
+      CLOUDINARY_FOLDER: 'investigator/production',
+    };
+
+    it('trusts nobody locally unless told, and reads a list of addresses, ranges and loopback', () => {
+      expect(validateEnv(valid).TRUSTED_PROXIES).toEqual([]);
+      expect(validateEnv({ ...valid, TRUSTED_PROXIES: '' }).TRUSTED_PROXIES).toEqual([]);
+      expect(
+        validateEnv({
+          ...valid,
+          TRUSTED_PROXIES: ' 10.20.0.2, 172.18.0.0/16 ,loopback,fd00::1, fd00:1::/64 ',
+        }).TRUSTED_PROXIES,
+      ).toEqual(['10.20.0.2', '172.18.0.0/16', 'loopback', 'fd00::1', 'fd00:1::/64']);
+    });
+
+    it.each([
+      ['true', 'every client'],
+      ['*', 'every client'],
+      ['1', 'a hop count, which believes whoever is one hop out'],
+      ['0.0.0.0/0', 'every IPv4 address'],
+      ['::/0', 'every IPv6 address'],
+      ['uniquelocal', 'every private address'],
+      ['10.0.0.0/33', 'a range that is not one'],
+      ['10.0.0.1/8/2', 'a malformed range'],
+      ['10.0.0.0/x', 'a range with no length'],
+      ['fd00::/129', 'an IPv6 range that is not one'],
+      ['api.internal', 'a name, which Express cannot match'],
+    ])('refuses %s — %s', (value) => {
+      expect(() => validateEnv({ ...valid, TRUSTED_PROXIES: value })).toThrow(
+        /TRUSTED_PROXIES: .*proxy addresses/,
+      );
+    });
+
+    it.each(['staging', 'production'])(
+      'requires them in %s, where Caddy is always in front',
+      (NODE_ENV) => {
+        expect(() =>
+          validateEnv({ ...production, NODE_ENV, CLOUDINARY_FOLDER: `investigator/${NODE_ENV}` }),
+        ).toThrow(new RegExp(`TRUSTED_PROXIES is required in ${NODE_ENV}`));
+      },
+    );
+
+    it('parses the raw value the same way at boot and when the app is configured', () => {
+      expect(parseTrustedProxies(undefined)).toEqual([]);
+      expect(parseTrustedProxies('loopback, 10.20.0.2')).toEqual(['loopback', '10.20.0.2']);
     });
   });
 });

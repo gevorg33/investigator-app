@@ -1421,6 +1421,7 @@ validated by Caddy itself.
 - [ ] Marketing `/login` returns `301` to `app.`, never `200`
 - [ ] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
 - [ ] PostgreSQL, Redis and metrics are not reachable from the public internet
+- [ ] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
 
 **Validation**
 ```bash
@@ -4842,6 +4843,7 @@ pnpm --filter api test verification
 - [ ] Every T-012 invariant still holds: exactly one assignment, idempotent acceptance, the payment boundary
 - [ ] An unstaffed colleague is refused an assignment the agency holds (404), and a staffed one is allowed
 - [ ] Extends the already-built workspace objects (T-031 to T-033), evidence (T-116), reports (T-117) and conversations (T-101) to staffing: an unstaffed colleague is refused each of them
+- [ ] An agency cannot quote on a mission its own member posted, nor accept or be staffed on one: "own" widens from the user (T-142) to the workspace, decided with the owner against workspace-owned quotes (owner decision, 2026-09-27)
 - [ ] `quotes-and-assignments.md` and KB updated
 
 **Validation**
@@ -6645,7 +6647,7 @@ npx -y @playwright/mcp@<version> --help
 ---
 
 ### T-138 — The API behind Caddy sees the proxy's address, not the client's
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `TRUSTED_PROXIES` (addresses, CIDR ranges or `loopback`) sets Express's `trust proxy` in `configureApp`; unset trusts nobody; `true`, `*`, a hop count, `/0`, `uniquelocal` and names are refused at boot; required in staging and production. app-web's and admin-web's `serverApi` pass on the `X-Forwarded-For` Caddy gave them. Found on the way: every auth audit row (17 call sites) spread `{ ip }` where the row takes `ipAddress`, so sign-in, registration and reset events never recorded an address — mapped by `audited(ctx)`. Seen failing first: `bootstrap.spec.ts` (a trusted hop's client believed; a client-written entry not), `env.schema.spec.ts`, the web `server.spec`s, and a new whole-stack `request-context.e2e.spec.ts` — on the old code a second client behind the same proxy got 429 and the audit row's address was null; now separate limits and the client's address. Caddy's unread `X-Real-IP` dropped; the Caddyfile validated by Caddy for the first time. Filed T-167. `docs/operations/client-address.md`, `.env.example`; the fixed proxy addresses are a T-023 criterion (no deploy compose exists yet)
 - **Priority:** P1 — per-IP rate limits and audit IPs are wrong in every deployed environment
 - **Depends on:** —
 - **Risk:** MEDIUM — changes which address rate limits and audit rows record
@@ -6665,11 +6667,11 @@ A second hop arrives with T-127: app-web's server components call the API direct
 address should travel with them once the API trusts the proxy.
 
 **Acceptance criteria**
-- [ ] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
+- [x] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
       internal calls) — never `true`, which would let any client choose its own address
-- [ ] A spoofed `X-Forwarded-For` from a client is not believed
-- [ ] Per-IP rate limits key on the client's address; audit and consent rows record it
-- [ ] `docs/operations` says which headers each hop sets and trusts
+- [x] A spoofed `X-Forwarded-For` from a client is not believed
+- [x] Per-IP rate limits key on the client's address; audit and consent rows record it
+- [x] `docs/operations` says which headers each hop sets and trusts
 
 **Validation**
 ```bash
@@ -6773,7 +6775,7 @@ pnpm build && ./scripts/setup.sh
 ---
 
 ### T-142 — An investigator can quote on their own mission
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `QuotesService.quotableMission` treats a mission whose `customer_id` is the quoting user like one that is not published: `authz.visible` refuses it as a 404 and audits the denial — the rule browse already applied (`m.customer_id <> actor`), now on the quote side too. The only path that creates a quote; nothing shortlists or invites yet (T-103). Owner decision (2026-09-27): "own" is the user today — missions and quotes belong to users; the agency-wide rule is an acceptance criterion of T-089. Seen failing first: the service spec (the quote was written) and a new whole-stack `quotes.e2e.spec.ts` (real session, guard, service, database: 201 on one's own mission before, 404 after; another's mission still 201). `discovery.md`; KB `kb-investigator-quoting` v2 (en; ru/hy drafts)
 - **Priority:** P1 — self-dealing reaches reviews (T-037) and payouts
 - **Depends on:** —
 - **Risk:** MEDIUM
@@ -6790,11 +6792,13 @@ own missions out; quoting should refuse them, and so should anything that shortl
 (T-103).
 
 **Acceptance criteria**
-- [ ] Quoting on a mission whose customer is the quoting user is refused, as a 404 like any mission
+- [x] Quoting on a mission whose customer is the quoting user is refused, as a 404 like any mission
       the investigator may not quote on
-- [ ] The same for a mission in a workspace the quoting user belongs to (an agency quoting on its
-      own member's mission) — decided with the owner, since agencies make "own" wider than a user
-- [ ] Tested at the service and through HTTP
+- [x] The same for a mission in a workspace the quoting user belongs to (an agency quoting on its
+      own member's mission) — decided with the owner, since agencies make "own" wider than a user.
+      Decided 2026-09-27: missions and quotes are the user's today, so "own" is the user; the
+      agency-wide rule moves to T-089, with workspace-owned quotes
+- [x] Tested at the service and through HTTP
 
 **Validation**
 ```bash
@@ -7178,7 +7182,7 @@ VITEST_SEQUENCE=reverse pnpm --filter api test missions
 ---
 
 ### T-156 — The latest consent is chosen by clock, not by write order
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27 (owner approved in chat). As T-155: migration 0030 adds `user_consents.seq` (identity; existing rows numbered in scan order — the table is append-only by grant and consents are never erased) and replaces the `(user_id, document_type, occurred_at DESC)` index with one on `seq`; `LegalService.consentState` orders by it — the only reader of consent order. Four specs seen failing first on the clock ordering (a re-acceptance after a withdrawal, a withdrawal after an acceptance; each with the clock stepped back a second and tied), all passing on `seq`. Migration up/down checked by `migrations.spec.ts`; applied to the local dev database. `legal-consent` skill updated; no legal text changed
 - **Priority:** P3
 - **Depends on:** T-155
 - **Risk:** MEDIUM
@@ -7194,8 +7198,8 @@ wall-clock step, can be read in the wrong order, and the gate then says the wron
 T-155: an identity `seq`, ordered by it.
 
 **Acceptance criteria**
-- [ ] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
-- [ ] Ties in `occurred_at` are resolved by write order
+- [x] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
+- [x] Ties in `occurred_at` are resolved by write order
 
 **Validation**
 ```bash
@@ -7506,6 +7510,37 @@ default), and check the other sheets that pass their own height.
 **Validation**
 ```bash
 pnpm --filter app-web test assistant
+```
+
+---
+
+### T-167 — A policy-refusal spec orders money decisions by clock
+- **Status:** DONE — 2026-09-27. The order is not part of the claim — no product code reads money decisions in order — so the spec no longer sorts by `decided_at`: each test reads the hold after the halt, and asserts what the review added by row id (`moneySince`), never by date. `stepClockBack` dates the review's decision an hour before the hold (the trigger that keeps decisions immutable is set aside for that one owner transaction), reproducing CI's `[SPLIT, HOLD]` on the old assertions in both order-dependent tests; it stays in them, so a clock step now happens on every run. 20/20 runs of the file at load average ~19 (app-web's suite looping beside it). A first attempt at load ran the whole API suite concurrently: the two runs share the per-worker test databases and broke each other wholesale — not a way to load it
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/assignments/assignments-policy-refusal.spec.ts
+
+**Description**
+Found in T-138's full run, under load (load average ~20): `assignments-policy-refusal.spec.ts` ›
+"cancels a halted assignment with the money decided separately" got `[SPLIT, HOLD]` where it expects
+`[HOLD, SPLIT]`, then passed 5/5 alone. Its `moneyOf` orders `money_decisions` by `decided_at`, a
+clock, and the two decisions are written in separate transactions — the ordering T-155 found in
+`mission_status_history`, where a clock step in the Docker VM reorders two rows. No product code
+reads money decisions in order (the service only inserts them), so this is the spec's. Decide
+whether the order is part of the claim (then the table needs a write-order column, as T-155 added
+`seq`) or not (then the spec compares without order), and show the reorder reproduced first.
+
+**Acceptance criteria**
+- [x] The reorder is reproduced (e.g. `decided_at` of the second row stepped back) and the spec no
+      longer depends on it
+- [x] 20 runs of the file under the full suite's load with no failure
+
+**Validation**
+```bash
+pnpm --filter api test assignments-policy-refusal
 ```
 ---
 

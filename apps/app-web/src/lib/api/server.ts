@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers as incoming } from 'next/headers';
 import { cache } from 'react';
 import { ACTIVE_ROLE_COOKIE, SESSION_COOKIE } from '@/lib/session-cookies';
 import { ApiError, bodyOf, toApiError } from './errors';
@@ -10,7 +10,9 @@ const apiOrigin = (): string => process.env['API_INTERNAL_URL'] ?? 'http://local
 /**
  * A call from the Next server to the API, as the reader: their session cookie is forwarded, and
  * the role they chose to act as travels as `X-Active-Role` (which the API only ever narrows by).
- * Nothing is cached — every read is this reader's, now.
+ * The client's address Caddy gave this server travels as `X-Forwarded-For` — the API trusts this
+ * server as a hop and reads the client from it (T-138). Nothing is cached — every read is this
+ * reader's, now.
  */
 export async function serverApi<T>(
   path: string,
@@ -22,6 +24,8 @@ export async function serverApi<T>(
   const headers: Record<string, string> = {};
   if (session !== undefined) headers['cookie'] = `${SESSION_COOKIE}=${session}`;
   if (role !== undefined) headers['x-active-role'] = role;
+  const forwardedFor = (await incoming()).get('x-forwarded-for');
+  if (forwardedFor !== null) headers['x-forwarded-for'] = forwardedFor;
   if (body !== undefined) headers['content-type'] = 'application/json';
   const res = await fetch(`${apiOrigin()}/api/v1${path}`, {
     method,

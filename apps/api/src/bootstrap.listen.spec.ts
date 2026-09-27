@@ -14,7 +14,7 @@ vi.mock('./app.module', () => ({ AppModule: class AppModule {} }));
 const fakeApp = () => ({
   get: vi.fn(() => ({ kind: 'pino-logger' })),
   useLogger: vi.fn(),
-  getHttpAdapter: vi.fn(() => ({ getInstance: () => ({ disable: vi.fn() }) })),
+  getHttpAdapter: vi.fn(() => ({ getInstance: () => ({ disable: vi.fn(), set: vi.fn() }) })),
   use: vi.fn(),
   setGlobalPrefix: vi.fn(),
   useGlobalPipes: vi.fn(),

@@ -283,12 +283,11 @@ export class QuotesService {
   private async quotableMission(tx: Tx, missionId: string, actor: Actor, c: AuthzContext) {
     const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId));
     // A mission that is not published is not visible to investigators at all, so absence and
-    // "not yet published" are answered the same way.
-    const found = await this.authz.visible(
-      actor,
-      mission?.status === 'QUOTED' ? mission : undefined,
-      c,
-    );
+    // "not yet published" are answered the same way. Nor is the investigator's own (T-142): one
+    // account holds both roles, and quoting, accepting and reviewing oneself is self-dealing —
+    // browse already leaves it out, and the answer is the same 404.
+    const quotable = mission?.status === 'QUOTED' && mission.customerId !== actor.userId;
+    const found = await this.authz.visible(actor, quotable ? mission : undefined, c);
     return found;
   }
 

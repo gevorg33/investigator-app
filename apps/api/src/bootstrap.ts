@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { parseTrustedProxies } from './config/env.schema';
 import metadata from './metadata';
 import { AppExceptionFilter } from './common/errors/http-exception.filter';
 import { addValidationBounds } from './common/openapi/validation-bounds';
@@ -20,6 +21,15 @@ export async function configureApp(app: INestApplication): Promise<void> {
   // Information disclosure. Caddy strips it at the edge (ADR-0002); removing it here
   // too means the app is safe behind any proxy — launch-hardening.
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+
+  // The client's address, not the proxy's (T-138): X-Forwarded-For is believed from exactly the
+  // hops named — validated at boot, never `true` — and nobody when none are. Every per-IP rate
+  // limit, audit row and consent record reads `req.ip`.
+  const proxies = parseTrustedProxies(process.env['TRUSTED_PROXIES']);
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .set('trust proxy', proxies.length === 0 ? false : proxies);
 
   // Refresh token travels as a host-only cookie (ADR-0002).
   app.use(cookieParser());

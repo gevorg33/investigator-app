@@ -1,6 +1,7 @@
-import { Body, Controller, Global, Module, Patch, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Global, Module, Patch, Req, ValidationPipe } from '@nestjs/common';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import type { Request } from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { configureApp } from './bootstrap';
@@ -24,10 +25,17 @@ class ProbeController {
   update(@Body() dto: UpdateInvestigatorProfileDto): UpdateInvestigatorProfileDto {
     return dto;
   }
+
+  /** The address every rate limit, audit row and consent record is given (`requestContext`). */
+  @Get('ip')
+  ip(@Req() req: Request): { ip: string | undefined } {
+    return { ip: req.ip };
+  }
 }
 
 describe('global application configuration', () => {
   const originalEnv = process.env['NODE_ENV'];
+  const originalProxies = process.env['TRUSTED_PROXIES'];
   let app: INestApplication | undefined;
 
   afterEach(async () => {
@@ -35,6 +43,8 @@ describe('global application configuration', () => {
     app = undefined;
     if (originalEnv === undefined) delete process.env['NODE_ENV'];
     else process.env['NODE_ENV'] = originalEnv;
+    if (originalProxies === undefined) delete process.env['TRUSTED_PROXIES'];
+    else process.env['TRUSTED_PROXIES'] = originalProxies;
   });
 
   const make = async (
@@ -135,5 +145,38 @@ describe('global application configuration', () => {
     const a = await make('production');
     await request(a.getHttpServer()).get('/api/docs-json').expect(404);
     await request(a.getHttpServer()).get('/api/docs').expect(404);
+  });
+
+  describe('the client’s address behind the proxies (T-138)', () => {
+    const ipWith = async (forwardedFor?: string) => {
+      const call = request(app!.getHttpServer()).get('/api/v1/probe/ip');
+      return (await (forwardedFor === undefined ? call : call.set('X-Forwarded-For', forwardedFor)))
+        .body.ip as string;
+    };
+    const LOOPBACK = /^(::ffff:)?127\.0\.0\.1$|^::1$/;
+
+    it('believes no forwarded address when no proxy is trusted — the socket’s address is the client', async () => {
+      delete process.env['TRUSTED_PROXIES'];
+      await make('test');
+      expect(await ipWith('203.0.113.7')).toMatch(LOOPBACK);
+    });
+
+    it('takes the client from a trusted hop, and never an address the client wrote itself', async () => {
+      // The test client connects over loopback: here, loopback is the proxy.
+      process.env['TRUSTED_PROXIES'] = 'loopback';
+      await make('test');
+      expect(await ipWith()).toMatch(LOOPBACK);
+      expect(await ipWith('203.0.113.7')).toBe('203.0.113.7');
+      // A client that sends its own X-Forwarded-For gets it prepended to: the proxy appends the
+      // address it saw, and that — the nearest untrusted entry — is the one believed.
+      expect(await ipWith('198.51.100.9, 203.0.113.7')).toBe('203.0.113.7');
+    });
+
+    it('walks back over every trusted hop — Caddy, then the app’s server — and no further', async () => {
+      process.env['TRUSTED_PROXIES'] = 'loopback, 10.20.0.2';
+      await make('test');
+      // client → Caddy (10.20.0.2 as the app's server saw it) → app server (loopback here)
+      expect(await ipWith('203.0.113.7, 10.20.0.2')).toBe('203.0.113.7');
+    });
   });
 });

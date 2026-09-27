@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -122,13 +123,20 @@ export const userConsents = pgTable(
     tenantId: uuid('tenant_id').default(sql`app_current_tenant()`),
     /** An acceptance and a withdrawal are both things that happened at a time. */
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The order consents were written in. `occurred_at` is its transaction's start time, so two
+     * close together can tie and a wall-clock step can put a later one first (T-155, T-156): what is
+     * in force is the highest `seq`, never the latest time.
+     */
+    seq: bigint('seq', { mode: 'number' }).notNull().generatedAlwaysAsIdentity(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
     correlationId: text('correlation_id'),
   },
   (t) => [
-    // "What is true for this person and this document now" is the latest row for the pair.
-    index('user_consents_user_document_idx').on(t.userId, t.documentType, t.occurredAt.desc()),
+    // Serves LegalService.consentState(): "what is true for this person and this document now" is
+    // the last row written for the pair.
+    index('user_consents_user_document_seq_idx').on(t.userId, t.documentType, t.seq.desc()),
     index('user_consents_document_idx').on(t.legalDocumentId),
   ],
 );

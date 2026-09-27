@@ -91,11 +91,12 @@ www.{$DOMAIN} {
 	@static path /_next/static/* /fonts/*
 	header @static Cache-Control "public, max-age=31536000, immutable"
 
-	# Same-origin API. This is what makes SameSite=Strict cookies viable.
+	# Same-origin API. This is what makes SameSite=Strict cookies viable. The client's address
+	# travels in X-Forwarded-For, which Caddy sets and the API reads from its TRUSTED_PROXIES
+	# (docs/operations/client-address.md).
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
 		}
 	}
 
@@ -137,7 +138,6 @@ www.{$DOMAIN} {
 	handle /api/* {
 		reverse_proxy api:3001 {
 			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
 		}
 	}
 

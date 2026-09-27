@@ -24,6 +24,16 @@ export interface RequestContext {
   correlationId?: string | undefined;
 }
 
+/**
+ * What an audit row takes from the request. The context calls the address `ip` and the row
+ * `ipAddress`: spread as it was, the address was dropped from every auth event (T-138).
+ */
+const audited = (ctx: RequestContext) => ({
+  ipAddress: ctx.ip,
+  userAgent: ctx.userAgent,
+  correlationId: ctx.correlationId,
+});
+
 export interface AuthResult {
   userId: string;
   refreshToken: string;
@@ -97,7 +107,7 @@ export class AuthService {
       // Deliberately silent. Telling the caller the address is taken enumerates
       // registered users; the real signal goes to the owner by email instead.
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         action: 'auth.register.duplicate',
         resourceType: 'user',
         resourceId: existing.id,
@@ -135,7 +145,7 @@ export class AuthService {
 
       await this.audit.record(
         {
-          ...ctx,
+          ...audited(ctx),
           actorId: row.id,
           action: 'auth.register',
           resourceType: 'user',
@@ -178,7 +188,7 @@ export class AuthService {
     if (!user?.passwordHash) {
       await this.passwords.verifyDecoy(password);
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         action: 'auth.login.failed',
         resourceType: 'user',
         reason: 'no_account',
@@ -189,7 +199,7 @@ export class AuthService {
     const ok = await this.passwords.verify(user.passwordHash, password);
     if (!ok || user.status === 'SUSPENDED') {
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         actorId: user.id,
         action: 'auth.login.failed',
         resourceType: 'user',
@@ -226,7 +236,7 @@ export class AuthService {
     });
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: user.id,
       action: 'auth.login',
       resourceType: 'session',
@@ -254,7 +264,7 @@ export class AuthService {
         .where(and(eq(userSessions.familyId, found.familyId), isNull(userSessions.revokedAt)));
 
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         actorId: found.userId,
         action: 'auth.refresh.reuse_detected',
         resourceType: 'session_family',
@@ -287,7 +297,7 @@ export class AuthService {
     });
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: found.userId,
       action: 'auth.refresh',
       resourceType: 'session',
@@ -307,7 +317,7 @@ export class AuthService {
 
     if (revoked) {
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         actorId: revoked.userId,
         action: 'auth.logout',
         resourceType: 'session',
@@ -359,7 +369,7 @@ export class AuthService {
     });
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: userId,
       action: purpose === 'EMAIL_VERIFICATION' ? 'auth.verification.sent' : 'auth.reset.requested',
       resourceType: 'user',
@@ -377,7 +387,7 @@ export class AuthService {
     });
     if (!user) {
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         action: 'auth.reset.requested',
         resourceType: 'user',
         reason: 'no_account',
@@ -405,7 +415,7 @@ export class AuthService {
 
     if (!row || !this.userTokens.isRedeemable(row)) {
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         action: 'auth.reset.failed',
         resourceType: 'user',
         reason: row ? 'token_spent_or_expired' : 'token_unknown',
@@ -428,7 +438,7 @@ export class AuthService {
     });
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: row.userId,
       action: 'auth.reset.completed',
       resourceType: 'user',
@@ -448,7 +458,7 @@ export class AuthService {
 
     if (!row || !this.userTokens.isRedeemable(row)) {
       await this.audit.record({
-        ...ctx,
+        ...audited(ctx),
         action: 'auth.verification.failed',
         resourceType: 'user',
         reason: row ? 'token_spent_or_expired' : 'token_unknown',
@@ -467,7 +477,7 @@ export class AuthService {
     });
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: row.userId,
       action: 'auth.verification.completed',
       resourceType: 'user',
@@ -507,7 +517,7 @@ export class AuthService {
       .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)));
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: userId,
       action: 'auth.session.terminated',
       resourceType: 'user',
@@ -522,7 +532,7 @@ export class AuthService {
     const rows = await this.sessionRepo.findAllForActor(actor);
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: actor.userId,
       action: 'auth.sessions.listed',
       resourceType: 'user',
@@ -569,7 +579,7 @@ export class AuthService {
       .where(eq(userSessions.id, session.id));
 
     await this.audit.record({
-      ...ctx,
+      ...audited(ctx),
       actorId: actor.userId,
       action: 'auth.sessions.revoked',
       resourceType: 'session',

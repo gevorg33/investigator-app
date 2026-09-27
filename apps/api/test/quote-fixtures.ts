@@ -26,13 +26,21 @@ export interface QuotableMission {
  */
 export async function quotableMission(
   db: TestDb,
-  opts: { status?: 'QUOTED' | 'DRAFT' | 'CUSTOMER_CONFIRMED' } = {},
+  opts: {
+    status?: 'QUOTED' | 'DRAFT' | 'CUSTOMER_CONFIRMED';
+    /** An existing user as the customer — someone who also works as an investigator (T-142). */
+    customerId?: string;
+  } = {},
 ): Promise<QuotableMission> {
-  const [user] = await db
-    .insert(schema.users)
-    .values({ email: `quote-customer-${randomUUID()}@example.test`, status: 'ACTIVE' })
-    .returning();
-  const customerId = user?.id ?? '';
+  const customerId =
+    opts.customerId ??
+    (
+      await db
+        .insert(schema.users)
+        .values({ email: `quote-customer-${randomUUID()}@example.test`, status: 'ACTIVE' })
+        .returning()
+    )[0]?.id ??
+    '';
   const taxonomyNodeId = await category(db);
   const status = opts.status ?? 'QUOTED';
   const confirmed =
