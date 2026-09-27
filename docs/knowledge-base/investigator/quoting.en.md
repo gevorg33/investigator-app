@@ -4,9 +4,9 @@ title: Writing a quote — scope, assumptions, exclusions and expiry
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-12
+updated: 2026-09-27
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -67,6 +67,13 @@ and submit a replacement.
 
 If the customer's needs change mid-assignment, that is a new quote for the additional work,
 not an amendment to the existing one.
+
+## Can I quote on a mission I posted myself?
+
+No. One account can both hire investigators and work as one, but a mission you posted as a
+customer is never one you can quote on. It does not appear in **Open missions**, and a quote on it
+is refused as if the mission were not there. Quoting on your own mission would let you accept your
+own offer and review your own work.
 
 ## Can I quote on several missions at once?
 

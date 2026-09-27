@@ -111,6 +111,19 @@ describe('quotes', () => {
       ).rejects.toMatchObject({ status: 404 });
     });
 
+    it('refuses the investigator’s own mission, as a 404 like any mission they may not quote on (T-142)', async () => {
+      // One account holds both roles: posting as a customer, then quoting, accepting and reviewing
+      // as the investigator would be self-dealing. Browse already leaves the mission out.
+      const inv = await eligibleInvestigator(ownerDb);
+      const own = await quotableMission(ownerDb, { customerId: inv.actor.userId });
+      await expect(
+        service.submit(inv.actor, own.missionId, offer() as never, req()),
+      ).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
+      expect(
+        await ownerDb.select().from(quotes).where(eq(quotes.missionId, own.missionId)),
+      ).toEqual([]);
+    });
+
     it('allows one live offer per investigator per mission', async () => {
       const mission = await quotableMission(ownerDb);
       const inv = await eligibleInvestigator(ownerDb);

@@ -164,6 +164,12 @@ chooses**, not eligibility (owner decision, 2026-09-25): narrowing eligibility t
 would show most investigators nothing until the real taxonomy is seeded (T-131), and would have to
 change the quote gate with it — filed as T-143.
 
+**Not their own.** Until T-142 only the browse left out a person's own mission
+(`m.customer_id <> actor`); a quote on one was taken, and the same person could accept and review
+it. `QuotesService.submit` now refuses it as the same 404 as a mission that is not published.
+"Own" is the user: missions and quotes belong to users today. Whether an agency may quote on a
+mission one of its members posted is decided with workspace-owned quotes (T-089).
+
 Eligibility sits in the SQL `WHERE` with the filters. Row-level security holds it a second time:
 any workspace reads a mission only while it is QUOTED (`quoted_read`), so removing the status
 condition from the query changes nothing for another workspace's missions — the mutation check in

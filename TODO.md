@@ -4842,6 +4842,7 @@ pnpm --filter api test verification
 - [ ] Every T-012 invariant still holds: exactly one assignment, idempotent acceptance, the payment boundary
 - [ ] An unstaffed colleague is refused an assignment the agency holds (404), and a staffed one is allowed
 - [ ] Extends the already-built workspace objects (T-031 to T-033), evidence (T-116), reports (T-117) and conversations (T-101) to staffing: an unstaffed colleague is refused each of them
+- [ ] An agency cannot quote on a mission its own member posted, nor accept or be staffed on one: "own" widens from the user (T-142) to the workspace, decided with the owner against workspace-owned quotes (owner decision, 2026-09-27)
 - [ ] `quotes-and-assignments.md` and KB updated
 
 **Validation**
@@ -6773,7 +6774,7 @@ pnpm build && ./scripts/setup.sh
 ---
 
 ### T-142 — An investigator can quote on their own mission
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `QuotesService.quotableMission` treats a mission whose `customer_id` is the quoting user like one that is not published: `authz.visible` refuses it as a 404 and audits the denial — the rule browse already applied (`m.customer_id <> actor`), now on the quote side too. The only path that creates a quote; nothing shortlists or invites yet (T-103). Owner decision (2026-09-27): "own" is the user today — missions and quotes belong to users; the agency-wide rule is an acceptance criterion of T-089. Seen failing first: the service spec (the quote was written) and a new whole-stack `quotes.e2e.spec.ts` (real session, guard, service, database: 201 on one's own mission before, 404 after; another's mission still 201). `discovery.md`; KB `kb-investigator-quoting` v2 (en; ru/hy drafts)
 - **Priority:** P1 — self-dealing reaches reviews (T-037) and payouts
 - **Depends on:** —
 - **Risk:** MEDIUM
@@ -6790,11 +6791,13 @@ own missions out; quoting should refuse them, and so should anything that shortl
 (T-103).
 
 **Acceptance criteria**
-- [ ] Quoting on a mission whose customer is the quoting user is refused, as a 404 like any mission
+- [x] Quoting on a mission whose customer is the quoting user is refused, as a 404 like any mission
       the investigator may not quote on
-- [ ] The same for a mission in a workspace the quoting user belongs to (an agency quoting on its
-      own member's mission) — decided with the owner, since agencies make "own" wider than a user
-- [ ] Tested at the service and through HTTP
+- [x] The same for a mission in a workspace the quoting user belongs to (an agency quoting on its
+      own member's mission) — decided with the owner, since agencies make "own" wider than a user.
+      Decided 2026-09-27: missions and quotes are the user's today, so "own" is the user; the
+      agency-wide rule moves to T-089, with workspace-owned quotes
+- [x] Tested at the service and through HTTP
 
 **Validation**
 ```bash
