@@ -103,6 +103,9 @@ describe('the assistant (T-056)', () => {
       await openWith();
       const sheet = await screen.findByRole('dialog', { name: en.untitled });
       expect(sheet).toHaveClass('h-dvh');
+      // The drawer's own 85dvh cap gives way to the panel's, or the sheet is not full-screen (T-166).
+      expect(sheet).not.toHaveClass('data-[vaul-drawer-direction=bottom]:max-h-sheet');
+      expect(sheet).toHaveClass('data-[vaul-drawer-direction=bottom]:max-h-dvh');
       expect(sheet.querySelector('.rounded-full.w-12')).toBeNull();
       await waitFor(() => expect(composer()).toHaveFocus());
       await userEvent.click(within(sheet).getByRole('button', { name: en.close }));
@@ -694,6 +697,45 @@ describe('the assistant (T-056)', () => {
       await screen.findByRole('heading', { name: en.empty.title });
       await act(async () => undefined);
       expect(screen.queryByRole('log')).toBeNull();
+    });
+  });
+
+  describe('before the address is confirmed (T-165)', () => {
+    const unconfirmed = async () => {
+      renderIntl(
+        <AssistantProvider audience="NONE" confirmFirst={<p>Confirm your address first.</p>}>
+          <Opener />
+          <AssistantPanel />
+        </AssistantProvider>,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Open assistant' }));
+    };
+
+    it('says what opens it on a phone, focused on its first control, and asks the API nothing', async () => {
+      await unconfirmed();
+      const sheet = await screen.findByRole('dialog', { name: en.label });
+      expect(within(sheet).getByText('Confirm your address first.')).toBeVisible();
+      expect(within(sheet).queryByRole('textbox')).toBeNull();
+      await waitFor(() =>
+        expect(within(sheet).getByRole('button', { name: en.close })).toHaveFocus(),
+      );
+      await userEvent.click(within(sheet).getByRole('button', { name: en.close }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(api.calls).toEqual([]);
+    });
+
+    it('says the same docked beside the page, and Escape still closes it', async () => {
+      viewport(true);
+      await unconfirmed();
+      const panel = screen.getByRole('complementary', { name: en.label });
+      expect(within(panel).getByRole('heading', { name: en.label })).toBeVisible();
+      expect(within(panel).getByText('Confirm your address first.')).toBeVisible();
+      await waitFor(() =>
+        expect(within(panel).getByRole('button', { name: en.close })).toHaveFocus(),
+      );
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByRole('complementary')).toBeNull();
+      expect(api.calls).toEqual([]);
     });
   });
 });

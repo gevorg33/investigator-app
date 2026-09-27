@@ -23,7 +23,13 @@ export function ResendVerification({ email }: { email: string }) {
           {t('account.profile.resent')}
         </p>
       ) : (
-        <Button type="submit" variant="outline" disabled={pending} aria-busy={pending}>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={pending}
+          aria-busy={pending}
+          className="whitespace-normal"
+        >
           {t('account.profile.resend')}
         </Button>
       )}

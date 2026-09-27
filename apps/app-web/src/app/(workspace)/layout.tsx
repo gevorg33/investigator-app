@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { AccountNotices } from '@/components/account/notices';
 import { AssistantBeside } from '@/components/assistant/assistant-beside';
 import { AssistantProvider } from '@/components/assistant/assistant-provider';
@@ -8,8 +9,7 @@ import { AppShell } from '@/components/shell/app-shell';
 import { AgencySetupNotice } from '@/components/workspace/agency-setup-notice';
 import { SwitchedNotice, WorkspaceScope } from '@/components/workspace/workspace-scope';
 import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher';
-import { getAccount, getOutstanding, serverApi } from '@/lib/api/server';
-import type { WorkspaceView } from '@/lib/api/types';
+import { getAccount, getOutstanding, getWorkspaces } from '@/lib/api/server';
 
 /**
  * Everything in the workspace needs a session (T-127). No session: to sign-in, with the page asked
@@ -29,17 +29,16 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
     const path = (await headers()).get('x-pathname') ?? '/';
     redirect(`/sign-in?next=${encodeURIComponent(path)}`);
   }
-  const [outstanding, workspaces] = await Promise.all([
-    getOutstanding(),
-    serverApi<WorkspaceView[]>('/workspaces'),
-  ]);
-  const all = workspaces ?? [];
+  const [outstanding, all] = await Promise.all([getOutstanding(), getWorkspaces()]);
   const current = all.find((w) => w.current) ?? null;
   const investigator = account.roles.includes('INVESTIGATOR') && account.activeRole !== 'CUSTOMER';
   const customer = account.roles.includes('CUSTOMER');
   return (
     <WorkspaceScope key={current?.id ?? 'none'} workspace={current} activeRole={account.activeRole}>
-      <AssistantProvider audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}>
+      <AssistantProvider
+        audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}
+        confirmFirst={account.emailVerified ? undefined : <ConfirmFirst email={account.email} />}
+      >
         <AppShell
           workspaces={
             all.length > 1

@@ -13,8 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AGENCY_DETAILS_HREF } from '@/components/workspace/agency-setup-notice';
 import { CREATE_AGENCY_HREF } from '@/components/workspace/workspace-switcher';
 import { getLocale, getT } from '@/i18n/server';
-import { getAccount, getOutstanding, serverApi } from '@/lib/api/server';
-import type { WorkspaceView } from '@/lib/api/types';
+import { getAccount, getOutstanding, getWorkspaces } from '@/lib/api/server';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('nav.account') };
@@ -32,11 +31,11 @@ export default async function AccountPage() {
     getLocale(),
     getAccount(),
     getOutstanding(),
-    serverApi<WorkspaceView[]>('/workspaces'),
+    getWorkspaces(),
   ]);
   // In an agency, its details (T-150) and its profile (T-094) are a tap away; each page decides
   // what the reader may change.
-  const agency = (workspaces ?? []).find((w) => w.current && w.kind === 'AGENCY');
+  const agency = workspaces.find((w) => w.current && w.kind === 'AGENCY');
   const agencyLinks = [
     {
       href: AGENCY_DETAILS_HREF,

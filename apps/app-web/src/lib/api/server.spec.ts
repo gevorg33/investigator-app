@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, apiError } from '@/test/api';
 import { request } from '@/test/request';
-import { getAccount, getOutstanding, serverApi } from './server';
+import { getAccount, getOutstanding, getWorkspaces, serverApi } from './server';
 
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 
@@ -51,6 +51,28 @@ describe('calling the API from the Next server', () => {
     expect(await getAccount()).toBeNull();
     api.on('GET /me', 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
     await expect(getAccount()).rejects.toMatchObject({ status: 500 });
+  });
+
+  describe('the reader’s workspaces (T-164)', () => {
+    const me = (emailVerified: boolean) => api.on('GET /me', 200, { id: 'u-1', emailVerified });
+
+    it('are listed for a confirmed account', async () => {
+      me(true);
+      api.on('GET /workspaces', 200, [{ id: 'ws-1', current: true }]);
+      expect(await getWorkspaces()).toEqual([{ id: 'ws-1', current: true }]);
+    });
+
+    it('are not asked for while the address is unconfirmed, which the API would refuse', async () => {
+      me(false);
+      api.on('GET /workspaces', 403, apiError('FORBIDDEN', 'error.auth.forbidden'));
+      expect(await getWorkspaces()).toEqual([]);
+      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+    });
+
+    it('are none with nobody signed in', async () => {
+      api.on('GET /me', 401, apiError('UNAUTHENTICATED', 'error.auth.unauthenticated'));
+      expect(await getWorkspaces()).toEqual([]);
+    });
   });
 
   it('lists what is outstanding, or nothing', async () => {

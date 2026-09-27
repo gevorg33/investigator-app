@@ -7416,7 +7416,7 @@ pnpm --filter api test agency-settings
 ---
 
 ### T-164 — An unconfirmed account opening `/account` gets "Application error"
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. Wider than filed: the `(workspace)` layout itself read `GET /workspaces`, which the API refuses a not-yet-active account (`requireActive`, since T-075), so no workspace page rendered for an unconfirmed reader; the layout spec mocked a 204 the API never sends. `getWorkspaces()` (cached, in `lib/api/server.ts`) does not ask for an unconfirmed reader; layout, Home, Account and Agency use it. Four pages whose content the API keeps back now show `ConfirmFirst` (`EmptyState` + `ResendVerification`) instead of asking: help article, agency profile, find investigators, an investigator's reviews. Checked before the call, not a caught 403 — a denial is an audited event. The resend button wraps (`whitespace-normal`): in ru its label ran 443px on a 375px `/account`. Specs seen failing first (layout with the real 403, the four pages). In the browser against the real API, unconfirmed: all 16 workspace routes render, redirect or 404 — no server exception; the four pages and `/account` at 375, 768 and 1280 in en, ru and hy with no horizontal scroll, the button 44px (66px where it wraps); resend → 202 and its status. Confirmed, the same pages show the reviews list and the search. `app-web.md`, KB `kb-customer-account-access-and-security` v3 (en; ru/hy drafts), component inventory. Filed T-165
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -7434,16 +7434,79 @@ The API rule stays as it is; the page should show what an unconfirmed reader can
 the link) instead of crashing. Check the other `(workspace)` pages for the same unhandled refusal.
 
 **Acceptance criteria**
-- [ ] An unconfirmed account opening `/account` sees a page that says to confirm the address, with a
+- [x] An unconfirmed account opening `/account` sees a page that says to confirm the address, with a
   way to resend the link — no server exception
-- [ ] Every `(workspace)` page an unconfirmed reader can reach is checked, and none throws
-- [ ] Spec seen failing first; checked in the browser against the real API at 375, 768 and 1280
+- [x] Every `(workspace)` page an unconfirmed reader can reach is checked, and none throws
+- [x] Spec seen failing first; checked in the browser against the real API at 375, 768 and 1280
 
 **Validation**
 ```bash
 pnpm --filter app-web test account
 ```
 
+
+---
+
+### T-165 — The assistant tells an unconfirmed reader only "You cannot do that here"
+- **Status:** DONE — 2026-09-27. The layout hands `AssistantProvider` a server-rendered `ConfirmFirst` while `emailVerified` is false; the provider then never loads the conversation (no `/ai/*`, no `/workspaces` from the browser), and the panel shows the assistant's name, **Close** and `ConfirmFirst` in its place, focus on **Close**. `resolveServer` (test helper) now resolves an async element passed as any prop, as the server renderer does — the layout spec renders the real `ConfirmFirst`. Specs (phone sheet, docked panel, layout) seen failing first. In the browser against the real API, unconfirmed: the sheet at 375 and 768, docked at 1280, in en, ru and hy — no horizontal scroll, **Close** 44px, resend inside the panel (wrapping to 66px where its label is long), no `/ai` request in the API log; confirmed, the same account opens a new conversation with the composer focused (`GET /ai/sessions?limit=1` 200). `app-web.md`, KB article (en, ru, hy), inventory. Filed T-166
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/**
+
+**Description**
+Found in T-164's browser check. An unconfirmed account opening the assistant sees "The conversation
+could not be opened", "You cannot do that here" and **Try again**: `GET /ai/sessions` is refused 403,
+correctly — `AiSessionsService` calls `requireActive`, and an account is not active until its address
+is confirmed. Trying again cannot succeed. Like the pages T-164 fixed, the panel should say what opens
+it (confirm the address) and offer the new link, without asking the API for what it would refuse. The
+layout already knows `emailVerified`.
+
+Whether help articles and the assistant's public-policy answers should open to an unconfirmed account
+at all is an authorization question, not this task — asked of the owner in T-164's handoff.
+
+**Acceptance criteria**
+- [x] An unconfirmed reader opening the assistant sees "confirm first" with **Send the confirmation
+  link again**, and no call to `/ai/*` is made
+- [x] Spec seen failing first; checked in the browser at 375, 768 and 1280 in en, ru and hy
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant
+```
+
+---
+
+### T-166 — The assistant's phone sheet is not full-screen
+- **Status:** DONE — 2026-09-27. Cause: `max-h-sheet` is our own `@utility`, which tailwind-merge did not know is a max-height, so `cn` kept it beside the panel's `max-h-dvh` and the cascade chose it. `cn` now extends tailwind-merge with each `@utility` `globals.css` defines (`max-h-sheet`; `pb-safe` and `pb-bottom-nav`, the same blind spot) by the property it sets; `globals.css` and `app-web.md` say a new one is added there too. Specs (`utils.spec.ts`, the assistant sheet's classes) seen failing first. In the browser: the assistant sheet at 375×812 and 768×1024 is top 0, height = viewport; the discovery filter sheet, which passes no height, still stops at 85dvh on a phone (690 of 812) and is its full-height side sheet at 768
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/assistant-panel.tsx, apps/app-web/src/components/ui/drawer.tsx
+
+**Description**
+Found in T-165's browser check. `AssistantPanel` means the sheet below `lg` to be full-screen (T-056:
+"a full-screen sheet"), and its `DrawerContent` carries `h-dvh` and
+`data-[vaul-drawer-direction=bottom]:max-h-dvh`. The drawer's own default
+`data-[vaul-drawer-direction=bottom]:max-h-sheet` wins the cascade: at 375×812 the sheet measured
+690px tall, its top at 122px, with the page's notice showing above it. The spec only checks that the
+class is there (`toHaveClass('h-dvh')`), which it is. Not a T-165 change — every assistant sheet is
+affected. Decide how the override should win (the variant's order, or the panel not taking the
+default), and check the other sheets that pass their own height.
+
+**Acceptance criteria**
+- [x] The assistant's sheet fills the viewport at 375 and 768 (measured top 0, height = viewport)
+- [x] The other `DrawerContent` sheets keep the height they are meant to have
+- [x] Spec seen failing first; checked in the browser
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant
+```
 ---
 
 ## Backlog

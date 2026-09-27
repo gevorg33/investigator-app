@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { parseDiscovery, type SearchParams } from '@/components/discovery/discovery-query';
 import { InvestigatorDiscovery } from '@/components/discovery/investigator-discovery';
 import { actsAsInvestigator, MissionsViews } from '@/components/discovery/missions-views';
@@ -18,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
  * Finding investigators (T-120): a customer's second view of Missions. Someone working as an
  * investigator is sent back to Missions, where their view is the open missions to quote on — to
  * hire, they show the platform as a customer. The reference lists are the server's `Intl` and
- * taxonomy, passed down so the browser hydrates what the server rendered.
+ * taxonomy, passed down so the browser hydrates what the server rendered. The API searches for an
+ * active account only: until the address is confirmed, that comes first in the list's place.
  */
 export default async function DiscoveryPage({
   searchParams,
@@ -32,6 +34,14 @@ export default async function DiscoveryPage({
     searchParams,
   ]);
   if (actsAsInvestigator(account)) redirect('/missions');
+  if (!account!.emailVerified) {
+    return (
+      <Page title={t('nav.missions')}>
+        <MissionsViews current="find" />
+        <ConfirmFirst email={account!.email} />
+      </Page>
+    );
+  }
   const taxonomy = await serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`);
   return (
     <Page title={t('nav.missions')}>

@@ -6,7 +6,8 @@ Every reusable UI component, so the next agent does not rebuild what exists. Upd
 | Component | Source | Used in | Notes |
 |---|---|---|---|
 | `Empty` (+ `EmptyHeader`, `EmptyMedia`, `EmptyTitle`, `EmptyDescription`, `EmptyContent`) | `@shadcn/empty` | `EmptyState` | app-web `src/components/ui/empty.tsx`. Re-tokenised: `cn` from our helper; title is an `h2` and description a `p` (upstream renders both as `div`) |
-| `EmptyState` | custom — composition of `@shadcn/empty` | Every placeholder route | The one shape an empty screen takes: icon, what will appear, why. A composition, not a second empty component |
+| `EmptyState` | custom — composition of `@shadcn/empty` | Every placeholder route | The one shape an empty screen takes: icon, what will appear, why — and, when there is one, the one thing to do about it (`EmptyContent`, T-164). A composition, not a second empty component |
+| `ConfirmFirst` | custom — `EmptyState` + `ResendVerification` | Help article, agency profile, find investigators, an investigator's reviews, the assistant — for an unconfirmed reader (T-164, T-165) | In place of what the API shows an active account only: what opens it, and a new link. **Why custom:** a composition of two existing pieces, named so each page says the same thing the same way |
 | `AgencyDetailsFields` | custom — `Field` + `SelectField` | `CreateAgencyForm`, `AgencyDetailsForm` (T-150) | The five inputs an agency needs, once: labels, hints, limits, lists, each field's error. Constants in the plain module `agency-details.ts`, so server pages read them as values |
 | `AgencyDetailsForm` | custom | `/agencies/current` (T-150) | The owner's form: only what changed, with the version read; says when the save made the agency ready; refreshes the shell |
 | `MissingDetails` | custom — `Alert` | Agency details, read-only or not | "Not set up yet" and which of the five are still needed, by their field labels |

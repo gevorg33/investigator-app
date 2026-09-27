@@ -77,6 +77,24 @@ built by their own tasks (the core-loop hiring and messaging tasks). Above every
 owes — an unconfirmed address, documents to accept — as notices linking to where each is settled
 (`AccountNotices`). Notices, never blocks.
 
+**Before the address is confirmed** (T-164). An account is active only once its address is
+confirmed, and much of the API answers an active account only (`requireActive`), the workspace list
+among it. So the app does not ask for what would be refused: `getWorkspaces()` returns none for an
+unconfirmed reader without calling the API, and a page whose content the API keeps back shows
+`ConfirmFirst` in its place — what opens it, and **Send the confirmation link again**:
+
+| Page | For an unconfirmed reader |
+|---|---|
+| `/help/[docKey]` | titled **Help**, `ConfirmFirst` instead of the article |
+| `/agencies/[id]` | titled **Agency profile**, `ConfirmFirst` instead of the profile |
+| `/missions/investigators` | the Missions views, `ConfirmFirst` instead of the search |
+| `/missions/investigators/[id]` | the profile, `ConfirmFirst` under **Reviews** instead of the list |
+| The assistant (T-165) | its name and **Close**, `ConfirmFirst` instead of the conversation; opening it reads nothing, and focus lands on **Close** |
+
+Account, language, time zone and sessions work as for anyone. The check is `emailVerified` from
+`GET /me`, before the call, rather than a caught 403: a refused request is an audited denial on the
+API, and a page that meets a refusal it did not expect still fails rather than hiding it.
+
 ## Strings and locale
 
 Every user-facing string is a key in `packages/i18n` (ADR-0013). Server components translate with
@@ -498,9 +516,13 @@ It is per app — the root file was removed in T-014, and the shadcn MCP is star
 Adopted components live in `src/components/ui/` and are recorded in
 `docs/product/component-inventory.md`. After every `shadcn add`, read the diff: CLI 4.21 wrote
 `import { cn } from "cn"` and installed shadcn's new two-day-old `cn` npm package instead of using
-our `@/lib/utils` alias. Our `cn` is plain `clsx` + `tailwind-merge`, which already merges the
-token names correctly (`shadow-raised` then `shadow-overlay` keeps the second); a test keeps
-checking that across upgrades.
+our `@/lib/utils` alias. Our `cn` is `clsx` + `tailwind-merge`, which already merges the token
+names correctly (`shadow-raised` then `shadow-overlay` keeps the second); a test keeps checking
+that across upgrades. The `@utility` classes `globals.css` defines itself (`max-h-sheet`,
+`pb-safe`, `pb-bottom-nav`) are unknown to it, so `cn` lists each with the property it sets. **A
+new `@utility` is added there too**, or a caller's override sits beside the default and the
+cascade picks one: until T-166, the assistant's `max-h-dvh` lost to the drawer's `max-h-sheet`,
+and its "full-screen" phone sheet was 85% of the screen.
 
 ## Performance
 

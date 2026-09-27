@@ -2,13 +2,14 @@ import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ConfirmFirst } from '@/components/account/confirm-first';
 import { DISCOVERY_PATH } from '@/components/discovery/discovery-query';
 import { ProfileReviews } from '@/components/discovery/profile-reviews';
 import { PublicProfileCard } from '@/components/investigator/public-profile-card';
 import { Page } from '@/components/page';
 import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
-import { serverApi } from '@/lib/api/server';
+import { getAccount, serverApi } from '@/lib/api/server';
 import type {
   ProfileReviews as Reviews,
   PublicInvestigatorProfile,
@@ -44,7 +45,8 @@ export async function generateMetadata({
  * An investigator's public profile (T-120): exactly the public projection — the same component
  * the investigator previews themselves with (T-123) — and their reviews (T-037). Areas are not
  * shown: the public projection carries none, and a customer sees how far an investigator is in
- * the search instead, never where their areas lie (`discovery.md`).
+ * the search instead, never where their areas lie (`discovery.md`). Reviews the API shows to an
+ * active account only: until the address is confirmed, that comes first in their place.
  */
 export default async function InvestigatorProfilePage({
   params,
@@ -52,9 +54,17 @@ export default async function InvestigatorProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [t, { locale }, profile] = await Promise.all([getT(), getLocale(), profileOf(id)]);
+  const [t, { locale }, profile, account] = await Promise.all([
+    getT(),
+    getLocale(),
+    profileOf(id),
+    getAccount(),
+  ]);
+  const confirmed = account!.emailVerified;
   const [reviews, taxonomy] = await Promise.all([
-    serverApi<Reviews>(`/profiles/investigator/${encodeURIComponent(id)}/reviews`),
+    confirmed
+      ? serverApi<Reviews>(`/profiles/investigator/${encodeURIComponent(id)}/reviews`)
+      : null,
     serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`),
   ]);
   const specialties = new Map(categoryOptions(taxonomy ?? []).map((c) => [c.id, c.label]));
@@ -70,7 +80,16 @@ export default async function InvestigatorProfilePage({
       <div className="mt-4 rounded-lg border border-border bg-surface-raised p-4 md:p-6">
         <PublicProfileCard profile={profile} specialties={specialties} named={false} />
       </div>
-      <ProfileReviews profileId={profile.id} initial={reviews!} />
+      {confirmed ? (
+        <ProfileReviews profileId={profile.id} initial={reviews!} />
+      ) : (
+        <section aria-labelledby="reviews-title" className="mt-8 grid gap-4">
+          <h2 id="reviews-title" className="text-xl font-semibold">
+            {t('missions.profile.reviews')}
+          </h2>
+          <ConfirmFirst email={account!.email} />
+        </section>
+      )}
     </Page>
   );
 }

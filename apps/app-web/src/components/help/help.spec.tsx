@@ -1,8 +1,11 @@
+import { catalogs } from '@investigator/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HelpArticlePage, { generateMetadata } from '@/app/(workspace)/help/[docKey]/page';
 import { slug } from '@/lib/slug';
 import { api, apiError } from '@/test/api';
+import { account } from '@/test/fixtures';
+import { renderIntl } from '@/test/intl';
 import { NotFound } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
@@ -30,6 +33,7 @@ describe('help articles (T-059)', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    api.on('GET /me', 200, account());
   });
 
   const page = async (docKey = 'kb-customer-quotes') =>
@@ -72,6 +76,19 @@ describe('help articles (T-059)', () => {
       apiError('NOT_FOUND', 'error.common.not_found'),
     );
     await expect(page('kb-staff-moderation')).rejects.toBeInstanceOf(NotFound);
+  });
+
+  it('asks an unconfirmed reader to confirm first, and does not ask for what the API would refuse (T-164)', async () => {
+    api.on('GET /me', 200, account({ emailVerified: false }));
+    const params = Promise.resolve({ docKey: 'kb-customer-quotes' });
+    renderIntl(await resolveServer(await HelpArticlePage({ params })));
+    const { confirm_first } = catalogs.en.account;
+    expect(screen.getByRole('heading', { level: 1, name: catalogs.en.help.title })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: confirm_first.title })).toBeVisible();
+    expect(screen.getByText(confirm_first.body)).toBeVisible();
+    expect(screen.getByRole('button', { name: catalogs.en.account.profile.resend })).toBeVisible();
+    expect((await generateMetadata({ params })).title).toBe(catalogs.en.help.title);
+    expect(api.calls.map((c) => c.path)).toEqual(['/me', '/me']);
   });
 
   it('passes any other failure on', async () => {
