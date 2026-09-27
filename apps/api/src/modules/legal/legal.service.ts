@@ -207,7 +207,7 @@ export class LegalService {
   /**
    * Whether this person needs to accept `type` before going on.
    *
-   * Satisfied means: their latest row for this type is an acceptance, and it is either the
+   * Satisfied means: their last row written for this type is an acceptance, and it is either the
    * current version or an older one that the current version did not oblige them to re-accept
    * (the materiality flag, set by compliance and read here).
    */
@@ -217,7 +217,8 @@ export class LegalService {
       .select()
       .from(userConsents)
       .where(and(eq(userConsents.userId, userId), eq(userConsents.documentType, type)))
-      .orderBy(desc(userConsents.occurredAt))
+      // The last written, not the latest dated: a clock can tie or step back (T-156).
+      .orderBy(desc(userConsents.seq))
       .limit(1);
 
     if (latest === undefined || latest.action === 'WITHDRAWN') {

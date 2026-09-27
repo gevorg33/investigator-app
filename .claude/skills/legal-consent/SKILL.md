@@ -17,7 +17,9 @@ A boolean `accepted_terms` column answers none of that and is worth nothing in a
 > someone saw can be produced from one row; `content_hash` is computed **by the database** on
 > write, so a writer cannot choose one that disagrees with the text; and acceptance and
 > withdrawal are one append-only sequence with an `action` column, so "what is true now" is the
-> latest row for a person and a document rather than a reconciliation of two tables. A consent
+> last row written for a person and a document — the highest `seq` (migration 0030, T-156), never
+> the latest `occurred_at`, which two close writes can tie and a clock step can reverse — rather
+> than a reconciliation of two tables. A consent
 > row also records the workspace it was given in (nullable — registration precedes any
 > workspace). The `LegalService` reads the current version and records acceptances;
 > `GET /api/v1/legal/documents/:type` serves the text unauthenticated, because registration

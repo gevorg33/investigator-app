@@ -7182,7 +7182,7 @@ VITEST_SEQUENCE=reverse pnpm --filter api test missions
 ---
 
 ### T-156 — The latest consent is chosen by clock, not by write order
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27 (owner approved in chat). As T-155: migration 0030 adds `user_consents.seq` (identity; existing rows numbered in scan order — the table is append-only by grant and consents are never erased) and replaces the `(user_id, document_type, occurred_at DESC)` index with one on `seq`; `LegalService.consentState` orders by it — the only reader of consent order. Four specs seen failing first on the clock ordering (a re-acceptance after a withdrawal, a withdrawal after an acceptance; each with the clock stepped back a second and tied), all passing on `seq`. Migration up/down checked by `migrations.spec.ts`; applied to the local dev database. `legal-consent` skill updated; no legal text changed
 - **Priority:** P3
 - **Depends on:** T-155
 - **Risk:** MEDIUM
@@ -7198,8 +7198,8 @@ wall-clock step, can be read in the wrong order, and the gate then says the wron
 T-155: an identity `seq`, ordered by it.
 
 **Acceptance criteria**
-- [ ] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
-- [ ] Ties in `occurred_at` are resolved by write order
+- [x] With the clock stepped back between a withdrawal and a re-acceptance, the later write decides
+- [x] Ties in `occurred_at` are resolved by write order
 
 **Validation**
 ```bash
