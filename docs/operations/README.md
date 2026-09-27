@@ -41,3 +41,6 @@ Keep that boundary when editing either side.
 
 Runbooks are added as the alerts and procedures they describe are built. See
 `infra-devops`: an alert with no runbook is noise, so the runbook lands with the alert.
+
+- `client-address.md` — which proxies the API believes about the client's address, and why a
+  wrong list moves every per-IP rate limit and audit row (T-138)

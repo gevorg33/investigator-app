@@ -28,6 +28,20 @@ describe('calling the API from the Next server', () => {
     expect(call!.init.cache).toBe('no-store');
   });
 
+  it('passes on the client’s address the proxy gave it, and invents none (T-138)', async () => {
+    // Caddy writes X-Forwarded-For; the API trusts this server as the next hop and reads the
+    // client from it. Without it, every server-side read carried this server's address.
+    request.headers.set('x-forwarded-for', '203.0.113.7');
+    api.on('GET /me', 200, { id: 'u-1' });
+    await serverApi('/me');
+    expect(api.calls[0]!.headers['x-forwarded-for']).toBe('203.0.113.7');
+    request.reset();
+    api.install();
+    api.on('GET /me', 200, { id: 'u-1' });
+    await serverApi('/me');
+    expect(api.calls[0]!.headers).not.toHaveProperty('x-forwarded-for');
+  });
+
   it('reaches the API at its internal address where one is configured', async () => {
     vi.stubEnv('API_INTERNAL_URL', 'http://api:3001');
     api.on('PATCH /me/preferences', 204);

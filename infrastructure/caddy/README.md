@@ -6,8 +6,8 @@ DNS and email: `dns-and-email.md`
 
 ## Validate before deploying
 
-The Caddyfile has not been validated by Caddy itself — Docker was unavailable when it was
-written. Run this before first deploy:
+First validated by Caddy itself on 2026-09-27 (`caddy:2-alpine`, T-138): `Valid configuration`.
+Run this again after every change and before the first deploy:
 
 ```bash
 docker run --rm -v "$PWD":/etc/caddy:ro \

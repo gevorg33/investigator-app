@@ -1421,6 +1421,7 @@ validated by Caddy itself.
 - [ ] Marketing `/login` returns `301` to `app.`, never `200`
 - [ ] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
 - [ ] PostgreSQL, Redis and metrics are not reachable from the public internet
+- [ ] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
 
 **Validation**
 ```bash
@@ -6646,7 +6647,7 @@ npx -y @playwright/mcp@<version> --help
 ---
 
 ### T-138 — The API behind Caddy sees the proxy's address, not the client's
-- **Status:** TODO
+- **Status:** DONE — 2026-09-27. `TRUSTED_PROXIES` (addresses, CIDR ranges or `loopback`) sets Express's `trust proxy` in `configureApp`; unset trusts nobody; `true`, `*`, a hop count, `/0`, `uniquelocal` and names are refused at boot; required in staging and production. app-web's and admin-web's `serverApi` pass on the `X-Forwarded-For` Caddy gave them. Found on the way: every auth audit row (17 call sites) spread `{ ip }` where the row takes `ipAddress`, so sign-in, registration and reset events never recorded an address — mapped by `audited(ctx)`. Seen failing first: `bootstrap.spec.ts` (a trusted hop's client believed; a client-written entry not), `env.schema.spec.ts`, the web `server.spec`s, and a new whole-stack `request-context.e2e.spec.ts` — on the old code a second client behind the same proxy got 429 and the audit row's address was null; now separate limits and the client's address. Caddy's unread `X-Real-IP` dropped; the Caddyfile validated by Caddy for the first time. Filed T-167. `docs/operations/client-address.md`, `.env.example`; the fixed proxy addresses are a T-023 criterion (no deploy compose exists yet)
 - **Priority:** P1 — per-IP rate limits and audit IPs are wrong in every deployed environment
 - **Depends on:** —
 - **Risk:** MEDIUM — changes which address rate limits and audit rows record
@@ -6666,11 +6667,11 @@ A second hop arrives with T-127: app-web's server components call the API direct
 address should travel with them once the API trusts the proxy.
 
 **Acceptance criteria**
-- [ ] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
+- [x] `trust proxy` set to exactly the hops in front of the API (Caddy; the app-web server for its
       internal calls) — never `true`, which would let any client choose its own address
-- [ ] A spoofed `X-Forwarded-For` from a client is not believed
-- [ ] Per-IP rate limits key on the client's address; audit and consent rows record it
-- [ ] `docs/operations` says which headers each hop sets and trusts
+- [x] A spoofed `X-Forwarded-For` from a client is not believed
+- [x] Per-IP rate limits key on the client's address; audit and consent rows record it
+- [x] `docs/operations` says which headers each hop sets and trusts
 
 **Validation**
 ```bash
@@ -7509,6 +7510,37 @@ default), and check the other sheets that pass their own height.
 **Validation**
 ```bash
 pnpm --filter app-web test assistant
+```
+
+---
+
+### T-167 — A policy-refusal spec orders money decisions by clock
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/assignments/assignments-policy-refusal.spec.ts
+
+**Description**
+Found in T-138's full run, under load (load average ~20): `assignments-policy-refusal.spec.ts` ›
+"cancels a halted assignment with the money decided separately" got `[SPLIT, HOLD]` where it expects
+`[HOLD, SPLIT]`, then passed 5/5 alone. Its `moneyOf` orders `money_decisions` by `decided_at`, a
+clock, and the two decisions are written in separate transactions — the ordering T-155 found in
+`mission_status_history`, where a clock step in the Docker VM reorders two rows. No product code
+reads money decisions in order (the service only inserts them), so this is the spec's. Decide
+whether the order is part of the claim (then the table needs a write-order column, as T-155 added
+`seq`) or not (then the spec compares without order), and show the reorder reproduced first.
+
+**Acceptance criteria**
+- [ ] The reorder is reproduced (e.g. `decided_at` of the second row stepped back) and the spec no
+      longer depends on it
+- [ ] 20 runs of the file under the full suite's load with no failure
+
+**Validation**
+```bash
+pnpm --filter api test assignments-policy-refusal
 ```
 ---
 

@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers as incoming } from 'next/headers';
 import { cache } from 'react';
 import { ApiError, bodyOf, toApiError } from './errors';
 
@@ -10,12 +10,18 @@ const apiOrigin = (): string => process.env['API_INTERNAL_URL'] ?? 'http://local
 
 /**
  * A call from the console's server to the API, as the reader: their session cookie on this origin
- * is forwarded, and nothing else. Nothing is cached — every read is this reviewer's, now.
+ * is forwarded, and the client's address Caddy gave this server as `X-Forwarded-For` — the API
+ * trusts this server as a hop and reads the client from it (T-138). Nothing is cached — every read
+ * is this reviewer's, now.
  */
 export async function serverApi<T>(path: string): Promise<T | null> {
   const session = (await cookies()).get(SESSION_COOKIE)?.value;
+  const forwardedFor = (await incoming()).get('x-forwarded-for');
   const res = await fetch(`${apiOrigin()}/api/v1${path}`, {
-    headers: session === undefined ? {} : { cookie: `${SESSION_COOKIE}=${session}` },
+    headers: {
+      ...(session === undefined ? {} : { cookie: `${SESSION_COOKIE}=${session}` }),
+      ...(forwardedFor === null ? {} : { 'x-forwarded-for': forwardedFor }),
+    },
     cache: 'no-store',
   });
   if (!res.ok) throw await toApiError(res);

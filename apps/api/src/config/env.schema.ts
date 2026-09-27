@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { z } from 'zod';
 
 /**
@@ -8,6 +9,29 @@ const optionalText = z
   .string()
   .optional()
   .transform((v) => (v ? v : undefined));
+
+/** The raw `TRUSTED_PROXIES` list: comma-separated, blanks dropped. Read at boot and by `configureApp`. */
+export function parseTrustedProxies(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
+}
+
+/**
+ * One proxy the API may take `X-Forwarded-For` from: an address, a range, or `loopback`. Nothing
+ * that trusts a client — `true`, a hop count, every address, every private address — because a
+ * trusted client chooses its own address, and every per-IP limit and audit row with it (T-138).
+ */
+function isProxy(entry: string): boolean {
+  if (entry === 'loopback') return true;
+  const [address, prefix, ...rest] = entry.split('/');
+  const family = isIP(address!);
+  if (family === 0 || rest.length > 0) return false;
+  if (prefix === undefined) return true;
+  const bits = /^\d+$/.test(prefix) ? Number(prefix) : Number.NaN;
+  return bits >= 1 && bits <= (family === 4 ? 32 : 128);
+}
 
 export const EnvSchema = z
   .object({
@@ -35,6 +59,17 @@ export const EnvSchema = z
     CLOUDINARY_API_KEY: optionalText,
     CLOUDINARY_API_SECRET: optionalText,
     CLOUDINARY_FOLDER: z.string().min(1).default('investigator/development'),
+
+    // The hops in front of the API whose X-Forwarded-For is believed (T-138): Caddy, and app-web's
+    // server for its own calls. Unset trusts nobody, which is right only with nothing in front.
+    TRUSTED_PROXIES: z
+      .string()
+      .optional()
+      .transform(parseTrustedProxies)
+      .refine((list) => list.every(isProxy), {
+        message:
+          'TRUSTED_PROXIES lists proxy addresses, CIDR ranges or "loopback" — never true, a hop count, or every address',
+      }),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'staging' && env.NODE_ENV !== 'production') return;
@@ -51,6 +86,15 @@ export const EnvSchema = z
           message: `${name} is required in ${env.NODE_ENV}`,
         });
       }
+    }
+
+    // Caddy is always in front here: trusting nobody would give every request Caddy's address.
+    if (env.TRUSTED_PROXIES.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TRUSTED_PROXIES'],
+        message: `TRUSTED_PROXIES is required in ${env.NODE_ENV}`,
+      });
     }
 
     // Folders organise, they do not authorize — but a staging configuration copied into
