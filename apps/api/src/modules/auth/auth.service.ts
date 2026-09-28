@@ -210,23 +210,32 @@ export class AuthService {
       throw invalidCredentials();
     }
 
-    const issued = this.sessions.create(user.id);
+    return this.openSession(user.id, ctx);
+  }
+
+  /**
+   * A new session for someone just proven to be `userId` — by password here, by a provider for
+   * T-062. It opens in the Personal workspace (tenancy.md §6) and is audited as a sign-in, with
+   * `method` saying how when it was not a password.
+   */
+  async openSession(userId: string, ctx: RequestContext, method?: 'google'): Promise<AuthResult> {
+    const issued = this.sessions.create(userId);
     // A new session opens in the Personal workspace (tenancy.md §6). The trigger that created
     // the user created it in the same statement, and the unique index allows only one, so it
     // exists exactly once; switching workspace moves this (T-075).
     // Read as the user alone (T-077): before a session there is no workspace, and row-level
     // security shows a user only their own.
     // Awaited inside: a Drizzle query is lazy, and runs in whatever context awaits it.
-    const [personal] = await runAsUser(user.id, async () => {
+    const [personal] = await runAsUser(userId, async () => {
       const rows = await this.db
         .select({ id: tenants.id })
         .from(tenants)
-        .where(eq(tenants.personalOwnerId, user.id));
+        .where(eq(tenants.personalOwnerId, userId));
       return rows;
     });
     await this.db.insert(userSessions).values({
       id: issued.sessionId,
-      userId: user.id,
+      userId,
       familyId: issued.familyId,
       refreshTokenHash: issued.refreshTokenHash,
       expiresAt: issued.expiresAt,
@@ -237,13 +246,14 @@ export class AuthService {
 
     await this.audit.record({
       ...audited(ctx),
-      actorId: user.id,
+      actorId: userId,
       action: 'auth.login',
       resourceType: 'session',
       resourceId: issued.sessionId,
+      ...(method !== undefined && { reason: method }),
     });
 
-    return { userId: user.id, refreshToken: issued.refreshToken };
+    return { userId, refreshToken: issued.refreshToken };
   }
 
   async refresh(refreshToken: string, ctx: RequestContext): Promise<AuthResult> {

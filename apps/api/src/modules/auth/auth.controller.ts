@@ -22,13 +22,13 @@ import { CurrentActor } from '../../common/authz/actor.decorator';
 import type { Actor } from '../../common/authz/contract';
 import { REFRESH_TTL_DAYS } from './session.service';
 
-const COOKIE = 'investigator_session';
+export const COOKIE = 'investigator_session';
 
 /**
  * Host-only cookie: no Domain attribute, so it is never sent to another subdomain
  * (ADR-0002). SameSite=Strict is viable because the API is same-origin with the app.
  */
-const cookieOptions = {
+export const cookieOptions = {
   httpOnly: true,
   secure: process.env['NODE_ENV'] !== 'development',
   sameSite: 'strict' as const,
