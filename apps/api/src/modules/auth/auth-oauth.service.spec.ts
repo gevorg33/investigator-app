@@ -102,7 +102,7 @@ describe('Google sign-in (T-062)', () => {
         fetch: async () =>
           nextIdToken === undefined
             ? Response.json({ error: 'invalid_grant' }, { status: 400 })
-            : Response.json({ id_token: nextIdToken, access_token: 'ya29.never-kept' }),
+            : Response.json({ id_token: nextIdToken, access_token: 'access-token-never-kept' }),
       },
     );
     google = new GoogleAuthService(db, client, auth, legal, audit, limits);
@@ -317,7 +317,7 @@ describe('Google sign-in (T-062)', () => {
       const { state } = await roundTrip({ verified: false }, {}, c);
       const rows = JSON.stringify(await audited(c.correlationId));
       expect(rows).toContain('google:email_unverified');
-      for (const secret of ['auth-code', nextIdToken!, state, 'ya29']) {
+      for (const secret of ['auth-code', nextIdToken!, state, 'access-token-never-kept']) {
         expect(rows).not.toContain(secret);
       }
     });
