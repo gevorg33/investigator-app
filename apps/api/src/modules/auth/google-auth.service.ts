@@ -110,7 +110,7 @@ export class GoogleAuthService {
     ctx: RequestContext,
   ): Promise<{ url: string; cookie: string }> {
     const google = this.requireGoogle();
-    await this.limits.consume('loginPerIp', ctx.ip ?? 'unknown');
+    await this.limits.consume('googleStartPerIp', ctx.ip ?? 'unknown');
 
     const state = randomToken();
     const nonce = randomToken();

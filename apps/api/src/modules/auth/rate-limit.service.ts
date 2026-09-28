@@ -31,6 +31,10 @@ export const LIMITS = {
   // Per IP: slows spraying across many accounts, which the per-account limit misses.
   loginPerIp: { max: 20, windowSeconds: 300 },
   registerPerIp: { max: 5, windowSeconds: 3600 },
+  // Leaving for Google (T-062) writes a row. Its own budget, not the password sign-in's: the start
+  // is a GET any site can make a visitor's browser send, and it must not be a way to lock the
+  // people behind that address out of signing in with a password.
+  googleStartPerIp: { max: 20, windowSeconds: 300 },
   resetPerAccount: { max: 3, windowSeconds: 3600 },
   resetPerIp: { max: 10, windowSeconds: 3600 },
   // Each authorization issues a signature and a row. Provisional; generous enough for a

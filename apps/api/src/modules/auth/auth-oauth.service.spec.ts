@@ -48,6 +48,7 @@ describe('Google sign-in (T-062)', () => {
   let ownerSql: postgres.Sql;
   let ownerDb: ReturnType<typeof drizzle<typeof schema>>;
   let google: GoogleAuthService;
+  let limits: RateLimitService;
   let key: SigningKey;
   let keys: ReturnType<typeof createLocalJWKSet>;
   /** What Google's token endpoint answers next: the ID token for whoever "signed in". */
@@ -76,7 +77,7 @@ describe('Google sign-in (T-062)', () => {
     const audit = new AuditService(db);
     const tokens = new TokenService();
     const legal = new LegalService(db, audit);
-    const limits = new RateLimitService(new MemoryRateLimitStore());
+    limits = new RateLimitService(new MemoryRateLimitStore());
     const auth = new AuthService(
       db,
       await readyPasswords(),
@@ -602,6 +603,18 @@ describe('Google sign-in (T-062)', () => {
         google.unlink(testActor({ userId: mine.id }), theirs.identity.id, ctx()),
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });
       expect(await identitiesOf(theirs.user.id)).toHaveLength(1);
+    });
+  });
+
+  describe('abuse', () => {
+    it('budgets leaving for Google on its own, never out of the password sign-in’s budget', async () => {
+      // Any site can make a browser send the start: it must not lock that address out of passwords.
+      const from = { ip: '203.0.113.9', userAgent: 'vitest', correlationId: randomUUID() };
+      for (let i = 0; i < 20; i++) await google.start({ returnTo: '/' }, from);
+      await expect(google.start({ returnTo: '/' }, from)).rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+      });
+      await expect(limits.consume('loginPerIp', from.ip)).resolves.toBeUndefined();
     });
   });
 
