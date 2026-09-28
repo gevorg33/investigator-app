@@ -3285,7 +3285,7 @@ pnpm --filter admin-web test assistant
 ---
 
 ### T-062 — Google OAuth sign-in
-- **Status:** IN_PROGRESS
+- **Status:** DONE — 2026-09-29. Google sign-in (Authorization Code + PKCE, server-side exchange, JWKS-verified ID token) with account linking only on verified addresses on both sides, first sign-in gated on the registration documents, sign-in methods and a findable sign-out (PR #92). Real Google round trip — new account and connecting to an existing one — done by the owner 2026-09-29
 - **Priority:** P1
 - **Depends on:** T-005, T-021
 - **Risk:** HIGH
@@ -3328,7 +3328,7 @@ Session and data
 - [x] Account deletion revokes the linked identity
 
 Verification
-- [ ] Browser-verified end to end: new account, existing-account link, denial at the consent
+- [x] Browser-verified end to end: new account, existing-account link, denial at the consent
       screen, and callback with a tampered `state`
 
 **Validation**
@@ -4492,7 +4492,7 @@ pnpm --filter api test cache
 ---
 
 ### T-082 — Jobs carry and restore their workspace
-- **Status:** TODO — with the first queue (BullMQ) or outbox dispatcher, whichever lands first
+- **Status:** IN_PROGRESS
 - **Priority:** P1
 - **Depends on:** T-075
 - **Risk:** HIGH
