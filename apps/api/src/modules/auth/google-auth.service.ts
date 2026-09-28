@@ -66,7 +66,8 @@ export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string' || value.length > 512) return '/';
   if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/';
   // Control characters and backslashes have no place in a path we send someone to.
-  return /[\u0000-\u001f\\]/.test(value) ? '/' : value;
+  const unsafe = [...value].some((ch) => ch.charCodeAt(0) < 0x20 || ch === '\\');
+  return unsafe ? '/' : value;
 }
 
 const sameSecret = (a: string, b: string): boolean => {

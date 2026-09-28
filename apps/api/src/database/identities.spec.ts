@@ -138,15 +138,21 @@ describe('oauth attempts', () => {
     await sql.end();
   });
 
-  const insert = (over: Record<string, unknown>) =>
-    sql`INSERT INTO oauth_attempts ${sql({
-      provider: 'GOOGLE',
-      intent: 'SIGN_IN',
-      state_hash: randomUUID(),
-      nonce_hash: 'n',
-      expires_at: new Date(Date.now() + 60_000),
-      ...over,
-    } as Record<string, never>)}`;
+  const insert = (
+    over: {
+      intent?: 'SIGN_IN' | 'LINK';
+      user_id?: string;
+      signup_token_hash?: string;
+      provider_account_id?: string;
+      signup_expires_at?: Date;
+    } = {},
+  ) => sql`
+    INSERT INTO oauth_attempts (provider, intent, state_hash, nonce_hash, expires_at, user_id,
+                                signup_token_hash, provider_account_id, signup_expires_at)
+    VALUES ('GOOGLE', ${over.intent ?? 'SIGN_IN'}, ${randomUUID()}, 'n',
+            ${new Date(Date.now() + 60_000)}, ${over.user_id ?? null},
+            ${over.signup_token_hash ?? null}, ${over.provider_account_id ?? null},
+            ${over.signup_expires_at ?? null})`;
 
   it('goes with the account that started a link', () => {
     const [fk] = getTableConfig(oauthAttempts).foreignKeys;
