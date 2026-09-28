@@ -3,7 +3,8 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from './schema';
-import { userIdentities, users } from './schema';
+import { getTableConfig } from 'drizzle-orm/pg-core';
+import { oauthAttempts, userIdentities, users } from './schema';
 import { testPool } from '../../test/db';
 
 /**
@@ -124,5 +125,65 @@ describe('external identity linking', () => {
       where: (t, { eq }) => eq(t.userId, userId),
     });
     expect(rows).toHaveLength(0);
+  });
+});
+
+/** A trip to Google and back (T-062): what its row holds to, whoever writes it. */
+describe('oauth attempts', () => {
+  let sql: postgres.Sql;
+  beforeAll(() => {
+    sql = testPool({ role: 'owner' });
+  });
+  afterAll(async () => {
+    await sql.end();
+  });
+
+  const insert = (
+    over: {
+      intent?: 'SIGN_IN' | 'LINK';
+      user_id?: string;
+      signup_token_hash?: string;
+      provider_account_id?: string;
+      signup_expires_at?: Date;
+    } = {},
+  ) => sql`
+    INSERT INTO oauth_attempts (provider, intent, state_hash, nonce_hash, expires_at, user_id,
+                                signup_token_hash, provider_account_id, signup_expires_at)
+    VALUES ('GOOGLE', ${over.intent ?? 'SIGN_IN'}, ${randomUUID()}, 'n',
+            ${new Date(Date.now() + 60_000)}, ${over.user_id ?? null},
+            ${over.signup_token_hash ?? null}, ${over.provider_account_id ?? null},
+            ${over.signup_expires_at ?? null})`;
+
+  it('goes with the account that started a link', () => {
+    const [fk] = getTableConfig(oauthAttempts).foreignKeys;
+    const ref = fk!.reference();
+    expect([
+      ref.columns.map((c) => c.name),
+      getTableConfig(ref.foreignTable).name,
+      fk!.onDelete,
+    ]).toEqual([['user_id'], 'users', 'cascade']);
+  });
+
+  it('names an account for a link, and only for a link', async () => {
+    const [user] = await sql<{ id: string }[]>`
+      INSERT INTO users (email) VALUES (${`oauth-${randomUUID()}@example.test`}) RETURNING id`;
+    await expect(insert({ intent: 'LINK' })).rejects.toMatchObject({
+      constraint_name: 'oauth_attempts_link_has_user',
+    });
+    await expect(insert({ user_id: user!.id })).rejects.toMatchObject({
+      constraint_name: 'oauth_attempts_link_has_user',
+    });
+    await insert({ intent: 'LINK', user_id: user!.id });
+  });
+
+  it('holds a waiting sign-up whole, or not at all', async () => {
+    await expect(insert({ signup_token_hash: 'h' })).rejects.toMatchObject({
+      constraint_name: 'oauth_attempts_signup_complete',
+    });
+    await insert({
+      signup_token_hash: randomUUID(),
+      provider_account_id: 'sub',
+      signup_expires_at: new Date(Date.now() + 60_000),
+    });
   });
 });

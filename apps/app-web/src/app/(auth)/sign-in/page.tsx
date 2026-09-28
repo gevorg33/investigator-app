@@ -2,23 +2,31 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AuthCard } from '@/components/auth-card';
+import { GoogleButton, OrDivider } from '@/components/auth/google-button';
 import { SignInForm } from '@/components/auth/sign-in-form';
 import { Alert, AlertContent, AlertTitle } from '@/components/ui/alert';
 import { getT } from '@/i18n/server';
-import { getAccount } from '@/lib/api/server';
+import { getAccount, serverApi } from '@/lib/api/server';
 import { safeNext } from '@/lib/safe-next';
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getT())('auth.sign_in.title') };
 }
 
-type Search = Promise<{ next?: string; reset?: string; verified?: string }>;
+type Search = Promise<{ next?: string; reset?: string; verified?: string; google?: string }>;
+
+/** What the Google callback may say it went wrong with (T-062); anything else says nothing. */
+const GOOGLE_FAILURES = ['denied', 'failed', 'unverified', 'exists'] as const;
 
 export default async function SignInPage({ searchParams }: { searchParams: Search }) {
-  const { next, reset, verified } = await searchParams;
+  const { next, reset, verified, google } = await searchParams;
   const target = safeNext(next);
   if ((await getAccount()) !== null) redirect(target);
-  const t = await getT();
+  const [t, providers] = await Promise.all([
+    getT(),
+    serverApi<{ google: boolean }>('/auth/providers'),
+  ]);
+  const failure = GOOGLE_FAILURES.find((f) => f === google);
   const notice =
     reset === 'done'
       ? t('auth.sign_in.reset_done')
@@ -33,6 +41,19 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
             <AlertTitle>{notice}</AlertTitle>
           </AlertContent>
         </Alert>
+      )}
+      {failure !== undefined && (
+        <Alert variant="destructive">
+          <AlertContent>
+            <AlertTitle>{t(`auth.google.${failure}`)}</AlertTitle>
+          </AlertContent>
+        </Alert>
+      )}
+      {providers!.google && (
+        <>
+          <GoogleButton label={t('auth.google.continue')} next={target} />
+          <OrDivider label={t('auth.google.or')} />
+        </>
       )}
       <SignInForm next={target} />
       <div className="grid gap-1 text-sm">

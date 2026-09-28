@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { getT } from '@/i18n/server';
 import { NavLinks } from './nav-links';
+import { SignOut } from './sign-out';
 
 /**
  * The workspace frame (responsive-design). Authored for the phone first: content, and a bottom
  * bar with every primary destination that respects the home indicator. From `md` up, the same
- * destinations move to a sidebar and the bar goes. Full height is `dvh`, so mobile browser
+ * destinations move to a sidebar and the bar goes, with signing out at its foot — on a phone the bar
+ * has no room for it, and the Account page offers it instead (T-062). Full height is `dvh`, so mobile browser
  * chrome never cuts off the bottom.
  */
 export async function AppShell({
@@ -40,6 +42,7 @@ export async function AppShell({
         <nav aria-label={t('shell.nav.label')}>
           <NavLinks layout="rail" />
         </nav>
+        <SignOut label={t('shell.sign_out')} className="mt-auto" />
       </aside>
 
       <main id="content" tabIndex={-1} className="min-w-0 flex-1 pb-bottom-nav md:pb-0">

@@ -1,0 +1,8 @@
+# Findings gitleaks raised that were checked and are not secrets. One line per finding, by its
+# fingerprint (commit:file:rule:line) — never a file or a rule wholesale, so the scan still sees
+# everything else, including a real secret later written to the same file.
+#
+# T-062: a stand-in for Google's access token in a spec — the fake reply the test's Google gives,
+# used to assert the token is never kept. Not a credential. The value was changed in a later
+# commit; this names only the commit that introduced it.
+a56a0cca3bf74ebe245f45afabd3f702424fdf96:apps/api/src/modules/auth/auth-oauth.service.spec.ts:generic-api-key:104

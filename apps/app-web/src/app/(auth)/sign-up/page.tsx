@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AuthCard } from '@/components/auth-card';
+import { GoogleButton, OrDivider } from '@/components/auth/google-button';
 import { SignUpForm } from '@/components/auth/sign-up-form';
 import { getLocale, getT } from '@/i18n/server';
 import { getAccount, serverApi } from '@/lib/api/server';
@@ -22,11 +23,20 @@ export default async function SignUpPage({
   const [t, { locale }] = await Promise.all([getT(), getLocale()]);
   // What registration requires is the API's to say (legal.policy.ts), in the reader's language
   // where translated — the ids posted back record exactly what was shown.
-  const documents =
-    (await serverApi<LegalDocument[]>(`/legal/required?for=registration&locale=${locale}`)) ?? [];
+  const [documents, providers] = await Promise.all([
+    serverApi<LegalDocument[]>(`/legal/required?for=registration&locale=${locale}`),
+    serverApi<{ google: boolean }>('/auth/providers'),
+  ]);
   return (
     <AuthCard title={t('auth.sign_up.title')}>
-      <SignUpForm documents={documents} next={target} />
+      {providers!.google && (
+        <>
+          {/* The documents are shown after Google, before the account exists (T-062). */}
+          <GoogleButton label={t('auth.google.continue')} next={target} />
+          <OrDivider label={t('auth.google.or')} />
+        </>
+      )}
+      <SignUpForm documents={documents ?? []} next={target} />
       <p className="flex flex-wrap items-center gap-x-2 text-sm">
         <span className="text-text-muted">{t('auth.sign_up.have_account')}</span>
         <Link

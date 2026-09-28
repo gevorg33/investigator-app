@@ -4,16 +4,16 @@ title: Signing in, verifying your email, resetting your password and managing se
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-27
+updated: 2026-09-28
 source_of_truth: docs
 implementation_status: implemented
 related_code:
   - apps/api/src/modules/account
   - apps/app-web
   - apps/api/src/modules/auth
-tags: [account, sign-in, password, email-verification, sessions, security]
+tags: [account, sign-in, google, password, email-verification, sessions, security]
 ---
 
 # Account access and security
@@ -84,6 +84,13 @@ an active session does not need the password again.
 
 You will need to sign in with the new password afterwards.
 
+## How do I sign out?
+
+Choose **Sign out** — at the bottom of the menu on a computer or tablet, or at the top of
+**Account** on a phone. It signs this device out of the platform. If you signed in with Google,
+you stay signed in to Google itself; the next time anyone chooses **Continue with Google** here,
+Google asks which account to use.
+
 ## Where can I see the devices that are signed in?
 
 Under **Account → Where you are signed in**. Each session shows the browser and operating system
@@ -95,7 +102,7 @@ recognise a session. It never shows anything that could be used to sign in.
 
 ## How do I sign out a device I do not recognise?
 
-Press **Sign out** next to it. It stops working immediately rather than at the end of some
+Press **Sign out that device** next to it. It stops working immediately rather than at the end of some
 countdown, so a revoked session cannot be used again even seconds later.
 
 If you see a session you cannot account for, sign it out and change your password. Changing
@@ -131,6 +138,32 @@ while. It protects accounts from having passwords guessed at speed.
 
 Waiting clears it. If you cannot recall the password, a reset is faster than continuing to
 guess.
+
+## Can I sign in with Google?
+
+Yes. Choose **Continue with Google** on the sign-in or sign-up page. Google asks you to choose an
+account; the platform receives who you are and your email address, nothing else, and then signs you
+in with its own session — Google does not stay involved.
+
+- **The first time**, you are shown the address Google confirmed and the documents everyone accepts
+  when they join. Your account is created once you accept them, and needs no password.
+- **If you already have an account with the same address**, and both Google and this platform have
+  confirmed it, Google is connected to it and you are signed in.
+- **If Google has not confirmed the address**, it cannot be used here — confirm it with Google, or
+  use your email and a password.
+- **If an account already uses the address but it was never confirmed here**, sign in with your
+  email and password first, then connect Google from your account.
+
+If you cancel on Google's screen, nothing changes.
+
+## How do I connect or disconnect Google?
+
+In **Account → Sign-in methods**. **Connect Google** takes you to Google to choose the account;
+any Google account can be connected, whatever its address. **Disconnect Google** asks first.
+
+You cannot disconnect Google if it is the only way you sign in — you would be locked out. Add a
+password first with **Forgot your password?** on the sign-in page; the link goes to your account's
+address.
 
 ## Where does signing in take me?
 

@@ -79,3 +79,25 @@ export class ResetPasswordDto {
   @MaxLength(200, { message: 'error.validation.password.too_long' })
   password!: string;
 }
+
+/**
+ * Completing a first sign-in with Google (T-062): the documents registration requires, and the
+ * screen's language and time zone. No address and no password — the address is the one Google
+ * confirmed, held server-side with the sign-up; there is no password to set.
+ */
+export class CompleteGoogleSignupDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsString({ each: true })
+  @Length(36, 36, { each: true })
+  acceptedDocumentIds?: string[];
+
+  @IsOptional()
+  @IsIn(KNOWLEDGE_LOCALES)
+  locale?: KnowledgeLocale;
+
+  @IsOptional()
+  @IsTimeZone()
+  timezone?: string;
+}

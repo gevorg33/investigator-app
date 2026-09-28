@@ -48,6 +48,10 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     note: 'default_tenant_id is a preference, never an authority (T-075)',
   },
   user_identities: { class: 'identity' },
+  oauth_attempts: {
+    class: 'identity',
+    note: 'A sign-in with a provider, before any session or workspace exists (T-062).',
+  },
   user_tokens: { class: 'identity' },
   user_staff_scopes: { class: 'identity' },
   user_consents: {

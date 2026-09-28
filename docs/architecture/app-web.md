@@ -666,6 +666,25 @@ registers, or a retry of both, meets that limit; the API process is new each run
 starts from zero. Traces, screenshots and both servers' logs land in
 `e2e/.output/` (gitignored), which CI uploads when the step fails.
 
+## Sign in with Google (T-062)
+
+Sign-in and sign-up offer **Continue with Google** when `GET /auth/providers` says Google is
+configured: a plain GET form to `/api/v1/auth/google/start`, carrying `next`, because the trip is a
+top-level navigation. The API's callback brings the reader back to `/session/start` (signed in),
+`/sign-up/google` (a first sign-in, which accepts the registration documents there), `/sign-in?google=…`
+or `/account?google=…#sign-in` (what went wrong, or that Google was connected). **Account → Sign-in
+methods** shows whether a password is set and which Google account is connected, and connects or
+disconnects it. The flow, and why the callback leaves by a page rather than a redirect:
+`google-sign-in.md`.
+
+**Signing out** (`SignOut`) sits at the foot of the sidebar from `md` up, and at the top of the
+Account page on a phone, where the bottom bar has no room for a sixth item. It ends this device's
+session through `POST /auth/logout` and loads sign-in afresh. It signs out of the platform only: a
+Google account stays signed in to Google, whose account chooser asks again next time.
+
+Locally, the `api` entry in `.claude/launch.json` loads `.env.local` (`--env-file-if-exists`), where
+the Google credentials live; values it sets itself win.
+
 ## Not built here
 
 - A theme toggle — the system setting decides until a user asks otherwise.

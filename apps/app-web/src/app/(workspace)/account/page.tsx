@@ -6,6 +6,8 @@ import { ProfileSection } from '@/components/account/profile-section';
 import { RolesSection } from '@/components/account/roles-section';
 import { AccountSection } from '@/components/account/section';
 import { SessionsSection } from '@/components/account/sessions-section';
+import { SignInMethods } from '@/components/account/sign-in-methods';
+import { SignOut } from '@/components/shell/sign-out';
 import { TimeZoneForm } from '@/components/account/time-zone-form';
 import { LanguageChoice } from '@/components/language-choice';
 import { Page } from '@/components/page';
@@ -25,7 +27,13 @@ export async function generateMetadata(): Promise<Metadata> {
  *
  * Working in an agency, the agencies section leads to that agency's profile and colours (T-094).
  */
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  /** `google`: how connecting Google went, when the callback brings the reader back (T-062). */
+  searchParams?: Promise<{ google?: string }>;
+} = {}) {
+  const { google } = (await searchParams) ?? {};
   const [t, { locale }, account, outstanding, workspaces] = await Promise.all([
     getT(),
     getLocale(),
@@ -46,6 +54,8 @@ export default async function AccountPage() {
   ] as const;
   return (
     <Page title={t('nav.account')}>
+      {/* On a phone the bottom bar has no room for it; from md the sidebar's foot has it. */}
+      <SignOut label={t('shell.sign_out')} className="mt-2 md:hidden" />
       {outstanding.length > 0 && (
         <AccountSection id="legal" title={t('account.legal.title')}>
           <LegalOutstandingForm documents={outstanding} />
@@ -93,6 +103,7 @@ export default async function AccountPage() {
       >
         <TimeZoneForm current={account!.timezone} />
       </AccountSection>
+      <SignInMethods outcome={google} />
       <SessionsSection account={account!} locale={locale} />
     </Page>
   );

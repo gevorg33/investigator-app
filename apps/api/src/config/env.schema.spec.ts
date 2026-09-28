@@ -146,3 +146,57 @@ describe('env validation', () => {
     });
   });
 });
+
+describe('Google sign-in settings (T-062)', () => {
+  const google = {
+    GOOGLE_OAUTH_CLIENT_ID: 'id.apps.googleusercontent.com',
+    GOOGLE_OAUTH_CLIENT_SECRET: 'not-a-real-secret',
+    GOOGLE_OAUTH_REDIRECT_URI: 'http://localhost:3001/api/v1/auth/google/callback',
+  };
+
+  it('is optional: none of the three is fine, and so are all three', () => {
+    expect(validateEnv(valid).GOOGLE_OAUTH_CLIENT_ID).toBeUndefined();
+    expect(validateEnv({ ...valid, ...google })).toMatchObject(google);
+    // An empty value, as .env.example has, counts as unset.
+    expect(
+      validateEnv({ ...valid, GOOGLE_OAUTH_CLIENT_ID: '' }).GOOGLE_OAUTH_CLIENT_ID,
+    ).toBeUndefined();
+  });
+
+  it.each(Object.keys(google))('refuses the others without %s', (missing) => {
+    expect(() => validateEnv({ ...valid, ...google, [missing]: '' })).toThrow(
+      new RegExp(`${missing} is required when any GOOGLE_OAUTH_ variable is set`),
+    );
+  });
+
+  it.each([
+    ['another path', 'http://localhost:3001/api/v1/auth/callback'],
+    ['a query', 'http://localhost:3001/api/v1/auth/google/callback?x=1'],
+    ['a fragment', 'http://localhost:3001/api/v1/auth/google/callback#x'],
+    ['something that is not a URL', 'not a url'],
+  ])('refuses a callback with %s', (_label, uri) => {
+    expect(() => validateEnv({ ...valid, ...google, GOOGLE_OAUTH_REDIRECT_URI: uri })).toThrow(
+      /GOOGLE_OAUTH_REDIRECT_URI must be an absolute URL ending \/api\/v1\/auth\/google\/callback/,
+    );
+  });
+
+  it('insists on https outside development and test', () => {
+    const cloud = {
+      CLOUDINARY_CLOUD_NAME: 'c',
+      CLOUDINARY_API_KEY: 'k',
+      CLOUDINARY_API_SECRET: 's',
+      CLOUDINARY_FOLDER: 'investigator/staging',
+      TRUSTED_PROXIES: 'loopback',
+      NODE_ENV: 'staging',
+    };
+    expect(() => validateEnv({ ...valid, ...cloud, ...google })).toThrow(/over https/);
+    expect(
+      validateEnv({
+        ...valid,
+        ...cloud,
+        ...google,
+        GOOGLE_OAUTH_REDIRECT_URI: 'https://app.example.test/api/v1/auth/google/callback',
+      }).GOOGLE_OAUTH_REDIRECT_URI,
+    ).toBe('https://app.example.test/api/v1/auth/google/callback');
+  });
+});

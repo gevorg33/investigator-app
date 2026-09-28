@@ -33,6 +33,24 @@ function isProxy(entry: string): boolean {
   return bits >= 1 && bits <= (family === 4 ? 32 : 128);
 }
 
+/** Where Google sends the browser back to (T-062): the API's own callback route. */
+export const GOOGLE_CALLBACK_PATH = '/api/v1/auth/google/callback';
+
+function isGoogleCallback(env: {
+  NODE_ENV: string;
+  GOOGLE_OAUTH_REDIRECT_URI?: string | undefined;
+}) {
+  let url: URL;
+  try {
+    url = new URL(env.GOOGLE_OAUTH_REDIRECT_URI!);
+  } catch {
+    return false;
+  }
+  const secure =
+    url.protocol === 'https:' || env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
+  return secure && url.pathname === GOOGLE_CALLBACK_PATH && url.search === '' && url.hash === '';
+}
+
 export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
@@ -60,6 +78,13 @@ export const EnvSchema = z
     CLOUDINARY_API_SECRET: optionalText,
     CLOUDINARY_FOLDER: z.string().min(1).default('investigator/development'),
 
+    // Sign in with Google (T-062). Optional: without them the API offers no Google sign-in, and says
+    // so at /auth/providers. All three or none — checked below.
+    GOOGLE_OAUTH_CLIENT_ID: optionalText,
+    GOOGLE_OAUTH_CLIENT_SECRET: optionalText,
+    // Registered with Google exactly, and matched exactly: the one callback, never a pattern.
+    GOOGLE_OAUTH_REDIRECT_URI: optionalText,
+
     // The hops in front of the API whose X-Forwarded-For is believed (T-138): Caddy, and app-web's
     // server for its own calls. Unset trusts nobody, which is right only with nothing in front.
     TRUSTED_PROXIES: z
@@ -72,6 +97,28 @@ export const EnvSchema = z
       }),
   })
   .superRefine((env, ctx) => {
+    const google = [
+      'GOOGLE_OAUTH_CLIENT_ID',
+      'GOOGLE_OAUTH_CLIENT_SECRET',
+      'GOOGLE_OAUTH_REDIRECT_URI',
+    ] as const;
+    if (google.some((name) => env[name]) && !google.every((name) => env[name])) {
+      for (const name of google.filter((n) => !env[n])) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: `${name} is required when any GOOGLE_OAUTH_ variable is set`,
+        });
+      }
+    }
+    if (env.GOOGLE_OAUTH_REDIRECT_URI !== undefined && !isGoogleCallback(env)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_OAUTH_REDIRECT_URI'],
+        message: `GOOGLE_OAUTH_REDIRECT_URI must be an absolute URL ending ${GOOGLE_CALLBACK_PATH}, over https outside development`,
+      });
+    }
+
     if (env.NODE_ENV !== 'staging' && env.NODE_ENV !== 'production') return;
 
     for (const name of [

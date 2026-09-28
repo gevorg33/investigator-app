@@ -55,6 +55,12 @@ describe('the app shell', () => {
       expect(within(nav).getAllByRole('listitem')[3]).toHaveTextContent('Assistant');
       expect(within(nav).getByRole('button', { name: 'Assistant' })).toBeInTheDocument();
     }
+    // Signing out sits at the sidebar's foot; the phone bar has no room, and Account offers it.
+    const aside = rail.closest('aside')!;
+    expect(
+      within(aside).getByRole('button', { name: catalogs.en.shell.sign_out }),
+    ).toBeInTheDocument();
+    expect(within(bar).queryByRole('button', { name: catalogs.en.shell.sign_out })).toBeNull();
     expect(screen.getByText('Beside the content').previousElementSibling).toBe(
       screen.getByRole('main'),
     );

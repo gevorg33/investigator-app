@@ -348,3 +348,15 @@ export interface GeneralSection {
   version: number;
   values: { onboardingDismissed: boolean };
 }
+
+/** How the reader can sign in (T-062): a password or not, and each connected identity. */
+export interface SignInMethods {
+  password: boolean;
+  identities: Array<{
+    id: string;
+    provider: 'GOOGLE';
+    email: string | null;
+    createdAt: string;
+    lastUsedAt: string | null;
+  }>;
+}
