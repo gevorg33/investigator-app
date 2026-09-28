@@ -677,6 +677,11 @@ methods** shows whether a password is set and which Google account is connected,
 disconnects it. The flow, and why the callback leaves by a page rather than a redirect:
 `google-sign-in.md`.
 
+**Signing out** (`SignOut`) sits at the foot of the sidebar from `md` up, and at the top of the
+Account page on a phone, where the bottom bar has no room for a sixth item. It ends this device's
+session through `POST /auth/logout` and loads sign-in afresh. It signs out of the platform only: a
+Google account stays signed in to Google, whose account chooser asks again next time.
+
 Locally, the `api` entry in `.claude/launch.json` loads `.env.local` (`--env-file-if-exists`), where
 the Google credentials live; values it sets itself win.
 

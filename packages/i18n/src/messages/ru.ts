@@ -18,6 +18,7 @@ export const ru: Catalog = {
     review: 'Посмотреть',
     agency_setup: 'Агентство «{name}» ещё не настроено.',
     finish: 'Завершить',
+    sign_out: 'Выйти',
   },
 
   nav: {

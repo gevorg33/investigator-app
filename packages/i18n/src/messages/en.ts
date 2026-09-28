@@ -20,6 +20,7 @@ export const en = {
     review: 'Review',
     agency_setup: '{name} is not set up yet.',
     finish: 'Finish',
+    sign_out: 'Sign out',
   },
   nav: {
     home: 'Home',

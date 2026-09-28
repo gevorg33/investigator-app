@@ -447,6 +447,10 @@ describe('the application routes', () => {
       signedIn([legalDocument()]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
+      // On a phone the Account tab is where signing out lives; from md the sidebar has it.
+      expect(
+        screen.getByRole('button', { name: catalogs.en.shell.sign_out }).closest('form'),
+      ).toHaveClass('md:hidden');
       expect(sections()).toEqual([
         'legal',
         'profile',

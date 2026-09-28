@@ -19,6 +19,7 @@ export const hy: Catalog = {
     review: 'Դիտել',
     agency_setup: '«{name}» գործակալությունը դեռ կարգավորված չէ։',
     finish: 'Ավարտել',
+    sign_out: 'Դուրս գալ',
   },
 
   nav: {

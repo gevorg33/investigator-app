@@ -84,6 +84,13 @@ an active session does not need the password again.
 
 You will need to sign in with the new password afterwards.
 
+## How do I sign out?
+
+Choose **Sign out** — at the bottom of the menu on a computer or tablet, or at the top of
+**Account** on a phone. It signs this device out of the platform. If you signed in with Google,
+you stay signed in to Google itself; the next time anyone chooses **Continue with Google** here,
+Google asks which account to use.
+
 ## Where can I see the devices that are signed in?
 
 Under **Account → Where you are signed in**. Each session shows the browser and operating system
