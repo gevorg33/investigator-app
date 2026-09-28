@@ -102,7 +102,7 @@ recognise a session. It never shows anything that could be used to sign in.
 
 ## How do I sign out a device I do not recognise?
 
-Press **Sign out** next to it. It stops working immediately rather than at the end of some
+Press **Sign out that device** next to it. It stops working immediately rather than at the end of some
 countdown, so a revoked session cannot be used again even seconds later.
 
 If you see a session you cannot account for, sign it out and change your password. Changing

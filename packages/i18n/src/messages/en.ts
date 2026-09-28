@@ -887,7 +887,7 @@ export const en = {
       unknown_device: 'Unknown device',
       last_used: 'Last used {when}',
       signed_in: 'Signed in on {date}',
-      sign_out_other: 'Sign out',
+      sign_out_other: 'Sign out that device',
       sign_out_here: 'Sign out on this device',
     },
     legal: {

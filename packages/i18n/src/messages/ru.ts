@@ -896,7 +896,7 @@ export const ru: Catalog = {
       unknown_device: 'Неизвестное устройство',
       last_used: 'Последняя активность: {when}',
       signed_in: 'Вход выполнен {date}',
-      sign_out_other: 'Выйти',
+      sign_out_other: 'Выйти на том устройстве',
       sign_out_here: 'Выйти на этом устройстве',
     },
     legal: {

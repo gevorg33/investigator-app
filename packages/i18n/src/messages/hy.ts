@@ -895,7 +895,7 @@ export const hy: Catalog = {
       unknown_device: 'Անհայտ սարք',
       last_used: 'Վերջին ակտիվությունը՝ {when}',
       signed_in: 'Մուտք է գործվել {date}',
-      sign_out_other: 'Դուրս գալ',
+      sign_out_other: 'Դուրս գալ այդ սարքից',
       sign_out_here: 'Դուրս գալ այս սարքից',
     },
     legal: {
