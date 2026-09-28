@@ -133,7 +133,7 @@ the first launch market is chosen (#18). Nothing in the product was changed on t
 
 **Verify:** After T-062 ships, the sign-in flow completes and a session cookie is set.
 
-**Status:** ⬜ Pending
+**Status:** ✅ Done — credentials added 2026-09-28. Verified in T-062: `/auth/providers` reports Google configured, and Google accepts the client and the `localhost:3001` callback (its account chooser opens; no `redirect_uri_mismatch`). The production redirect URI still needs adding when the domain exists (#8)
 
 ---
 
@@ -169,7 +169,7 @@ the link the API issues stops working after five minutes. Note that nothing is s
 malware scanner exists (T-065) — until then, check that the upload completes and that asking
 for a link is refused while the scan is pending.
 
-**Status:** ⬜ Pending
+**Status:** 🟡 Credentials added 2026-09-28 (owner) — not yet exercised against Cloudinary; the next media task verifies them
 
 ---
 
@@ -194,7 +194,7 @@ Full checklist: [`infrastructure/caddy/dns-and-email.md`](infrastructure/caddy/d
 
 **Verify:** A test message from each domain passes SPF, DKIM and DMARC at a major provider.
 
-**Status:** ⬜ Pending
+**Status:** 🟡 Resend key added 2026-09-28 (owner). Sending still goes through the development transport — a Resend transport is not built yet, and the domain's DNS records (SPF, DKIM, DMARC) are still to confirm
 
 ---
 
@@ -236,7 +236,7 @@ embeddings. They are searchable by text only. With the key set, the next
 chunks, so it costs cents. Knowledge-base text is written by the platform and contains no personal
 data.
 
-**Status:** ⬜ Pending
+**Status:** 🟡 Key added 2026-09-28 (owner) — not yet exercised; the first task that embeds or answers with OpenAI verifies it
 
 ---
 

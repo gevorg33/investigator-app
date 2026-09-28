@@ -858,6 +858,27 @@ export const en = {
       act_investigator: 'Investigator',
       verify_first: 'Confirm your email address first — then you can add this.',
     },
+    sign_in: {
+      title: 'Sign-in methods',
+      password: 'Password',
+      password_set: 'Set',
+      password_unset: 'Not set. To add one, use “Forgot your password?” on the sign-in page.',
+      google: 'Google account',
+      google_connected: 'Connected as {email}',
+      google_none: 'Not connected',
+      connect: 'Connect Google',
+      disconnect: 'Disconnect Google',
+      disconnect_title: 'Disconnect Google?',
+      disconnect_body:
+        'You will no longer be able to sign in with this Google account. You can connect it again at any time.',
+      disconnect_confirm: 'Disconnect',
+      keep: 'Keep it',
+      linked: 'Google is connected. You can sign in with it from now on.',
+      taken:
+        'That Google account is connected to another account, or this one already has a Google account.',
+      failed: 'Connecting Google did not work. Try again.',
+      denied: 'Connecting Google was cancelled.',
+    },
     sessions: {
       title: 'Where you are signed in',
       this_device: 'This device',
@@ -880,6 +901,20 @@ export const en = {
     email: 'Email',
     password: 'Password',
     password_hint: 'At least 12 characters.',
+    google: {
+      continue: 'Continue with Google',
+      or: 'or with your email',
+      denied: 'Signing in with Google was cancelled. Nothing was changed.',
+      failed: 'Signing in with Google did not work. Try again.',
+      unverified:
+        'Google has not confirmed this address, so it cannot be used here. Confirm it with Google, or use your email and a password.',
+      exists:
+        'An account already uses this address. Sign in with your email and password, then connect Google from your account.',
+      signup_title: 'Create your account with Google',
+      signup_intro: 'Your account will use {email}, which Google has confirmed.',
+      signup_expired: 'This sign-up has expired or was already used. Start again from sign-in.',
+      start_again: 'Back to sign in',
+    },
     sign_in: {
       title: 'Sign in',
       submit: 'Sign in',
@@ -1040,6 +1075,10 @@ export const en = {
         limit: 'You can keep up to 20 saved searches. Delete one to save another.',
       },
       cursor: { invalid: 'This list has changed. Start again from the first page.' },
+      identity: {
+        last_method:
+          'Set a password before disconnecting Google, or you would have no way to sign in.',
+      },
       display_name: {
         blank: 'Enter your name.',
         locked: 'Your name cannot change while verification is under review or approved.',

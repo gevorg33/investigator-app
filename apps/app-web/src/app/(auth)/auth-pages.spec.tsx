@@ -29,6 +29,8 @@ describe('the signed-out screens', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    // Google sign-in (T-062) is off unless a test turns it on.
+    api.on('GET /auth/providers', 200, { google: false });
   });
 
   it('frame one column, with the language choosable before anything else is read', async () => {
@@ -61,6 +63,8 @@ describe('the sign-in page', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    // Google sign-in (T-062) is off unless a test turns it on.
+    api.on('GET /auth/providers', 200, { google: false });
   });
 
   it('sends someone already signed in straight on, never off-site', async () => {
@@ -102,6 +106,8 @@ describe('the sign-up page', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    // Google sign-in (T-062) is off unless a test turns it on.
+    api.on('GET /auth/providers', 200, { google: false });
   });
 
   it('sends someone already signed in home', async () => {
@@ -139,6 +145,8 @@ describe('the pages email links open', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    // Google sign-in (T-062) is off unless a test turns it on.
+    api.on('GET /auth/providers', 200, { google: false });
   });
 
   it('check-email explains what happens next, and offers to send again', async () => {
@@ -184,6 +192,8 @@ describe('the way back through signing in and up (T-158)', () => {
   beforeEach(() => {
     request.reset();
     api.install();
+    // Google sign-in (T-062) is off unless a test turns it on.
+    api.on('GET /auth/providers', 200, { google: false });
   });
 
   it('keeps it when a reader chooses to create an account instead of signing in', async () => {
