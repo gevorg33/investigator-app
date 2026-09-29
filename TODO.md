@@ -1936,11 +1936,11 @@ pnpm --filter api test legal-hold retention
 ---
 
 ### T-036 — Notifications
-- **Status:** IN_PROGRESS — core built and validated 2026-09-30; **awaiting owner approval** of the gated parts below before DONE
+- **Status:** DONE — 2026-09-30 (core; see the scope split). Approved by the owner 2026-09-30: the RLS policies, the unsubscribe link's authority, the provisional retention periods
 - **Priority:** P1
 - **Depends on:** T-006, T-082
 - **Risk:** MEDIUM
-- **Human approval required:** Yes, on three AGENTS.md gates the core reached — two new RLS policies (`own_notifications`, `own_preferences`); a signed unsubscribe link that acts as its person without a session; retention periods for the two tables (`retention.md`, provisional)
+- **Human approval required:** Yes, on three AGENTS.md gates the core reached — two new RLS policies (`own_notifications`, `own_preferences`); a signed unsubscribe link that acts as its person without a session; retention periods for the two tables (`retention.md`, provisional). Approved 2026-09-30
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/notifications/**, common/mail/**, common/jobs (queue, envelopes), migration 0033, table registry, isolation tests, packages/i18n (`email`), docs
 
