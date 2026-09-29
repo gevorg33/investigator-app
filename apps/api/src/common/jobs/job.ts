@@ -21,7 +21,7 @@ export interface JobEnvelope<P = unknown> {
 }
 
 /** Queues by latency class and blast radius (background-jobs): one per kind of work. */
-export const QUEUES = ['events'] as const;
+export const QUEUES = ['events', 'notifications'] as const;
 export type QueueName = (typeof QUEUES)[number];
 
 /**
@@ -93,4 +93,31 @@ export function envelopeFor<P>(
     membershipId: context?.membershipId ?? null,
     payload,
   };
+}
+
+/**
+ * An envelope for a **system** job — no workspace, run in the audited system context — for work
+ * that spans workspaces by nature: deciding who an event concerns (T-036). Never built from input:
+ * a caller names the command and its references, and the runner still audits the crossing.
+ */
+export function systemEnvelope<P>(command: string, key: string, payload: P): JobEnvelope<P> {
+  return {
+    jobId: `${command}-${key}`,
+    key,
+    command,
+    tenantId: null,
+    userId: null,
+    membershipId: null,
+    payload,
+  };
+}
+
+/** An envelope for work in a named person's workspace — read from the database, re-read when it runs. */
+export function envelopeAs<P>(
+  as: { tenantId: string; userId: string; membershipId: string },
+  command: string,
+  key: string,
+  payload: P,
+): JobEnvelope<P> {
+  return { jobId: `${command}-${key}`, key, command, ...as, payload };
 }

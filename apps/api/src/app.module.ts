@@ -30,6 +30,7 @@ import { AiSessionsModule } from './modules/ai-sessions/ai-sessions.module';
 import { AiModule } from './modules/ai/ai.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     AiSessionsModule,
     KnowledgeModule,
     ReviewsModule,
+    NotificationsModule,
     AiModule,
     HealthModule,
   ],

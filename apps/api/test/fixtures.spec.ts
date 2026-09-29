@@ -84,6 +84,10 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
   knowledge_conflicts: 'the knowledge sync`s conflict detection (T-016)',
   saved_mission_searches:
     'the mission browse service, which saves one only after checking it as a browse would (T-054)',
+  notifications:
+    'the notification delivery job, in the recipient`s restored context — one made by hand would be an event nobody produced (T-036)',
+  notification_preferences:
+    'the preferences service or an unsubscribe, as the person themselves (T-036)',
   job_runs:
     'the job runner, in the same transaction as the job`s effect — one written by hand would mark work done that never ran (T-082)',
 };

@@ -232,6 +232,13 @@
       "when": 1790628650094,
       "tag": "0032_jobs_carry_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790719962442,
+      "tag": "0033_add_notifications",
+      "breakpoints": true
     }
   ]
 }

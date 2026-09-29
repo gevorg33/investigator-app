@@ -156,7 +156,7 @@ export class AuthService {
       return row;
     });
 
-    await this.issueToken(created.id, 'EMAIL_VERIFICATION', created.email, ctx);
+    await this.issueToken(created, 'EMAIL_VERIFICATION', ctx);
   }
 
   /**
@@ -172,7 +172,7 @@ export class AuthService {
     });
     if (!user || user.emailVerifiedAt !== null) return;
 
-    await this.issueToken(user.id, 'EMAIL_VERIFICATION', user.email, ctx);
+    await this.issueToken(user, 'EMAIL_VERIFICATION', ctx);
   }
 
   async login(email: string, password: string, ctx: RequestContext): Promise<AuthResult> {
@@ -344,11 +344,11 @@ export class AuthService {
    * live until it expires, and the oldest leaked inbox still wins.
    */
   private async issueToken(
-    userId: string,
+    user: { id: string; email: string; locale: string },
     purpose: TokenPurpose,
-    email: string,
     ctx: RequestContext,
   ): Promise<void> {
+    const userId = user.id;
     await this.db
       .update(userTokens)
       .set({ consumedAt: new Date() })
@@ -370,7 +370,9 @@ export class AuthService {
 
     const path = purpose === 'EMAIL_VERIFICATION' ? 'verify-email' : 'reset-password';
     await this.mailer.send({
-      to: email,
+      to: user.email,
+      // The account's own language — the one it signed up in, or chose since (T-036).
+      locale: user.locale,
       template: purpose === 'EMAIL_VERIFICATION' ? 'email_verification' : 'password_reset',
       // The token travels here and nowhere else. It is not audited and not logged.
       variables: {
@@ -405,7 +407,7 @@ export class AuthService {
       return;
     }
 
-    await this.issueToken(user.id, 'PASSWORD_RESET', user.email, ctx);
+    await this.issueToken(user, 'PASSWORD_RESET', ctx);
   }
 
   /**

@@ -129,7 +129,14 @@ export class AssignmentTransitionService {
       aggregateType: 'assignment',
       aggregateId: assignment.id,
       eventType: 'assignment.status_changed',
-      payload: { assignmentId: assignment.id, from: assignment.status, to, version: moved.version },
+      // Who moved it, as a kind — never who: notifications (T-036) say different things to each.
+      payload: {
+        assignmentId: assignment.id,
+        from: assignment.status,
+        to,
+        version: moved.version,
+        actorKind: by.kind,
+      },
       correlationId: meta.correlationId ?? null,
     });
 

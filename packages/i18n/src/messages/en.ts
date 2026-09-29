@@ -997,6 +997,71 @@ export const en = {
   legal: {
     version: 'Version {version}, in force from {date}',
   },
+  email: {
+    footer: {
+      transactional: 'You are receiving this because of your account on Investigator.',
+      activity:
+        'You are receiving this because of activity on your Investigator account. To stop these emails: {unsubscribe}',
+      not_you: 'If this was not you, you can ignore this message.',
+    },
+    unsubscribe: {
+      title: 'Stop these emails?',
+      body: 'You will stop getting emails about activity on your account in this workspace. You will still see it in the app, and still get the emails your account needs, such as password resets.',
+      confirm: 'Stop these emails',
+      done: 'Done. You will not get these emails any more.',
+      invalid: 'This link does not work. Your email settings have not changed.',
+    },
+    email_verification: {
+      subject: 'Confirm your email address',
+      body: 'Confirm that this address is yours to finish setting up your account. The link works once and expires.',
+      action: 'Confirm my email address',
+    },
+    password_reset: {
+      subject: 'Reset your password',
+      body: 'Someone asked to reset the password for this account. If it was you, choose a new one — the link works once and expires. If it was not, your password stays as it is.',
+      action: 'Choose a new password',
+    },
+    workspace_invitation: {
+      subject: 'You are invited to join {workspace}',
+      body: '{workspace} has invited you to work with them on Investigator.',
+      action: 'See the invitation',
+    },
+    mission_published: {
+      subject: 'Your mission is published',
+      body: 'A reviewer approved your mission. Investigators can now see it and send you quotes.',
+      action: 'Open the mission',
+    },
+    mission_returned: {
+      subject: 'Your mission needs changes',
+      body: 'A reviewer asked for changes before your mission can be published. Their note is on the mission.',
+      action: 'See what to change',
+    },
+    mission_rejected: {
+      subject: 'Your mission was not accepted',
+      body: 'A reviewer could not accept your mission. The reason is on the mission.',
+      action: 'Open the mission',
+    },
+    assignment_new: {
+      subject: 'You have a new assignment',
+      body: 'A customer hired you. Accept or decline the assignment in the app.',
+      action: 'Open Investigator',
+    },
+    assignment_accepted: {
+      subject: 'Your investigator accepted the assignment',
+      body: 'The investigator you hired accepted the assignment and can start work.',
+      action: 'Open the mission',
+    },
+    assignment_declined: {
+      subject: 'Your investigator declined the assignment',
+      body: 'The investigator you hired declined the assignment. What happens next is shown on the mission.',
+      action: 'Open the mission',
+    },
+    assignment_report_ready: {
+      subject: 'Your report is ready',
+      body: 'The investigator submitted their report. Review it in the app.',
+      action: 'Open the mission',
+    },
+  },
   error: {
     reference: 'Reference: {ref}',
     auth: {

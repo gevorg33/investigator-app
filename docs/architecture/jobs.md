@@ -27,10 +27,15 @@ worker process                ▼
   with are the membership's on the day it runs.
 - All three ids, or none: a job with none is a **system job** and runs in the audited system context
   (`jobs.run_system`), in no workspace.
-- `key` is what the job is idempotent on, **within its workspace**. `jobId` is BullMQ's id — stable
-  for the same work, so enqueueing it twice is one job while Redis still knows the first.
+- `key` is what the job is idempotent on, **within its workspace** — not within its command. Two
+  jobs in the same workspace with the same key are one job: the second is a duplicate and does
+  nothing. A job queued *from* another job needs a key of its own (T-036: a fan-out queued by
+  `outbox.deliver` is keyed `<event>-fan-out`, not `<event>`). `jobId` is BullMQ's id — stable for
+  the same work, so enqueueing it twice is one job while Redis still knows the first.
 - Producers build one with `envelopeFor(command, key, payload)`, which takes the ids from the
-  current context and never from an argument.
+  current context and never from an argument. `systemEnvelope` makes a system job, and
+  `envelopeAs` a job for a named member — only the system context uses it, to hand work to the
+  person it concerns (T-036), and the runner re-reads that membership as it does any other.
 
 ## Running a job — `JobRunner`
 
@@ -76,9 +81,11 @@ assignment) has no producer, and its delivery runs as a system job.
 ### Acting on an event
 
 `OutboxDeliveryHandler` hands the event to every `EventSubscriber` for its type, with the job's
-transaction. There are none yet. A task that needs one (notifications, T-036; moderation, T-051)
-writes a class with `eventType` and `handle(event, tx)` and adds it to `EVENT_SUBSCRIBERS` in
-`worker.ts`. It runs in the producer's workspace and reaches the database only through `tx`.
+transaction. A task that needs one writes a class with `eventType` and `handle(event, tx)` and adds
+it to `EVENT_SUBSCRIBERS` in `worker.ts`. It runs in the producer's workspace and reaches the
+database only through `tx`. The first are the notification triggers (T-036, `notifications.md`):
+they only queue a job on the `notifications` queue, because who else an event concerns is not
+something the producer's context can read.
 
 ### Adding a job type
 

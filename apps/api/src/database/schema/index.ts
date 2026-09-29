@@ -7,6 +7,7 @@ export * from './legal';
 export * from './quotes';
 export * from './media';
 export * from './missions';
+export * from './notifications';
 export * from './outbox';
 export * from './profiles';
 export * from './service-areas';

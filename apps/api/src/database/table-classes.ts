@@ -221,6 +221,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     },
     note: "written in the producer's workspace, read and marked by the dispatcher in the system context (T-082)",
   },
+  notifications: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: "the recipient's own, in the workspace it was delivered to; private to them, like ai_sessions (T-036)",
+  },
+  notification_preferences: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: "a person's own choices in a workspace; private to them (T-036)",
+  },
   job_runs: {
     class: 'tenant_owned',
     columns: ['tenant_id'],
