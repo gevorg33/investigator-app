@@ -298,14 +298,27 @@ export class InvitationsService {
     return row;
   }
 
-  /** The email: a link carrying the token, and the agency's name. The token goes nowhere else. */
+  /**
+   * The email: a link carrying the token, and the agency's name. The token goes nowhere else. In the
+   * invitee's language if they have an account, otherwise the inviter's — the likelier to be shared
+   * than English (T-036).
+   */
   private async send(email: string, token: string): Promise<void> {
     const [agency] = await this.db
       .select({ name: tenants.name })
       .from(tenants)
       .where(eq(tenants.id, THIS_WORKSPACE));
+    const [invitee] = await this.db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.email, email));
+    const [inviter] = await this.db
+      .select({ locale: users.locale })
+      .from(users)
+      .where(eq(users.id, sql`app_current_user()`));
     await this.mailer.send({
       to: email,
+      locale: invitee?.locale ?? inviter?.locale,
       template: 'workspace_invitation',
       variables: {
         workspace: agency!.name!,

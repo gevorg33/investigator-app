@@ -33,6 +33,9 @@ function isProxy(entry: string): boolean {
   return bits >= 1 && bits <= (family === 4 ? 32 : 128);
 }
 
+/** An email address, as loosely as a sender or an override needs checking. */
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 /** Where Google sends the browser back to (T-062): the API's own callback route. */
 export const GOOGLE_CALLBACK_PATH = '/api/v1/auth/google/callback';
 
@@ -78,6 +81,19 @@ export const EnvSchema = z
     CLOUDINARY_API_SECRET: optionalText,
     CLOUDINARY_FOLDER: z.string().min(1).default('investigator/development'),
 
+    // Sending mail (T-036, ACTIONS-FOR-ME #5): Resend, from one sender — `mail.` once the domain is
+    // verified (ADR-0002), `onboarding@resend.dev` in Resend's sandbox. Without a key the
+    // development transport logs, and refuses to run in production.
+    RESEND_API_KEY: optionalText,
+    MAIL_FROM_ADDRESS: optionalText.refine((v) => v === undefined || EMAIL.test(v), {
+      message: 'MAIL_FROM_ADDRESS must be an email address',
+    }),
+    // Resend's sandbox delivers only to the account's own address: when set, every email goes there
+    // instead of to its recipient. For development and review only — refused in production.
+    REVIEW_REQUEST_EMAIL_OVERRIDE: optionalText.refine((v) => v === undefined || EMAIL.test(v), {
+      message: 'REVIEW_REQUEST_EMAIL_OVERRIDE must be an email address',
+    }),
+
     // Where this deployment's job queues live in Redis (T-082): environments sharing a Redis keep
     // apart by prefix. Letters, digits, dash and underscore — BullMQ joins keys with colons.
     JOB_QUEUE_PREFIX: z
@@ -117,6 +133,21 @@ export const EnvSchema = z
           message: `${name} is required when any GOOGLE_OAUTH_ variable is set`,
         });
       }
+    }
+    if (env.RESEND_API_KEY !== undefined && env.MAIL_FROM_ADDRESS === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MAIL_FROM_ADDRESS'],
+        message: 'MAIL_FROM_ADDRESS is required when RESEND_API_KEY is set',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.REVIEW_REQUEST_EMAIL_OVERRIDE !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REVIEW_REQUEST_EMAIL_OVERRIDE'],
+        message:
+          "REVIEW_REQUEST_EMAIL_OVERRIDE must not be set in production: it would send everyone's mail to one inbox",
+      });
     }
     if (env.GOOGLE_OAUTH_REDIRECT_URI !== undefined && !isGoogleCallback(env)) {
       ctx.addIssue({

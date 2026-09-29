@@ -64,7 +64,10 @@ describe('the worker', () => {
       },
     });
     expect(await running).toBe(0);
-    expect(lines).toEqual(['worker: working events; dispatching the outbox', 'worker: stopping']);
+    expect(lines).toEqual([
+      'worker: working events, notifications; dispatching the outbox',
+      'worker: stopping',
+    ]);
     // The dispatcher entered the system context, and said so, once.
     const entered = await drizzle(ownerSql, { schema })
       .select()

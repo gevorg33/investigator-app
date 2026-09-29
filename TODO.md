@@ -1936,13 +1936,13 @@ pnpm --filter api test legal-hold retention
 ---
 
 ### T-036 — Notifications
-- **Status:** TODO
+- **Status:** IN_PROGRESS — core built and validated 2026-09-30; **awaiting owner approval** of the gated parts below before DONE
 - **Priority:** P1
 - **Depends on:** T-006, T-082
 - **Risk:** MEDIUM
-- **Human approval required:** No
+- **Human approval required:** Yes, on three AGENTS.md gates the core reached — two new RLS policies (`own_notifications`, `own_preferences`); a signed unsubscribe link that acts as its person without a session; retention periods for the two tables (`retention.md`, provisional)
 - **Owner agent:** backend-domain
-- **Affected:** apps/api/src/modules/notifications/**, workers
+- **Affected:** apps/api/src/modules/notifications/**, common/mail/**, common/jobs (queue, envelopes), migration 0033, table registry, isolation tests, packages/i18n (`email`), docs
 
 **Description**
 `NotificationsModule` per plan.md §13 — one of two modules with no task. Load-bearing: quote
@@ -1950,14 +1950,32 @@ received, report submitted, verification expiring and message received all depen
 
 **Tenancy (ADR-0011).** Notifications are tenant-scoped rows, delivered by jobs that restore their workspace context (T-082). They route to teams (T-086) and carry agency branding (T-084). A notification never names data from a workspace the recipient is not in.
 
+**Scope split (owner, 2026-09-29): core now.** Built: the two tables, per-recipient delivery jobs in
+the recipient's workspace, the centre's API, email through Resend, en/ru/hy templates, idempotency
+per (event, recipient, channel), unsubscribe, wired to today's mission and assignment status
+changes. Mail settings (owner): `RESEND_API_KEY`, `MAIL_FROM_ADDRESS` as the one sender,
+`REVIEW_REQUEST_EMAIL_OVERRIDE` for the sandbox only. Follow-ups: T-169 (centre screen and email
+settings), T-170 (browser push), T-171 (more events). Team routing (T-086) and agency branding
+(T-084) arrive with T-171's events, which are the first to need them. Design: `docs/architecture/notifications.md`.
+
 **Acceptance criteria**
-- [ ] Push, email and in-app centre; per-channel preferences
-- [ ] Templates localised for en/ru/hy; the recipient's locale is used, not the actor's
-- [ ] **Notification content reveals nothing sensitive** — "a new message" never the message,
-      never evidence content, never a signed URL (`audit-logging`)
-- [ ] Delivered through the outbox and BullMQ; idempotent per (event, recipient, channel)
-- [ ] Retry with backoff; permanent failures dead-letter and alert
-- [ ] Unsubscribe honoured for non-transactional; transactional sends from `mail.` per ADR-0002
+- [ ] Push, email and in-app centre; per-channel preferences — email and the centre's API built;
+      push is T-170, the centre's screen T-169
+- [x] Templates localised for en/ru/hy; the recipient's locale is used, not the actor's (account
+      mail too — invitations use the invitee's, else the inviter's)
+- [x] **Notification content reveals nothing sensitive** — a kind and a relative link, never
+      content; the email says no more than the row
+- [x] Delivered through the outbox and BullMQ; idempotent per (event, recipient, channel)
+- [ ] Retry with backoff; permanent failures dead-letter and alert — retry and dead letters by
+      T-082's runner; the alert is T-168
+- [x] Unsubscribe honoured for non-transactional (RFC 8058 one-click); transactional sends from
+      `mail.` per ADR-0002 — one sender, `MAIL_FROM_ADDRESS` (owner's choice); the domain's DNS is
+      ACTIONS-FOR-ME #5
+
+**Found in the work**
+- A job's key is unique per workspace, **not per command**: the fan-out, first keyed on the bare
+  event id, was silently a duplicate of the `outbox.deliver` that queued it. Keyed `<event>-fan-out`;
+  the rule is now in `jobs.md`, and the end-to-end spec through Redis failed on it first.
 
 **Validation**
 ```bash
@@ -7569,6 +7587,119 @@ and a metric or alert on the number of letters newer than a day. Prune letters a
 **Validation**
 ```bash
 pnpm --filter api test jobs
+```
+
+---
+
+### T-169 — The notification centre and email settings in the app
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-036
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/**, packages/i18n
+
+**Description**
+From T-036. The API is built (`docs/architecture/notifications.md`): list with cursor, unread
+count, mark one and all read, preferences. Add the centre to app-web — a bell with the unread count
+in the shell, a sheet on the phone and a popover from `md` up, each item linking to its `href` — and
+an "Emails" section in account settings with the one `activity` switch. Search the registries
+first (`component-discovery`). Once the switch exists, put back the pointer the unsubscribe page and
+the KB (`kb-customer-notifications`, `kb-investigator-notifications`) dropped: "you can turn them
+back on in your account".
+
+**Acceptance criteria**
+- [ ] Unread count in the shell; the centre lists, pages and marks read; empty state
+- [ ] Email switch reads and writes `PUT /notifications/preferences`
+- [ ] Phone first: sheet, 44 px targets, no horizontal scroll; en/ru/hy
+- [ ] Unsubscribe copy and KB articles point to the setting again
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web e2e
+```
+
+---
+
+### T-170 — Browser push notifications
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-036, T-169
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — VAPID keys are a new secret (ACTIONS-FOR-ME), and a new channel is a migration on the preferences CHECK
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/notifications/**, apps/app-web (service worker), migrations
+
+**Description**
+From T-036. Web Push for the responsive app (ADR-0009: the phone experience is the web app): a
+`push_subscriptions` table (tenant-owned, own user), a `push` channel in preferences, a
+`notifications.push` job beside `notifications.email`, keyed per (event, recipient, channel). The
+payload says what `notifications.md` allows an email to say — a kind and a link — and nothing more.
+
+**Acceptance criteria**
+- [ ] Subscribe and unsubscribe from the app; a gone subscription (410) is removed
+- [ ] One push per (event, recipient) whatever the retries; off by preference
+- [ ] Payload carries no content
+
+**Validation**
+```bash
+pnpm --filter api test notifications
+```
+
+---
+
+### T-171 — Notifications for quotes, messages, reports and expiring verification
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-036, and each event's producer — verification expiry (T-072); messaging, which has no task yet (plan.md §13)
+- **Risk:** MEDIUM
+- **Human approval required:** No, unless an event needs a new policy
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/notifications/**, producers' outbox events, packages/i18n
+
+**Description**
+From T-036. Only mission and assignment status changes notify today. Add: quote received
+(customer), quote accepted (investigator), new message (the other party — "a new message", never
+the message), verification expiring and expired (investigator). Each is a kind in `kinds.ts`, a
+template in the `email` namespace in en/ru/hy, and an outbox event its producer writes. Route
+agency work to the assigned team (T-086) where one exists, and carry the agency's name where
+branding allows (T-084).
+
+**Acceptance criteria**
+- [ ] Each event notifies the right party once, in their workspace and language
+- [ ] No template names content
+- [ ] KB articles list the new events
+
+**Validation**
+```bash
+pnpm --filter api test notifications
+```
+
+---
+
+### T-172 — A saved-search spec orders two saves by clock
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/search/mission-browse.service.spec.ts
+
+**Description**
+Found during T-036: `mission browse › saved searches › saves a browse under a name, lists it newest
+first, and deletes it` failed once in three full runs (2026-09-30) with the two saves in the other
+order. `listSaved` orders by `created_at DESC, id DESC`; two saves in the same microsecond tie and
+fall to the random id. Same shape as T-167. Give the spec distinct timestamps (or assert on the
+order the service promises for a tie) rather than relying on the clock; do not weaken the assertion.
+
+**Acceptance criteria**
+- [ ] The spec is deterministic, and still fails if the list is not newest first
+
+**Validation**
+```bash
+pnpm --filter api test mission-browse
 ```
 
 ---

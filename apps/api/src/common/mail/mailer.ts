@@ -2,12 +2,40 @@ import { Injectable, Logger } from '@nestjs/common';
 
 export const MAILER = Symbol('MAILER');
 
+/** Every email the platform sends, by the copy it uses (`email.<template>` in the catalogs). */
+export const MAIL_TEMPLATES = [
+  'email_verification',
+  'password_reset',
+  'workspace_invitation',
+  // Notifications (T-036): about the recipient's own missions and assignments, never their content.
+  'mission_published',
+  'mission_returned',
+  'mission_rejected',
+  'assignment_new',
+  'assignment_accepted',
+  'assignment_declined',
+  'assignment_report_ready',
+] as const;
+export type MailTemplate = (typeof MAIL_TEMPLATES)[number];
+
 export interface MailMessage {
   to: string;
   /** Template identifier, not a subject line — copy is translated at the transport. */
-  template: 'email_verification' | 'password_reset' | 'workspace_invitation';
+  template: MailTemplate;
   /** Substitutions. Carries the one-time link; never persisted, never audited. */
   variables: Record<string, string>;
+  /** The recipient's language (`users.locale`) — never the sender's. English when unknown. */
+  locale?: string | undefined;
+  /**
+   * Sends with the same key are one email at the provider (T-036): a job retried after the send
+   * succeeded but before its record committed does not mail twice.
+   */
+  idempotencyKey?: string | undefined;
+  /**
+   * For mail a person may stop (notifications): the one-click link, shown in the footer and sent
+   * as `List-Unsubscribe`. Absent for transactional mail, which the account itself requires.
+   */
+  unsubscribeUrl?: string | undefined;
 }
 
 export interface Mailer {

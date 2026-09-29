@@ -213,3 +213,49 @@ describe('job queue prefix (T-082)', () => {
     expect(() => validateEnv({ ...valid, JOB_QUEUE_PREFIX: prefix })).toThrow(/JOB_QUEUE_PREFIX/);
   });
 });
+
+describe('mail settings (T-036)', () => {
+  it('needs a sender with a Resend key, and not the other way round', () => {
+    expect(() => validateEnv({ ...valid, RESEND_API_KEY: 're_x' })).toThrow(
+      /MAIL_FROM_ADDRESS is required when RESEND_API_KEY is set/,
+    );
+    expect(
+      validateEnv({ ...valid, MAIL_FROM_ADDRESS: 'no-reply@mail.example.test' }).RESEND_API_KEY,
+    ).toBeUndefined();
+    expect(
+      validateEnv({
+        ...valid,
+        RESEND_API_KEY: 're_x',
+        MAIL_FROM_ADDRESS: 'no-reply@mail.example.test',
+      }),
+    ).toMatchObject({ RESEND_API_KEY: 're_x' });
+  });
+
+  it.each(['MAIL_FROM_ADDRESS', 'REVIEW_REQUEST_EMAIL_OVERRIDE'])(
+    'refuses a %s that is not an address',
+    (name) => {
+      expect(() => validateEnv({ ...valid, [name]: 'not an address' })).toThrow(
+        new RegExp(`${name} must be an email address`),
+      );
+    },
+  );
+
+  it('refuses the review override in production, where it would send everyone’s mail to one inbox', () => {
+    const prod = {
+      ...valid,
+      NODE_ENV: 'production',
+      CLOUDINARY_CLOUD_NAME: 'c',
+      CLOUDINARY_API_KEY: 'k',
+      CLOUDINARY_API_SECRET: 's',
+      CLOUDINARY_FOLDER: 'investigator/production',
+      TRUSTED_PROXIES: 'loopback',
+    };
+    expect(() => validateEnv({ ...prod, REVIEW_REQUEST_EMAIL_OVERRIDE: 'o@x.test' })).toThrow(
+      /REVIEW_REQUEST_EMAIL_OVERRIDE must not be set in production/,
+    );
+    expect(
+      validateEnv({ ...valid, REVIEW_REQUEST_EMAIL_OVERRIDE: 'o@x.test' })
+        .REVIEW_REQUEST_EMAIL_OVERRIDE,
+    ).toBe('o@x.test');
+  });
+});

@@ -189,12 +189,12 @@ degrade password-reset delivery.
 4. Leave the apex domain sending nothing.
 5. Copy the API key.
 
-**Where they go:** `.env.local` → `MAIL_PROVIDER_API_KEY`, `MAIL_FROM_ADDRESS`.
+**Where they go:** `.env.local` → `RESEND_API_KEY`, `MAIL_FROM_ADDRESS` (the one sender). In Resend's sandbox, `MAIL_FROM_ADDRESS=onboarding@resend.dev` and `REVIEW_REQUEST_EMAIL_OVERRIDE=<your Resend account's address>` — the sandbox delivers only there; never set the override in production (the API refuses to start).
 Full checklist: [`infrastructure/caddy/dns-and-email.md`](infrastructure/caddy/dns-and-email.md)
 
 **Verify:** A test message from each domain passes SPF, DKIM and DMARC at a major provider.
 
-**Status:** 🟡 Resend key added 2026-09-28 (owner). Sending still goes through the development transport — a Resend transport is not built yet, and the domain's DNS records (SPF, DKIM, DMARC) are still to confirm
+**Status:** 🟡 Resend key added 2026-09-28 (owner). The Resend transport is built (T-036) and the API picks it up — verified 2026-09-30 from the boot log (`Resend, every email redirected to the review address`). Still to do: set `MAIL_FROM_ADDRESS=onboarding@resend.dev` while in the sandbox if it is not already; verify `mail.<yourdomain>` in Resend and add its SPF, DKIM and DMARC; then switch `MAIL_FROM_ADDRESS` to it and remove `REVIEW_REQUEST_EMAIL_OVERRIDE`
 
 ---
 

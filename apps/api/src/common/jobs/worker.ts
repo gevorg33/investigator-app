@@ -2,6 +2,14 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { validateEnv } from '../../config/env.schema';
 import { DatabaseModule } from '../../database/database.module';
+import { MailModule } from '../mail/mail.module';
+import {
+  DeliverHandler,
+  FanOutHandler,
+  NOTIFYING_EVENTS,
+  NotificationTrigger,
+  SendEmailHandler,
+} from '../../modules/notifications/notification-jobs';
 import { AuthzModule } from '../authz/authz.module';
 import { DeadLetters } from './dead-letters';
 import { JOB_HANDLERS } from './job';
@@ -16,15 +24,23 @@ import { EVENT_SUBSCRIBERS, OutboxDeliveryHandler } from './outbox-delivery.hand
  * refuses to start as a role row-level security would not apply to, exactly as the API does.
  */
 @Module({
-  imports: [DatabaseModule, AuthzModule],
+  imports: [DatabaseModule, AuthzModule, MailModule],
   providers: [
-    // Each subscriber arrives with the task that needs it (T-036, T-051); there are none yet.
-    { provide: EVENT_SUBSCRIBERS, useValue: [] },
+    // What acts on events: notifications (T-036) — more arrive with the tasks that need them.
+    {
+      provide: EVENT_SUBSCRIBERS,
+      inject: [JobQueue],
+      useFactory: (queue: JobQueue) =>
+        NOTIFYING_EVENTS.map((e) => new NotificationTrigger(e, queue)),
+    },
     OutboxDeliveryHandler,
+    FanOutHandler,
+    DeliverHandler,
+    SendEmailHandler,
     {
       provide: JOB_HANDLERS,
-      inject: [OutboxDeliveryHandler],
-      useFactory: (delivery: OutboxDeliveryHandler) => [delivery],
+      inject: [OutboxDeliveryHandler, FanOutHandler, DeliverHandler, SendEmailHandler],
+      useFactory: (...handlers: unknown[]) => handlers,
     },
     JobRunner,
     DeadLetters,

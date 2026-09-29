@@ -18,6 +18,9 @@
   "references": [
     {
       "path": "../../packages/auth"
+    },
+    {
+      "path": "../../packages/i18n"
     }
   ]
 }

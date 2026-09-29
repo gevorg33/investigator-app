@@ -298,6 +298,16 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const jobRun = await id(owner`
     INSERT INTO job_runs (tenant_id, job_key, command)
     VALUES (${customer.tenantId}, ${randomUUID()}, 'probe') RETURNING id`);
+  // The customer's own notification and preference (T-036): nobody else — no other workspace,
+  // and no other member of theirs — may reach either.
+  const notification = await id(owner`
+    INSERT INTO notifications (tenant_id, recipient_id, event_id, kind, subject_type, subject_id, href)
+    VALUES (${customer.tenantId}, ${customer.userId}, ${event}, 'mission_published', 'mission',
+            ${mission}, ${`/missions/${mission}`}) RETURNING id`);
+  await owner`
+    INSERT INTO notification_preferences (tenant_id, user_id, category, channel, enabled)
+    VALUES (${customer.tenantId}, ${customer.userId}, 'activity', 'email', false)`;
+
   const deadLetter = await id(owner`
     INSERT INTO job_dead_letters (job_id, queue, command, tenant_id, user_id, membership_id, payload,
                                   error, attempts)
@@ -315,6 +325,9 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     rows: {
       audit_logs: entry,
       outbox_events: event,
+      notifications: notification,
+      // Keyed by its person (see KEY_COLUMN in the matrix).
+      notification_preferences: customer.userId,
       job_runs: jobRun,
       job_dead_letters: deadLetter,
       tenants: customer.tenantId,

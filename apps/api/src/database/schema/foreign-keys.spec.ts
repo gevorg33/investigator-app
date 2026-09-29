@@ -10,6 +10,7 @@ import { investigationNotes, investigationTasks } from './investigation-workspac
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
 import { missions, savedMissionSearches } from './missions';
+import { notificationPreferences, notifications } from './notifications';
 import { moneyDecisions, policyReviews } from './policy-reviews';
 import { investigatorProfiles } from './profiles';
 import { reviewTexts, reviews } from './reviews';
@@ -238,4 +239,23 @@ describe('saved mission searches (T-054)', () => {
       ]),
     );
   });
+});
+
+describe('notifications and their preferences', () => {
+  it.each([
+    ['notifications', notifications, 'recipient_id'],
+    ['notification_preferences', notificationPreferences, 'user_id'],
+  ] as Array<[string, PgTable, string]>)(
+    '%s go with their person, and never let a workspace be deleted from under them (T-036)',
+    (_name, table, person) => {
+      const fks = getTableConfig(table).foreignKeys.map((f) => ({
+        columns: f.reference().columns.map((c) => c.name),
+        target: f.reference().foreignTable,
+        onDelete: f.onDelete,
+      }));
+      // A notification is about its recipient and nobody else; retention.md removes it with them.
+      expect(fks).toContainEqual({ columns: [person], target: users, onDelete: 'cascade' });
+      expect(fks).toContainEqual({ columns: ['tenant_id'], target: tenants, onDelete: 'restrict' });
+    },
+  );
 });
