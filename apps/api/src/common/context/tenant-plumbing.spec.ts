@@ -124,6 +124,12 @@ describe('tenant isolation is not business-domain plumbing', () => {
       .map(({ path }) => path)
       .sort();
     expect(callers).toEqual([
+      // The jobs machinery (T-082, approved 2026-09-29): the outbox dispatcher, the one reader of
+      // the outbox; a job the system queued, which runs in no workspace; and recording a job that
+      // failed for good, which may have no workspace left to act in.
+      'common/jobs/dead-letters.ts',
+      'common/jobs/job-runner.ts',
+      'common/jobs/outbox-dispatcher.ts',
       'modules/assignments/assignments.service.ts',
       // Moderation staff deciding investigators' policy refusals (T-050, approved 2026-09-23).
       'modules/assignments/policy-refusal.service.ts',

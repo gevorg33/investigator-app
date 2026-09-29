@@ -288,6 +288,22 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       FROM roles r WHERE r.key = 'VIEWER' AND r.tenant_id IS NULL
     RETURNING id`;
 
+  // What the jobs machinery keeps (T-082): an event the customer produced, the record of a job run
+  // in their workspace, and a job that failed there — none of which another workspace may reach.
+  const event = await id(owner`
+    INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, payload, tenant_id, user_id,
+                               membership_id)
+    VALUES ('mission', ${mission}, 'mission.probe', '{}', ${customer.tenantId}, ${customer.userId},
+            ${customer.membershipId}) RETURNING id`);
+  const jobRun = await id(owner`
+    INSERT INTO job_runs (tenant_id, job_key, command)
+    VALUES (${customer.tenantId}, ${randomUUID()}, 'probe') RETURNING id`);
+  const deadLetter = await id(owner`
+    INSERT INTO job_dead_letters (job_id, queue, command, tenant_id, user_id, membership_id, payload,
+                                  error, attempts)
+    VALUES (${randomUUID()}, 'probe', 'probe', ${customer.tenantId}, ${customer.userId},
+            ${customer.membershipId}, '{}', 'probe', 1) RETURNING id`);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -298,6 +314,9 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     supplier,
     rows: {
       audit_logs: entry,
+      outbox_events: event,
+      job_runs: jobRun,
+      job_dead_letters: deadLetter,
       tenants: customer.tenantId,
       tenant_memberships: customer.membershipId,
       // membership_roles is keyed by its membership and role, not by an id (see KEY_COLUMN).

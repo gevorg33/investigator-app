@@ -12,6 +12,7 @@ import { TABLE_CLASSES, type TableClass } from './table-classes';
  * and this fails on a table whose database state does not match its class.
  */
 const PROTECTED: readonly TableClass[] = [
+  'system',
   'tenancy',
   'tenant_owned',
   'two_party',
@@ -24,7 +25,7 @@ const UNPROTECTED: Readonly<Record<TableClass, string>> = {
   platform:
     'the same rows for every workspace; the app holds SELECT and nothing else — except the ' +
     'staff-maintained tables, which are protected (T-053)',
-  system: 'outbox_events has no workspace column until T-082',
+  system: '',
   platform_record: '',
   postgis: 'owned by PostGIS, never written by the application',
   tenancy: '',

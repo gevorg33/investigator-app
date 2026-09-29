@@ -570,7 +570,9 @@ visibility fails *open*: the owner check returns early when it cannot see the wo
 | `reviews`, `review_texts` | Two-party + public projection | `parties_read`; `public_read` of a standing rating on a published profile, and of a text only while `PUBLISHED`; the customer writes the review, the supplier the response; staff moderate and remove under `PlatformContext` (T-037, `reviews.md`) |
 | `saved_mission_searches` | Tenant-owned, own user | As `ai_sessions`: `tenant_id = current AND user_id = current` — an investigator's saved browses are theirs alone, not even their agency owner's (T-054) |
 | `idempotency_keys` | Tenant-owned | **`tenant_id` joins the unique key.** A replay in another workspace must never return this workspace's response |
-| `outbox_events` | System | Written in the producer's context (`tenant_id` recorded for the worker); read only by the dispatcher's system context. **No policies yet:** the column arrives with T-082 |
+| `outbox_events` | System | Written in the producer's context — `tenant_id`, `user_id`, `membership_id` by DEFAULT, and the insert policy requires all three to be the context's own (T-082); read and marked only by the dispatcher's system context. NULL for an event the system produced |
+| `job_runs` | Tenant-owned | What a job did, keyed within its workspace — the idempotency record, written in the job's transaction. NULL workspace only for a system job, reached only under platform access (T-082) |
+| `job_dead_letters` | System | A job that failed for good, with the context it was queued in; written and read in the system context only (T-082) |
 | `audit_logs` | Platform record | **Built in T-080:** `tenant_id`, `membership_id` and `session_id`, filled by DEFAULT from the context — `AuditEvent` has no field for any of them, so a caller cannot name one. `workspace_read` (own workspace, or platform access) and `workspace_insert` (this workspace or none). Append-only grants unchanged; a row written outside a workspace cannot be read back by its writer, which is what append-only means here. `tenant_id` nullable (platform events have none). Holding `audit.read` is checked above this, in the service (T-078): a policy can see the settings, not the permission list |
 
 New tables are all tenant-owned unless they appear in this table:
@@ -662,6 +664,15 @@ worker → re-read membership + tenant status (fail if suspended/removed)
 - Retries and duplicates: every job is idempotent (`background-jobs`), keyed within its tenant.
 - System jobs that genuinely span workspaces (the outbox dispatcher, retention sweeps) run in an
   explicit system context. Each hands off per-tenant work in that tenant's context.
+
+> **Built in T-082** (migration 0032; `docs/architecture/jobs.md`). The envelope is
+> `{jobId, key, command, tenantId, userId, membershipId, payload}`; `JobRunner` re-reads the account,
+> the membership and the workspace (`WorkspaceResolver.forJob`), refuses the job if any has gone —
+> dead-lettered as `context_refused` — and otherwise runs it in `runInContext` inside one
+> transaction that also claims its key in `job_runs`. The outbox dispatcher enters the system
+> context once for its lifetime and hands each event off as an `outbox.deliver` job in its
+> producer's context. Every `this.db` in `common/jobs` sits inside `runInContext` or `asSystem`,
+> awaited there — `jobs.static.spec.ts` reads the code to hold it.
 
 ---
 

@@ -78,6 +78,13 @@ export const EnvSchema = z
     CLOUDINARY_API_SECRET: optionalText,
     CLOUDINARY_FOLDER: z.string().min(1).default('investigator/development'),
 
+    // Where this deployment's job queues live in Redis (T-082): environments sharing a Redis keep
+    // apart by prefix. Letters, digits, dash and underscore — BullMQ joins keys with colons.
+    JOB_QUEUE_PREFIX: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{1,64}$/, 'JOB_QUEUE_PREFIX is letters, digits, dash and underscore')
+      .default('investigator'),
+
     // Sign in with Google (T-062). Optional: without them the API offers no Google sign-in, and says
     // so at /auth/providers. All three or none — checked below.
     GOOGLE_OAUTH_CLIENT_ID: optionalText,

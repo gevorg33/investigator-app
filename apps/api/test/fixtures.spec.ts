@@ -84,6 +84,8 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
   knowledge_conflicts: 'the knowledge sync`s conflict detection (T-016)',
   saved_mission_searches:
     'the mission browse service, which saves one only after checking it as a browse would (T-054)',
+  job_runs:
+    'the job runner, in the same transaction as the job`s effect — one written by hand would mark work done that never ran (T-082)',
 };
 
 const domainTables = (): string[] => {

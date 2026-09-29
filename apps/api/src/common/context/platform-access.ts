@@ -35,7 +35,14 @@ export type RoutePurpose =
 export type AdHocPurpose = 'support.lookup';
 
 /** Work no person triggers. It has no actor, so the purpose is all the record there is. */
-export type SystemPurpose = 'assignment.create_from_payment' | 'knowledge.sync';
+export type SystemPurpose =
+  | 'assignment.create_from_payment'
+  | 'knowledge.sync'
+  // T-082: the outbox dispatcher, once for its lifetime; a job queued by the system; recording a
+  // job that failed for good.
+  | 'outbox.dispatch'
+  | 'jobs.run_system'
+  | 'jobs.dead_letter';
 
 export interface PlatformAccess {
   readonly scope: PlatformScope;

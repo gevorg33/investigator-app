@@ -225,6 +225,13 @@
       "when": 1790624250044,
       "tag": "0031_add_oauth_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790628650094,
+      "tag": "0032_jobs_carry_workspace",
+      "breakpoints": true
     }
   ]
 }
