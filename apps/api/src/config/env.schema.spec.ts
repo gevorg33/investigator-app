@@ -200,3 +200,16 @@ describe('Google sign-in settings (T-062)', () => {
     ).toBe('https://app.example.test/api/v1/auth/google/callback');
   });
 });
+
+describe('job queue prefix (T-082)', () => {
+  it('defaults to the platform’s own, and takes another for an environment sharing a Redis', () => {
+    expect(validateEnv(valid).JOB_QUEUE_PREFIX).toBe('investigator');
+    expect(validateEnv({ ...valid, JOB_QUEUE_PREFIX: 'staging_1' }).JOB_QUEUE_PREFIX).toBe(
+      'staging_1',
+    );
+  });
+
+  it.each(['has:colon', '', 'x'.repeat(65)])('refuses %j', (prefix) => {
+    expect(() => validateEnv({ ...valid, JOB_QUEUE_PREFIX: prefix })).toThrow(/JOB_QUEUE_PREFIX/);
+  });
+});

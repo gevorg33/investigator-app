@@ -3285,7 +3285,7 @@ pnpm --filter admin-web test assistant
 ---
 
 ### T-062 — Google OAuth sign-in
-- **Status:** IN_PROGRESS
+- **Status:** DONE — 2026-09-29. Google sign-in (Authorization Code + PKCE, server-side exchange, JWKS-verified ID token) with account linking only on verified addresses on both sides, first sign-in gated on the registration documents, sign-in methods and a findable sign-out (PR #92). Real Google round trip — new account and connecting to an existing one — done by the owner 2026-09-29
 - **Priority:** P1
 - **Depends on:** T-005, T-021
 - **Risk:** HIGH
@@ -3328,7 +3328,7 @@ Session and data
 - [x] Account deletion revokes the linked identity
 
 Verification
-- [ ] Browser-verified end to end: new account, existing-account link, denial at the consent
+- [x] Browser-verified end to end: new account, existing-account link, denial at the consent
       screen, and callback with a tampered `state`
 
 **Validation**
@@ -4492,7 +4492,7 @@ pnpm --filter api test cache
 ---
 
 ### T-082 — Jobs carry and restore their workspace
-- **Status:** TODO — with the first queue (BullMQ) or outbox dispatcher, whichever lands first
+- **Status:** DONE — 2026-09-29. `common/jobs`: envelope of ids, `JobRunner` (re-reads account, membership and workspace via `WorkspaceResolver.forJob`, restores the context, claims the key in `job_runs` in the job's transaction), dead letters in the system context, BullMQ 5.81.5 transport, outbox dispatcher (system context once for its life) and the worker process (`pnpm --filter api worker`). Migration 0032: outbox producer columns and policies, `job_runs`, `job_dead_letters`. Live-verified against local PostgreSQL and Redis. Docs: `docs/architecture/jobs.md`
 - **Priority:** P1
 - **Depends on:** T-075
 - **Risk:** HIGH
@@ -4513,9 +4513,9 @@ Outbox rows record the producer's tenant. The dispatcher runs in a system contex
 work per tenant.
 
 **Acceptance criteria**
-- [ ] **`outbox_events` gets its workspace column and its policies here** (deferred from T-077, which left it without any): written in the producer's context, read by the dispatcher's system context, and the table joins the isolation matrix
-- [ ] Tests: context restored; a removed member's job refused; retries and duplicates idempotent per workspace; failed jobs dead-lettered with their context
-- [ ] No worker path touches a scoped table outside a restored context (static spec over worker entry points)
+- [x] **`outbox_events` gets its workspace column and its policies here** (deferred from T-077, which left it without any): written in the producer's context, read by the dispatcher's system context, and the table joins the isolation matrix
+- [x] Tests: context restored; a removed member's job refused; retries and duplicates idempotent per workspace; failed jobs dead-lettered with their context
+- [x] No worker path touches a scoped table outside a restored context (static spec over worker entry points)
 
 **Validation**
 ```bash
@@ -7542,6 +7542,35 @@ whether the order is part of the claim (then the table needs a write-order colum
 ```bash
 pnpm --filter api test assignments-policy-refusal
 ```
+---
+
+### T-168 — Replay dead letters, and alert on their count
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-082
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — replay runs work again under the system context's reach
+- **Owner agent:** backend-domain + infra-devops
+- **Affected:** apps/api/src/common/jobs/**, monitoring
+
+**Description**
+From T-082. A job that fails for good lands in `job_dead_letters` with its context and payload, and
+nothing reads them yet. The `background-jobs` skill asks that a dead-letter queue alert on depth and
+that replay be one command after the fix. Add `pnpm --filter api jobs:replay <id>` (re-enqueues the
+envelope as it was, so the runner re-checks its context; a replayed letter is marked, never deleted)
+and a metric or alert on the number of letters newer than a day. Prune letters and `job_runs` per
+`retention.md`.
+
+**Acceptance criteria**
+- [ ] A replayed letter runs once, in its original context re-read, and is marked replayed
+- [ ] A letter whose context is still gone is refused again, not run
+- [ ] Dead-letter depth is visible to monitoring, with an alert threshold
+
+**Validation**
+```bash
+pnpm --filter api test jobs
+```
+
 ---
 
 ## Backlog

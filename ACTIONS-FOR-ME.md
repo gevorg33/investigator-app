@@ -649,6 +649,37 @@ can be discarded.
 
 **Status:** ⬜ Pending — not blocking, but it will keep breaking builds until done.
 
+
+---
+
+### 25. Run the job worker in staging and production — for the T-082 deploy
+
+**Why:** background work — delivering outbox events now, notifications and payments later — runs in
+a separate process, `node dist/worker.main.js` (`pnpm --filter api worker`), not inside the API.
+Without it running, events wait in the outbox (nothing is lost; they are delivered once it starts).
+The compose files for staging and production are deployment configuration, which the harness
+reserves for you.
+
+**What to add:** a service beside `api`, from the same image, same environment, no port:
+
+```yaml
+  worker:
+    image: <the api image>
+    command: ["node", "dist/worker.main.js"]
+    env_file: <the api's env file>
+    environment:
+      JOB_QUEUE_PREFIX: investigator-production   # investigator-staging on staging
+    depends_on: [postgres, redis]
+    restart: unless-stopped
+    stop_grace_period: 30s   # SIGTERM lets jobs in progress finish
+```
+
+`JOB_QUEUE_PREFIX` must differ between environments if they ever share a Redis.
+
+**Verify:** its log says `worker: working events; dispatching the outbox`; the outbox has no
+unpublished rows older than a few seconds; `job_dead_letters` stays empty.
+
+**Status:** ⬜ Pending — with the first staging deploy that includes T-082
 ---
 
 ## Already handled — do not do these

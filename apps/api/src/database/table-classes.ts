@@ -215,7 +215,26 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
 
   outbox_events: {
     class: 'system',
-    note: 'its tenant column arrives with T-082 (jobs restore context)',
+    columns: ['tenant_id'],
+    nullable: {
+      tenant_id: 'an event the system produced (a payment becoming an assignment) has no workspace',
+    },
+    note: "written in the producer's workspace, read and marked by the dispatcher in the system context (T-082)",
+  },
+  job_runs: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    nullable: {
+      tenant_id:
+        'a system job runs in no workspace; its rows are reached only under platform access',
+    },
+    note: 'what a job did, for idempotency (T-082)',
+  },
+  job_dead_letters: {
+    class: 'system',
+    columns: ['tenant_id'],
+    nullable: { tenant_id: 'a system job has no workspace' },
+    note: 'written and read in the system context only (T-082)',
   },
   audit_logs: {
     class: 'platform_record',

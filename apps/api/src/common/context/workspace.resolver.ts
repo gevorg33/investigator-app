@@ -7,6 +7,7 @@ import {
   tenantMemberships,
   tenants,
   userSessions,
+  users,
 } from '../../database/schema';
 import { AuthzService, type AuthzContext } from '../authz/authz.service';
 import type { Actor } from '../authz/contract';
@@ -61,6 +62,29 @@ export class WorkspaceResolver {
     return runAsUser(actor.userId, () =>
       this.usableAsUser(actor.userId, requested, actor.sessionId),
     );
+  }
+
+  /**
+   * The context a job may run in now (T-082): the one it was queued in, **re-read**. The job carries
+   * ids, never permissions; here the account must still be usable, the membership the one named and
+   * still ACTIVE, and the workspace still usable — or there is no context, and the job is refused.
+   * The permissions are the membership's today, not the day it was queued. A job has no session.
+   */
+  forJob(ids: {
+    userId: string;
+    tenantId: string;
+    membershipId: string;
+  }): Promise<ExecutionContext | undefined> {
+    return runAsUser(ids.userId, async () => {
+      const [account] = await this.db
+        .select({ status: users.status, deletedAt: users.deletedAt })
+        .from(users)
+        .where(eq(users.id, ids.userId));
+      if (account === undefined || account.deletedAt !== null) return undefined;
+      if (account.status === 'SUSPENDED' || account.status === 'DELETED') return undefined;
+      const found = await this.usableAsUser(ids.userId, ids.tenantId, '');
+      return found?.membershipId === ids.membershipId ? found : undefined;
+    });
   }
 
   private async resolveAsUser(
