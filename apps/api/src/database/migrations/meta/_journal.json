@@ -239,6 +239,13 @@
       "when": 1790719962442,
       "tag": "0033_add_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790753656173,
+      "tag": "0034_add_user_blocks",
+      "breakpoints": true
     }
   ]
 }

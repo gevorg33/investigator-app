@@ -890,6 +890,39 @@ export const en = {
       sign_out_other: 'Sign out that device',
       sign_out_here: 'Sign out on this device',
     },
+    blocks: {
+      title: 'People you blocked',
+      body: 'You and someone you block stop seeing each other’s missions and profiles in search, and cannot start new work together. They are not told. Work already under way is not ended.',
+      empty: 'You have not blocked anyone.',
+      customer: 'A customer',
+      source: {
+        profile: 'Blocked from their profile',
+        mission: 'Blocked from one of their missions',
+        assignment: 'Blocked from an assignment',
+      },
+      on: 'Blocked {date}',
+      unblock: 'Unblock',
+      profile: 'View profile',
+    },
+    block: {
+      menu: 'More actions',
+      action: {
+        investigator: 'Block this investigator',
+        customer: 'Block this customer',
+      },
+      investigator: {
+        title: 'Block this investigator?',
+        body: 'They will no longer appear in your search, and you will not be able to accept their quotes. They are not told. Work already under way with them is not ended — our team reviews it.',
+      },
+      customer: {
+        title: 'Block this customer?',
+        body: 'Their missions will no longer be shown to you, and your open quotes to them are withdrawn. They are not told. Work already under way with them is not ended — our team reviews it.',
+      },
+      confirm: 'Block',
+      keep: 'Cancel',
+      blocked: 'You blocked this investigator.',
+      live: 'Blocked. Your assignment with them continues until our team has reviewed it.',
+    },
     legal: {
       title: 'Documents to accept',
       body: 'A new version of these documents is in force. Read and accept them to keep using the parts of the platform they cover.',
@@ -1078,6 +1111,10 @@ export const en = {
       service_unavailable: 'This is not available right now. Try again later.',
     },
     validation: {
+      block: {
+        target: 'Choose one person to block.',
+        self: 'You cannot block yourself.',
+      },
       settings: {
         unknown: 'This setting does not exist here. Reload the page and try again.',
         boolean: 'Choose on or off.',
@@ -1186,6 +1223,7 @@ export const en = {
         already_quoted:
           'You have already quoted on this mission. Withdraw that quote to send a new one.',
         expiry_range: 'Choose an expiry between an hour and 90 days from now.',
+        blocked: 'You blocked this investigator. Unblock them to accept this quote.',
       },
       review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
       taxonomy: {

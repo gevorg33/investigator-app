@@ -29,7 +29,10 @@ export type RoutePurpose =
   | 'policy_review.resolve'
   | 'review.queue'
   | 'review.moderate'
-  | 'review.remove';
+  | 'review.remove'
+  // T-052: the blocks staff act on — those during an assignment under way, and the pattern of many.
+  | 'block.live_assignments'
+  | 'block.signals';
 
 /** A purpose with no fixed route behind it. These must say why, in words, every time. */
 export type AdHocPurpose = 'support.lookup';
@@ -42,7 +45,11 @@ export type SystemPurpose =
   // job that failed for good.
   | 'outbox.dispatch'
   | 'jobs.run_system'
-  | 'jobs.dead_letter';
+  | 'jobs.dead_letter'
+  // T-052: a person's block, followed through where their own workspace cannot reach — their open
+  // quotes to the person they block, and any assignment between the two, in whichever workspaces
+  // those are. A person triggers it; the purpose is still the whole of the reason.
+  | 'block.follow_through';
 
 export interface PlatformAccess {
   readonly scope: PlatformScope;

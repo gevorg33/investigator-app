@@ -20,6 +20,7 @@ import {
   somewhere,
   type Discoverable,
 } from '../../../test/search-fixtures';
+import { blockBetween } from '../../../test/block-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService } from '../../common/authz/authz.service';
@@ -118,6 +119,30 @@ describe('mission browse', () => {
       expect((await refusal(browse({}, customer))).code).toBe('FORBIDDEN');
       const suspended = { ...investigator.actor, status: 'SUSPENDED' as const };
       expect((await refusal(browse({}, suspended))).code).toBe('FORBIDDEN');
+    });
+  });
+
+  describe('blocks (T-052)', () => {
+    it.each([
+      ['its customer blocked the investigator', 'customer'],
+      ['the investigator blocked its customer', 'investigator'],
+    ])('leaves out a mission when %s, and nobody else’s', async (_, blocker) => {
+      const blocked = await posted(ownerDb, mine);
+      const kept = await posted(ownerDb, mine);
+      const [row] = await ownerDb
+        .select({ customerId: schema.missions.customerId })
+        .from(schema.missions)
+        .where(eq(schema.missions.id, blocked));
+      if (blocker === 'customer') {
+        await blockBetween(ownerSql, row!.customerId, investigator.actor.userId);
+      } else {
+        await blockBetween(ownerSql, investigator.actor.userId, row!.customerId);
+      }
+      expect(ids(await browse())).toEqual([kept]);
+      const other = await discoverable(ownerDb, { centre: somewhere(), radiusKm: 10 });
+      expect((await browse({}, other.actor)).items.map((i) => i.id).sort()).toEqual(
+        [blocked, kept].sort(),
+      );
     });
   });
 

@@ -10,6 +10,7 @@ import { investigationNotes, investigationTasks } from './investigation-workspac
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
 import { missions, savedMissionSearches } from './missions';
+import { userBlocks } from './blocks';
 import { notificationPreferences, notifications } from './notifications';
 import { moneyDecisions, policyReviews } from './policy-reviews';
 import { investigatorProfiles } from './profiles';
@@ -258,4 +259,28 @@ describe('notifications and their preferences', () => {
       expect(fks).toContainEqual({ columns: ['tenant_id'], target: tenants, onDelete: 'restrict' });
     },
   );
+});
+
+describe('blocks', () => {
+  const fks = getTableConfig(userBlocks).foreignKeys.map((f) => ({
+    columns: f.reference().columns.map((c) => c.name),
+    target: f.reference().foreignTable,
+    onDelete: f.onDelete,
+  }));
+
+  it.each(['blocker_id', 'blocked_id'])(
+    'go with either person — %s — since a block is about the two of them (T-052)',
+    (column) => {
+      expect(fks).toContainEqual({ columns: [column], target: users, onDelete: 'cascade' });
+    },
+  );
+
+  it('outlive the investigator profile they point to, and never hold a workspace in place', () => {
+    expect(fks).toContainEqual({
+      columns: ['blocked_profile_id'],
+      target: investigatorProfiles,
+      onDelete: 'set null',
+    });
+    expect(fks).toContainEqual({ columns: ['tenant_id'], target: tenants, onDelete: 'restrict' });
+  });
 });

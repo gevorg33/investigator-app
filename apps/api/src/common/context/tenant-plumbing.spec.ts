@@ -133,6 +133,9 @@ describe('tenant isolation is not business-domain plumbing', () => {
       'modules/assignments/assignments.service.ts',
       // Moderation staff deciding investigators' policy refusals (T-050, approved 2026-09-23).
       'modules/assignments/policy-refusal.service.ts',
+      // Blocking (T-052, approved 2026-09-30): following a block through to the blocker's quotes
+      // and any live assignment in other workspaces, and the two lists staff act on.
+      'modules/blocks/blocks.service.ts',
       // The knowledge-base sync, a system operation with no user (T-016, approved 2026-09-23).
       'modules/knowledge/knowledge-sync.service.ts',
       'modules/media/media.service.ts',

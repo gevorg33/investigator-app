@@ -31,6 +31,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { BlocksModule } from './modules/blocks/blocks.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     KnowledgeModule,
     ReviewsModule,
     NotificationsModule,
+    BlocksModule,
     AiModule,
     HealthModule,
   ],

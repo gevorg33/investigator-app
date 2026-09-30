@@ -2700,7 +2700,7 @@ pnpm --filter api test mission-moderation && pnpm --filter admin-web test
 ---
 
 ### T-052 — Block another user
-- **Status:** TODO
+- **Status:** DONE — 2026-09-30. Owner decisions 2026-09-30: enforced in the database through one narrow SECURITY DEFINER function, `app_blocked_users()` (the blocked set, never who blocked whom); this task covers the API, enforcement, the staff read routes and the app UI; reports, messaging and the staff console are follow-ups (T-173–T-175). Design: `docs/architecture/blocks.md`
 - **Priority:** P1
 - **Depends on:** T-011, T-036
 - **Risk:** MEDIUM
@@ -2721,41 +2721,47 @@ obligation.
 **Acceptance criteria**
 
 Core behaviour
-- [ ] Either party may block the other from a profile, a conversation, or a report flow
-- [ ] Blocked investigator no longer sees that customer's missions in discovery, and cannot
-      quote on them — enforced in the query, not by hiding in the UI (`investigator-discovery`)
-- [ ] Blocked customer is not matched with that investigator
-- [ ] No new conversation can be opened between the two
-- [ ] Blocks are **private** — the blocked party is not notified and cannot detect it from a
-      different response shape or timing
+- [x] Either party may block the other from a profile, a conversation, or a report flow — from a profile, a mission and an assignment; conversations and reports do not exist yet (T-174, T-173)
+- [x] Blocked investigator no longer sees that customer's missions in discovery, and cannot
+      quote on them — enforced in the query, not by hiding in the UI (`investigator-discovery`) —
+      by the `quoted_read` policy and a restrictive quote INSERT policy
+- [x] Blocked customer is not matched with that investigator — either way, in discovery's eligibility
+- [ ] No new conversation can be opened between the two — messaging does not exist yet (T-174)
+- [x] Blocks are **private** — the blocked party is not notified and cannot detect it from a
+      different response shape or timing — the row is unreadable to them; what they lose looks like
+      a mission they cannot see, and their withdrawn quotes like their own withdrawal
 
 Live assignments — the part that must not be got wrong
-- [ ] Blocking during a live assignment **does not sever the assignment**
+- [x] Blocking during a live assignment **does not sever the assignment**
 - [ ] It flags the assignment to staff, who resolve it: continue, reassign, or cancel with the
-      refund decided on its merits
-- [ ] **A test proves blocking cannot be used to escape delivery or payment obligations**
-- [ ] Communication required for an active assignment continues until staff resolve it, so the
-      dispute record stays intact
+      refund decided on its merits — flagged (`GET /block-review/live-assignments`, audited);
+      resolving it is T-175
+- [x] **A test proves blocking cannot be used to escape delivery or payment obligations** —
+      `assignments.service.spec.ts`, either side
+- [x] Communication required for an active assignment continues until staff resolve it, so the
+      dispute record stays intact — nothing on the assignment changes; messaging itself is T-174
 
 Reporting is separate
 - [ ] Block and report are distinct actions with distinct outcomes — block is "not this
-      person", report is "staff should look at this"
-- [ ] Blocking optionally offers to report; it never silently reports
-- [ ] Reports reach staff; the reporter is acknowledged so the route is visibly working
+      person", report is "staff should look at this" — reporting is T-173
+- [ ] Blocking optionally offers to report; it never silently reports — never reports; the offer
+      comes with T-173
+- [ ] Reports reach staff; the reporter is acknowledged so the route is visibly working — T-173
 
 Staff and signal
-- [ ] Staff can see blocks; many blocks against one account is a pattern worth surfacing
-- [ ] Block and unblock are audited with actor and timestamp
-- [ ] Blocks survive until removed; the user can see and manage their block list
+- [x] Staff can see blocks; many blocks against one account is a pattern worth surfacing —
+      `GET /block-review/signals` (3 or more, provisional); the console screen is T-175
+- [x] Block and unblock are audited with actor and timestamp
+- [x] Blocks survive until removed; the user can see and manage their block list
 
 Documentation (per `documentation-first`, in this task)
-- [ ] Customer and investigator knowledge-base articles explaining what blocking does and does
+- [x] Customer and investigator knowledge-base articles explaining what blocking does and does
       not do — especially that it does not end an assignment or an obligation
-- [ ] Release checklist §7 items satisfied
+- [ ] Release checklist §7 items satisfied — blocking is; in-app reporting is T-173
 
 **Validation**
 ```bash
-pnpm --filter api test blocks && pnpm --filter api test search-blocks
+pnpm --filter api test blocks && pnpm --filter api test search && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---
@@ -7700,6 +7706,142 @@ order the service promises for a tie) rather than relying on the clock; do not w
 **Validation**
 ```bash
 pnpm --filter api test mission-browse
+```
+
+---
+
+### T-173 — Report a person, profile, mission or assignment to staff
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-052
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a new staff queue under PlatformContext, and what a report may hold
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/reports/** (new), apps/app-web/**, apps/admin-web/**
+
+**Description**
+From T-052, and release checklist §7: in-app reporting on profiles, missions and assignments (and
+messages, with T-174). Distinct from blocking — report is "staff should look at this". A report
+reaches a staff queue (reason, reporter, subject), the reporter is acknowledged, and it never
+reveals the reporter to the reported. Blocking offers to report as well; it never reports silently.
+
+**Acceptance criteria**
+- [ ] Report from a profile, a mission and an assignment, with a reason; acknowledged
+- [ ] A staff queue under PlatformContext, audited; the reported person never learns who
+- [ ] The block dialog offers to report too; declining sends nothing
+- [ ] KB articles, en/ru/hy
+
+**Validation**
+```bash
+pnpm --filter api test reports && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-174 — Blocks in messaging
+- **Status:** BLOCKED — messaging has no task yet (plan.md §13)
+- **Priority:** P1
+- **Depends on:** T-052, messaging
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** the messaging module when it exists
+
+**Description**
+From T-052. With messaging: no new conversation between two people blocked either way
+(`app_blocked_users()` in its policy, as missions do); the thread for a live assignment stays
+open until staff resolve it, so the dispute record stays whole; block from a conversation.
+
+**Acceptance criteria**
+- [ ] No new conversation either way; an assignment's thread continues
+- [ ] Block from a conversation
+- [ ] The blocked party sees nothing different in shape or timing
+
+**Validation**
+```bash
+pnpm --filter api test messaging
+```
+
+---
+
+### T-175 — Staff screens for blocks, and resolving a flagged assignment
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-052
+- **Risk:** HIGH
+- **Human approval required:** Yes — resolving can reassign or cancel work with a refund (payment logic)
+- **Owner agent:** admin-web + backend-domain
+- **Affected:** apps/admin-web/**, apps/api/src/modules/blocks/**, assignments
+
+**Description**
+From T-052. The API lists blocks made during a live assignment (disputes staff) and accounts
+blocked by several people (enforcement staff). Add the console screens, and the resolution the
+first list exists for: continue, reassign, or cancel with the refund decided on its merits — a
+recorded decision that takes the assignment off the list. Tune `BLOCK_SIGNAL_THRESHOLD` (3,
+provisional) with trust and safety.
+
+**Acceptance criteria**
+- [ ] Both lists in the console, paged
+- [ ] A recorded resolution per flagged assignment, audited; refund through the payments module
+- [ ] Threshold confirmed by the owner
+
+**Validation**
+```bash
+pnpm --filter api test blocks && pnpm --filter @investigator/admin-web test
+```
+
+---
+
+### T-176 — A refresh that arrives is sometimes not applied under load
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web (every `router.refresh()` after a change)
+
+**Description**
+Found verifying T-052. With both Playwright projects running at once, `router.refresh()` after a
+block fetched a correct RSC payload (checked: it no longer held the card) yet the page kept the old
+list — 2 runs in 8 even with the page settled first; never with one project alone. T-052 no longer
+depends on it (the result shows at once), but every screen that refreshes after a change — sessions,
+unblock, agency forms — could show stale state the same way. Reproduce in isolation — the probe used: in
+`e2e/blocks.e2e.ts` with `BlockableListing` removed, log the page's requests and the RSC body after
+confirming, then count the cards after 3 s and after a reload — find the cause in Next 15.5 or our usage, and fix it
+where it lives.
+
+**Acceptance criteria**
+- [ ] A reproduction, and the cause named
+- [ ] Fixed, with an e2e run repeated enough to show it
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-177 — Armenian says “գործ” for a mission; the notification emails say “առաջադրանք”
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** localization
+- **Affected:** packages/i18n/src/messages/hy.ts (`email`), docs/knowledge-base/*/notifications-and-email.hy.md
+
+**Description**
+Found in T-052: the app calls a mission «գործ» (149 uses, the navigation included), but T-036's
+Armenian email templates and notification articles use «առաջադրանք». Use the app's word; the
+articles stay drafts for the native-speaker review (ACTIONS-FOR-ME #22).
+
+**Acceptance criteria**
+- [ ] One word for a mission across hy.ts and the hy knowledge base
+
+**Validation**
+```bash
+pnpm --filter @investigator/i18n test && python3 scripts/validate-knowledge-base.py
 ```
 
 ---

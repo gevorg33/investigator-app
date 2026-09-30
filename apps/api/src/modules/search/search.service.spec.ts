@@ -20,6 +20,7 @@ import * as schema from '../../database/schema';
 import { serviceAreas, taxonomyNodes } from '../../database/schema';
 import { SearchService } from './search.service';
 import { testPool } from '../../../test/db';
+import { blockBetween } from '../../../test/block-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
 describe('investigator discovery', () => {
@@ -115,6 +116,27 @@ describe('investigator discovery', () => {
         pricingModel: 'HOURLY',
       });
       expect(page.items).toEqual([]);
+    });
+  });
+
+  describe('blocks (T-052)', () => {
+    it.each([
+      ['the customer searching blocked them', 'customer'],
+      ['they blocked the customer searching', 'investigator'],
+    ])('never returns an investigator when %s — and only to that customer', async (_, blocker) => {
+      const blocked = await mine();
+      const other = await searcher(ownerDb);
+      if (blocker === 'customer')
+        await blockBetween(ownerSql, customer.userId, blocked.actor.userId);
+      else await blockBetween(ownerSql, blocked.actor.userId, customer.userId);
+
+      expect(ids(await near(blocked.centre))).toEqual([]);
+      const theirs = await service.searchInvestigators(
+        other,
+        { near: blocked.centre, radiusKm: 0, city: tag },
+        req(),
+      );
+      expect(ids(theirs)).toEqual([blocked.profileId]);
     });
   });
 

@@ -54,6 +54,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     SESSION_SECRET: randomBytes(32).toString('hex'),
     APP_BASE_URL: WEB_URL,
     LOG_LEVEL: 'info',
+    // The app's rewrite stands in for Caddy, and is trusted as Caddy is (T-138): a spec whose
+    // browsers are different people can say so with X-Forwarded-For, as their own addresses would.
+    // A spec that sends none is every request from one address, as before.
+    TRUSTED_PROXIES: 'loopback',
   });
   const web = start(
     'web',

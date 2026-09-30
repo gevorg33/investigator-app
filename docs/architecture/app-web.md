@@ -583,6 +583,12 @@ version that save returned. Done, the customer lands on their missions, where it
 **Cancelled**. A 409 — it moved on meanwhile — says so and refreshes the page to where it stands.
 A published mission is not offered here (T-121).
 
+## Blocking (T-052)
+
+`BlockPerson` on an investigator's profile (a button) and on each browse card (**More actions**);
+Account → **People you blocked** (`BlocksSection`, `Unblock`). Asked first in an `AlertDialog`,
+shown at once when done, then refreshed. Rules and enforcement: `blocks.md`.
+
 ## Not found (T-151)
 
 `notFound()` anywhere in the workspace renders `NotFoundPage` (`components/not-found-page.tsx`)

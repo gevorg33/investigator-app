@@ -1,6 +1,7 @@
 import { ChevronRight, Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BlocksSection } from '@/components/account/blocks-section';
 import { LegalOutstandingForm } from '@/components/account/legal-outstanding';
 import { ProfileSection } from '@/components/account/profile-section';
 import { RolesSection } from '@/components/account/roles-section';
@@ -105,6 +106,7 @@ export default async function AccountPage({
       </AccountSection>
       <SignInMethods outcome={google} />
       <SessionsSection account={account!} locale={locale} />
+      {account!.emailVerified && <BlocksSection account={account!} locale={locale} />}
     </Page>
   );
 }

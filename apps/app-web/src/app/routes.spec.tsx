@@ -437,13 +437,14 @@ describe('the application routes', () => {
       api.on('GET /legal/outstanding', 200, outstanding);
       api.on('GET /legal/required?for=INVESTIGATOR&locale=en', 200, []);
       api.on('GET /auth/sessions', 200, { sessions: [session({ current: true })] });
+      api.on('GET /blocks', 200, { items: [] });
       api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
       api.on('GET /auth/identities', 200, { password: true, identities: [] });
       api.on('GET /auth/providers', 200, { google: true });
     };
     const sections = () => screen.getAllByRole('region').map((r) => r.id);
 
-    it('puts documents to accept first, then who, roles, agencies, language, time zone, sign-in methods and sessions', async () => {
+    it('puts documents to accept first, then who, roles, agencies, language, time zone, sign-in methods, sessions and blocks', async () => {
       signedIn([legalDocument()]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
@@ -460,6 +461,7 @@ describe('the application routes', () => {
         'timezone',
         'sign-in',
         'sessions',
+        'blocks',
       ]);
       const agencies = screen.getByRole('region', { name: catalogs.en.workspace.agencies.title });
       expect(agencies).toHaveTextContent(catalogs.en.workspace.agencies.body);
