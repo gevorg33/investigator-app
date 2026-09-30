@@ -7794,7 +7794,7 @@ pnpm --filter api test blocks && pnpm --filter @investigator/admin-web test
 ---
 
 ### T-176 — A refresh that arrives is sometimes not applied under load
-- **Status:** TODO
+- **Status:** BLOCKED — reproduced and narrowed to the React canary bundled with Next 15.5 (below); waits on a Next release whose bundled React fixes it (owner decision 2026-10-01: record and park, no app change)
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** MEDIUM
@@ -7813,7 +7813,7 @@ confirming, then count the cards after 3 s and after a reload — find the cause
 where it lives.
 
 **Acceptance criteria**
-- [ ] A reproduction, and the cause named
+- [x] A reproduction, and the cause named (to the scheduler; the exact line in React is not pinned — see findings)
 - [ ] Fixed, with an e2e run repeated enough to show it
 
 **Validation**
@@ -7821,6 +7821,32 @@ where it lives.
 pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+**Findings (2026-10-01)**
+Reproduced with the task's probe (`hide()` made a no-op in `block-person.tsx`; count the card 3 s
+after confirming, then after a reload): 30–50% of runs with both projects, far more than the 2 in 8
+first seen. Measured, in order:
+- The refresh fetches the right tree and delivers it: every segment's `rsc` is present, and every
+  Flight chunk the render waits on ends `fulfilled`. No console error, no page error, no navigation
+  (the action queue only discards a refresh when a navigation arrives), no lazy segment fetch, and
+  Next's `unresolvedThenable` is never reached.
+- React receives it: the router's promise fulfils, and every wake-up React attaches — on that promise
+  and on each streamed chunk — fires and marks the lane pinged.
+- Then the refresh transition's last render suspends once more **without attaching any listener**
+  (read from the root through a devtools hook: the transition lane is pending and suspended, pinged
+  is 0, and no further `then` is ever called), so nothing retries it. The old list stays until the
+  next update. Next records no commit (`history.replaceState` is never called for it).
+- Not our code: the same with `router.refresh()` called directly instead of inside `useTransition`.
+- Trigger: a refresh that removes one keyed card from a list that keeps others. Never when the list
+  empties (single project: 0 in 12, CPU-throttled 6× included); with the projects run one after the
+  other it still occurs (1 in 6), so contention widens the window but is not the cause.
+- The App Router runs Next's own React, `19.2.0-canary-0bdb9206-20250818`, not the app's pinned
+  19.2.8. Next 15.5.26 and 15.5.27 are security-only releases and do not touch it.
+
+Unblocks when: a Next release bundles a React that no longer strands the transition — rerun the probe
+above against it, both projects at once, enough runs to show it (it was 30–50% here). Until then every screen that
+refreshes after a change can, occasionally, keep showing the old state; screens that must show the
+result at once do it themselves, as T-052's block does.
 ---
 
 ### T-177 — Armenian says “գործ” for a mission; the notification emails say “առաջադրանք”
@@ -7873,6 +7899,34 @@ badge shrink so the label truncates, and hold it with a long unbroken label in t
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
+```
+
+
+---
+
+### T-179 — Take Next 15.5.27's security fixes (self-hosted cache poisoning)
+- **Status:** TODO — 15.5.27 was 1 day old on 2026-10-01; CLAUDE.md's bar is ~2 weeks unless the owner decides a security fix goes sooner
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a framework bump ahead of the age bar is the owner's call
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/package.json, apps/admin-web/package.json, apps/marketing-web/package.json, pnpm-lock.yaml, CLAUDE.md (pinned versions)
+
+**Description**
+Found in T-176. Next 15.5.27 (2026-09-30) fixes three medium advisories — GHSA-f87g-xv8r-7p7x
+(metadata image routes, `dynamicParams` bypass), GHSA-4jqv-mc3x-m676 and GHSA-mcj8-r9mp-w47p (cache
+poisoning of SSG/ISR pages in **self-hosted** deployments, which this platform is). 15.5.26 is
+`next/og` hardening. Decide whether they apply to our routes, then bump every app together and update
+the pin table.
+
+**Acceptance criteria**
+- [ ] Each advisory read against our routes, and the answer recorded
+- [ ] All three apps on the same 15.5 release; pin table updated; build, unit and e2e green
+
+**Validation**
+```bash
+pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---
