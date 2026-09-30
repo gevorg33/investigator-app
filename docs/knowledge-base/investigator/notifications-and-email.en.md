@@ -4,14 +4,16 @@ title: Notifications and emails about your assignments
 audience: investigator
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-30
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: partial
 related_code:
   - apps/api/src/modules/notifications
   - apps/api/src/common/mail
+  - apps/app-web/src/components/notifications
+  - apps/app-web/src/components/account
 tags: [notifications, email, unsubscribe, language]
 ---
 
@@ -25,6 +27,19 @@ missions.
 
 Notifications for other events — a quote accepted, a new message, a verification about to expire —
 are not sent yet.
+
+## Where do I see my notifications in the app?
+
+Under the bell. On a phone it is at the top of the screen; on a larger screen, beside Investigator
+at the top of the sidebar. The number on the bell is how many notifications you have not read yet.
+
+Press the bell to open your notifications, newest first. Unread ones are in bold, with a dot, and
+**Show more** loads older ones. Opening a notification takes you to your missions and marks it read;
+**Mark all as read** marks every one read at once.
+
+You see the notifications of the workspace you are in — your personal workspace, or the agency you
+switched to. The number is checked when the app opens and each time you come back to it; a
+notification does not pop up on its own while you are looking at the app.
 
 ## What does a notification email contain?
 
@@ -47,12 +62,24 @@ other setting receives English.
 Every notification email ends with a link to stop these emails. Opening it only asks; the email
 stops when you press the button on that page. It stops activity emails in that workspace only.
 
+You can also stop them — and turn them back on — in the app: open **Account** and find **Emails**.
+
 Account emails — confirming your address, resetting your password, invitations to an agency — are
 always sent.
+
+## How do I turn these emails back on?
+
+Open **Account** and find **Emails**. The switch **Activity on your missions** turns activity emails
+on or off for the workspace you are in, and it is saved as soon as you flip it. Each workspace keeps
+its own setting: turning them off in an agency does not turn them off in your personal workspace.
+
+Account emails are sent whatever the switch says. If your email address is not confirmed yet, you
+receive no activity emails even with the switch on.
 
 ## Why did I not receive an email?
 
 - Your email address is not confirmed yet.
-- You unsubscribed from activity emails in this workspace.
+- You turned off activity emails in this workspace — with the link in an email, or in Account under
+  Emails.
 - You are no longer an active member of the workspace the assignment belongs to.
 - It went to your spam folder.

@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { NotificationBell } from '@/components/notifications/notification-bell';
+import { NotificationsProvider } from '@/components/notifications/notifications-provider';
 import { getT } from '@/i18n/server';
 import { NavLinks } from './nav-links';
 import { SignOut } from './sign-out';
@@ -9,6 +11,9 @@ import { SignOut } from './sign-out';
  * destinations move to a sidebar and the bar goes, with signing out at its foot — on a phone the bar
  * has no room for it, and the Account page offers it instead (T-062). Full height is `dvh`, so mobile browser
  * chrome never cuts off the bottom.
+ *
+ * The notification bell (T-169) sits beside the app's name in the sidebar; on a phone the bottom bar
+ * is full, so a bar above the content carries it, with the workspace switcher when there is one.
  */
 export async function AppShell({
   children,
@@ -28,41 +33,49 @@ export async function AppShell({
 }) {
   const t = await getT();
   return (
-    <div className="min-h-dvh md:flex">
-      <a
-        href="#content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-(--z-toast) focus:rounded-md focus:bg-surface-overlay focus:px-4 focus:py-3 focus:shadow-overlay"
-      >
-        {t('shell.skip_to_content')}
-      </a>
+    <NotificationsProvider>
+      <div className="min-h-dvh md:flex">
+        <a
+          href="#content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-(--z-toast) focus:rounded-md focus:bg-surface-overlay focus:px-4 focus:py-3 focus:shadow-overlay"
+        >
+          {t('shell.skip_to_content')}
+        </a>
 
-      <aside className="hidden md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:gap-6 md:border-r md:border-border md:bg-surface-raised md:px-3 md:py-6">
-        <p className="px-3 text-lg font-semibold">{t('app.name')}</p>
-        {workspaces?.menu}
-        <nav aria-label={t('shell.nav.label')}>
-          <NavLinks layout="rail" />
-        </nav>
-        <SignOut label={t('shell.sign_out')} className="mt-auto" />
-      </aside>
-
-      <main id="content" tabIndex={-1} className="min-w-0 flex-1 pb-bottom-nav md:pb-0">
-        {workspaces !== undefined && (
-          <div className="border-b border-border bg-surface-raised px-4 py-2 md:hidden">
-            {workspaces.sheet}
+        <aside className="hidden md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col md:gap-6 md:border-r md:border-border md:bg-surface-raised md:px-3 md:py-6">
+          <div className="flex items-center justify-between gap-2 pl-3">
+            <p className="text-lg font-semibold">{t('app.name')}</p>
+            <NotificationBell layout="popover" />
           </div>
-        )}
-        {notices}
-        {children}
-      </main>
+          {workspaces?.menu}
+          <nav aria-label={t('shell.nav.label')}>
+            <NavLinks layout="rail" />
+          </nav>
+          <SignOut label={t('shell.sign_out')} className="mt-auto" />
+        </aside>
 
-      {beside}
+        {/* A phone's top bar: outside the content, so skipping to it skips this too. */}
+        <header className="flex items-center gap-2 border-b border-border bg-surface-raised py-2 pr-2 pl-4 md:hidden">
+          <div className="min-w-0 flex-1">
+            {workspaces?.sheet ?? <p className="text-lg font-semibold">{t('app.name')}</p>}
+          </div>
+          <NotificationBell layout="sheet" />
+        </header>
 
-      <nav
-        aria-label={t('shell.nav.label')}
-        className="fixed inset-x-0 bottom-0 z-(--z-nav) border-t border-border bg-surface-raised pb-safe md:hidden"
-      >
-        <NavLinks layout="bar" />
-      </nav>
-    </div>
+        <main id="content" tabIndex={-1} className="min-w-0 flex-1 pb-bottom-nav md:pb-0">
+          {notices}
+          {children}
+        </main>
+
+        {beside}
+
+        <nav
+          aria-label={t('shell.nav.label')}
+          className="fixed inset-x-0 bottom-0 z-(--z-nav) border-t border-border bg-surface-raised pb-safe md:hidden"
+        >
+          <NavLinks layout="bar" />
+        </nav>
+      </div>
+    </NotificationsProvider>
   );
 }

@@ -82,11 +82,12 @@ describe('the application routes', () => {
     expect(html.props.lang).toBe('ru');
     const provider = html.props.children.props.children;
     expect(provider.props.locale).toBe('ru');
-    // Client components translate navigation, the browse, the investigator profile, the workspace
-    // switcher and agency onboarding, the agency's profile and colours, the assistant, the auth and
-    // account forms, legal text and errors.
+    // Client components translate navigation, the notification centre, the browse, the
+    // investigator profile, the workspace switcher and agency onboarding, the agency's profile and
+    // colours, the assistant, the auth and account forms, legal text and errors.
     expect(CLIENT_NAMESPACES).toEqual([
       'nav',
+      'notifications',
       'missions',
       'investigator',
       'workspace',
@@ -164,8 +165,9 @@ describe('the application routes', () => {
         name: 'Switch workspace, now Ararat Investigations',
       });
       expect(menu!.closest('aside')).toHaveClass('hidden', 'md:flex');
-      expect(sheet!.closest('main')).not.toBeNull();
-      expect(sheet!.parentElement!.parentElement).toHaveClass('md:hidden');
+      // Above the content on a phone, in the bar that also carries the notification bell (T-169).
+      expect(sheet!.closest('main')).toBeNull();
+      expect(sheet!.closest('header')).toHaveClass('md:hidden');
     });
 
     it('names it on every call from the page, and confirms a switch that landed here', async () => {
@@ -438,13 +440,16 @@ describe('the application routes', () => {
       api.on('GET /legal/required?for=INVESTIGATOR&locale=en', 200, []);
       api.on('GET /auth/sessions', 200, { sessions: [session({ current: true })] });
       api.on('GET /blocks', 200, { items: [] });
+      api.on('GET /notifications/preferences', 200, {
+        preferences: [{ category: 'activity', channel: 'email', enabled: true }],
+      });
       api.on('GET /workspaces', 200, [workspace(), agencyWorkspace()]);
       api.on('GET /auth/identities', 200, { password: true, identities: [] });
       api.on('GET /auth/providers', 200, { google: true });
     };
     const sections = () => screen.getAllByRole('region').map((r) => r.id);
 
-    it('puts documents to accept first, then who, roles, agencies, language, time zone, sign-in methods, sessions and blocks', async () => {
+    it('puts documents to accept first, then who, roles, agencies, language, time zone, emails, sign-in methods, sessions and blocks', async () => {
       signedIn([legalDocument()]);
       renderIntl(await resolveServer(await AccountPage()));
       expect(screen.getByRole('heading', { level: 1, name: 'Account' })).toBeVisible();
@@ -459,6 +464,7 @@ describe('the application routes', () => {
         'agencies',
         '',
         'timezone',
+        'emails',
         'sign-in',
         'sessions',
         'blocks',

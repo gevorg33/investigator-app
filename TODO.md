@@ -7598,7 +7598,7 @@ pnpm --filter api test jobs
 ---
 
 ### T-169 — The notification centre and email settings in the app
-- **Status:** TODO
+- **Status:** DONE — bell + unread count in the shell (sidebar from `md`, a top bar on a phone), the centre as a popover / bottom sheet (`components/notifications`), Account → Emails switch (`components/account/emails-section.tsx`); `@shadcn/popover` adopted; unsubscribe copy and KB en/ru/hy point to the setting; e2e `notifications.e2e.ts`
 - **Priority:** P1
 - **Depends on:** T-036
 - **Risk:** LOW
@@ -7616,14 +7616,15 @@ the KB (`kb-customer-notifications`, `kb-investigator-notifications`) dropped: "
 back on in your account".
 
 **Acceptance criteria**
-- [ ] Unread count in the shell; the centre lists, pages and marks read; empty state
-- [ ] Email switch reads and writes `PUT /notifications/preferences`
-- [ ] Phone first: sheet, 44 px targets, no horizontal scroll; en/ru/hy
-- [ ] Unsubscribe copy and KB articles point to the setting again
+- [x] Unread count in the shell; the centre lists, pages and marks read; empty state
+- [x] Email switch reads and writes `PUT /notifications/preferences`
+- [x] Phone first: sheet, 44 px targets, no horizontal scroll; en/ru/hy
+- [x] Unsubscribe copy and KB articles point to the setting again
 
-**Validation**
+**Validation** — green 2026-10-01 (768 unit at 100% coverage; 38/38 e2e at 375 and 1280 px). The
+script is `test:e2e`; the line said `e2e`, which does not exist
 ```bash
-pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web e2e
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---
@@ -7842,6 +7843,36 @@ articles stay drafts for the native-speaker review (ACTIONS-FOR-ME #22).
 **Validation**
 ```bash
 pnpm --filter @investigator/i18n test && python3 scripts/validate-knowledge-base.py
+```
+
+
+---
+
+### T-178 — A category name with no spaces pushes the mission card past a phone's width
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/missions/mission-card.tsx, apps/app-web/e2e/blocks.e2e.ts
+
+**Description**
+Found in T-169. On `dev`, a published mission whose category label is one long unbroken word
+(`notifications-1790805183042-mobile`, 34 characters — a slug stands in for the label in e2e)
+widens the browse at 375 px to 397 px: the category `Badge` is `shrink-0`, so the `truncate` on its
+text never applies, and in the one-column list the widest card sets every card's width. Reproduced
+on `dev` by lengthening `blocks.e2e.ts`'s slug to that length — its no-horizontal-scroll check
+fails. Real labels have spaces today, but a long compound word in any locale does the same. Let the
+badge shrink so the label truncates, and hold it with a long unbroken label in the card's spec.
+
+**Acceptance criteria**
+- [ ] A 60-character unbroken category label truncates within the card at 375 px
+- [ ] No horizontal scroll on the investigator browse with such a label (e2e)
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

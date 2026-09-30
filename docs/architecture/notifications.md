@@ -1,9 +1,9 @@
 # Notifications (T-036)
 
 A person is told when something happens that concerns them and that they did not do themselves: in
-the app (the notification centre) and by email. What is built today is the delivery core and the
-centre's API; the centre's screen, browser push and most event types are follow-ups (see
-[Not built](#not-built)).
+the app (the notification centre) and by email. What is built today is the delivery core, the
+centre's API, and the centre and email setting in the app (T-169); browser push and most event types
+are follow-ups (see [Not built](#not-built)).
 
 ## What is sent, to whom
 
@@ -106,6 +106,19 @@ agency.
 | `GET /notifications/preferences` | Every preference, defaults included |
 | `PUT /notifications/preferences` | `{ category, channel, enabled }`, audited `notifications.preference_changed` |
 
+## In the app (T-169)
+
+| Piece | Where | |
+|---|---|---|
+| The bell | `components/notifications/notification-bell.tsx`, in `AppShell` | Beside the app's name in the sidebar from `md`; on a phone, in a bar above the content (the bottom bar is full), with the workspace switcher when there is one. Its name carries the count in words (`notifications.open`); the badge is `aria-hidden` and says `99+` past 99 |
+| The count | `notifications-provider.tsx` | `GET /notifications/unread`, once for the shell, when the app loads and whenever the tab becomes visible again — nothing arrives on its own until push (T-170). A count that cannot be read shows no badge, never a guess |
+| The centre | `notification-centre.tsx` | A popover (`@shadcn/popover`) from `md`, a bottom sheet (`Drawer`) on a phone. Read when opened, 20 at a time with "Show more"; the count is re-read with it. Opening one marks it read (`POST /:id/read`, not awaited — the page it leads to opens either way; a mark that fails re-reads the count) and closes the frame. "Mark all as read" while anything is unread. Loading, empty and failed-with-retry states |
+| The email switch | `components/account/emails-section.tsx`, `email-switch.tsx` | Account → Emails: the one `activity` switch, `PUT /notifications/preferences`, applied at once and put back if refused. Says account email always goes, and that an unconfirmed address gets none |
+
+A row's text is the kind's short title (`notifications.kind.*` in `@investigator/i18n`, a client
+namespace) and a relative time — the same "what kind of thing happened" as the email, never its
+content. The unsubscribe page's "done" copy points to Account → Emails.
+
 ## Data
 
 | Table | Class | Policy |
@@ -124,10 +137,12 @@ Retention: `docs/compliance/retention.md`.
   unsubscribe done / invalid / left the workspace.
 - `notifications.controller.spec.ts` — guards, validation, the unsubscribe pages and their headers.
 - `email.spec.ts` — every template in every locale, escaping, Resend's request, the transport choice.
+- app-web `notifications.spec.tsx` — the count and badge, refresh on return, the centre's states,
+  paging, marking one and all, the sheet and the popover; `emails.spec.tsx` — the switch.
+- app-web `e2e/notifications.e2e.ts` — the whole journey at 375 px and 1280 px, against the real API.
 - The isolation matrix covers both tables.
 
 ## Not built
 
-- The notification centre's screen and email settings in the app — T-169.
 - Browser push — T-170.
 - Notifications for quotes received, new messages, reports and expiring verification — T-171.
