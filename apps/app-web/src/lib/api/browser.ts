@@ -16,7 +16,7 @@ export async function callApi<T = null>(
     body,
     idempotencyKey,
   }: {
-    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     body?: unknown;
     /** For a route that requires one: the same key on a retry returns the first result. */
     idempotencyKey?: string;

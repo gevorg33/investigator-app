@@ -29,6 +29,29 @@ export const en = {
     assistant: 'Assistant',
     account: 'Account',
   },
+  notifications: {
+    title: 'Notifications',
+    open: '{count, plural, =0 {Notifications} one {Notifications, # unread} other {Notifications, # unread}}',
+    close: 'Close',
+    mark_all: 'Mark all as read',
+    unread: 'Unread',
+    more: 'Show more',
+    failed: 'Your notifications could not be loaded.',
+    retry: 'Try again',
+    empty: {
+      title: 'Nothing yet',
+      body: 'When something happens on your missions that you did not do yourself, you will see it here.',
+    },
+    kind: {
+      mission_published: 'Your mission is published',
+      mission_returned: 'Your mission needs changes',
+      mission_rejected: 'Your mission was not accepted',
+      assignment_new: 'You have a new assignment',
+      assignment_accepted: 'Your investigator accepted the assignment',
+      assignment_declined: 'Your investigator declined the assignment',
+      assignment_report_ready: 'Your report is ready',
+    },
+  },
   home: {
     checklist: {
       title: 'Set up {name}',
@@ -890,6 +913,14 @@ export const en = {
       sign_out_other: 'Sign out that device',
       sign_out_here: 'Sign out on this device',
     },
+    emails: {
+      title: 'Emails',
+      body: 'Emails your account needs — confirming your address, resetting your password, invitations — are always sent.',
+      activity: 'Activity on your missions',
+      activity_body:
+        'An email when something happens in this workspace that you did not do yourself. You always see it in Notifications.',
+      unconfirmed: 'Confirm your email address to receive these.',
+    },
     blocks: {
       title: 'People you blocked',
       body: 'You and someone you block stop seeing each other’s missions and profiles in search, and cannot start new work together. They are not told. Work already under way is not ended.',
@@ -1041,7 +1072,7 @@ export const en = {
       title: 'Stop these emails?',
       body: 'You will stop getting emails about activity on your account in this workspace. You will still see it in the app, and still get the emails your account needs, such as password resets.',
       confirm: 'Stop these emails',
-      done: 'Done. You will not get these emails any more.',
+      done: 'Done. You will not get these emails any more. You can turn them back on in your account, under Emails.',
       invalid: 'This link does not work. Your email settings have not changed.',
     },
     email_verification: {

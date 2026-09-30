@@ -375,3 +375,37 @@ export interface BlockResult extends BlockView {
   /** Assignments still under way between the two: they continue, and staff have them. */
   liveAssignments: number;
 }
+
+/** What a notification is about (T-036, `modules/notifications/kinds.ts`). */
+export type NotificationKind =
+  | 'mission_published'
+  | 'mission_returned'
+  | 'mission_rejected'
+  | 'assignment_new'
+  | 'assignment_accepted'
+  | 'assignment_declined'
+  | 'assignment_report_ready';
+
+/** One of the reader's notifications: a kind and where it leads — never its content. */
+export interface NotificationView {
+  id: string;
+  kind: NotificationKind;
+  subjectType: string;
+  subjectId: string;
+  /** Relative to the app, always (`notifications_href_relative`). */
+  href: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface NotificationPage {
+  items: NotificationView[];
+  nextCursor: string | null;
+}
+
+/** A choice about email; no stored choice reads as on. `activity` is the one category. */
+export interface NotificationPreference {
+  category: 'activity';
+  channel: 'email';
+  enabled: boolean;
+}

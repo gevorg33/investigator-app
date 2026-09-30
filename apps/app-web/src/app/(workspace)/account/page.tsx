@@ -2,6 +2,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlocksSection } from '@/components/account/blocks-section';
+import { EmailsSection } from '@/components/account/emails-section';
 import { LegalOutstandingForm } from '@/components/account/legal-outstanding';
 import { ProfileSection } from '@/components/account/profile-section';
 import { RolesSection } from '@/components/account/roles-section';
@@ -24,7 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * The account (T-127): what it still has to accept first, then who it is, its roles, agencies
- * (T-092), language, time zone and sessions. The workspace layout has already required a session.
+ * (T-092), language, time zone, emails (T-169) and sessions. The workspace layout has already
+ * required a session.
  *
  * Working in an agency, the agencies section leads to that agency's profile and colours (T-094).
  */
@@ -104,6 +106,7 @@ export default async function AccountPage({
       >
         <TimeZoneForm current={account!.timezone} />
       </AccountSection>
+      <EmailsSection account={account!} />
       <SignInMethods outcome={google} />
       <SessionsSection account={account!} locale={locale} />
       {account!.emailVerified && <BlocksSection account={account!} locale={locale} />}

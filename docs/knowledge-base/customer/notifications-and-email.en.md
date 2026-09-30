@@ -4,14 +4,16 @@ title: Notifications and emails about your missions
 audience: customer
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
-updated: 2026-09-30
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: partial
 related_code:
   - apps/api/src/modules/notifications
   - apps/api/src/common/mail
+  - apps/app-web/src/components/notifications
+  - apps/app-web/src/components/account
 tags: [notifications, email, unsubscribe, language]
 ---
 
@@ -28,6 +30,19 @@ When something happens to your mission or assignment that you did not do yoursel
 Each one is recorded as a notification in your account and, unless you have turned these emails off,
 sent to you by email. Things you do yourself — editing, cancelling, accepting a quote — are not
 notified to you.
+
+## Where do I see my notifications in the app?
+
+Under the bell. On a phone it is at the top of the screen; on a larger screen, beside Investigator
+at the top of the sidebar. The number on the bell is how many notifications you have not read yet.
+
+Press the bell to open your notifications, newest first. Unread ones are in bold, with a dot, and
+**Show more** loads older ones. Opening a notification takes you to what it is about and marks it
+read; **Mark all as read** marks every one read at once.
+
+You see the notifications of the workspace you are in. The number is checked when the app opens and
+each time you come back to it; a notification does not pop up on its own while you are looking at
+the app.
 
 ## What does a notification email contain?
 
@@ -54,13 +69,23 @@ You still get the emails your account needs to work, whatever you choose: confir
 address, resetting your password, and invitations. Those say at the bottom that they are account
 emails.
 
-A choice of which emails you get, and a notification list you can open in the app, are not in the
-app yet. Until then, the unsubscribe link is how to stop activity emails.
+You can also stop them — and turn them back on — in the app: open **Account** and find **Emails**.
+
+## How do I turn these emails back on?
+
+Open **Account** and find **Emails**. The switch **Activity on your missions** turns activity emails
+on or off for the workspace you are in, and it is saved as soon as you flip it. It works the same
+whether you stopped them with the link in an email or with the switch.
+
+Emails your account needs — confirming your address, resetting your password, invitations — are
+sent whatever the switch says. If your email address is not confirmed yet, you receive no activity
+emails even with the switch on.
 
 ## Why did I not receive an email?
 
 - Your email address is not confirmed yet. Notification emails are only sent to a confirmed address.
-- You unsubscribed from activity emails in this workspace.
+- You turned off activity emails in this workspace — with the link in an email, or in Account under
+  Emails.
 - It was something you did yourself.
 - It went to your spam folder.
 
