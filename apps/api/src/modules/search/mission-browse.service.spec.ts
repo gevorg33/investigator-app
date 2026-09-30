@@ -488,6 +488,13 @@ describe('mission browse', () => {
 
     it('saves a browse under a name, lists it newest first, and deletes it', async () => {
       const a = await save('English work');
+      // Dated an hour before the next save, as the owner, rather than trusting the clock to have
+      // moved between them: two saves inside one tick tie on `created_at` and fall to their random
+      // ids, and a clock step reorders them (T-172). Newest first then has one right answer.
+      await ownerDb
+        .update(schema.savedMissionSearches)
+        .set({ createdAt: new Date(Date.now() - 60 * 60 * 1000) })
+        .where(eq(schema.savedMissionSearches.id, a.id));
       const b = await save('  Budget, AMD  ', { sort: 'budget', currency: 'AMD' });
       expect(b.name).toBe('Budget, AMD');
       expect(b.filters).toEqual({ sort: 'budget', currency: 'AMD' });

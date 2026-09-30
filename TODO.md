@@ -7686,7 +7686,7 @@ pnpm --filter api test notifications
 ---
 
 ### T-172 — A saved-search spec orders two saves by clock
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01. Newest first is the claim, so the order stays asserted: the spec dates the first save an hour earlier as the owner instead of trusting the clock between two saves. Reproduced first: giving the second save the first's timestamp (millisecond `Date` against microsecond `created_at`) reordered the list 6/6. Now 10/10 runs pass, and listing oldest first fails it
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7702,7 +7702,7 @@ fall to the random id. Same shape as T-167. Give the spec distinct timestamps (o
 order the service promises for a tie) rather than relying on the clock; do not weaken the assertion.
 
 **Acceptance criteria**
-- [ ] The spec is deterministic, and still fails if the list is not newest first
+- [x] The spec is deterministic, and still fails if the list is not newest first
 
 **Validation**
 ```bash
