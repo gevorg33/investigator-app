@@ -7,7 +7,7 @@ import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { IdempotencyService } from '../../common/idempotency/idempotency.service';
 import { DB, type Db, type Tx } from '../../database/database.module';
-import { missions, quotes } from '../../database/schema';
+import { missions, quotes, userBlocks } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { requireQuotingProfile } from '../profiles/quoting-eligibility';
@@ -231,6 +231,17 @@ export class QuotesService {
         found.status === 'SUBMITTED' && !isExpired(found.expiresAt) && mission.status === 'QUOTED',
         c,
       );
+
+      // Someone the customer blocked (T-052): their own block, so theirs to be told about, and
+      // lifted by unblocking. The other way round there is nothing to accept — an investigator
+      // who blocks a customer has their open quotes to them withdrawn.
+      const [blocked] = await tx
+        .select({ id: userBlocks.id })
+        .from(userBlocks)
+        .where(eq(userBlocks.blockedProfileId, found.investigatorProfileId));
+      if (blocked !== undefined) {
+        throw AppError.conflictOn('quote', 'BLOCKED', 'error.validation.quote.blocked');
+      }
 
       const now = new Date();
       const [accepted] = await tx

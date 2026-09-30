@@ -5,6 +5,7 @@ import {
   type Locale,
 } from '@investigator/i18n';
 import { CalendarClock, Languages, MapPin } from 'lucide-react';
+import { BlockPerson } from '@/components/blocks/block-person';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getT } from '@/i18n/server';
@@ -59,12 +60,23 @@ export async function MissionCard({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
-            {category === null ? <span /> : <Badge variant="secondary">{category}</Badge>}
-            <p className="shrink-0 text-xs text-text-muted">
-              {t('missions.browse.card.posted', {
-                when: formatRelativeTime(mission.publishedAt, now, locale),
-              })}
-            </p>
+            {/* The category gives way on a narrow screen: the time and the menu keep their room. */}
+            <span className="min-w-0">
+              {category !== null && (
+                <Badge variant="secondary" className="max-w-full">
+                  <span className="min-w-0 truncate">{category}</span>
+                </Badge>
+              )}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <p className="text-xs text-text-muted">
+                {t('missions.browse.card.posted', {
+                  when: formatRelativeTime(mission.publishedAt, now, locale),
+                })}
+              </p>
+              {/* T-052: the investigator's way to stop seeing this customer, without naming them. */}
+              <BlockPerson as="menu" target={{ missionId: mission.id }} />
+            </div>
           </div>
           <CardTitle id={titleId}>{mission.title}</CardTitle>
           <p className="line-clamp-2 text-sm text-text-muted">{mission.description}</p>

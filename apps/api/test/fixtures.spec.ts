@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import * as agencies from './agency-fixtures';
 import * as ai from './ai-fixtures';
 import * as assignments from './assignment-fixtures';
+import * as blocks from './block-fixtures';
 import * as legal from './legal-fixtures';
 import * as media from './media-fixtures';
 import * as missions from './mission-fixtures';
@@ -56,6 +57,7 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   tenant_settings: 'agency-fixtures.agencySettings',
   teams: 'agency-fixtures.team',
   team_members: 'agency-fixtures.team',
+  user_blocks: 'block-fixtures.blockBetween',
 };
 
 /** Tables a factory must NOT write, because something else is what makes them true. */
@@ -116,6 +118,7 @@ describe('factories', () => {
       'agency-fixtures': agencies,
       'ai-fixtures': ai,
       'assignment-fixtures': assignments,
+      'block-fixtures': blocks,
       'media-fixtures': media,
       'mission-fixtures': missions,
       'profile-fixtures': profiles,

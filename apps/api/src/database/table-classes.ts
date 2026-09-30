@@ -240,6 +240,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     },
     note: 'what a job did, for idempotency (T-082)',
   },
+  user_blocks: {
+    class: 'system',
+    columns: ['tenant_id'],
+    note: 'between people, not workspaces (T-052): the blocker reads and removes their own from any workspace; tenant_id records where it was made and scopes nothing. Enforcement reads it only through app_blocked_users(), the owner-run function that answers for the current user alone',
+  },
   job_dead_letters: {
     class: 'system',
     columns: ['tenant_id'],

@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ConfirmFirst } from '@/components/account/confirm-first';
+import { BlockPerson } from '@/components/blocks/block-person';
+import { Unblock } from '@/components/blocks/unblock';
 import { DISCOVERY_PATH } from '@/components/discovery/discovery-query';
 import { ProfileReviews } from '@/components/discovery/profile-reviews';
 import { PublicProfileCard } from '@/components/investigator/public-profile-card';
@@ -11,6 +13,7 @@ import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
 import type {
+  BlockView,
   ProfileReviews as Reviews,
   PublicInvestigatorProfile,
   TaxonomyNode,
@@ -61,12 +64,14 @@ export default async function InvestigatorProfilePage({
     getAccount(),
   ]);
   const confirmed = account!.emailVerified;
-  const [reviews, taxonomy] = await Promise.all([
+  const [reviews, taxonomy, blocks] = await Promise.all([
     confirmed
       ? serverApi<Reviews>(`/profiles/investigator/${encodeURIComponent(id)}/reviews`)
       : null,
     serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`),
+    confirmed ? serverApi<{ items: BlockView[] }>('/blocks') : null,
   ]);
+  const block = blocks?.items.find((b) => b.investigatorProfileId === profile.id);
   const specialties = new Map(categoryOptions(taxonomy ?? []).map((c) => [c.id, c.label]));
   return (
     <Page title={profile.displayName ?? t('missions.discovery.title')}>
@@ -80,6 +85,22 @@ export default async function InvestigatorProfilePage({
       <div className="mt-4 rounded-lg border border-border bg-surface-raised p-4 md:p-6">
         <PublicProfileCard profile={profile} specialties={specialties} named={false} />
       </div>
+      {/* T-052: one's own block, and its undoing, are the reader's to see; nothing here tells the
+          investigator anything. */}
+      {confirmed && (
+        <div className="mt-4">
+          {block === undefined ? (
+            <BlockPerson target={{ investigatorProfileId: profile.id }} />
+          ) : (
+            <div className="grid gap-3 rounded-md border border-border p-4 sm:flex sm:items-center sm:justify-between">
+              <p role="status" className="text-sm">
+                {t('account.block.blocked')}
+              </p>
+              <Unblock id={block.id} />
+            </div>
+          )}
+        </div>
+      )}
       {confirmed ? (
         <ProfileReviews profileId={profile.id} initial={reviews!} />
       ) : (

@@ -308,6 +308,15 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     INSERT INTO notification_preferences (tenant_id, user_id, category, channel, enabled)
     VALUES (${customer.tenantId}, ${customer.userId}, 'activity', 'email', false)`;
 
+  // The customer's block (T-052), of someone who plays no other part in the graph — so no other
+  // case here loses a mission to it. The blocked person, like every other workspace, reads nothing.
+  const [blocked] = await owner<{ id: string }[]>`
+    INSERT INTO users (email, status) VALUES (${`blocked-${randomUUID()}@example.test`}, 'ACTIVE')
+    RETURNING id`;
+  const block = await id(owner`
+    INSERT INTO user_blocks (blocker_id, blocked_id, tenant_id, source)
+    VALUES (${customer.userId}, ${blocked!.id}, ${customer.tenantId}, 'profile') RETURNING id`);
+
   const deadLetter = await id(owner`
     INSERT INTO job_dead_letters (job_id, queue, command, tenant_id, user_id, membership_id, payload,
                                   error, attempts)
@@ -329,6 +338,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       // Keyed by its person (see KEY_COLUMN in the matrix).
       notification_preferences: customer.userId,
       job_runs: jobRun,
+      user_blocks: block,
       job_dead_letters: deadLetter,
       tenants: customer.tenantId,
       tenant_memberships: customer.membershipId,

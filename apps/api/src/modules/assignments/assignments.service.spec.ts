@@ -19,6 +19,7 @@ import * as schema from '../../database/schema';
 import { assignments, missions } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
 import { AssignmentTransitionService } from './assignment-transition.service';
+import { BlocksService } from '../blocks/blocks.service';
 import { AssignmentsService } from './assignments.service';
 import { testPool } from '../../../test/db';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
@@ -245,6 +246,32 @@ describe('assignments', () => {
       expect(accepted.status).toBe('ACCEPTED');
       expect(accepted.acceptedAt).toBeInstanceOf(Date);
     });
+
+    it.each(['the customer', 'the investigator'])(
+      'still holds the investigator to the work after %s blocks the other (T-052)',
+      async (who) => {
+        // Blocking must never be a way out of work owed or a payment due: the assignment stays
+        // exactly where it was, and the investigator can — and must — still act on it.
+        const { mission, inv, assignment } = await created();
+        const db = scopedDb(sql);
+        const audit = new AuditService(db);
+        const blocks = asRequests(
+          new BlocksService(db, new AuthzService(audit), audit, new PlatformContext(audit)),
+          ownerSql,
+        );
+        const row = async () =>
+          (await ownerDb.select().from(assignments).where(eq(assignments.id, assignment.id)))[0]!;
+        const before = await row();
+        const blocker = who === 'the customer' ? mission.actor : inv.actor;
+        const made = await blocks.block(blocker, { assignmentId: assignment.id }, req());
+        expect(made.liveAssignments).toBe(1);
+
+        // Nothing about the agreement moved: status, price, payment, deadline.
+        expect(await row()).toEqual(before);
+        const accepted = await service.accept(inv.actor, assignment.id, req());
+        expect(accepted.status).toBe('ACCEPTED');
+      },
+    );
 
     it('refuses once the window has closed', async () => {
       // "Failing to accept it releases the customer." Enforced against the clock, not against

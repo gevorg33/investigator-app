@@ -18,6 +18,7 @@ import { browseHref, narrowingCount, parseBrowse, type SearchParams } from './br
 import { BrowseRefusal } from './browse-refusal';
 import { BrowseToolbar } from './browse-toolbar';
 import { categoryOptions } from '@/lib/taxonomy';
+import { BlockableListing } from '@/components/blocks/blockable-listing';
 import { MissionCard } from './mission-card';
 import { SavedSearchList, SaveSearch } from './saved-searches';
 
@@ -114,14 +115,16 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
       {items.length > 0 && (
         <ul className="mt-6 grid gap-4">
           {items.map((m) => (
-            <li key={m.id}>
-              <MissionCard
-                mission={m}
-                category={labels.get(m.taxonomyNodeId) ?? null}
-                locale={locale}
-                now={now}
-              />
-            </li>
+            <BlockableListing key={m.id}>
+              <li>
+                <MissionCard
+                  mission={m}
+                  category={labels.get(m.taxonomyNodeId) ?? null}
+                  locale={locale}
+                  now={now}
+                />
+              </li>
+            </BlockableListing>
           ))}
         </ul>
       )}

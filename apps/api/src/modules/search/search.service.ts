@@ -254,6 +254,8 @@ export function investigatorSearchQuery(
     sql`ip.accepting_work = true`,
     sql`u.status = 'ACTIVE'`,
     sql`u.deleted_at IS NULL`,
+    // Nobody blocked either way with the person searching (T-052). Evaluated once per statement.
+    sql`ip.user_id <> ALL ((SELECT app_blocked_users())::uuid[])`,
   ];
 
   if (dto.countryCode !== undefined) where.push(sql`sa.country_code = ${dto.countryCode}`);

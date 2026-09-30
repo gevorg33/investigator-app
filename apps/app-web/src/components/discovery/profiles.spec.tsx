@@ -58,6 +58,7 @@ describe('an investigator’s public profile page', () => {
     api.on('GET /taxonomy?locale=en', 200, [
       { id: DD, label: 'Due diligence', slug: 'due-diligence', children: [] },
     ]);
+    api.on('GET /blocks', 200, { items: [] });
   };
 
   it('shows the public projection under the name, once, and the way back', async () => {
@@ -85,6 +86,7 @@ describe('an investigator’s public profile page', () => {
     });
     api.on(`GET /profiles/investigator/${ID}/reviews`, 200, reviews([]));
     api.on('GET /taxonomy?locale=en', 204);
+    api.on('GET /blocks', 204);
     await show();
     const title = catalogs.en.missions.discovery.title;
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible();
@@ -124,6 +126,39 @@ describe('an investigator’s public profile page', () => {
     expect(within(section).queryByRole('listitem')).toBeNull();
     // Not asked for: the API shows reviews to an active account only.
     expect(api.calls.map((c) => c.path)).not.toContain(`/profiles/investigator/${ID}/reviews`);
+  });
+
+  it('offers the reader a block, and once blocked says so with the way back (T-052)', async () => {
+    serve();
+    await show();
+    const { block, blocks } = catalogs.en.account;
+    expect(screen.getByRole('button', { name: block.action.investigator })).toBeVisible();
+
+    api.on('GET /blocks', 200, {
+      items: [
+        {
+          id: 'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b',
+          source: 'profile',
+          label: 'Ani Petrosyan',
+          investigatorProfileId: ID,
+          createdAt: '2026-09-30T08:00:00.000Z',
+        },
+      ],
+    });
+    document.body.innerHTML = '';
+    await show();
+    expect(screen.getByRole('status')).toHaveTextContent(block.blocked);
+    expect(screen.getByRole('button', { name: blocks.unblock })).toBeVisible();
+    expect(screen.queryByRole('button', { name: block.action.investigator })).toBeNull();
+  });
+
+  it('offers no block to a reader whose address is not confirmed, and does not ask', async () => {
+    serve();
+    api.on('GET /me', 200, account({ emailVerified: false }));
+    await show();
+    const { block } = catalogs.en.account;
+    expect(screen.queryByRole('button', { name: block.action.investigator })).toBeNull();
+    expect(api.calls.map((c) => c.path)).not.toContain('/blocks');
   });
 
   it('passes any other failure on', async () => {

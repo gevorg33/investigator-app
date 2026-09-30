@@ -360,3 +360,18 @@ export interface SignInMethods {
     lastUsedAt: string | null;
   }>;
 }
+
+/** One of the caller's blocks (T-052). Never the other person's id: a name, or none. */
+export interface BlockView {
+  id: string;
+  source: 'profile' | 'mission' | 'assignment';
+  /** The name the blocker could see; null for a customer blocked from a mission. */
+  label: string | null;
+  investigatorProfileId: string | null;
+  createdAt: string;
+}
+
+export interface BlockResult extends BlockView {
+  /** Assignments still under way between the two: they continue, and staff have them. */
+  liveAssignments: number;
+}

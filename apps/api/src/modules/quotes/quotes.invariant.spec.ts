@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { testActor } from '../../../test/actor';
+import { userBlocks } from '../../database/schema';
 import { QuotesService } from './quotes.service';
 
 const investigator = testActor({ userId: 'u1', roles: ['INVESTIGATOR'] });
@@ -37,11 +38,13 @@ const build = (
   const tx = {
     // `where(...)` is awaited directly by the unlocked mission read and chained into
     // `.for('update')` by the locked reads, so it must be a thenable that also carries `for`.
+    // The customer has blocked nobody (T-052): that read finds nothing.
     select: () => ({
-      from: () => ({
+      from: (table: unknown) => ({
         where: () => ({
           for: async () => [quote],
-          then: (resolve: (value: unknown) => void) => resolve([mission]),
+          then: (resolve: (value: unknown) => void) =>
+            resolve(table === userBlocks ? [] : [mission]),
         }),
       }),
     }),

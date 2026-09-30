@@ -20,6 +20,7 @@ import { MissionTransitionService } from '../missions/mission-transition.service
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { QuotesService } from './quotes.service';
 import { testPool } from '../../../test/db';
+import { blockBetween } from '../../../test/block-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { agency, member } from '../../../test/workspace-fixtures';
 import { runInContext, type ExecutionContext } from '../../common/context/execution-context';
@@ -238,6 +239,31 @@ describe('quotes', () => {
       expect(await ownerDb.select().from(schema.assignments)).toEqual(
         expect.not.arrayContaining([expect.objectContaining({ missionId: mission.missionId })]),
       );
+    });
+
+    it('refuses an offer from someone the customer blocked, and says so, until they unblock', async () => {
+      // T-052: the customer's own block, so theirs to be told about.
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const quote = await submittedQuote(ownerDb, {
+        missionId: mission.missionId,
+        investigatorProfileId: inv.profileId,
+      });
+      const block = await blockBetween(ownerSql, mission.customerId, inv.actor.userId);
+
+      const refused = await accept(mission, quote.id).catch((e: unknown) => e);
+      expect(refused).toMatchObject({
+        code: 'STATE_CONFLICT',
+        details: [
+          { field: 'quote', code: 'BLOCKED', messageKey: 'error.validation.quote.blocked' },
+        ],
+      });
+      expect((await ownerDb.select().from(quotes).where(eq(quotes.id, quote.id)))[0]?.status).toBe(
+        'SUBMITTED',
+      );
+
+      await ownerSql`DELETE FROM user_blocks WHERE id = ${block}`;
+      expect((await accept(mission, quote.id)).status).toBe('ACCEPTED');
     });
 
     it('refuses an expired offer', async () => {
