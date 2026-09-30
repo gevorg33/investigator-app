@@ -16,8 +16,14 @@ import { text } from './support/text';
 test.describe.configure({ mode: 'serial' });
 
 const INVESTIGATOR_NAME = 'Vardan Blockfield';
-const MISSION_TITLE = 'Records check for a supplier';
+/** With an address in it, as a customer may paste: a word the card must wrap, not widen for (T-178). */
+const MISSION_TITLE = 'Records check for https://registry.example.test/companies/0123456789abcdef';
 let missionTitle: string;
+/**
+ * The mission's category, which the card shows by its slug (no label in any language): 60
+ * characters with nowhere to break, as a long compound word in any locale would be (T-178).
+ */
+let categorySlug: string;
 
 let customer: Page;
 let investigator: Page;
@@ -73,6 +79,7 @@ const userOf = async (page: Page): Promise<string> =>
 
 test.beforeAll(async ({ browser }, info) => {
   missionTitle = `${MISSION_TITLE} (${info.project.name})`;
+  categorySlug = `blocksrecordsverification${Date.now()}${info.project.name}`.padEnd(60, 'x');
   customer = await signedIn(browser, info, 'customer');
   investigator = await signedIn(browser, info, 'investigator');
   const [customerId, investigatorId] = await Promise.all([userOf(customer), userOf(investigator)]);
@@ -90,7 +97,7 @@ test.beforeAll(async ({ browser }, info) => {
     profileId = profile!.id;
     // And what a moderator would have published: one of the customer's missions.
     const [node] = await sql<{ id: string }[]>`
-      INSERT INTO taxonomy_nodes (slug) VALUES (${`blocks-${Date.now()}-${info.project.name}`})
+      INSERT INTO taxonomy_nodes (slug) VALUES (${categorySlug})
       RETURNING id`;
     await sql`
       INSERT INTO missions (customer_id, title, description, status, version, taxonomy_node_id,
@@ -138,12 +145,19 @@ test('an investigator blocks a customer from a mission card, and their missions 
   await investigator.goto('/missions');
   const card = investigator.getByRole('article', { name: missionTitle });
   await expect(card).toBeVisible();
-  // The card's menu never pushes the page sideways, whatever the category is called.
+  // The card's menu never pushes the page sideways, whatever the category is called (T-178): a
+  // category with nowhere to break is cut short inside the card, not given the width it asks for.
   expect(
     await investigator.evaluate(
       () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
     ),
   ).toBe(true);
+  const category = card.getByText(categorySlug, { exact: true });
+  const [inside, around] = await Promise.all([category.boundingBox(), card.boundingBox()]);
+  expect(inside!.x + inside!.width).toBeLessThanOrEqual(around!.x + around!.width);
+  if (test.info().project.name === 'mobile') {
+    expect(await category.evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
+  }
 
   await card.getByRole('button', { name: text('account.block.menu') }).click();
   await investigator.getByRole('menuitem', { name: text('account.block.action.customer') }).click();

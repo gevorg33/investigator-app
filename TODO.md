@@ -7849,13 +7849,13 @@ pnpm --filter @investigator/i18n test && python3 scripts/validate-knowledge-base
 ---
 
 ### T-178 — A category name with no spaces pushes the mission card past a phone's width
-- **Status:** TODO
+- **Status:** DONE — the cause was `CardHeader`'s implicit `auto` grid column, not the badge: it grew to the unbroken label. `grid-cols-1` on `CardHeader` and `break-words` on `CardTitle` (app-web and admin-web `ui/card.tsx`); `blocks.e2e.ts` seeds a 60-character category and a title with a URL
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/src/components/missions/mission-card.tsx, apps/app-web/e2e/blocks.e2e.ts
+- **Affected:** apps/app-web/src/components/ui/card.tsx, apps/admin-web/src/components/ui/card.tsx, apps/app-web/e2e/blocks.e2e.ts, docs/product/component-inventory.md
 
 **Description**
 Found in T-169. On `dev`, a published mission whose category label is one long unbroken word
@@ -7867,14 +7867,22 @@ fails. Real labels have spaces today, but a long compound word in any locale doe
 badge shrink so the label truncates, and hold it with a long unbroken label in the card's spec.
 
 **Acceptance criteria**
-- [ ] A 60-character unbroken category label truncates within the card at 375 px
-- [ ] No horizontal scroll on the investigator browse with such a label (e2e)
+- [x] A 60-character unbroken category label truncates within the card at 375 px
+- [x] No horizontal scroll on the investigator browse with such a label (e2e)
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+**Done 2026-10-01.** The description's guess (the badge is `shrink-0`) was wrong: the badge is not a
+flex item, its `min-w-0` wrapper is. `CardHeader` is `grid` with one implicit `auto` column, and a
+grid item's automatic minimum is its min-content — the whole unbroken label — so the column, the card
+and the page grew to it. Verifying the fix found the same with a long unbroken word in the **title**
+(a pasted address, which a customer can type): fixed in the same card with `break-words`, and held by
+the same spec. The regression failed on `dev` before each fix. The browse list's own `grid` did not
+need changing once the card stops asking for the width.
 ---
 
 ## Backlog
