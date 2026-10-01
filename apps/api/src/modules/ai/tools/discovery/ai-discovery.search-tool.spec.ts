@@ -268,9 +268,9 @@ describe('assistant discovery tools (T-018)', () => {
         'investigatorId',
         'languages',
         'matchedOn',
-        // The name the model may repeat is the chosen pseudonym or its stand-in code (T-181).
+        // The name the model may repeat is the one they chose to be known by, or its stand-in code.
+        'name',
         'nameCode',
-        'pseudonym',
         'notMatched',
         'specialties',
         'verificationStatus',

@@ -19,8 +19,9 @@ import { eligibleInvestigator, quotableMission, submittedQuote } from './quote-f
  * in that walk's `ids`, or its view is walked with nothing in it.
  *
  * - **A customer is masked from investigators until hire (T-100).**
- * - **An investigator's legal name is never shown to customers (T-181)** — before hire or after:
- *   they are known by the pseudonym they chose.
+ * - **An investigator's legal name is never shown to customers (T-181)** — before hire or after —
+ *   while they go by a pseudonym, the default. They may choose to be known by their legal name
+ *   instead (T-182); their email, phone and user id stay private either way.
  *
  * Neither party has a photo (no column holds one), so there is no avatar to look for; the day one is
  * added, its URL joins the markers.
@@ -248,6 +249,30 @@ describe('an investigator’s legal name never reaches a customer (T-181)', () =
       `/api/v1/profiles/investigator/${ids['investigatorProfile']}`,
     );
     expect(res.status).toBe(200);
-    expect(JSON.parse(res.text)).toMatchObject({ pseudonym });
+    expect(JSON.parse(res.text)).toMatchObject({ name: pseudonym });
+  });
+
+  it('names them by their legal name only once they choose it — and never by email, phone or id (T-182)', async () => {
+    await h.owner`
+      UPDATE investigator_profiles SET public_name = 'LEGAL' WHERE id = ${ids['investigatorProfile']!}`;
+    try {
+      const res = await call(
+        h,
+        customer,
+        'GET',
+        `/api/v1/profiles/investigator/${ids['investigatorProfile']}`,
+      );
+      expect(JSON.parse(res.text)).toMatchObject({ name: `${FIRST} ${SURNAME}` });
+      // The rest of what makes them reachable stays private whichever name they chose.
+      const { leaks } = await walk(h, customer, ids, {
+        email,
+        phone: PHONE,
+        'user id': ids['investigatorUser']!,
+      });
+      expect(leaks).toEqual([]);
+    } finally {
+      await h.owner`
+        UPDATE investigator_profiles SET public_name = 'PSEUDONYM' WHERE id = ${ids['investigatorProfile']!}`;
+    }
   });
 });

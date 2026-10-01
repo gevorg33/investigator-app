@@ -107,6 +107,19 @@ describe('blocks', () => {
       expect(JSON.stringify(await service.list(customer, req()))).not.toContain('Unchosen');
     });
 
+    it('labels one who chose to be known by their legal name by it, not their pseudonym (T-182)', async () => {
+      const { actor: customer } = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb, { displayName: 'Lilit Openly' });
+      const kept = await pseudonymOf(inv.profileId);
+      await ownerDb
+        .update(schema.investigatorProfiles)
+        .set({ publicName: 'LEGAL' })
+        .where(eq(schema.investigatorProfiles.id, inv.profileId));
+      const made = await service.block(customer, { investigatorProfileId: inv.profileId }, req());
+      expect(made).toMatchObject({ label: 'Lilit Openly', investigatorProfileId: inv.profileId });
+      expect(JSON.stringify(await service.list(customer, req()))).not.toContain(kept);
+    });
+
     it('names the investigator by the name the customer could see, once however often asked', async () => {
       const { actor: customer } = await quotableMission(ownerDb);
       const inv = await eligibleInvestigator(ownerDb, { displayName: 'Ani Petrosyan' });

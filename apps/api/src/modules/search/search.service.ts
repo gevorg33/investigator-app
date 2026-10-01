@@ -9,6 +9,7 @@ import {
   investigatorLanguages,
   investigatorProfiles,
   investigatorSpecialties,
+  users,
 } from '../../database/schema';
 import {
   toPublicInvestigatorProfile,
@@ -156,8 +157,9 @@ export class SearchService {
     const ids = page.map((r) => r.profileId);
     const [profiles, languages, availability, specialties] = await Promise.all([
       this.db
-        .select({ profile: investigatorProfiles })
+        .select({ profile: investigatorProfiles, displayName: users.displayName })
         .from(investigatorProfiles)
+        .innerJoin(users, sql`${users.id} = ${investigatorProfiles.userId}`)
         .where(inArray(investigatorProfiles.id, ids)),
       this.db
         .select()
@@ -182,9 +184,9 @@ export class SearchService {
       // A row that vanished between the two queries is dropped rather than half-rendered.
       if (found === undefined) return [];
       const rel = {
-        // The legal name is not read here at all: a customer's result names the investigator by
-        // the pseudonym on their profile, or the code that stands in for it (T-181).
-        displayName: null,
+        // Read, but public only for an investigator who chose to be known by it (T-182); for
+        // everyone else the projection names them by pseudonym, or the code (T-181).
+        displayName: found.displayName,
         languages: languages.filter((l) => l.profileId === row.profileId),
         availability: availability.filter((a) => a.profileId === row.profileId),
         specialtyNodeIds: specialties

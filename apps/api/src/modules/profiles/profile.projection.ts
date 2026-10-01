@@ -12,7 +12,10 @@ type LanguageRow = typeof investigatorLanguages.$inferSelect;
 type AvailabilityRow = typeof investigatorAvailability.$inferSelect;
 
 export interface ProfileRelations {
-  /** The legal name (`users.display_name`). The owner's view only — never a public one (T-181). */
+  /**
+   * The legal name (`users.display_name`). The owner's view always; a public one only when the
+   * investigator chose to be known by it (T-182).
+   */
   displayName: string | null;
   languages: LanguageRow[];
   availability: AvailabilityRow[];
@@ -33,10 +36,11 @@ export interface ProfileRelations {
 export interface PublicInvestigatorProfile {
   id: string;
   /**
-   * The name customers know them by, chosen by the investigator (T-181); null until chosen. The
-   * legal name is never here — before or after hire it stays with the investigator and staff.
+   * The name customers know them by, by the investigator's own choice (T-182): their pseudonym — the
+   * default, and then the legal name never appears here (T-181) — or, if they chose it, their legal
+   * name. Null when the chosen name is not set; `nameCode` stands in.
    */
-  pseudonym: string | null;
+  name: string | null;
   /** Stands in for the name until one is chosen ("Investigator K7Q2"): from the profile id alone. */
   nameCode: string;
   headline: string | null;
@@ -59,8 +63,12 @@ export interface PublicInvestigatorProfile {
 /** The owner's view: the public fields plus the ones only they may see. */
 export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
   userId: string;
-  /** Their legal name, the one verification checks: shown to them, never to customers (T-181). */
+  /** Their legal name, the one verification checks; customers see it only if chosen (T-182). */
   displayName: string | null;
+  /** The pseudonym they chose (T-181), whether or not it is the name in use. */
+  pseudonym: string | null;
+  /** Which name customers see: the pseudonym (default) or the legal name (T-182). */
+  publicName: InvestigatorRow['publicName'];
   contactPhone: string | null;
   visibility: InvestigatorRow['visibility'];
   /**
@@ -83,7 +91,7 @@ export function toPublicInvestigatorProfile(
 ): PublicInvestigatorProfile {
   return {
     id: row.id,
-    pseudonym: row.pseudonym,
+    name: row.publicName === 'LEGAL' ? rel.displayName : row.pseudonym,
     nameCode: investigatorNameCode(row.id),
     headline: row.headline,
     bio: row.bio,
@@ -114,6 +122,8 @@ export function toOwnInvestigatorProfile(
     ...toPublicInvestigatorProfile(row, rel),
     userId: row.userId,
     displayName: rel.displayName,
+    pseudonym: row.pseudonym,
+    publicName: row.publicName,
     contactPhone: row.contactPhone,
     visibility: row.visibility,
     verificationStatus: row.verificationStatus,

@@ -63,6 +63,12 @@ export const pricingModel = pgEnum('pricing_model', ['HOURLY', 'FIXED_FEE', 'RET
  * it is ready, not the moment the investigator role is activated. Verification is a separate
  * axis entirely (T-013) — published is not verified.
  */
+/**
+ * Which name customers know an investigator by (T-182): the pseudonym they chose, or the legal
+ * name verification checked. The pseudonym is the default, so no one is named until they say so.
+ */
+export const publicNameChoice = pgEnum('public_name_choice', ['PSEUDONYM', 'LEGAL']);
+
 export const profileVisibility = pgEnum('profile_visibility', ['DRAFT', 'PUBLISHED']);
 
 /**
@@ -120,6 +126,8 @@ export const investigatorProfiles = pgTable(
      * fallback. Unique without case, so no one can borrow another's name and reviews.
      */
     pseudonym: text('pseudonym'),
+    /** Whether customers see the pseudonym (default) or the legal name — the investigator's choice. */
+    publicName: publicNameChoice('public_name').notNull().default('PSEUDONYM'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     /**

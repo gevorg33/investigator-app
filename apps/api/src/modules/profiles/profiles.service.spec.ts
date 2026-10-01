@@ -149,8 +149,8 @@ describe('profile persistence', () => {
     expect(Object.keys(preview).sort()).toEqual(
       [
         'id',
-        // A chosen pseudonym and the code that stands in for it — never the legal name (T-181).
-        'pseudonym',
+        // The name they chose to be known by, and the code that stands in for it (T-181, T-182).
+        'name',
         'nameCode',
         'headline',
         'bio',
@@ -170,8 +170,9 @@ describe('profile persistence', () => {
     expect(preview).not.toHaveProperty('verificationStatus');
     expect(preview).toMatchObject({
       headline: 'Records research',
-      // No pseudonym chosen yet: the code stands in, and the legal name stays out (T-181).
-      pseudonym: null,
+      // A pseudonym is the default and none is set yet: the code stands in, and the legal name
+      // stays out (T-181, T-182).
+      name: null,
       nameCode: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{4}$/),
       languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
     });
@@ -388,7 +389,7 @@ describe('profile persistence', () => {
       const tidy = name.replace(/\s+/g, ' ');
       expect(saved).toMatchObject({ pseudonym: tidy, displayName: 'Nairi' });
       const preview = await profiles.previewMyInvestigatorProfile(actor, req);
-      expect(preview.pseudonym).toBe(tidy);
+      expect(preview.name).toBe(tidy);
       expect(JSON.stringify(preview)).not.toContain('Nairi');
     });
 
@@ -442,6 +443,31 @@ describe('profile persistence', () => {
       const name = unique('Nairi');
       const saved = await profiles.updateMyInvestigatorProfile(actor, { pseudonym: name }, req);
       expect(saved).toMatchObject({ pseudonym: name, displayName: null });
+    });
+
+    it('is the default; the legal name is shown only if they choose it, and choosing back hides it (T-182)', async () => {
+      const actor = await investigator();
+      const name = unique('Amber Gate');
+      const own = await profiles.updateMyInvestigatorProfile(actor, { pseudonym: name }, req);
+      expect(own.publicName).toBe('PSEUDONYM');
+      const seen = async () => (await profiles.previewMyInvestigatorProfile(actor, req)).name;
+      expect(await seen()).toBe(name);
+
+      const legal = await profiles.updateMyInvestigatorProfile(actor, { publicName: 'LEGAL' }, req);
+      expect(legal).toMatchObject({ publicName: 'LEGAL', pseudonym: name });
+      expect(await seen()).toBe('Nairi');
+
+      await profiles.updateMyInvestigatorProfile(actor, { publicName: 'PSEUDONYM' }, req);
+      expect(await seen()).toBe(name);
+    });
+
+    it('falls back to the code when the chosen name is not set', async () => {
+      const actor = await investigator();
+      await ownerDb.update(users).set({ displayName: null }).where(eq(users.id, actor.userId));
+      await profiles.updateMyInvestigatorProfile(actor, { publicName: 'LEGAL' }, req);
+      const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+      expect(preview.name).toBeNull();
+      expect(preview.nameCode).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}$/);
     });
 
     it('is one investigator’s alone, without regard to case', async () => {

@@ -4,7 +4,7 @@ title: How investigators are matched to your mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 5
+version: 6
 status: current
 updated: 2026-10-01
 source_of_truth: database
@@ -55,7 +55,8 @@ Choose how far from you to look, from "Covers me" up to 100 km. There is no map 
 
 ## What does an investigator's profile show me?
 
-The name they chose to be known by (never their legal name, before or after you hire them), their
+The name they chose to be known by — a pseudonym, or their own name if they chose to use it, the
+same before and after you hire them — their
 headline and description, whether they are verified, whether they are taking
 on work, their specialties, languages and levels, experience, how they charge and their usual
 hours — and their reviews: the average and number of ratings, then each review with its words and

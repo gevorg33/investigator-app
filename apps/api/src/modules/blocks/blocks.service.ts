@@ -117,23 +117,30 @@ export class BlocksService {
         // `user_blocks_not_self` refuses it regardless.
         const other = named.userId ?? (await investigatorOf(tx, named.profileId!));
         const [profile] = await tx
-          .select({ id: investigatorProfiles.id, pseudonym: investigatorProfiles.pseudonym })
+          .select({
+            id: investigatorProfiles.id,
+            pseudonym: investigatorProfiles.pseudonym,
+            publicName: investigatorProfiles.publicName,
+          })
           .from(investigatorProfiles)
           .where(eq(investigatorProfiles.userId, other));
-        // The name the blocker could see. An investigator is known to customers by the pseudonym
-        // they chose, never their legal name (T-181) — null until chosen. A customer blocked from a
-        // mission is anonymous (T-100); one blocked from an assignment was named to the investigator
-        // who was hired.
+        // The name the blocker could see. An investigator by the name they chose to be known by
+        // (T-182): their pseudonym — the default, null until chosen, and then never the legal name
+        // (T-181) — or their legal name if they chose it. A customer blocked from a mission is
+        // anonymous (T-100); one blocked from an assignment was named to the investigator hired.
+        // The account row exists for anyone named here (a profile or an assignment references it).
+        const legalName = async () =>
+          (await tx.select({ name: users.displayName }).from(users).where(eq(users.id, other)))[0]!
+            .name;
         const asInvestigator = named.source === 'profile' || named.profileId !== undefined;
+        // Their profile was found just above: an investigator was named by it.
         const label = asInvestigator
-          ? // Their profile was found just above: an investigator was named by it.
-            profile!.pseudonym
+          ? profile!.publicName === 'LEGAL'
+            ? await legalName()
+            : profile!.pseudonym
           : named.source === 'mission'
             ? null
-            : // The customer's account row exists (the assignment references it); its name may not.
-              (
-                await tx.select({ name: users.displayName }).from(users).where(eq(users.id, other))
-              )[0]!.name;
+            : await legalName();
 
         const [made] = await tx
           .insert(userBlocks)

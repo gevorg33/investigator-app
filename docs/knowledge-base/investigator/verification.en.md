@@ -4,7 +4,7 @@ title: Verification — documents, review, and keeping it current
 audience: investigator
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
 updated: 2026-10-01
 source_of_truth: docs
@@ -84,7 +84,7 @@ Once submitted, the application appears in your history with its date. Each deci
 application shows its outcome, the date and the reason given — never who reviewed it.
 
 Your legal name is locked from the moment you apply: it is what your documents are checked against.
-Customers never see it — they know you by the name you chose for them.
+Customers see it only if you choose to be known by it; otherwise they know you by your pseudonym.
 See "Can I change my name?" in the profile article.
 
 ## How long does review take?

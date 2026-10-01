@@ -8055,6 +8055,50 @@ customer's own list of what they saw); rewriting them is a data change that need
 pre-launch there is no production data. Publishing does not require a pseudonym — until one is
 chosen customers see the code; the status card does not nag (a possible follow-up). Staff and agency
 member lists keep the legal name: neither is shown to customers.
+
+---
+
+### T-182 — Investigators choose: a pseudonym, or their legal name
+- **Status:** DONE
+- **Priority:** P1
+- **Depends on:** T-181
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — given in chat 2026-10-01 (it changes what customers may see of an investigator)
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api (migration 0036, profiles, search, ai discovery tool, blocks), apps/app-web (details form, every investigator name), packages/i18n, docs
+
+**Description**
+Owner decisions, 2026-10-01, amending T-181: the pseudonym is optional. On their profile the
+investigator chooses, with a radio choice, whether customers know them by **a pseudonym** or by
+**their legal name**. **A pseudonym is the default** — for new profiles and every existing one — so
+nothing changes for anyone who does not choose. With a pseudonym, T-181 holds in full: the legal name
+never reaches a customer. With the legal name, customers see the name verification checked; email,
+phone and user id stay private either way.
+
+**Acceptance criteria**
+- [x] `investigator_profiles.public_name`: `PSEUDONYM` (default) or `LEGAL`, not null; reversible migration
+- [x] The public projection names the investigator by their choice (`name`), or the stand-in code when that name is unset
+- [x] The identity walk still proves a pseudonymous investigator's legal name never reaches a customer; a legal-name investigator is named by it, and still never by email, phone or user id
+- [x] The profile's details form offers the choice as a radio pair, the pseudonym field shown only when it is chosen; en/ru/hy
+- [x] KB, plan.md and architecture docs describe the choice and its default
+
+**Done (2026-10-01):** migration 0036 (`public_name_choice` enum, `investigator_profiles.public_name`
+default `PSEUDONYM`, with down). The public projection's `pseudonym` became `name` — the pseudonym, or
+the legal name when `LEGAL` — and search, the AI discovery tool and block labels follow the same
+rule; the owner's view adds `pseudonym` and `publicName`. Details form: a `RadioGroupChoice` pair
+(moved out of the intake's `questions.tsx` so both share it); the pseudonym field and its value are
+only present when a pseudonym is chosen, so switching back restores the stored one. en/ru/hy strings;
+KB investigator profile v6, verification v5, customer finding-an-investigator v6 (and the ru/hy
+drafts); plan.md, profiles.md, blocks.md, component inventory. Identity walk: a `LEGAL` investigator
+is named by the legal name and still leaks no email, phone or user id. Verified in the browser at
+375px and 1280px with a throwaway e2e (not committed): the choice saves, survives a reload, and the
+preview shows the legal name.
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
 ---
 
 ## Backlog

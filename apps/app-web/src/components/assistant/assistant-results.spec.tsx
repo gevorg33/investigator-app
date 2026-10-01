@@ -73,7 +73,7 @@ describe('structured results in the assistant (T-059)', () => {
       ]);
 
       // A profile with no name, headline or experience says only what it has.
-      // No pseudonym chosen: the code stands in, and never a legal name (T-181).
+      // No name set: the code stands in, never a name the investigator did not choose (T-182).
       expect(
         within(unnamed).getByRole('heading', {
           name: catalogs.en.investigator.public_name.unnamed.replace('{code}', 'B4T9'),

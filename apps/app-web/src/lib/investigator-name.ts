@@ -1,11 +1,11 @@
 /**
- * The name a customer knows an investigator by (T-181): the pseudonym they chose, or "Investigator
- * K7Q2" until they choose one. Never the legal name — the API does not send it to anyone but the
- * investigator themself.
+ * The name a customer knows an investigator by (T-181, T-182): the one they chose — their pseudonym,
+ * the default, or their legal name if they opted for it — or "Investigator K7Q2" until it is set.
+ * Which one is the API's to decide: it sends the legal name only when the investigator chose it.
  */
 export function investigatorName(
-  p: { pseudonym: string | null; nameCode: string },
+  p: { name: string | null; nameCode: string },
   unnamed: (code: string) => string,
 ): string {
-  return p.pseudonym ?? unnamed(p.nameCode);
+  return p.name ?? unnamed(p.nameCode);
 }

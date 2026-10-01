@@ -349,6 +349,7 @@ export class ProfilesService {
             ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
             ...(dto.contactPhone !== undefined ? { contactPhone: dto.contactPhone } : {}),
             ...(pseudonym !== undefined ? { pseudonym } : {}),
+            ...(dto.publicName !== undefined ? { publicName: dto.publicName } : {}),
             updatedAt: new Date(),
           })
           .where(eq(investigatorProfiles.id, row.id));

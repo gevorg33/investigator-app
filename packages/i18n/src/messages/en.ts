@@ -564,10 +564,14 @@ export const en = {
     details: {
       title: 'About you',
       name: 'Your legal name',
-      name_hint: 'As on your identity document: verification checks it. Customers never see it.',
+      name_hint:
+        'As on your identity document: verification checks it. Customers see it only if you choose it below.',
       name_locked:
         'Locked while verification is under review or approved, because it was checked against your documents. Contact support to change it.',
-      pseudonym: 'Name customers see',
+      public_name: 'Name on your public profile',
+      public_name_PSEUDONYM: 'A pseudonym',
+      public_name_LEGAL: 'My legal name',
+      pseudonym: 'Your pseudonym',
       pseudonym_hint:
         'Customers know you only by this name, never your legal one. It must be unique, and cannot contain your own name or contact details.',
       headline: 'Headline',

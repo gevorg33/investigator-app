@@ -63,7 +63,8 @@ removes the policy as the negative control.
 
 `user_blocks`: `blocker_id` (DEFAULT the current user), `blocked_id`, `blocked_profile_id` (their
 investigator profile then, if any), `tenant_id` (where it was made — it scopes nothing), `source`,
-`label` (the name the blocker could see: an investigator's pseudonym — never their legal name, T-181 —
+`label` (the name the blocker could see: an investigator's chosen public name — their pseudonym, or
+their legal name only if they chose it, T-181/T-182 —
 or null; a customer's name only when blocked by the investigator they hired), `created_at`. Unique per (blocker, blocked). Class `system` in the registry.
 
 | Policy | |

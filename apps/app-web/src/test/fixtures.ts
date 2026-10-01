@@ -153,9 +153,11 @@ export const emptyPage = { items: [], pageInfo: { nextCursor: null, hasNextPage:
 /** The investigator's own profile, as `GET /profiles/investigator/me` returns it (T-123). */
 export const ownProfile = (over: Partial<OwnInvestigatorProfile> = {}): OwnInvestigatorProfile => ({
   id: 'p-1',
-  // The legal name, the owner's alone; customers see the pseudonym (T-181).
+  // The legal name, the owner's alone; customers see the pseudonym, the default (T-181, T-182).
   displayName: 'Ani Petrosyan',
   pseudonym: 'Ararat Lantern',
+  publicName: 'PSEUDONYM',
+  name: 'Ararat Lantern',
   nameCode: 'K7Q2',
   headline: 'Corporate due diligence in the Caucasus',
   bio: 'Ten years of company checks.\nCourt and registry work.',
@@ -203,7 +205,7 @@ export const application = (
 /** An investigator a search found, as discovery returns one (T-018): the public projection. */
 export const investigatorMatch = (over: Partial<InvestigatorMatch> = {}): InvestigatorMatch => ({
   investigatorId: 'inv-1',
-  pseudonym: 'Silver Fox',
+  name: 'Silver Fox',
   nameCode: 'M3R8',
   headline: 'Corporate due diligence across the South Caucasus',
   yearsExperience: 9,
@@ -246,7 +248,7 @@ export const discoveryAnswer = (over: Partial<DiscoveryAnswer> = {}): DiscoveryA
     investigatorMatch(),
     investigatorMatch({
       investigatorId: 'inv-2',
-      pseudonym: null,
+      name: null,
       nameCode: 'B4T9',
       headline: null,
       yearsExperience: null,

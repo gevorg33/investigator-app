@@ -78,10 +78,10 @@ describe('an investigator’s public profile page', () => {
     );
   });
 
-  it('names one who chose no pseudonym by their code, never otherwise, and works with no tree', async () => {
+  it('names one with no chosen name by their code, never otherwise, and works with no tree', async () => {
     api.on(`GET /profiles/investigator/${ID}`, 200, {
       ...PUBLIC,
-      pseudonym: null,
+      name: null,
       verified: false,
     });
     api.on(`GET /profiles/investigator/${ID}/reviews`, 200, reviews([]));

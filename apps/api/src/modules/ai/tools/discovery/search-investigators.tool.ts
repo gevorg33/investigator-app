@@ -127,7 +127,7 @@ function toMatch(
   const label = (id: string) => ({ id, label: labels.get(id) ?? null });
   return {
     investigatorId: i.id,
-    pseudonym: i.pseudonym,
+    name: i.name,
     nameCode: i.nameCode,
     headline: i.headline,
     yearsExperience: i.yearsExperience,

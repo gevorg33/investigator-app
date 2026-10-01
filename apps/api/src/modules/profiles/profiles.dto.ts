@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 
 const PRICING_MODELS = ['HOURLY', 'FIXED_FEE', 'RETAINER', 'MIXED'] as const;
+const PUBLIC_NAME_CHOICES = ['PSEUDONYM', 'LEGAL'] as const;
 const PROFICIENCIES = ['BASIC', 'CONVERSATIONAL', 'FLUENT', 'NATIVE'] as const;
 const VISIBILITIES = ['DRAFT', 'PUBLISHED'] as const;
 
@@ -74,6 +75,14 @@ export class UpdateInvestigatorProfileDto {
   @Matches(/\S/, { message: 'error.validation.pseudonym.blank' })
   @Length(2, 60, { message: 'error.validation.pseudonym.length' })
   pseudonym?: string | null;
+
+  /**
+   * Which name customers know the investigator by (T-182): `PSEUDONYM`, the default, or `LEGAL` —
+   * the name above, which verification checks. Their choice, changeable at any time.
+   */
+  @IsOptional()
+  @IsIn(PUBLIC_NAME_CHOICES)
+  publicName?: (typeof PUBLIC_NAME_CHOICES)[number];
 
   @IsOptional()
   @IsString()

@@ -179,10 +179,10 @@ describe('the public profile', () => {
     expect(article).toHaveTextContent('Mon 09:00–12:00, Mon 14:00–18:00, Wed 10:00–15:00');
   });
 
-  it('leaves out what is not set, and names one who chose no pseudonym by their code', () => {
+  it('leaves out what is not set, and names one with no chosen name by their code', () => {
     card(
       ownProfile({
-        pseudonym: null,
+        name: null,
         headline: null,
         bio: null,
         yearsExperience: null,
@@ -238,7 +238,11 @@ describe('about the investigator', () => {
     expect(name).toHaveAccessibleDescription(en.details.name_hint);
     await user().clear(name);
     await user().type(name, '  Ani Grigoryan ');
-    // The name customers see sits beside the legal one, and says it is the only one they see.
+    // A pseudonym is the default name customers see, and says it is the only one they see (T-182).
+    const choice = screen.getByRole('radiogroup', { name: en.details.public_name });
+    expect(
+      within(choice).getByRole('radio', { name: en.details.public_name_PSEUDONYM }),
+    ).toBeChecked();
     const pseudonym = screen.getByRole('textbox', { name: en.details.pseudonym });
     expect(pseudonym).toHaveAccessibleDescription(en.details.pseudonym_hint);
     expect(pseudonym).toHaveValue('Ararat Lantern');
@@ -257,6 +261,7 @@ describe('about the investigator', () => {
     await save();
     expect(patched()).toEqual({
       displayName: 'Ani Grigoryan',
+      publicName: 'PSEUDONYM',
       pseudonym: 'Quiet Owl',
       headline: 'Corporate due diligence in the Caucasus!',
       bio: 'Ten years of company checks.\nCourt and registry work.',
@@ -291,7 +296,35 @@ describe('about the investigator', () => {
     fireEvent.submit(screen.getByRole('button', { name: en.details.save }).closest('form')!);
     await screen.findByRole('status');
     // A blank pseudonym is sent as null: it clears, and customers see the stand-in code (T-181).
-    expect(patched()).toEqual({ headline: '', bio: '', contactPhone: '', pseudonym: null });
+    expect(patched()).toEqual({
+      headline: '',
+      bio: '',
+      contactPhone: '',
+      publicName: 'PSEUDONYM',
+      pseudonym: null,
+    });
+  });
+
+  it('lets them be known by their legal name instead, keeping the pseudonym for later (T-182)', async () => {
+    api.on(PATCH, 200, {});
+    form();
+    await user().click(screen.getByRole('radio', { name: en.details.public_name_LEGAL }));
+    // Nothing to fill in for a legal name: the field for a pseudonym goes, and is not sent.
+    expect(screen.queryByRole('textbox', { name: en.details.pseudonym })).toBeNull();
+    await save();
+    expect(patched()).toMatchObject({ publicName: 'LEGAL' });
+    expect(patched()).not.toHaveProperty('pseudonym');
+    // Choosing back brings the pseudonym they had.
+    await user().click(screen.getByRole('radio', { name: en.details.public_name_PSEUDONYM }));
+    expect(screen.getByRole('textbox', { name: en.details.pseudonym })).toHaveValue(
+      'Ararat Lantern',
+    );
+  });
+
+  it('shows the legal name as chosen when it is (T-182)', () => {
+    form(ownProfile({ verificationStatus: 'UNVERIFIED', publicName: 'LEGAL' }));
+    expect(screen.getByRole('radio', { name: en.details.public_name_LEGAL })).toBeChecked();
+    expect(screen.queryByRole('textbox', { name: en.details.pseudonym })).toBeNull();
   });
 
   it.each(['VERIFIED', 'PENDING'] as const)(
