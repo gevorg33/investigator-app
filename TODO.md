@@ -7824,13 +7824,13 @@ pnpm --filter @investigator/app-web test:e2e
 ---
 
 ### T-177 — Armenian says “գործ” for a mission; the notification emails say “առաջադրանք”
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01. Owner decision: the word is «առաջադրանք», the knowledge base's, not the app's «գործ» (the reverse of the description below). The app's 65 mission strings changed; «գործ» kept where it means something else; the articles' quoted UI labels follow; the phone tab's label may take two lines; an Account-page overflow found on the way fixed
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** localization
-- **Affected:** packages/i18n/src/messages/hy.ts (`email`), docs/knowledge-base/*/notifications-and-email.hy.md
+- **Affected:** packages/i18n/src/messages/hy.ts, docs/knowledge-base/{customer,investigator}/*.hy.md (9 files), apps/app-web/src/components/shell/nav-links.tsx, apps/app-web/src/components/account/{add-role-form,legal-outstanding}.tsx, docs/product/translation-glossary.md, ACTIONS-FOR-ME.md
 
 **Description**
 Found in T-052: the app calls a mission «գործ» (149 uses, the navigation included), but T-036's
@@ -7838,7 +7838,7 @@ Armenian email templates and notification articles use «առաջադրանք».
 articles stay drafts for the native-speaker review (ACTIONS-FOR-ME #22).
 
 **Acceptance criteria**
-- [ ] One word for a mission across hy.ts and the hy knowledge base
+- [x] One word for a mission across hy.ts and the hy knowledge base
 
 **Validation**
 ```bash
@@ -7846,6 +7846,22 @@ pnpm --filter @investigator/i18n test && python3 scripts/validate-knowledge-base
 ```
 
 
+
+**Done 2026-10-01 — the owner chose «առաջադրանք».** The knowledge base already used it in 31 articles;
+the app said «գործ» in 65 strings, the navigation included. Each «գործ» in `hy.ts` was read in
+context: 65 lines take «առաջադրանք» with its endings (plural «առաջադրանքներ»); eight keep «գործ»
+because it means something else there — «ում հետ գործ ունեմ» (dealings), «իրավական գործում» (a legal
+case), and «գործում է» (works / is valid: rules, links, a quote). In the articles, «գործ» meaning a
+mission — the quoted labels **Առաջադրանքներ → Նոր առաջադրանք**, **Բաց առաջադրանքներ**,
+**Չեղարկել առաջադրանքը** and the Emails switch among them — changed in 9 files; its other senses
+(a case, «did its job», «is in force») stay. The glossary's open conflict #2 is settled.
+
+Verified at 375 px in Armenian: «Առաջադրանքներ» was cut to «Առաջադ…» in the phone tab, so the tab's
+label may now take two lines, broken inside a word when one is wider than its column («Առաջադր|
+անքներ» — ACTIONS-FOR-ME #23 asks the reviewer whether that reads); the sidebar keeps one line. The
+same look found the Account page 402 px wide in Armenian and Russian: the add-role and outstanding-
+documents forms are grids whose implicit `auto` column grew to the legal documents' "not yet
+translated" note. Both forms are now `grid-cols-1`, as T-178's cards.
 ---
 
 ### T-178 — A category name with no spaces pushes the mission card past a phone's width

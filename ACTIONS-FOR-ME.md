@@ -617,9 +617,10 @@ still differ. Word choices to confirm, two of them made so the labels fit a 75px
 
 - Russian navigation says **«Чаты»** for Messages (the full «Сообщения» is clipped on a phone)
   and **«Задания»** for Missions — the knowledge base's word; «заказ» means an assignment.
-- Armenian navigation says **«Գործեր»** (cases) for Missions, where «Պատվերներ» and the knowledge
-  base's «Առաջադրանքներ» do not fit — **open conflict**: pick one word for both, or a short
-  navigation label beside the knowledge base's term.
+- Armenian says **«առաջադրանք»** for mission in the app and the knowledge base — settled by you on
+  2026-10-01 (T-177). The phone tab shows «Առաջադրանքներ» on two lines, broken «Առաջադր|անքներ»:
+  confirm the break reads, and that «գործ» is right where it was kept for its other senses (a legal
+  case, «գործ ունենալ», «գործում է» = works).
 - Armenian says **«դետեկտիվ»** for investigator where the knowledge base says «խուզարկու» — **open
   conflict**. The evidence favours «դետեկտիվ»: the lawful registered business in Armenia calls
   itself «դետեկտիվ բյուրո», and the press uses «մասնավոր խուզարկու» for unlicensed private
