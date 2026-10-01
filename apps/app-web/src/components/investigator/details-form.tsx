@@ -24,7 +24,8 @@ const text = (form: FormData, name: string) => {
 
 /**
  * What the investigator says about themselves (T-123). Saved together; the contact phone is theirs
- * alone — it is not in the public projection, and the form says so where it is asked for.
+ * alone — it is not in the public projection, and the form says so where it is asked for. So is the
+ * legal name: customers know them by the pseudonym beside it (T-181).
  */
 export function DetailsForm({
   profile,
@@ -53,6 +54,8 @@ export function DetailsForm({
         body: {
           // A locked name is not sent at all: it is shown, not edited.
           ...(!nameLocked && name !== undefined ? { displayName: name } : {}),
+          // Blank clears it, and customers see the stand-in code again (T-181).
+          pseudonym: text(form, 'pseudonym') ?? null,
           headline: text(form, 'headline') ?? '',
           bio: text(form, 'bio') ?? '',
           contactPhone: text(form, 'phone') ?? '',
@@ -74,7 +77,7 @@ export function DetailsForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      <FormError error={error} shown={['displayName']} />
+      <FormError error={error} shown={['displayName', 'pseudonym']} />
       <Field
         label={t('name')}
         hint={nameLocked ? t('name_locked') : t('name_hint')}
@@ -85,6 +88,16 @@ export function DetailsForm({
         readOnly={nameLocked}
         defaultValue={profile.displayName ?? ''}
         error={fields['displayName'] && tl(fields['displayName'])}
+      />
+      {/* The only name customers see: theirs to choose, and never the legal one above (T-181). */}
+      <Field
+        label={t('pseudonym')}
+        hint={t('pseudonym_hint')}
+        name="pseudonym"
+        autoComplete="off"
+        maxLength={60}
+        defaultValue={profile.pseudonym ?? ''}
+        error={fields['pseudonym'] && tl(fields['pseudonym'])}
       />
       <Field
         label={t('headline')}

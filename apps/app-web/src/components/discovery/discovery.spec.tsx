@@ -182,7 +182,7 @@ describe('finding investigators', () => {
       ]),
     );
     discovery({ taxonomyNodeId: DD });
-    const card = await screen.findByRole('article', { name: 'Ani Petrosyan' });
+    const card = await screen.findByRole('article', { name: 'Ararat Lantern' });
     expect(card).toHaveTextContent(en.card.verified);
     expect(card).toHaveTextContent('Corporate due diligence in the Caucasus');
     expect(card).toHaveTextContent(
@@ -190,12 +190,12 @@ describe('finding investigators', () => {
     );
     expect(card).toHaveTextContent('Does not offer Records research');
     expect(card).toHaveTextContent('Armenian · 10 years of experience · By the hour, AMD');
-    expect(within(card).getByRole('link', { name: 'Ani Petrosyan' })).toHaveAttribute(
+    expect(within(card).getByRole('link', { name: 'Ararat Lantern' })).toHaveAttribute(
       'href',
       '/missions/investigators/p-1',
     );
     expect(
-      within(card).getByRole('link', { name: `${en.card.view}: Ani Petrosyan` }),
+      within(card).getByRole('link', { name: `${en.card.view}: Ararat Lantern` }),
     ).toBeVisible();
     expect(bodies()).toEqual([{ taxonomyNodeIds: [DD] }]);
   });
@@ -206,7 +206,7 @@ describe('finding investigators', () => {
       200,
       page([
         result({
-          displayName: null,
+          pseudonym: null,
           verified: false,
           headline: null,
           yearsExperience: null,
@@ -218,7 +218,9 @@ describe('finding investigators', () => {
     );
     discovery();
     const [bare, fixed] = await screen.findAllByRole('article');
-    expect(bare).toHaveAccessibleName(catalogs.en.investigator.details.not_set);
+    expect(bare).toHaveAccessibleName(
+      catalogs.en.investigator.public_name.unnamed.replace('{code}', 'K7Q2'),
+    );
     expect(bare).not.toHaveTextContent(en.card.verified);
     expect(bare).not.toHaveTextContent('Matches');
     expect(bare!.querySelectorAll('p')).toHaveLength(1);
@@ -232,7 +234,7 @@ describe('finding investigators', () => {
     expect(screen.getByRole('status', { name: en.loading })).toBeInTheDocument();
     await act(async () => release());
     await screen.findByRole('article');
-    api.on(SEARCH, 200, page([result({ id: 'p-2', displayName: 'Davit' })]));
+    api.on(SEARCH, 200, page([result({ id: 'p-2', pseudonym: 'Davit' })]));
     await user().click(screen.getByRole('button', { name: en.more }));
     expect(await screen.findByRole('article', { name: 'Davit' })).toBeVisible();
     expect(screen.getAllByRole('article')).toHaveLength(2);
@@ -389,9 +391,9 @@ describe('finding investigators', () => {
 
   it('drops the answer to a search a newer one replaced', async () => {
     device([44.51, 40.18]);
-    const release = api.hold(SEARCH, 200, page([result({ displayName: 'Stale' })]));
+    const release = api.hold(SEARCH, 200, page([result({ pseudonym: 'Stale' })]));
     discovery();
-    api.on(SEARCH, 200, page([result({ displayName: 'Fresh', distanceKm: 0 })]));
+    api.on(SEARCH, 200, page([result({ pseudonym: 'Fresh', distanceKm: 0 })]));
     await user().click(screen.getByRole('button', { name: en.near }));
     expect(await screen.findByRole('article', { name: 'Fresh' })).toBeVisible();
     await act(async () => release());
@@ -406,7 +408,7 @@ describe('finding investigators', () => {
       () => new Promise((_, reject) => (fail = () => reject(new TypeError('x')))),
     );
     discovery();
-    api.on(SEARCH, 200, page([result({ displayName: 'Fresh', distanceKm: 0 })]));
+    api.on(SEARCH, 200, page([result({ pseudonym: 'Fresh', distanceKm: 0 })]));
     await user().click(screen.getByRole('button', { name: en.near }));
     await screen.findByRole('article', { name: 'Fresh' });
     await act(async () => fail());

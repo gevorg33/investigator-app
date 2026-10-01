@@ -4,9 +4,9 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 7
+version: 8
 status: current
-updated: 2026-09-25
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -73,7 +73,8 @@ hours you need — and searches live investigator data with them, with your perm
 verified investigators who are accepting work can appear. It then tells you which of your
 requirements each one met, and which of the specialties you asked for they do not offer.
 
-Each investigator appears as a card: their name and headline in their own words, that they are
+Each investigator appears as a card: the name they chose to be known by and their headline, in
+their own words, that they are
 verified, their languages, specialties and declared hours, and the reasons they match — including,
 plainly, a specialty you asked for that they do not offer. It shows a few at a time; if more match, it
 says so, and naming a place, a specialty or a language narrows the list.

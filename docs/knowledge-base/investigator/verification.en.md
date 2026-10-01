@@ -4,9 +4,9 @@ title: Verification — documents, review, and keeping it current
 audience: investigator
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -83,7 +83,8 @@ says which one and why.
 Once submitted, the application appears in your history with its date. Each decided
 application shows its outcome, the date and the reason given — never who reviewed it.
 
-Your name is locked from the moment you apply: it is what your documents are checked against.
+Your legal name is locked from the moment you apply: it is what your documents are checked against.
+Customers never see it — they know you by the name you chose for them.
 See "Can I change my name?" in the profile article.
 
 ## How long does review take?

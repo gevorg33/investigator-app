@@ -101,7 +101,10 @@ export type NotMatchedView = z.infer<typeof notMatchedSchema>;
  */
 export const investigatorMatchSchema = z.object({
   investigatorId: z.string(),
-  displayName: z.string().nullable(),
+  /** The name they chose, which customers know them by; null until chosen (T-181). Never the legal name. */
+  pseudonym: z.string().nullable(),
+  /** Stands in for an unchosen name: "Investigator" and this code. From the profile id alone. */
+  nameCode: z.string(),
   headline: z.string().nullable(),
   yearsExperience: z.number().nullable(),
   verificationStatus: z.literal('VERIFIED'),

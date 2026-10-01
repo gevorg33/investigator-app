@@ -263,12 +263,14 @@ describe('assistant discovery tools (T-018)', () => {
     expect(Object.keys(result!).sort()).toEqual(
       [
         'availability',
-        'displayName',
         'distanceKm',
         'headline',
         'investigatorId',
         'languages',
         'matchedOn',
+        // The name the model may repeat is the chosen pseudonym or its stand-in code (T-181).
+        'nameCode',
+        'pseudonym',
         'notMatched',
         'specialties',
         'verificationStatus',

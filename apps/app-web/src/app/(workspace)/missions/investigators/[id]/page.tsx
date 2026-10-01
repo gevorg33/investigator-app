@@ -12,6 +12,7 @@ import { Page } from '@/components/page';
 import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
+import { investigatorName } from '@/lib/investigator-name';
 import type {
   BlockView,
   ProfileReviews as Reviews,
@@ -41,7 +42,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const [t, profile] = await Promise.all([getT(), params.then(({ id }) => profileOf(id))]);
-  return { title: profile.displayName ?? t('missions.discovery.title') };
+  return {
+    title: investigatorName(profile, (code) => t('investigator.public_name.unnamed', { code })),
+  };
 }
 
 /**
@@ -74,7 +77,9 @@ export default async function InvestigatorProfilePage({
   const block = blocks?.items.find((b) => b.investigatorProfileId === profile.id);
   const specialties = new Map(categoryOptions(taxonomy ?? []).map((c) => [c.id, c.label]));
   return (
-    <Page title={profile.displayName ?? t('missions.discovery.title')}>
+    <Page
+      title={investigatorName(profile, (code) => t('investigator.public_name.unnamed', { code }))}
+    >
       <Link
         href={DISCOVERY_PATH}
         className="mt-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary hover:underline"

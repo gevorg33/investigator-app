@@ -389,22 +389,26 @@ describe('investigator discovery', () => {
   describe('what a result contains', () => {
     it('carries the public projection and nothing private', async () => {
       const centre = somewhere();
-      const found = await mine({ centre, displayName: 'Anahit', languages: ['hy'] });
+      const found = await mine({ centre, displayName: 'Anahit Legalname', languages: ['hy'] });
+      const pseudonym = `Ararat Research ${found.profileId.slice(0, 8)}`;
       await ownerDb
         .update(schema.investigatorProfiles)
-        .set({ contactPhone: '555-0104' })
+        .set({ contactPhone: '555-0104', pseudonym })
         .where(sql`${schema.investigatorProfiles.id} = ${found.profileId}`);
 
       const page = await near(centre);
       const serialised = JSON.stringify(page);
       expect(page.items[0]).toMatchObject({
         id: found.profileId,
-        displayName: 'Anahit',
+        // Known by the name they chose; the legal one never reaches a customer (T-181).
+        pseudonym,
         verificationStatus: 'VERIFIED',
         // The public projection's own flag agrees: only verified investigators are listed.
         verified: true,
       });
-      // No contact details, no coordinates, no geometry, no account id.
+      // No legal name, no contact details, no coordinates, no geometry, no account id.
+      expect(serialised).not.toContain('Legalname');
+      expect(serialised).not.toContain('displayName');
       expect(serialised).not.toContain('555-0104');
       expect(serialised).not.toContain('contactPhone');
       expect(serialised).not.toContain('userId');

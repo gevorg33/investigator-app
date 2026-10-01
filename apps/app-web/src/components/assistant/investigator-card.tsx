@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { InvestigatorMatch, MatchReason } from '@/lib/api/assistant';
 import { labels, languageName, list, placeName, windowParts } from './discovery-format';
+import { investigatorName } from '@/lib/investigator-name';
 
 /**
  * One investigator a search found (T-059), as a card: who they are in their own words (name,
@@ -17,6 +18,7 @@ import { labels, languageName, list, placeName, windowParts } from './discovery-
  */
 export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
   const t = useTranslations('assistant.discovery');
+  const ti = useTranslations('investigator');
   const locale = useLocale() as Locale;
   const title = useId();
 
@@ -46,7 +48,9 @@ export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
   return (
     <Card role="article" aria-labelledby={title} className="gap-3">
       <CardHeader className="gap-1">
-        <CardTitle id={title}>{match.displayName ?? t('unnamed')}</CardTitle>
+        <CardTitle id={title}>
+          {investigatorName(match, (code) => ti('public_name.unnamed', { code }))}
+        </CardTitle>
         {match.headline !== null && <p className="text-text-muted">{match.headline}</p>}
         <p className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="secondary">

@@ -110,7 +110,9 @@ export type MatchReason =
 /** One investigator a search found: the public projection — no price, no bio, no contact. */
 export interface InvestigatorMatch {
   investigatorId: string;
-  displayName: string | null;
+  /** The pseudonym they chose, or null and `nameCode` stands in (T-181). Never the legal name. */
+  pseudonym: string | null;
+  nameCode: string;
   headline: string | null;
   yearsExperience: number | null;
   verificationStatus: 'VERIFIED';

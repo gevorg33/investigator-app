@@ -43,7 +43,10 @@ export interface BlockTarget {
 export interface BlockView {
   id: string;
   source: BlockSource;
-  /** The name the blocker could see when they blocked; none for a customer blocked from a mission. */
+  /**
+   * The name the blocker could see when they blocked: an investigator's pseudonym (T-181), null when
+   * they had none; none for a customer blocked from a mission.
+   */
   label: string | null;
   /** The blocked person's investigator profile, when they have one. */
   investigatorProfileId: string | null;
@@ -114,15 +117,23 @@ export class BlocksService {
         // `user_blocks_not_self` refuses it regardless.
         const other = named.userId ?? (await investigatorOf(tx, named.profileId!));
         const [profile] = await tx
-          .select({ id: investigatorProfiles.id })
+          .select({ id: investigatorProfiles.id, pseudonym: investigatorProfiles.pseudonym })
           .from(investigatorProfiles)
           .where(eq(investigatorProfiles.userId, other));
-        const label =
-          named.source === 'mission'
+        // The name the blocker could see. An investigator is known to customers by the pseudonym
+        // they chose, never their legal name (T-181) — null until chosen. A customer blocked from a
+        // mission is anonymous (T-100); one blocked from an assignment was named to the investigator
+        // who was hired.
+        const asInvestigator = named.source === 'profile' || named.profileId !== undefined;
+        const label = asInvestigator
+          ? // Their profile was found just above: an investigator was named by it.
+            profile!.pseudonym
+          : named.source === 'mission'
             ? null
-            : ((
+            : // The customer's account row exists (the assignment references it); its name may not.
+              (
                 await tx.select({ name: users.displayName }).from(users).where(eq(users.id, other))
-              )[0]?.name ?? null);
+              )[0]!.name;
 
         const [made] = await tx
           .insert(userBlocks)

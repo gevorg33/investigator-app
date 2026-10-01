@@ -15,6 +15,7 @@ screen for all of this is app-web's `/account/investigator` (T-123, `app-web.md`
 | `PATCH /profiles/investigator/me` | INVESTIGATOR | Updates any of: `displayName`, headline, bio, years, pricing, rate, currency, phone, `visibility`, `acceptingWork`, languages, specialties, availability — the lists are replaced whole |
 | `GET /profiles/investigator/:id` | Signed in | Somebody else's profile through the public projection; 404 unless published |
 | `GET /profiles/customer/me`, `PATCH /profiles/customer/me` | CUSTOMER | The own customer profile |
+| `PATCH /profiles/investigator/me` `pseudonym` | INVESTIGATOR | The name customers see; `null` clears it (T-181) |
 | `GET /profiles/customer/:id` | Signed in | Deliberately almost nothing: `{ id, displayName }`, and `displayName` is `null` unless the caller is that customer or an investigator they hired — an assignment between them, not cancelled (T-100) |
 
 ## One projection for the public view and the preview
@@ -32,7 +33,25 @@ read as `false`, so an applicant's standing is never shown, and the status itsel
 the public view (tested for each status). Discovery results carry it too; they are always `true`,
 because only verified investigators are eligible (`discovery.md`).
 
-## The name, and when it is locked
+## Two names: the legal one, and the one customers see (T-181)
+
+Owner decisions, 2026-10-01: customers know an investigator **only** by a pseudonym the investigator
+chooses, never their legal name — before hire or after. The legal name is verification's and staff's.
+
+| | Legal name | Pseudonym |
+|---|---|---|
+| Column | `users.display_name` | `investigator_profiles.pseudonym` (migration 0035) |
+| Who sees it | The investigator (`OwnInvestigatorProfile.displayName`), staff | Everyone: the public projection, discovery, the assistant's tool output, block labels |
+| Rules | Below | 2–60 characters (CHECK); unique without case (`investigator_profiles_pseudonym_unique` on `lower(pseudonym)`); may not share a word of three letters or more with the legal name — even a first name, since free text does not say which word is which — nor carry an email, a web address or six digits (`pseudonym.ts`). Refusals: `OWN_NAME`, `CONTACT`, `TAKEN` on field `pseudonym` |
+| Unset | — | `null`; the public projection's `nameCode` (`opaqueCode('investigator-name', profileId)`) stands in, and the app shows "Investigator {code}" in the reader's language |
+
+`PublicInvestigatorProfile` has no `displayName` at all: it is an allowlist, so the legal name cannot
+reach a customer by being forgotten. When a save changes either name the pair is checked again, so a
+rename cannot make an existing pseudonym reveal the new legal name. **Held by**
+`test/identity-masking.spec.ts`, which walks every read as a customer who has hired the investigator
+and fails on their first name, surname, email, phone or user id.
+
+## The legal name, and when it is locked
 
 `displayName` is the account's name (`users.display_name`), so it is the same name on both
 sides of the account. It is editable (1–80 characters, not blank, trimmed) **until

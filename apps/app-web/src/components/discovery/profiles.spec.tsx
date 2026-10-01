@@ -64,8 +64,8 @@ describe('an investigator’s public profile page', () => {
   it('shows the public projection under the name, once, and the way back', async () => {
     serve();
     await show();
-    expect(screen.getByRole('heading', { level: 1, name: 'Ani Petrosyan' })).toBeVisible();
-    expect(screen.getAllByText('Ani Petrosyan')).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Ararat Lantern' })).toBeVisible();
+    expect(screen.getAllByText('Ararat Lantern')).toHaveLength(1);
     const article = screen.getByRole('article');
     expect(article).toHaveTextContent(catalogs.en.investigator.verification_status.VERIFIED);
     expect(article).toHaveTextContent('Due diligence');
@@ -74,21 +74,22 @@ describe('an investigator’s public profile page', () => {
       '/missions/investigators',
     );
     expect((await generateMetadata({ params: Promise.resolve({ id: ID }) })).title).toBe(
-      'Ani Petrosyan',
+      'Ararat Lantern',
     );
   });
 
-  it('names nobody it has no name for, and works with no tree', async () => {
+  it('names one who chose no pseudonym by their code, never otherwise, and works with no tree', async () => {
     api.on(`GET /profiles/investigator/${ID}`, 200, {
       ...PUBLIC,
-      displayName: null,
+      pseudonym: null,
       verified: false,
     });
     api.on(`GET /profiles/investigator/${ID}/reviews`, 200, reviews([]));
     api.on('GET /taxonomy?locale=en', 204);
     api.on('GET /blocks', 204);
     await show();
-    const title = catalogs.en.missions.discovery.title;
+    // The stand-in is the code, in the reader's language — the legal name is never sent (T-181).
+    const title = catalogs.en.investigator.public_name.unnamed.replace('{code}', 'K7Q2');
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible();
     expect(screen.getByRole('article')).not.toHaveTextContent(
       catalogs.en.investigator.verification_status.VERIFIED,
@@ -118,7 +119,7 @@ describe('an investigator’s public profile page', () => {
     serve();
     api.on('GET /me', 200, account({ emailVerified: false }));
     await show();
-    expect(screen.getByRole('heading', { level: 1, name: 'Ani Petrosyan' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Ararat Lantern' })).toBeVisible();
     const section = screen.getByRole('region', { name: en.reviews });
     const { confirm_first, profile } = catalogs.en.account;
     expect(within(section).getByRole('heading', { name: confirm_first.title })).toBeVisible();
@@ -139,7 +140,7 @@ describe('an investigator’s public profile page', () => {
         {
           id: 'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b',
           source: 'profile',
-          label: 'Ani Petrosyan',
+          label: 'Ararat Lantern',
           investigatorProfileId: ID,
           createdAt: '2026-09-30T08:00:00.000Z',
         },

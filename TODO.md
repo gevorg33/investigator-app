@@ -8014,6 +8014,47 @@ the pin table.
 pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+---
+
+### T-181 — Investigators known to customers by a pseudonym, never their legal name
+- **Status:** DONE — 2026-10-01. `investigator_profiles.pseudonym` (migration 0035) set from the profile's details form; the public projection, discovery, the assistant's tool output and block labels carry it (or a per-profile code), never the legal name; `test/identity-masking.spec.ts` walks every read as a customer who hired the investigator
+- **Priority:** P1
+- **Depends on:** T-100
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — given in chat 2026-10-01 (it changes what customers see of an investigator, and adds a column of personal data)
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api/src/database (migration 0035), apps/api/src/modules/{profiles,search,ai/tools/discovery,blocks}, apps/app-web (profile editor, every place an investigator is named to a customer), packages/i18n, docs
+
+**Description**
+Owner decisions, 2026-10-01: an investigator is shown to customers by a **pseudonym they choose**,
+**never** their legal name — before or after hire; the legal name stays between the investigator and
+staff (verification). Pseudonyms are **unique** across the platform, compared without case, and may
+not be or contain the investigator's own legal name, an email address or a phone number. Until one is
+chosen, customers see a neutral fallback ("Investigator" and a per-profile code), never the legal
+name.
+
+**Acceptance criteria**
+- [x] `investigator_profiles.pseudonym`: nullable, 2–60 characters, unique without case; reversible migration — 0035, with its `.down.sql`
+- [x] The investigator sets it on their profile; refused when taken, or when it is their legal name, an email or a phone — `OWN_NAME` (any shared word of 3+ letters, also after a rename), `CONTACT`, `TAKEN`; `null` clears it
+- [x] Every customer-facing view names an investigator by pseudonym or fallback: public profile, discovery, the assistant's tool output, blocks — `PublicInvestigatorProfile` has no `displayName` at all; `nameCode` stands in
+- [x] A generated spec walks every read as a customer — before and after hire — and fails on the investigator's legal name, email, phone or user id — walked as the customer who hired them; seen failing with the old projection (`GET /profiles/investigator/:id → first name, surname`)
+- [x] The app's profile editor and preview, discovery and assistant cards show the pseudonym; en/ru/hy — looked at on a phone: the field beside the legal name, its hint, and an `OWN_NAME` refusal under it
+- [x] KB, plan.md and architecture docs say customers see a professional name, never the legal one — investigator profile-and-service-areas v5 (new "What name do customers see?"), verification v4, customer finding-an-investigator v5, ai-assistant v8 (en + ru/hy drafts); profiles.md, blocks.md; OpenAPI metadata regenerated
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
+
+**Done 2026-10-01.** Before: the legal name reached customers on the public profile, every discovery
+result, the assistant's investigator cards (and the model, which could repeat it), and a customer's
+own block list. Not done, deliberately: existing block rows keep the label they were made with (a
+customer's own list of what they saw); rewriting them is a data change that needs approval, and
+pre-launch there is no production data. Publishing does not require a pseudonym — until one is
+chosen customers see the code; the status card does not nag (a possible follow-up). Staff and agency
+member lists keep the legal name: neither is shown to customers.
 ---
 
 ## Backlog

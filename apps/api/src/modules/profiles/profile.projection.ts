@@ -1,3 +1,4 @@
+import { opaqueCode } from '../../common/hash/opaque-code';
 import type {
   customerProfiles,
   investigatorAvailability,
@@ -11,6 +12,7 @@ type LanguageRow = typeof investigatorLanguages.$inferSelect;
 type AvailabilityRow = typeof investigatorAvailability.$inferSelect;
 
 export interface ProfileRelations {
+  /** The legal name (`users.display_name`). The owner's view only — never a public one (T-181). */
   displayName: string | null;
   languages: LanguageRow[];
   availability: AvailabilityRow[];
@@ -30,7 +32,13 @@ export interface ProfileRelations {
  */
 export interface PublicInvestigatorProfile {
   id: string;
-  displayName: string | null;
+  /**
+   * The name customers know them by, chosen by the investigator (T-181); null until chosen. The
+   * legal name is never here — before or after hire it stays with the investigator and staff.
+   */
+  pseudonym: string | null;
+  /** Stands in for the name until one is chosen ("Investigator K7Q2"): from the profile id alone. */
+  nameCode: string;
   headline: string | null;
   bio: string | null;
   yearsExperience: number | null;
@@ -51,6 +59,8 @@ export interface PublicInvestigatorProfile {
 /** The owner's view: the public fields plus the ones only they may see. */
 export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
   userId: string;
+  /** Their legal name, the one verification checks: shown to them, never to customers (T-181). */
+  displayName: string | null;
   contactPhone: string | null;
   visibility: InvestigatorRow['visibility'];
   /**
@@ -62,13 +72,19 @@ export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
   updatedAt: Date;
 }
 
+/** The code an investigator without a chosen name goes by (T-181). Nothing of theirs goes in. */
+export function investigatorNameCode(profileId: string): string {
+  return opaqueCode('investigator-name', profileId);
+}
+
 export function toPublicInvestigatorProfile(
   row: InvestigatorRow,
   rel: ProfileRelations,
 ): PublicInvestigatorProfile {
   return {
     id: row.id,
-    displayName: rel.displayName,
+    pseudonym: row.pseudonym,
+    nameCode: investigatorNameCode(row.id),
     headline: row.headline,
     bio: row.bio,
     yearsExperience: row.yearsExperience,
@@ -97,6 +113,7 @@ export function toOwnInvestigatorProfile(
   return {
     ...toPublicInvestigatorProfile(row, rel),
     userId: row.userId,
+    displayName: rel.displayName,
     contactPhone: row.contactPhone,
     visibility: row.visibility,
     verificationStatus: row.verificationStatus,

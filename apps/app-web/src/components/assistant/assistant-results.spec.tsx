@@ -43,7 +43,7 @@ describe('structured results in the assistant (T-059)', () => {
     it('shows each as a card built from the data — who they are, and why, from what matched', async () => {
       await showing(QUESTION, aiDiscoveryReply(discoveryAnswer()));
       const [card, unnamed] = screen.getAllByRole('article') as [HTMLElement, HTMLElement];
-      expect(within(card).getByRole('heading', { name: 'Ani Hakobyan' })).toBeInTheDocument();
+      expect(within(card).getByRole('heading', { name: 'Silver Fox' })).toBeInTheDocument();
       expect(card).toHaveTextContent('Corporate due diligence across the South Caucasus');
       expect(card).toHaveTextContent(d.verified);
       expect(card).toHaveTextContent('9 years of experience');
@@ -73,7 +73,12 @@ describe('structured results in the assistant (T-059)', () => {
       ]);
 
       // A profile with no name, headline or experience says only what it has.
-      expect(within(unnamed).getByRole('heading', { name: d.unnamed })).toBeInTheDocument();
+      // No pseudonym chosen: the code stands in, and never a legal name (T-181).
+      expect(
+        within(unnamed).getByRole('heading', {
+          name: catalogs.en.investigator.public_name.unnamed.replace('{code}', 'B4T9'),
+        }),
+      ).toBeInTheDocument();
       expect(within(unnamed).queryByRole('region', { name: d.why })).toBeNull();
       expect(unnamed).not.toHaveTextContent('years of experience');
     });

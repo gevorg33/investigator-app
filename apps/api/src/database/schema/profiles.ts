@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -113,6 +114,12 @@ export const investigatorProfiles = pgTable(
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     /** Private. Contact happens through the platform; this is for staff and support. */
     contactPhone: text('contact_phone'),
+    /**
+     * The name customers know the investigator by (T-181), chosen by them. Customers never see the
+     * legal name (`users.display_name`), before or after hire; until this is set they see a neutral
+     * fallback. Unique without case, so no one can borrow another's name and reviews.
+     */
+    pseudonym: text('pseudonym'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     /**
@@ -136,6 +143,12 @@ export const investigatorProfiles = pgTable(
     ),
     unique('investigator_profiles_id_tenant_unique').on(t.id, t.tenantId),
     index('investigator_profiles_tenant_idx').on(t.tenantId),
+    // Serves the uniqueness rule itself, and ProfilesService's "is this name taken" on save.
+    uniqueIndex('investigator_profiles_pseudonym_unique').on(sql`lower(${t.pseudonym})`),
+    check(
+      'investigator_profiles_pseudonym_length',
+      sql`${t.pseudonym} IS NULL OR char_length(btrim(${t.pseudonym})) BETWEEN 2 AND 60`,
+    ),
   ],
 );
 

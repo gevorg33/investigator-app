@@ -3,6 +3,7 @@ import { and, eq, inArray, ne } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import { requiredForRole } from '../legal/legal.policy';
+import { normalisePseudonym, pseudonymIssue } from './pseudonym';
 import { LegalService } from '../legal/legal.service';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
@@ -301,62 +302,100 @@ export class ProfilesService {
       ]);
     }
 
-    await this.db.transaction(async (tx) => {
-      if (renaming) {
-        await tx
-          .update(users)
-          .set({ displayName: name, updatedAt: new Date() })
-          .where(eq(users.id, actor.userId));
-      }
-      await tx
-        .update(investigatorProfiles)
-        .set({
-          ...(dto.headline !== undefined ? { headline: dto.headline } : {}),
-          ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
-          ...(dto.yearsExperience !== undefined ? { yearsExperience: dto.yearsExperience } : {}),
-          ...(dto.pricingModel !== undefined ? { pricingModel: dto.pricingModel } : {}),
-          ...(dto.hourlyRateMinor !== undefined ? { hourlyRateMinor: dto.hourlyRateMinor } : {}),
-          ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
-          ...(dto.acceptingWork !== undefined ? { acceptingWork: dto.acceptingWork } : {}),
-          ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
-          ...(dto.contactPhone !== undefined ? { contactPhone: dto.contactPhone } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(investigatorProfiles.id, row.id));
+    // The pseudonym (T-181) is checked against the legal name it must not reveal — the new one when
+    // this save renames — and whichever of the two changes, the pair is checked again.
+    const pseudonym =
+      dto.pseudonym === undefined || dto.pseudonym === null
+        ? dto.pseudonym
+        : normalisePseudonym(dto.pseudonym);
+    const known = pseudonym === undefined ? row.pseudonym : pseudonym;
+    const legal = renaming ? name : (account?.displayName ?? null);
+    const issue =
+      known !== null && (pseudonym !== undefined || renaming) ? pseudonymIssue(known, legal) : null;
+    if (issue !== null) {
+      throw AppError.validation([
+        issue === 'own_name'
+          ? {
+              field: 'pseudonym',
+              code: 'OWN_NAME',
+              messageKey: 'error.validation.pseudonym.own_name',
+            }
+          : {
+              field: 'pseudonym',
+              code: 'CONTACT',
+              messageKey: 'error.validation.pseudonym.contact',
+            },
+      ]);
+    }
 
-      // Replace rather than merge: the client sends the whole set, so removing a language
-      // is expressed by sending the list without it.
-      if (dto.languages) {
-        await tx.delete(investigatorLanguages).where(eq(investigatorLanguages.profileId, row.id));
-        if (dto.languages.length > 0) {
+    await this.db
+      .transaction(async (tx) => {
+        if (renaming) {
           await tx
-            .insert(investigatorLanguages)
-            .values(dto.languages.map((l) => ({ profileId: row.id, ...l })));
+            .update(users)
+            .set({ displayName: name, updatedAt: new Date() })
+            .where(eq(users.id, actor.userId));
         }
-      }
-      if (dto.specialtyNodeIds) {
         await tx
-          .delete(investigatorSpecialties)
-          .where(eq(investigatorSpecialties.profileId, row.id));
-        if (dto.specialtyNodeIds.length > 0) {
+          .update(investigatorProfiles)
+          .set({
+            ...(dto.headline !== undefined ? { headline: dto.headline } : {}),
+            ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+            ...(dto.yearsExperience !== undefined ? { yearsExperience: dto.yearsExperience } : {}),
+            ...(dto.pricingModel !== undefined ? { pricingModel: dto.pricingModel } : {}),
+            ...(dto.hourlyRateMinor !== undefined ? { hourlyRateMinor: dto.hourlyRateMinor } : {}),
+            ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+            ...(dto.acceptingWork !== undefined ? { acceptingWork: dto.acceptingWork } : {}),
+            ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
+            ...(dto.contactPhone !== undefined ? { contactPhone: dto.contactPhone } : {}),
+            ...(pseudonym !== undefined ? { pseudonym } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(investigatorProfiles.id, row.id));
+
+        // Replace rather than merge: the client sends the whole set, so removing a language
+        // is expressed by sending the list without it.
+        if (dto.languages) {
+          await tx.delete(investigatorLanguages).where(eq(investigatorLanguages.profileId, row.id));
+          if (dto.languages.length > 0) {
+            await tx
+              .insert(investigatorLanguages)
+              .values(dto.languages.map((l) => ({ profileId: row.id, ...l })));
+          }
+        }
+        if (dto.specialtyNodeIds) {
           await tx
-            .insert(investigatorSpecialties)
-            .values(
-              dto.specialtyNodeIds.map((taxonomyNodeId) => ({ profileId: row.id, taxonomyNodeId })),
+            .delete(investigatorSpecialties)
+            .where(eq(investigatorSpecialties.profileId, row.id));
+          if (dto.specialtyNodeIds.length > 0) {
+            await tx.insert(investigatorSpecialties).values(
+              dto.specialtyNodeIds.map((taxonomyNodeId) => ({
+                profileId: row.id,
+                taxonomyNodeId,
+              })),
             );
+          }
         }
-      }
-      if (dto.availability) {
-        await tx
-          .delete(investigatorAvailability)
-          .where(eq(investigatorAvailability.profileId, row.id));
-        if (dto.availability.length > 0) {
+        if (dto.availability) {
           await tx
-            .insert(investigatorAvailability)
-            .values(dto.availability.map((a) => ({ profileId: row.id, ...a })));
+            .delete(investigatorAvailability)
+            .where(eq(investigatorAvailability.profileId, row.id));
+          if (dto.availability.length > 0) {
+            await tx
+              .insert(investigatorAvailability)
+              .values(dto.availability.map((a) => ({ profileId: row.id, ...a })));
+          }
         }
-      }
-    });
+      })
+      .catch((e: unknown) => {
+        // Pseudonyms are unique without case (T-181): someone already goes by this name.
+        if (pseudonymTaken(e)) {
+          throw AppError.validation([
+            { field: 'pseudonym', code: 'TAKEN', messageKey: 'error.validation.pseudonym.taken' },
+          ]);
+        }
+        throw e;
+      });
 
     await this.audit.record({
       ...req,
@@ -490,3 +529,11 @@ export class ProfilesService {
     };
   }
 }
+
+/** The pseudonym index refused the write: Postgres 23505 on that constraint, and nothing else. */
+const pseudonymTaken = (e: unknown): boolean => {
+  const cause = (e as { cause?: { code?: string; constraint_name?: string } }).cause;
+  return (
+    cause?.code === '23505' && cause.constraint_name === 'investigator_profiles_pseudonym_unique'
+  );
+};

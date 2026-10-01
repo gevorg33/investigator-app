@@ -4,12 +4,13 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
-updated: 2026-09-26
+updated: 2026-10-01
 source_of_truth: database
 implementation_status: partial
 related_code:
+  - apps/api/src/modules/profiles/pseudonym.ts
   - apps/api/src/modules/profiles
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/taxonomy
@@ -90,7 +91,8 @@ visibility.
 
 ## Which parts of my profile can customers see?
 
-Customers see your storefront: display name, headline, description, years of experience,
+Customers see your storefront: the name you chose for them (never your legal name), headline,
+description, years of experience,
 specialties, languages, pricing model and rate, availability windows, whether you are
 currently accepting work, and whether you are verified. Only that last yes or no is shown: an
 application under review and one that was not approved both read as not verified.
@@ -115,10 +117,21 @@ from "no such profile" would let anyone confirm you work here.
 Publishing is not the same as being verified. They are separate, and verification has its own
 process.
 
-## Can I change my name?
+## What name do customers see?
+
+The one you choose under **Name customers see** on your profile. Customers know you only by it,
+before they hire you and after; your legal name is for verification and staff, and is never shown
+to a customer.
+
+It must be unique on the platform and between 2 and 60 characters. It cannot share a word with your
+legal name — not even your first name — and it cannot contain an email address, a website or a phone
+number. Until you choose one, customers see "Investigator" followed by a short code. You can change
+it whenever you like.
+
+## Can I change my legal name?
 
 Yes, until you apply for verification. Use the name on your identity document: verification
-checks your documents against it.
+checks your documents against it. Customers never see it.
 
 While an application is under review, and once you are verified, your name is locked, because
 it is the name your documents were checked against. To change it after that, contact support.
