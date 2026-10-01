@@ -4805,6 +4805,7 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 - [ ] A suspended or archived agency's profiles disappear from discovery on the next query
 - [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
 - [ ] KB: profile articles updated for agencies
+- [ ] Leave room for T-183: an agency-held profile's public name (T-182's `public_name`) is the agency's to set, with the agent's consent for their legal name — do not let the agency write it without that consent check
 
 **Validation**
 ```bash
@@ -8093,6 +8094,45 @@ drafts); plan.md, profiles.md, blocks.md, component inventory. Identity walk: a 
 is named by the legal name and still leaks no email, phone or user id. Verified in the browser at
 375px and 1280px with a throwaway e2e (not committed): the choice saves, survives a reload, and the
 preview shows the legal name.
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-183 — Agency admins choose which agents customers know by their legal name
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-087, T-182
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes what customers may see of an investigator, and adds an agency permission over a member's public name
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api/src/modules/{profiles,tenants}/**, migrations, apps/app-web (agency console, investigator details form), packages/i18n, docs
+
+**Description**
+Owner request, 2026-10-02: in an agency, the agency's admins decide per agent whether customers see
+that agent's pseudonym or their legal name, as T-182 lets an independent investigator decide for
+themself. Owner decision: **the admin chooses, and the legal name is shown only with that agent's
+consent.** Without consent, or once it is withdrawn, the agent is shown by their pseudonym (or the
+stand-in code), whatever the admin chose. A pseudonym stays the default.
+
+Blocked until agencies hold profiles (T-087): today every investigator profile belongs to its owner's
+Personal workspace, so there is no agent profile for an agency to manage.
+
+Open for the task: the permission that sets it (likely `investigators.update`, tenancy.md §3); where
+consent lives (on the profile, held by the agent's own membership) and that withdrawing it takes
+effect on the next read; what the agent sees in their own form when the admin's choice is waiting
+on their consent.
+
+**Acceptance criteria**
+- [ ] An agency member with the permission sets PSEUDONYM or LEGAL for each agency-held profile; without it, refused, and audited either way
+- [ ] The legal name reaches a customer only when the agency chose LEGAL **and** the agent consented; the identity walk (`test/identity-masking.spec.ts`) proves each of the four combinations
+- [ ] The agent can give and withdraw consent from their own profile; withdrawal hides the legal name on the next read
+- [ ] Independent investigators (Personal workspace) keep T-182 unchanged
+- [ ] Agency console: the choice per agent on the investigators list (card on phones, table from desktop), showing when consent is missing; en/ru/hy
+- [ ] KB (agency and investigator profile articles), tenancy.md, profiles.md
 
 **Validation**
 ```bash
