@@ -1,0 +1,2 @@
+CREATE TYPE "public"."public_name_choice" AS ENUM('PSEUDONYM', 'LEGAL');--> statement-breakpoint
+ALTER TABLE "investigator_profiles" ADD COLUMN "public_name" "public_name_choice" DEFAULT 'PSEUDONYM' NOT NULL;

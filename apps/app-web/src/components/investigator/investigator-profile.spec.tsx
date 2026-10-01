@@ -130,7 +130,7 @@ describe('where the profile stands', () => {
     await user().click(screen.getByRole('button', { name: en.status.preview }));
     const preview = await screen.findByRole('dialog', { name: en.status.preview_title });
     expect(preview).toHaveTextContent(en.status.preview_body);
-    expect(within(preview).getByRole('heading', { name: 'Ani Petrosyan' })).toBeVisible();
+    expect(within(preview).getByRole('heading', { name: 'Ararat Lantern' })).toBeVisible();
     expect(preview).toHaveTextContent('Due diligence');
     expect(preview).not.toHaveTextContent('+37410000000');
     await user().click(within(preview).getByRole('button', { name: en.status.close }));
@@ -157,7 +157,7 @@ describe('the public profile', () => {
         ],
       }),
     );
-    const article = screen.getByRole('article', { name: 'Ani Petrosyan' });
+    const article = screen.getByRole('article', { name: 'Ararat Lantern' });
     expect(article).toHaveTextContent('Corporate due diligence in the Caucasus');
     expect(article).toHaveTextContent(en.status.accepting);
     expect(article).toHaveTextContent('10 years of experience');
@@ -179,10 +179,10 @@ describe('the public profile', () => {
     expect(article).toHaveTextContent('Mon 09:00–12:00, Mon 14:00–18:00, Wed 10:00–15:00');
   });
 
-  it('leaves out what is not set, and names nobody when there is no name', () => {
+  it('leaves out what is not set, and names one with no chosen name by their code', () => {
     card(
       ownProfile({
-        displayName: null,
+        name: null,
         headline: null,
         bio: null,
         yearsExperience: null,
@@ -194,7 +194,9 @@ describe('the public profile', () => {
         availability: [],
       }),
     );
-    const article = screen.getByRole('article', { name: en.details.not_set });
+    const article = screen.getByRole('article', {
+      name: catalogs.en.investigator.public_name.unnamed.replace('{code}', 'K7Q2'),
+    });
     expect(article.querySelectorAll('[data-slot=badge]')).toHaveLength(0);
     expect(article.querySelectorAll('p')).toHaveLength(0);
     expect(within(article).queryAllByRole('listitem')).toHaveLength(0);
@@ -202,7 +204,7 @@ describe('the public profile', () => {
 
   it('says a verified investigator is verified, and names them only where the page does not', () => {
     const { unmount } = card();
-    const article = screen.getByRole('article', { name: 'Ani Petrosyan' });
+    const article = screen.getByRole('article', { name: 'Ararat Lantern' });
     expect(within(article).getByText(en.verification_status.VERIFIED)).toBeVisible();
     unmount();
     renderIntl(
@@ -236,6 +238,16 @@ describe('about the investigator', () => {
     expect(name).toHaveAccessibleDescription(en.details.name_hint);
     await user().clear(name);
     await user().type(name, '  Ani Grigoryan ');
+    // A pseudonym is the default name customers see, and says it is the only one they see (T-182).
+    const choice = screen.getByRole('radiogroup', { name: en.details.public_name });
+    expect(
+      within(choice).getByRole('radio', { name: en.details.public_name_PSEUDONYM }),
+    ).toBeChecked();
+    const pseudonym = screen.getByRole('textbox', { name: en.details.pseudonym });
+    expect(pseudonym).toHaveAccessibleDescription(en.details.pseudonym_hint);
+    expect(pseudonym).toHaveValue('Ararat Lantern');
+    await user().clear(pseudonym);
+    await user().type(pseudonym, '  Quiet Owl ');
     await user().type(screen.getByRole('textbox', { name: en.details.headline }), '!');
     await user().selectOptions(
       screen.getByRole('combobox', { name: en.details.pricing }),
@@ -249,6 +261,8 @@ describe('about the investigator', () => {
     await save();
     expect(patched()).toEqual({
       displayName: 'Ani Grigoryan',
+      publicName: 'PSEUDONYM',
+      pseudonym: 'Quiet Owl',
       headline: 'Corporate due diligence in the Caucasus!',
       bio: 'Ten years of company checks.\nCourt and registry work.',
       contactPhone: '+37410000000',
@@ -267,6 +281,7 @@ describe('about the investigator', () => {
       ownProfile({
         verificationStatus: 'REJECTED',
         displayName: null,
+        pseudonym: null,
         headline: null,
         bio: null,
         contactPhone: null,
@@ -280,7 +295,36 @@ describe('about the investigator', () => {
     // Submitted past the browser's own check, which a blank name would stop.
     fireEvent.submit(screen.getByRole('button', { name: en.details.save }).closest('form')!);
     await screen.findByRole('status');
-    expect(patched()).toEqual({ headline: '', bio: '', contactPhone: '' });
+    // A blank pseudonym is sent as null: it clears, and customers see the stand-in code (T-181).
+    expect(patched()).toEqual({
+      headline: '',
+      bio: '',
+      contactPhone: '',
+      publicName: 'PSEUDONYM',
+      pseudonym: null,
+    });
+  });
+
+  it('lets them be known by their legal name instead, keeping the pseudonym for later (T-182)', async () => {
+    api.on(PATCH, 200, {});
+    form();
+    await user().click(screen.getByRole('radio', { name: en.details.public_name_LEGAL }));
+    // Nothing to fill in for a legal name: the field for a pseudonym goes, and is not sent.
+    expect(screen.queryByRole('textbox', { name: en.details.pseudonym })).toBeNull();
+    await save();
+    expect(patched()).toMatchObject({ publicName: 'LEGAL' });
+    expect(patched()).not.toHaveProperty('pseudonym');
+    // Choosing back brings the pseudonym they had.
+    await user().click(screen.getByRole('radio', { name: en.details.public_name_PSEUDONYM }));
+    expect(screen.getByRole('textbox', { name: en.details.pseudonym })).toHaveValue(
+      'Ararat Lantern',
+    );
+  });
+
+  it('shows the legal name as chosen when it is (T-182)', () => {
+    form(ownProfile({ verificationStatus: 'UNVERIFIED', publicName: 'LEGAL' }));
+    expect(screen.getByRole('radio', { name: en.details.public_name_LEGAL })).toBeChecked();
+    expect(screen.queryByRole('textbox', { name: en.details.pseudonym })).toBeNull();
   });
 
   it.each(['VERIFIED', 'PENDING'] as const)(
@@ -300,6 +344,26 @@ describe('about the investigator', () => {
   it('shows a rate with no currency as a plain amount', () => {
     form(ownProfile({ currency: null, hourlyRateMinor: 1_000 }));
     expect(screen.getByRole('textbox', { name: en.details.rate })).toHaveValue('10');
+  });
+
+  it('puts the API’s refusal of a pseudonym under the pseudonym (T-181)', async () => {
+    api.on(
+      PATCH,
+      422,
+      apiError('VALIDATION_FAILED', 'error.common.validation_failed', {
+        details: [
+          { field: 'pseudonym', code: 'TAKEN', messageKey: 'error.validation.pseudonym.taken' },
+        ],
+      }),
+    );
+    form();
+    await save();
+    const pseudonym = screen.getByRole('textbox', { name: en.details.pseudonym });
+    expect(pseudonym).toHaveAttribute('aria-invalid', 'true');
+    expect(pseudonym).toHaveAccessibleDescription(
+      `${en.details.pseudonym_hint} ${catalogs.en.error.validation.pseudonym.taken}`,
+    );
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('puts the API’s refusal of the name under the name', async () => {

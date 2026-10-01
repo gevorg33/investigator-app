@@ -14,7 +14,9 @@ const B = aiSession({
   id: '00000000-0000-4000-8000-0000000000bb',
   title: 'Refund question',
   status: 'IDLE',
-  lastActivityAt: '2026-09-24T10:00:00.000Z',
+  // Three days before the run, not a date: a fixed date drifts past "… ago" into "last week" as the
+  // calendar moves, and the spec started failing every day once it had (T-180).
+  lastActivityAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
 });
 const ARCHIVED = aiSession({
   id: '00000000-0000-4000-8000-0000000000cc',
@@ -81,7 +83,7 @@ describe('conversations — the list and what can be done with one (T-057)', () 
       expect(rows.map((r) => r.textContent)).toEqual([
         `Quote validity${en.sessions.here}`,
         // Relative to now, in the reader's language.
-        expect.stringMatching(/^Refund question(yesterday|.+ ago)$/),
+        'Refund question3 days ago',
       ]);
       // The one open now is marked for assistive technology, and in words — not colour alone.
       expect(rows[0]).toHaveAttribute('aria-current', 'true');

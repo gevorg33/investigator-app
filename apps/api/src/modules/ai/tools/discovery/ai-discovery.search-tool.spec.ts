@@ -263,12 +263,14 @@ describe('assistant discovery tools (T-018)', () => {
     expect(Object.keys(result!).sort()).toEqual(
       [
         'availability',
-        'displayName',
         'distanceKm',
         'headline',
         'investigatorId',
         'languages',
         'matchedOn',
+        // The name the model may repeat is the one they chose to be known by, or its stand-in code.
+        'name',
+        'nameCode',
         'notMatched',
         'specialties',
         'verificationStatus',
@@ -323,7 +325,9 @@ describe('assistant discovery tools (T-018)', () => {
     expect(rows.map((row) => [row.action, row.reason])).toEqual([
       ['ai.tool.search_investigators', 'ok: filters=city,near,relevanceHint'],
     ]);
-    expect(JSON.stringify(rows)).not.toMatch(new RegExp(`${tag}|44\\.51|zebrafish`));
+    // Without the row's timestamp, which reads ":44.51…" at the wrong moment (T-180).
+    const withoutTimes = JSON.stringify(rows).replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '');
+    expect(withoutTimes).not.toMatch(new RegExp(`${tag}|44\\.51|zebrafish`));
     expect(searchTool.auditArguments({})).toBe('filters=none');
     expect(
       searchTool.auditArguments({

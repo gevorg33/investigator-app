@@ -15,7 +15,10 @@ import { text } from './support/text';
  */
 test.describe.configure({ mode: 'serial' });
 
+/** The investigator's legal name: verification's, never shown to a customer (T-181). */
 const INVESTIGATOR_NAME = 'Vardan Blockfield';
+/** What customers know them by, per project: pseudonyms are unique across the platform. */
+let pseudonym: string;
 /** With an address in it, as a customer may paste: a word the card must wrap, not widen for (T-178). */
 const MISSION_TITLE = 'Records check for https://registry.example.test/companies/0123456789abcdef';
 let missionTitle: string;
@@ -79,6 +82,7 @@ const userOf = async (page: Page): Promise<string> =>
 
 test.beforeAll(async ({ browser }, info) => {
   missionTitle = `${MISSION_TITLE} (${info.project.name})`;
+  pseudonym = `Quiet Harbour ${info.project.name}`;
   categorySlug = `blocksrecordsverification${Date.now()}${info.project.name}`.padEnd(60, 'x');
   customer = await signedIn(browser, info, 'customer');
   investigator = await signedIn(browser, info, 'investigator');
@@ -92,8 +96,9 @@ test.beforeAll(async ({ browser }, info) => {
     await sql`INSERT INTO user_roles (user_id, role) VALUES (${investigatorId}, 'INVESTIGATOR')`;
     const [profile] = await sql<{ id: string }[]>`
       INSERT INTO investigator_profiles (user_id, visibility, verification_status, verified_at,
-                                         accepting_work)
-      VALUES (${investigatorId}, 'PUBLISHED', 'VERIFIED', now(), true) RETURNING id`;
+                                         accepting_work, pseudonym)
+      VALUES (${investigatorId}, 'PUBLISHED', 'VERIFIED', now(), true, ${pseudonym})
+      RETURNING id`;
     profileId = profile!.id;
     // And what a moderator would have published: one of the customer's missions.
     const [node] = await sql<{ id: string }[]>`
@@ -119,7 +124,9 @@ test.afterAll(async () => {
 
 test('a customer blocks an investigator from their profile, and unblocks them from Account', async () => {
   await customer.goto(`/missions/investigators/${profileId}`);
-  await expect(customer.getByRole('heading', { level: 1, name: INVESTIGATOR_NAME })).toBeVisible();
+  // Known by the name they chose; the legal one is nowhere on the page (T-181).
+  await expect(customer.getByRole('heading', { level: 1, name: pseudonym })).toBeVisible();
+  await expect(customer.getByText(INVESTIGATOR_NAME)).toHaveCount(0);
 
   await customer.getByRole('button', { name: text('account.block.action.investigator') }).click();
   const dialog = customer.getByRole('alertdialog', {
@@ -133,7 +140,8 @@ test('a customer blocks an investigator from their profile, and unblocks them fr
   await customer.goto('/account#blocks');
   const section = customer.getByRole('region', { name: text('account.blocks.title') });
   await expect(section.getByRole('listitem')).toHaveCount(1);
-  await expect(section).toContainText(INVESTIGATOR_NAME);
+  await expect(section).toContainText(pseudonym);
+  await expect(section).not.toContainText(INVESTIGATOR_NAME);
   await expect(section).toContainText(text('account.blocks.source.profile'));
   await expectAccessible(customer);
 

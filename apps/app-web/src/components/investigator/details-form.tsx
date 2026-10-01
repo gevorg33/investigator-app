@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { fieldErrorKeys, type LooseT } from '@/components/form/errors';
 import { Field } from '@/components/form/field';
@@ -10,11 +10,13 @@ import { useSubmit } from '@/components/form/use-submit';
 import { toMinorAmount, toWhole } from '@/components/missions/browse-query';
 import { Button } from '@/components/ui/button';
 import { NativeSelect } from '@/components/ui/native-select';
+import { RadioGroup, RadioGroupChoice } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { callApi } from '@/lib/api/browser';
-import type { OwnInvestigatorProfile, PricingModel } from '@/lib/api/types';
+import type { OwnInvestigatorProfile, PricingModel, PublicName } from '@/lib/api/types';
 
 const PRICING: readonly PricingModel[] = ['HOURLY', 'FIXED_FEE', 'RETAINER', 'MIXED'];
+const PUBLIC_NAMES: readonly PublicName[] = ['PSEUDONYM', 'LEGAL'];
 
 /** The text fields of a patch: blank means "not set", sent as nothing rather than as "". */
 const text = (form: FormData, name: string) => {
@@ -24,7 +26,9 @@ const text = (form: FormData, name: string) => {
 
 /**
  * What the investigator says about themselves (T-123). Saved together; the contact phone is theirs
- * alone — it is not in the public projection, and the form says so where it is asked for.
+ * alone — it is not in the public projection, and the form says so where it is asked for. The legal
+ * name is too, unless they choose to be known by it: customers see a pseudonym by default (T-181),
+ * and the investigator picks which of the two goes on their profile (T-182).
  */
 export function DetailsForm({
   profile,
@@ -38,6 +42,8 @@ export function DetailsForm({
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [currency, setCurrency] = useState(profile.currency ?? '');
+  const [publicName, setPublicName] = useState(profile.publicName);
+  const publicNameLabel = useId();
   // Verification checked the documents against this name (owner decision, 2026-09-25).
   const nameLocked =
     profile.verificationStatus === 'VERIFIED' || profile.verificationStatus === 'PENDING';
@@ -53,6 +59,10 @@ export function DetailsForm({
         body: {
           // A locked name is not sent at all: it is shown, not edited.
           ...(!nameLocked && name !== undefined ? { displayName: name } : {}),
+          publicName,
+          // Blank clears it, and customers see the stand-in code again (T-181). Not asked for while
+          // the legal name is chosen, so not sent: it is kept for the day they switch back (T-182).
+          ...(publicName === 'PSEUDONYM' ? { pseudonym: text(form, 'pseudonym') ?? null } : {}),
           headline: text(form, 'headline') ?? '',
           bio: text(form, 'bio') ?? '',
           contactPhone: text(form, 'phone') ?? '',
@@ -74,7 +84,7 @@ export function DetailsForm({
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
-      <FormError error={error} shown={['displayName']} />
+      <FormError error={error} shown={['displayName', 'pseudonym']} />
       <Field
         label={t('name')}
         hint={nameLocked ? t('name_locked') : t('name_hint')}
@@ -86,6 +96,32 @@ export function DetailsForm({
         defaultValue={profile.displayName ?? ''}
         error={fields['displayName'] && tl(fields['displayName'])}
       />
+      {/* Which name customers see: a pseudonym unless they choose the legal one above (T-182). */}
+      <div className="grid gap-2">
+        <p id={publicNameLabel} className="text-sm font-medium">
+          {t('public_name')}
+        </p>
+        <RadioGroup
+          aria-labelledby={publicNameLabel}
+          value={publicName}
+          onValueChange={(v) => setPublicName(v as PublicName)}
+        >
+          {PUBLIC_NAMES.map((choice) => (
+            <RadioGroupChoice key={choice} value={choice} label={t(`public_name_${choice}`)} />
+          ))}
+        </RadioGroup>
+      </div>
+      {publicName === 'PSEUDONYM' && (
+        <Field
+          label={t('pseudonym')}
+          hint={t('pseudonym_hint')}
+          name="pseudonym"
+          autoComplete="off"
+          maxLength={60}
+          defaultValue={profile.pseudonym ?? ''}
+          error={fields['pseudonym'] && tl(fields['pseudonym'])}
+        />
+      )}
       <Field
         label={t('headline')}
         hint={t('headline_hint')}

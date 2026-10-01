@@ -190,6 +190,18 @@ than derived from it afterwards.
   into the audit log, which keeps references rather than content.
 - Drafts are invisible to everyone but their owner, and a mission belonging to someone else
   answers 404 rather than 403 — a 403 confirms the id is real.
+- **The customer is masked until hire (T-100).** Every investigator-facing view names the customer
+  only by `customerAlias` — four Crockford base-32 characters of `sha256("customer-alias:" +
+  missionId)` (`modules/missions/customer-alias.ts`). It is built from the mission alone, so two
+  missions of one customer have unrelated aliases. No first name: none is collected, and a
+  free-text `display_name` can lead with the surname (owner decision 2026-10-01). The name itself
+  reaches an investigator only through `GET /profiles/customer/:id` once they are hired
+  (`profiles.md`). **Held by `test/identity-masking.spec.ts`**, which walks every GET route and
+  every POST under `/search` as an investigator who has quoted on the customer's mission — each
+  path parameter filled with every id they could hold — and fails if any successful answer carries
+  the customer's surname, email, phone or user id. A new route is walked the day it exists; a new
+  kind of resource an investigator can hold (a conversation) also needs its id added to the
+  spec's `ids`, or its view is walked with nothing in it.
 
 ## What T-010 deliberately did not build
 

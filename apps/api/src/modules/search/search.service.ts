@@ -184,6 +184,8 @@ export class SearchService {
       // A row that vanished between the two queries is dropped rather than half-rendered.
       if (found === undefined) return [];
       const rel = {
+        // Read, but public only for an investigator who chose to be known by it (T-182); for
+        // everyone else the projection names them by pseudonym, or the code (T-181).
         displayName: found.displayName,
         languages: languages.filter((l) => l.profileId === row.profileId),
         availability: availability.filter((a) => a.profileId === row.profileId),

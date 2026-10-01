@@ -4,6 +4,7 @@ import { formatBudget, type Locale } from '@investigator/i18n';
 import { BadgeCheck, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'use-intl';
+import { investigatorName } from '@/lib/investigator-name';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { InvestigatorSearchResult } from '@/lib/api/types';
@@ -30,7 +31,7 @@ export function InvestigatorCard({
   const list = (items: string[]) =>
     new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items);
   const label = (id: string) => categories.get(id);
-  const name = result.displayName ?? ti('details.not_set');
+  const name = investigatorName(result, (code) => ti('public_name.unnamed', { code }));
   const id = `investigator-${result.id}`;
 
   const { matchedOn, notMatched } = result;

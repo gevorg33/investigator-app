@@ -4,12 +4,14 @@ title: Your privacy — who can see what, and what happens to your data
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/api/src/modules/profiles
+  - apps/api/src/modules/missions/customer-alias.ts
   - apps/api/src/modules/search
   - apps/api/src/modules/auth
   - apps/api/src/modules/evidence
@@ -27,8 +29,10 @@ After a moderator publishes it, investigators who are eligible to quote on it ca
 mission details: every verified investigator whose profile is published and accepting work, not
 only those who cover your category or area. They see what a quote needs — the category, title,
 description, place, deadline, budget and languages. Your reasons for the request and your
-relationship to the subject are seen only by the moderator. They see you by first name only:
-never your surname, email, phone number or photo before you hire. Messages that contain contact
+relationship to the subject are seen only by the moderator. Before you hire, they do not see
+your name at all — not your first name, surname, email, phone number or photo. On a mission you
+are only "the customer", with an anonymous code that belongs to that mission and cannot be linked
+to your other missions. Messages that contain contact
 details are not delivered. Once you accept a quote, that one investigator sees what the
 assignment requires them to see; the others no longer have access.
 

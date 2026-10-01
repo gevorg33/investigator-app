@@ -1,0 +1,3 @@
+ALTER TABLE "investigator_profiles" ADD COLUMN "pseudonym" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "investigator_profiles_pseudonym_unique" ON "investigator_profiles" USING btree (lower("pseudonym"));--> statement-breakpoint
+ALTER TABLE "investigator_profiles" ADD CONSTRAINT "investigator_profiles_pseudonym_length" CHECK ("investigator_profiles"."pseudonym" IS NULL OR char_length(btrim("investigator_profiles"."pseudonym")) BETWEEN 2 AND 60);

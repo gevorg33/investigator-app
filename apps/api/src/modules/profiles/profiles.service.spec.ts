@@ -149,7 +149,9 @@ describe('profile persistence', () => {
     expect(Object.keys(preview).sort()).toEqual(
       [
         'id',
-        'displayName',
+        // The name they chose to be known by, and the code that stands in for it (T-181, T-182).
+        'name',
+        'nameCode',
         'headline',
         'bio',
         'yearsExperience',
@@ -168,10 +170,14 @@ describe('profile persistence', () => {
     expect(preview).not.toHaveProperty('verificationStatus');
     expect(preview).toMatchObject({
       headline: 'Records research',
-      displayName: 'Nairi',
+      // A pseudonym is the default and none is set yet: the code stands in, and the legal name
+      // stays out (T-181, T-182).
+      name: null,
+      nameCode: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{4}$/),
       languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
     });
     expect(JSON.stringify(preview)).not.toContain('555-0107');
+    expect(JSON.stringify(preview)).not.toContain('Nairi');
   });
 
   it('has no preview for someone who is not an investigator', async () => {
@@ -204,7 +210,7 @@ describe('profile persistence', () => {
     },
   );
 
-  describe('the name customers see (T-123)', () => {
+  describe('the legal name (T-123) — verification’s, never shown to customers (T-181)', () => {
     const setStatus = async (actor: Actor, status: 'VERIFIED' | 'PENDING') =>
       ownerDb
         .update(investigatorProfiles)
@@ -357,6 +363,134 @@ describe('profile persistence', () => {
     const after = await profiles.getMyInvestigatorProfile(actor, req);
     expect(after.headline).not.toBe('Should not persist');
     expect(after.specialtyNodeIds).toEqual([]);
+  });
+
+  describe('the pseudonym customers know them by (T-181)', () => {
+    // Letters only: a run of digits is what the rules read as a phone number.
+    const unique = (stem: string) =>
+      `${stem} ${randomUUID()
+        .replace(/[^a-f]/g, '')
+        .padEnd(8, 'x')
+        .slice(0, 8)}`;
+    const refusal = (p: Promise<unknown>) =>
+      p.then(
+        () => null,
+        (e: { details?: Array<{ field: string; code: string }> }) => e.details?.[0],
+      );
+
+    it('is the investigator’s to set, tidied, shown in the preview and to the owner', async () => {
+      const actor = await investigator();
+      const name = unique('North  Star');
+      const saved = await profiles.updateMyInvestigatorProfile(
+        actor,
+        { pseudonym: `  ${name}  ` },
+        req,
+      );
+      const tidy = name.replace(/\s+/g, ' ');
+      expect(saved).toMatchObject({ pseudonym: tidy, displayName: 'Nairi' });
+      const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+      expect(preview.name).toBe(tidy);
+      expect(JSON.stringify(preview)).not.toContain('Nairi');
+    });
+
+    it('can be cleared, and the stand-in code is what customers see again', async () => {
+      const actor = await investigator();
+      await profiles.updateMyInvestigatorProfile(actor, { pseudonym: unique('Quiet Owl') }, req);
+      const cleared = await profiles.updateMyInvestigatorProfile(actor, { pseudonym: null }, req);
+      expect(cleared.pseudonym).toBeNull();
+      expect(cleared.nameCode).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}$/);
+    });
+
+    it('may not share a word with the legal name, or carry contact details', async () => {
+      const actor = await investigator();
+      expect(
+        await refusal(
+          profiles.updateMyInvestigatorProfile(actor, { pseudonym: 'Nairi Research' }, req),
+        ),
+      ).toMatchObject({ field: 'pseudonym', code: 'OWN_NAME' });
+      expect(
+        await refusal(
+          profiles.updateMyInvestigatorProfile(actor, { pseudonym: 'Call 091 234 567' }, req),
+        ),
+      ).toMatchObject({ field: 'pseudonym', code: 'CONTACT' });
+      // Refused whole: nothing was written.
+      expect((await profiles.getMyInvestigatorProfile(actor, req)).pseudonym).toBeNull();
+    });
+
+    it('is checked against the new legal name when both change, or the legal name alone does', async () => {
+      const actor = await investigator();
+      expect(
+        await refusal(
+          profiles.updateMyInvestigatorProfile(
+            actor,
+            { displayName: 'Gor Vardanyan', pseudonym: 'Vardanyan Bureau' },
+            req,
+          ),
+        ),
+      ).toMatchObject({ code: 'OWN_NAME' });
+      await profiles.updateMyInvestigatorProfile(actor, { pseudonym: unique('Bright Lake') }, req);
+      // Renaming yourself into your own pseudonym would reveal you through it.
+      expect(
+        await refusal(
+          profiles.updateMyInvestigatorProfile(actor, { displayName: 'Lake Bright' }, req),
+        ),
+      ).toMatchObject({ field: 'pseudonym', code: 'OWN_NAME' });
+    });
+
+    it('has nothing to compare against when no legal name is on file yet', async () => {
+      const actor = await investigator();
+      await ownerDb.update(users).set({ displayName: null }).where(eq(users.id, actor.userId));
+      const name = unique('Nairi');
+      const saved = await profiles.updateMyInvestigatorProfile(actor, { pseudonym: name }, req);
+      expect(saved).toMatchObject({ pseudonym: name, displayName: null });
+    });
+
+    it('is the default; the legal name is shown only if they choose it, and choosing back hides it (T-182)', async () => {
+      const actor = await investigator();
+      const name = unique('Amber Gate');
+      const own = await profiles.updateMyInvestigatorProfile(actor, { pseudonym: name }, req);
+      expect(own.publicName).toBe('PSEUDONYM');
+      const seen = async () => (await profiles.previewMyInvestigatorProfile(actor, req)).name;
+      expect(await seen()).toBe(name);
+
+      const legal = await profiles.updateMyInvestigatorProfile(actor, { publicName: 'LEGAL' }, req);
+      expect(legal).toMatchObject({ publicName: 'LEGAL', pseudonym: name });
+      expect(await seen()).toBe('Nairi');
+
+      await profiles.updateMyInvestigatorProfile(actor, { publicName: 'PSEUDONYM' }, req);
+      expect(await seen()).toBe(name);
+    });
+
+    it('falls back to the code when the chosen name is not set', async () => {
+      const actor = await investigator();
+      await ownerDb.update(users).set({ displayName: null }).where(eq(users.id, actor.userId));
+      await profiles.updateMyInvestigatorProfile(actor, { publicName: 'LEGAL' }, req);
+      const preview = await profiles.previewMyInvestigatorProfile(actor, req);
+      expect(preview.name).toBeNull();
+      expect(preview.nameCode).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}$/);
+    });
+
+    it('is one investigator’s alone, without regard to case', async () => {
+      const name = unique('Silver Fox');
+      await profiles.updateMyInvestigatorProfile(await investigator(), { pseudonym: name }, req);
+      const second = await investigator();
+      expect(
+        await refusal(
+          profiles.updateMyInvestigatorProfile(second, { pseudonym: name.toUpperCase() }, req),
+        ),
+      ).toMatchObject({ field: 'pseudonym', code: 'TAKEN' });
+      // Any other refusal from the database is not dressed up as "taken": one character past the
+      // DTO (as a direct call can be) meets the length CHECK, and that error is the one raised.
+      const other = await profiles
+        .updateMyInvestigatorProfile(second, { pseudonym: 'Q' }, req)
+        .then(
+          () => null,
+          (e: { cause?: { code?: string }; details?: unknown }) => e,
+        );
+      expect(other).not.toBeNull();
+      expect((other as { details?: unknown }).details).toBeUndefined();
+      expect((other as { cause?: { code?: string } }).cause?.code).toBe('23514');
+    });
   });
 
   describe('a retired taxonomy node (ADR-0007 rule 1, T-053)', () => {

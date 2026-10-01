@@ -15,7 +15,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { RadioGroup, RadioGroupChoice } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import type { MissionFields, SubjectRelationship } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
@@ -388,20 +388,6 @@ export function LanguagesQuestion({
   );
 }
 
-/** One choice of a radio group, as a row the thumb can hit. */
-function Choice({ value, label }: { value: string; label: string }) {
-  const id = useId();
-  return (
-    <label
-      htmlFor={id}
-      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-subtle"
-    >
-      <RadioGroupItem id={id} value={value} />
-      <span>{label}</span>
-    </label>
-  );
-}
-
 /**
  * Who the work concerns, to the customer — standing decides what can lawfully be done — and, where
  * the relationship is personal, whether a protective order stands between them.
@@ -424,7 +410,7 @@ export function WhoQuestion({ fields, edit, flagged }: QuestionProps) {
           onValueChange={(v) => edit({ subjectRelationship: v as SubjectRelationship })}
         >
           {RELATIONSHIPS.map((r) => (
-            <Choice key={r} value={r} label={t(`brief.relationship.${r}`)} />
+            <RadioGroupChoice key={r} value={r} label={t(`brief.relationship.${r}`)} />
           ))}
         </RadioGroup>
         {flagged.has('subjectRelationship') && (
@@ -449,8 +435,8 @@ export function WhoQuestion({ fields, edit, flagged }: QuestionProps) {
             }
             onValueChange={(v) => edit({ protectiveOrderDeclared: v === 'yes' })}
           >
-            <Choice value="yes" label={t('intake.who.yes')} />
-            <Choice value="no" label={t('intake.who.no')} />
+            <RadioGroupChoice value="yes" label={t('intake.who.yes')} />
+            <RadioGroupChoice value="no" label={t('intake.who.no')} />
           </RadioGroup>
           {flagged.has('protectiveOrderDeclared') && (
             <p className="text-sm text-danger">{t('intake.required')}</p>

@@ -9,6 +9,7 @@ import {
   IsString,
   Length,
   Matches,
+  ValidateIf,
   Max,
   MaxLength,
   Min,
@@ -16,6 +17,7 @@ import {
 } from 'class-validator';
 
 const PRICING_MODELS = ['HOURLY', 'FIXED_FEE', 'RETAINER', 'MIXED'] as const;
+const PUBLIC_NAME_CHOICES = ['PSEUDONYM', 'LEGAL'] as const;
 const PROFICIENCIES = ['BASIC', 'CONVERSATIONAL', 'FLUENT', 'NATIVE'] as const;
 const VISIBILITIES = ['DRAFT', 'PUBLISHED'] as const;
 
@@ -49,7 +51,8 @@ export class AvailabilityWindowDto {
 
 export class UpdateInvestigatorProfileDto {
   /**
-   * The name customers see (T-123). It lives on the account, and can change only while no
+   * The legal name (T-123), which verification checks — never shown to customers, who see the
+   * pseudonym below (T-181). It lives on the account, and can change only while no
    * application is under review and none has been approved — verification checks documents
    * against a name, and "verified" must keep meaning that name (owner decision, 2026-09-25).
    * `\S` so a name of spaces is refused.
@@ -59,6 +62,27 @@ export class UpdateInvestigatorProfileDto {
   @Length(1, 80)
   @Matches(/\S/, { message: 'error.validation.display_name.blank' })
   displayName?: string;
+
+  /**
+   * The name customers know the investigator by (T-181) — theirs to choose, and the only one
+   * customers ever see: the legal name above is for verification. Unique without case; may not
+   * share a word with the legal name or carry contact details (`pseudonym.ts`). `null` clears it,
+   * and customers see the stand-in code again.
+   */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @Matches(/\S/, { message: 'error.validation.pseudonym.blank' })
+  @Length(2, 60, { message: 'error.validation.pseudonym.length' })
+  pseudonym?: string | null;
+
+  /**
+   * Which name customers know the investigator by (T-182): `PSEUDONYM`, the default, or `LEGAL` —
+   * the name above, which verification checks. Their choice, changeable at any time.
+   */
+  @IsOptional()
+  @IsIn(PUBLIC_NAME_CHOICES)
+  publicName?: (typeof PUBLIC_NAME_CHOICES)[number];
 
   @IsOptional()
   @IsString()

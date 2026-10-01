@@ -71,6 +71,16 @@ describe('blocks', () => {
       .where(eq(auditLogs.actorId, actorId))
       .orderBy(auditLogs.action, auditLogs.resourceId);
 
+  /** Gives an investigator a pseudonym, unique as the table requires, and returns it. */
+  const pseudonymOf = async (profileId: string) => {
+    const pseudonym = `North Star ${randomUUID().slice(0, 8)}`;
+    await ownerDb
+      .update(schema.investigatorProfiles)
+      .set({ pseudonym })
+      .where(eq(schema.investigatorProfiles.id, profileId));
+    return pseudonym;
+  };
+
   const statusOf = async (quoteId: string) =>
     (await ownerDb.select().from(quotes).where(eq(quotes.id, quoteId)))[0]!.status;
 
@@ -85,14 +95,41 @@ describe('blocks', () => {
   };
 
   describe('from a profile', () => {
+    it('labels an investigator who has not chosen a pseudonym by nothing, never their legal name (T-181)', async () => {
+      const { actor: customer } = await quotableMission(ownerDb);
+      const unnamed = await eligibleInvestigator(ownerDb, { displayName: 'Gor Unchosen' });
+      const made = await service.block(
+        customer,
+        { investigatorProfileId: unnamed.profileId },
+        req(),
+      );
+      expect(made).toMatchObject({ label: null, investigatorProfileId: unnamed.profileId });
+      expect(JSON.stringify(await service.list(customer, req()))).not.toContain('Unchosen');
+    });
+
+    it('labels one who chose to be known by their legal name by it, not their pseudonym (T-182)', async () => {
+      const { actor: customer } = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb, { displayName: 'Lilit Openly' });
+      const kept = await pseudonymOf(inv.profileId);
+      await ownerDb
+        .update(schema.investigatorProfiles)
+        .set({ publicName: 'LEGAL' })
+        .where(eq(schema.investigatorProfiles.id, inv.profileId));
+      const made = await service.block(customer, { investigatorProfileId: inv.profileId }, req());
+      expect(made).toMatchObject({ label: 'Lilit Openly', investigatorProfileId: inv.profileId });
+      expect(JSON.stringify(await service.list(customer, req()))).not.toContain(kept);
+    });
+
     it('names the investigator by the name the customer could see, once however often asked', async () => {
       const { actor: customer } = await quotableMission(ownerDb);
       const inv = await eligibleInvestigator(ownerDb, { displayName: 'Ani Petrosyan' });
+      // Customers know an investigator by the pseudonym they chose, never the legal name (T-181).
+      const known = await pseudonymOf(inv.profileId);
 
       const first = await service.block(customer, { investigatorProfileId: inv.profileId }, req());
       expect(first).toMatchObject({
         source: 'profile',
-        label: 'Ani Petrosyan',
+        label: known,
         investigatorProfileId: inv.profileId,
         liveAssignments: 0,
       });
@@ -103,7 +140,7 @@ describe('blocks', () => {
         {
           id: first.id,
           source: 'profile',
-          label: 'Ani Petrosyan',
+          label: known,
           investigatorProfileId: inv.profileId,
           createdAt: first.createdAt,
         },
@@ -226,6 +263,7 @@ describe('blocks', () => {
     const live = async (status: 'IN_PROGRESS' | 'COMPLETED' = 'IN_PROGRESS') => {
       const mission = await quotableMission(ownerDb);
       const inv = await eligibleInvestigator(ownerDb, { displayName: 'Davit Hakobyan' });
+      const known = await pseudonymOf(inv.profileId);
       const quote = await submittedQuote(ownerDb, {
         missionId: mission.missionId,
         investigatorProfileId: inv.profileId,
@@ -240,15 +278,27 @@ describe('blocks', () => {
         customerId: mission.customerId,
         status,
       });
-      return { customer: mission.actor, inv, assignmentId: row.id };
+      return { customer: mission.actor, inv: { ...inv, known }, assignmentId: row.id };
     };
+
+    it('labels a hired customer with no name on their account by nothing', async () => {
+      const a = await live();
+      await ownerDb
+        .update(schema.users)
+        .set({ displayName: null })
+        .where(eq(schema.users.id, a.customer.userId));
+      const made = await service.block(a.inv.actor, { assignmentId: a.assignmentId }, req());
+      expect(made).toMatchObject({ source: 'assignment', label: null });
+    });
 
     it('leaves the work running and hands it to staff, whichever side blocks', async () => {
       const a = await live();
       const byCustomer = await service.block(a.customer, { assignmentId: a.assignmentId }, req());
       expect(byCustomer).toMatchObject({
         source: 'assignment',
-        label: 'Davit Hakobyan',
+        // The investigator by their pseudonym (T-181); the customer, below, by name — the
+        // investigator was hired, so T-100 no longer masks them.
+        label: a.inv.known,
         investigatorProfileId: a.inv.profileId,
         liveAssignments: 1,
       });

@@ -4,12 +4,13 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 4
+version: 6
 status: current
-updated: 2026-09-26
+updated: 2026-10-01
 source_of_truth: database
 implementation_status: partial
 related_code:
+  - apps/api/src/modules/profiles/pseudonym.ts
   - apps/api/src/modules/profiles
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/taxonomy
@@ -90,7 +91,9 @@ visibility.
 
 ## Which parts of my profile can customers see?
 
-Customers see your storefront: display name, headline, description, years of experience,
+Customers see your storefront: the name you chose for them (your pseudonym, unless you chose your
+legal name), headline,
+description, years of experience,
 specialties, languages, pricing model and rate, availability windows, whether you are
 currently accepting work, and whether you are verified. Only that last yes or no is shown: an
 application under review and one that was not approved both read as not verified.
@@ -115,10 +118,26 @@ from "no such profile" would let anyone confirm you work here.
 Publishing is not the same as being verified. They are separate, and verification has its own
 process.
 
-## Can I change my name?
+## What name do customers see?
+
+You choose, under **Name on your public profile**: **A pseudonym** — the default — or **My legal
+name**. Customers see the one you chose, before they hire you and after, on your profile, in search
+results and in the assistant's answers. You can switch whenever you like, and switching back to the
+pseudonym brings back the one you had.
+
+With a pseudonym, your legal name is for verification and staff only and is never shown to a
+customer. Your pseudonym must be unique on the platform and between 2 and 60 characters. It cannot
+share a word with your legal name — not even your first name — and it cannot contain an email
+address, a website or a phone number. Until you set one, customers see "Investigator" followed by a
+short code.
+
+With your legal name, customers see the name in **Your legal name** exactly as it is there. Your
+email address and phone number stay private either way.
+
+## Can I change my legal name?
 
 Yes, until you apply for verification. Use the name on your identity document: verification
-checks your documents against it.
+checks your documents against it. Customers see it only if you choose to be known by it.
 
 While an application is under review, and once you are verified, your name is locked, because
 it is the name your documents were checked against. To change it after that, contact support.

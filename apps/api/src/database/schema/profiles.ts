@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -62,6 +63,12 @@ export const pricingModel = pgEnum('pricing_model', ['HOURLY', 'FIXED_FEE', 'RET
  * it is ready, not the moment the investigator role is activated. Verification is a separate
  * axis entirely (T-013) — published is not verified.
  */
+/**
+ * Which name customers know an investigator by (T-182): the pseudonym they chose, or the legal
+ * name verification checked. The pseudonym is the default, so no one is named until they say so.
+ */
+export const publicNameChoice = pgEnum('public_name_choice', ['PSEUDONYM', 'LEGAL']);
+
 export const profileVisibility = pgEnum('profile_visibility', ['DRAFT', 'PUBLISHED']);
 
 /**
@@ -113,6 +120,14 @@ export const investigatorProfiles = pgTable(
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     /** Private. Contact happens through the platform; this is for staff and support. */
     contactPhone: text('contact_phone'),
+    /**
+     * The name customers know the investigator by (T-181), chosen by them. Customers never see the
+     * legal name (`users.display_name`), before or after hire; until this is set they see a neutral
+     * fallback. Unique without case, so no one can borrow another's name and reviews.
+     */
+    pseudonym: text('pseudonym'),
+    /** Whether customers see the pseudonym (default) or the legal name — the investigator's choice. */
+    publicName: publicNameChoice('public_name').notNull().default('PSEUDONYM'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     /**
@@ -136,6 +151,12 @@ export const investigatorProfiles = pgTable(
     ),
     unique('investigator_profiles_id_tenant_unique').on(t.id, t.tenantId),
     index('investigator_profiles_tenant_idx').on(t.tenantId),
+    // Serves the uniqueness rule itself, and ProfilesService's "is this name taken" on save.
+    uniqueIndex('investigator_profiles_pseudonym_unique').on(sql`lower(${t.pseudonym})`),
+    check(
+      'investigator_profiles_pseudonym_length',
+      sql`${t.pseudonym} IS NULL OR char_length(btrim(${t.pseudonym})) BETWEEN 2 AND 60`,
+    ),
   ],
 );
 

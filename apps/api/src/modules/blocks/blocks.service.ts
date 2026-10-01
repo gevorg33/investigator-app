@@ -43,7 +43,10 @@ export interface BlockTarget {
 export interface BlockView {
   id: string;
   source: BlockSource;
-  /** The name the blocker could see when they blocked; none for a customer blocked from a mission. */
+  /**
+   * The name the blocker could see when they blocked: an investigator's pseudonym (T-181), null when
+   * they had none; none for a customer blocked from a mission.
+   */
   label: string | null;
   /** The blocked person's investigator profile, when they have one. */
   investigatorProfileId: string | null;
@@ -114,15 +117,30 @@ export class BlocksService {
         // `user_blocks_not_self` refuses it regardless.
         const other = named.userId ?? (await investigatorOf(tx, named.profileId!));
         const [profile] = await tx
-          .select({ id: investigatorProfiles.id })
+          .select({
+            id: investigatorProfiles.id,
+            pseudonym: investigatorProfiles.pseudonym,
+            publicName: investigatorProfiles.publicName,
+          })
           .from(investigatorProfiles)
           .where(eq(investigatorProfiles.userId, other));
-        const label =
-          named.source === 'mission'
+        // The name the blocker could see. An investigator by the name they chose to be known by
+        // (T-182): their pseudonym — the default, null until chosen, and then never the legal name
+        // (T-181) — or their legal name if they chose it. A customer blocked from a mission is
+        // anonymous (T-100); one blocked from an assignment was named to the investigator hired.
+        // The account row exists for anyone named here (a profile or an assignment references it).
+        const legalName = async () =>
+          (await tx.select({ name: users.displayName }).from(users).where(eq(users.id, other)))[0]!
+            .name;
+        const asInvestigator = named.source === 'profile' || named.profileId !== undefined;
+        // Their profile was found just above: an investigator was named by it.
+        const label = asInvestigator
+          ? profile!.publicName === 'LEGAL'
+            ? await legalName()
+            : profile!.pseudonym
+          : named.source === 'mission'
             ? null
-            : ((
-                await tx.select({ name: users.displayName }).from(users).where(eq(users.id, other))
-              )[0]?.name ?? null);
+            : await legalName();
 
         const [made] = await tx
           .insert(userBlocks)

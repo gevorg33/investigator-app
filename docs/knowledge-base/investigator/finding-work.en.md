@@ -4,12 +4,13 @@ title: Finding missions you can quote on
 audience: investigator
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: partial
 related_code:
+  - apps/api/src/modules/missions/customer-alias.ts
   - apps/app-web
   - apps/api/src/modules/missions
   - apps/api/src/modules/search
@@ -34,7 +35,9 @@ The category, the title and description, where it is (a place name, and how far 
 service area when you ask), the deadline, the budget range, the languages the work needs, and
 when it was published.
 
-Nothing about the customer: no name, email, phone number or photo. Nor their reasons for the
+Nothing about the customer: no name, email, phone number or photo — only an anonymous code that
+stands for the customer of that mission, so you can refer to them, and that cannot be linked to
+any other mission. Nor their reasons for the
 request — those are for the moderator who published it. What the assignment requires becomes
 available once your quote has been accepted and paid.
 

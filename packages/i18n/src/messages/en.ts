@@ -528,6 +528,9 @@ export const en = {
     },
   },
   investigator: {
+    public_name: {
+      unnamed: 'Investigator {code}',
+    },
     title: 'Investigator profile',
     intro: 'What customers see, where you work, and your verification.',
     link: 'Your investigator profile',
@@ -560,10 +563,17 @@ export const en = {
     },
     details: {
       title: 'About you',
-      name: 'Your name',
-      name_hint: 'As on your identity document: verification checks it.',
+      name: 'Your legal name',
+      name_hint:
+        'As on your identity document: verification checks it. Customers see it only if you choose it below.',
       name_locked:
         'Locked while verification is under review or approved, because it was checked against your documents. Contact support to change it.',
+      public_name: 'Name on your public profile',
+      public_name_PSEUDONYM: 'A pseudonym',
+      public_name_LEGAL: 'My legal name',
+      pseudonym: 'Your pseudonym',
+      pseudonym_hint:
+        'Customers know you only by this name, never your legal one. It must be unique, and cannot contain your own name or contact details.',
       headline: 'Headline',
       headline_hint: 'The one line customers read first.',
       bio: 'About your work',
@@ -775,7 +785,6 @@ export const en = {
       },
       more: 'More investigators match. Name a place, a specialty or a language to narrow it down.',
       none: 'No verified investigator who is taking work matches all of that. Try a wider area, or fewer requirements.',
-      unnamed: 'An investigator',
       verified: 'Verified',
       years: '{years, plural, one {# year of experience} other {# years of experience}}',
       languages: 'Languages',
@@ -1216,6 +1225,14 @@ export const en = {
       display_name: {
         blank: 'Enter your name.',
         locked: 'Your name cannot change while verification is under review or approved.',
+      },
+      pseudonym: {
+        blank: 'Enter the name customers will know you by.',
+        length: 'Use 2 to 60 characters.',
+        own_name:
+          'Choose a name that shares no word with your own. Customers never see your real name.',
+        contact: 'Leave out email addresses, websites and phone numbers.',
+        taken: 'Another investigator already goes by this name. Choose another.',
       },
       mission: {
         required: 'Answer this before sending.',

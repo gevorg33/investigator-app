@@ -5,6 +5,7 @@ import { BadgeCheck, Clock, Languages, Wallet } from 'lucide-react';
 import { useLocale, useTranslations } from 'use-intl';
 import { Badge } from '@/components/ui/badge';
 import type { PublicInvestigatorProfile } from '@/lib/api/types';
+import { investigatorName } from '@/lib/investigator-name';
 
 const minutes = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -46,7 +47,7 @@ export function PublicProfileCard({
       <header className="grid gap-1">
         {named && (
           <h3 id="public-profile-name" className="text-xl font-semibold">
-            {profile.displayName ?? t('details.not_set')}
+            {investigatorName(profile, (code) => t('public_name.unnamed', { code }))}
           </h3>
         )}
         {profile.headline !== null && <p className="text-text-muted">{profile.headline}</p>}

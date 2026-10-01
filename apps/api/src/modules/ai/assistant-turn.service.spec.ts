@@ -376,7 +376,10 @@ describe('a turn in a conversation (T-056)', () => {
         });
         const stored = await history(sessions, me, session.id);
         expect(stored[2]).toMatchObject({ role: 'USER', metadata: { clarifies: 'location' } });
-        expect(JSON.stringify(stored)).not.toMatch(/44\.5|40\.1/);
+        // The point at any precision — rounded is still where someone is. Timestamps go first: one
+        // whose seconds read ":40.1…" or ":44.5…" matched by chance, and failed the run (T-180).
+        const withoutTimes = JSON.stringify(stored).replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '');
+        expect(withoutTimes).not.toMatch(/44\.5|40\.1/);
         expect(stored[3]?.metadata).toMatchObject({
           answer: { status: 'no_results', searchedFor: { near: true, radiusKm: 25 } },
         });

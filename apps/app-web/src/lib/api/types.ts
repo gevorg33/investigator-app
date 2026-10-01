@@ -108,7 +108,10 @@ export interface OwnMission extends MissionFields {
   review: MissionReview | null;
 }
 
-/** A published mission as an investigator browsing sees it (T-054): nothing about the customer. */
+/**
+ * A published mission as an investigator browsing sees it (T-054): nothing about the customer but a
+ * per-mission alias, which names no one and links to no other mission (T-100).
+ */
 export interface MissionListing {
   id: string;
   title: string;
@@ -124,6 +127,7 @@ export interface MissionListing {
   currency: string;
   languages: string[];
   publishedAt: string;
+  customerAlias: string;
 }
 
 export interface MissionBrowsePage {
@@ -165,6 +169,9 @@ export interface OwnServiceArea {
   radiusKm: number | null;
 }
 
+/** Which name an investigator is known by to customers (T-182). */
+export type PublicName = 'PSEUDONYM' | 'LEGAL';
+
 export type PricingModel = 'HOURLY' | 'FIXED_FEE' | 'RETAINER' | 'MIXED';
 export type Proficiency = 'BASIC' | 'CONVERSATIONAL' | 'FLUENT' | 'NATIVE';
 export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
@@ -179,7 +186,13 @@ export interface AvailabilityWindow {
 /** An investigator profile as anyone may see it — the public projection (T-007). */
 export interface PublicInvestigatorProfile {
   id: string;
-  displayName: string | null;
+  /**
+   * The name customers know them by: their pseudonym, or their legal name if they chose to be known by
+   * it (T-181, T-182). Null until the chosen name is set.
+   */
+  name: string | null;
+  /** Stands in until the name is set: "Investigator {code}" (`investigatorName`). */
+  nameCode: string;
   headline: string | null;
   bio: string | null;
   yearsExperience: number | null;
@@ -196,6 +209,12 @@ export interface PublicInvestigatorProfile {
 
 /** The investigator's own profile: the public fields and the ones only they see (T-123). */
 export interface OwnInvestigatorProfile extends PublicInvestigatorProfile {
+  /** Their legal name, which verification checks — a customer's to see only if chosen (T-182). */
+  displayName: string | null;
+  /** The pseudonym they chose (T-181), whether or not it is the name in use. */
+  pseudonym: string | null;
+  /** Which name customers see: the pseudonym, the default, or the legal name (T-182). */
+  publicName: PublicName;
   contactPhone: string | null;
   visibility: 'DRAFT' | 'PUBLISHED';
   verificationStatus: VerificationStatus;

@@ -4805,6 +4805,7 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 - [ ] A suspended or archived agency's profiles disappear from discovery on the next query
 - [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
 - [ ] KB: profile articles updated for agencies
+- [ ] Leave room for T-183: an agency-held profile's public name (T-182's `public_name`) is the agency's to set, with the agent's consent for their legal name — do not let the agency write it without that consent check
 
 **Validation**
 ```bash
@@ -5292,7 +5293,7 @@ T-105 and T-107 land with agencies. T-108 comes later.
 ---
 
 ### T-100 — Customer identity masked until hire (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01 (owner approved in chat). Owner decision: **alias only, no name** — no first name is collected and `display_name` is free text that can lead with the surname. `customerAlias` on the browse listing (`modules/missions/customer-alias.ts`); `GET /profiles/customer/:id` names the customer only to themself and to an investigator they hired; `test/identity-masking.spec.ts` walks every read
 - **Priority:** P1
 - **Depends on:** T-077
 - **Risk:** MEDIUM
@@ -5307,15 +5308,23 @@ shows a surname, email, phone, photo or user id. After hire, the assignment expo
 requires; anything further is the customer's choice.
 
 **Acceptance criteria**
-- [ ] A generated spec walks every investigator-facing view and fails if it contains a customer surname, email, phone, avatar or user id before hire
-- [ ] The per-mission alias cannot be correlated across missions
-- [ ] KB already describes this (`kb-customer-privacy-data` v2, `kb-customer-messaging` v2, `kb-investigator-finding-work` v2): confirm it matches what shipped
+- [x] A generated spec walks every investigator-facing view and fails if it contains a customer surname, email, phone, avatar or user id before hire — every GET and `/search` POST read from the router (75 routes, 33 answering the investigator), each path parameter filled with every id they hold; customers have no avatar column. Seen failing first: with the profile unmasked it reports `GET /profiles/customer/:id → <surname>`
+- [x] The per-mission alias cannot be correlated across missions — derived from the mission id alone (`sha256`, four Crockford base-32 characters); `customer-alias.spec.ts`
+- [x] KB already describes this (`kb-customer-privacy-data` v2, `kb-customer-messaging` v2, `kb-investigator-finding-work` v2): confirm it matches what shipped — it promised a **first name**; now privacy-and-data v4, messaging v3, getting-started v6 and investigator finding-work v4 say no name and a per-mission code (en, and the ru/hy drafts); plan.md §13 and its decision row record the change
 
 **Validation**
 ```bash
 pnpm --filter api test missions quotes identity-masking
 ```
 
+
+**Done 2026-10-01.** Before T-100 no investigator view sent the customer's name except one:
+`GET /profiles/customer/:id` returned `display_name` to anyone signed in (its row policy is
+`public_read`); no view handed out customer profile ids, so it was not reachable in practice, but it
+was the one leak. It now returns `null` unless the caller is the customer or an investigator with a
+non-cancelled assignment from them — fail-closed for everyone else, staff included (they have the
+console). Not covered, because not built: conversations (pre-hire messaging) — when they are, their
+id joins the walker's `ids` (`docs/architecture/missions.md`, Privacy).
 ---
 
 ### T-101 — Conversations: pre-hire and assignment (API)
@@ -7971,6 +7980,14 @@ and searched for the shape behind T-155, T-167 and T-172.
 pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+**Addendum (found in T-100's full run, 2026-10-01).** Three more, fixed the same way:
+`assistant-sessions.spec.tsx` dated a conversation `2026-09-24` and expected "… ago"; once a week had
+passed it read "last week" and failed every day — now three days before the run, asserted exactly.
+`assistant-turn.service.spec.ts` and `ai-discovery.search-tool.spec.ts` look for a coordinate in
+stored JSON by `/44\.5|40\.1/` and `/44\.51/`; an ISO timestamp whose seconds read `:40.1…` or
+`:44.5…` matched by chance (shown with a timestamp of `…:44.512Z`). Timestamps are removed before the
+check, which still catches the point at any precision.
 ---
 
 ### T-179 — Take Next 15.5.27's security fixes (self-hosted cache poisoning)
@@ -7996,6 +8013,130 @@ the pin table.
 **Validation**
 ```bash
 pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
+```
+
+
+---
+
+### T-181 — Investigators known to customers by a pseudonym, never their legal name
+- **Status:** DONE — 2026-10-01. `investigator_profiles.pseudonym` (migration 0035) set from the profile's details form; the public projection, discovery, the assistant's tool output and block labels carry it (or a per-profile code), never the legal name; `test/identity-masking.spec.ts` walks every read as a customer who hired the investigator
+- **Priority:** P1
+- **Depends on:** T-100
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — given in chat 2026-10-01 (it changes what customers see of an investigator, and adds a column of personal data)
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api/src/database (migration 0035), apps/api/src/modules/{profiles,search,ai/tools/discovery,blocks}, apps/app-web (profile editor, every place an investigator is named to a customer), packages/i18n, docs
+
+**Description**
+Owner decisions, 2026-10-01: an investigator is shown to customers by a **pseudonym they choose**,
+**never** their legal name — before or after hire; the legal name stays between the investigator and
+staff (verification). Pseudonyms are **unique** across the platform, compared without case, and may
+not be or contain the investigator's own legal name, an email address or a phone number. Until one is
+chosen, customers see a neutral fallback ("Investigator" and a per-profile code), never the legal
+name.
+
+**Acceptance criteria**
+- [x] `investigator_profiles.pseudonym`: nullable, 2–60 characters, unique without case; reversible migration — 0035, with its `.down.sql`
+- [x] The investigator sets it on their profile; refused when taken, or when it is their legal name, an email or a phone — `OWN_NAME` (any shared word of 3+ letters, also after a rename), `CONTACT`, `TAKEN`; `null` clears it
+- [x] Every customer-facing view names an investigator by pseudonym or fallback: public profile, discovery, the assistant's tool output, blocks — `PublicInvestigatorProfile` has no `displayName` at all; `nameCode` stands in
+- [x] A generated spec walks every read as a customer — before and after hire — and fails on the investigator's legal name, email, phone or user id — walked as the customer who hired them; seen failing with the old projection (`GET /profiles/investigator/:id → first name, surname`)
+- [x] The app's profile editor and preview, discovery and assistant cards show the pseudonym; en/ru/hy — looked at on a phone: the field beside the legal name, its hint, and an `OWN_NAME` refusal under it
+- [x] KB, plan.md and architecture docs say customers see a professional name, never the legal one — investigator profile-and-service-areas v5 (new "What name do customers see?"), verification v4, customer finding-an-investigator v5, ai-assistant v8 (en + ru/hy drafts); profiles.md, blocks.md; OpenAPI metadata regenerated
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
+
+**Done 2026-10-01.** Before: the legal name reached customers on the public profile, every discovery
+result, the assistant's investigator cards (and the model, which could repeat it), and a customer's
+own block list. Not done, deliberately: existing block rows keep the label they were made with (a
+customer's own list of what they saw); rewriting them is a data change that needs approval, and
+pre-launch there is no production data. Publishing does not require a pseudonym — until one is
+chosen customers see the code; the status card does not nag (a possible follow-up). Staff and agency
+member lists keep the legal name: neither is shown to customers.
+
+---
+
+### T-182 — Investigators choose: a pseudonym, or their legal name
+- **Status:** DONE
+- **Priority:** P1
+- **Depends on:** T-181
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — given in chat 2026-10-01 (it changes what customers may see of an investigator)
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api (migration 0036, profiles, search, ai discovery tool, blocks), apps/app-web (details form, every investigator name), packages/i18n, docs
+
+**Description**
+Owner decisions, 2026-10-01, amending T-181: the pseudonym is optional. On their profile the
+investigator chooses, with a radio choice, whether customers know them by **a pseudonym** or by
+**their legal name**. **A pseudonym is the default** — for new profiles and every existing one — so
+nothing changes for anyone who does not choose. With a pseudonym, T-181 holds in full: the legal name
+never reaches a customer. With the legal name, customers see the name verification checked; email,
+phone and user id stay private either way.
+
+**Acceptance criteria**
+- [x] `investigator_profiles.public_name`: `PSEUDONYM` (default) or `LEGAL`, not null; reversible migration
+- [x] The public projection names the investigator by their choice (`name`), or the stand-in code when that name is unset
+- [x] The identity walk still proves a pseudonymous investigator's legal name never reaches a customer; a legal-name investigator is named by it, and still never by email, phone or user id
+- [x] The profile's details form offers the choice as a radio pair, the pseudonym field shown only when it is chosen; en/ru/hy
+- [x] KB, plan.md and architecture docs describe the choice and its default
+
+**Done (2026-10-01):** migration 0036 (`public_name_choice` enum, `investigator_profiles.public_name`
+default `PSEUDONYM`, with down). The public projection's `pseudonym` became `name` — the pseudonym, or
+the legal name when `LEGAL` — and search, the AI discovery tool and block labels follow the same
+rule; the owner's view adds `pseudonym` and `publicName`. Details form: a `RadioGroupChoice` pair
+(moved out of the intake's `questions.tsx` so both share it); the pseudonym field and its value are
+only present when a pseudonym is chosen, so switching back restores the stored one. en/ru/hy strings;
+KB investigator profile v6, verification v5, customer finding-an-investigator v6 (and the ru/hy
+drafts); plan.md, profiles.md, blocks.md, component inventory. Identity walk: a `LEGAL` investigator
+is named by the legal name and still leaks no email, phone or user id. Verified in the browser at
+375px and 1280px with a throwaway e2e (not committed): the choice saves, survives a reload, and the
+preview shows the legal name.
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-183 — Agency admins choose which agents customers know by their legal name
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-087, T-182
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes what customers may see of an investigator, and adds an agency permission over a member's public name
+- **Owner agent:** backend-domain + database + frontend
+- **Affected:** apps/api/src/modules/{profiles,tenants}/**, migrations, apps/app-web (agency console, investigator details form), packages/i18n, docs
+
+**Description**
+Owner request, 2026-10-02: in an agency, the agency's admins decide per agent whether customers see
+that agent's pseudonym or their legal name, as T-182 lets an independent investigator decide for
+themself. Owner decision: **the admin chooses, and the legal name is shown only with that agent's
+consent.** Without consent, or once it is withdrawn, the agent is shown by their pseudonym (or the
+stand-in code), whatever the admin chose. A pseudonym stays the default.
+
+Blocked until agencies hold profiles (T-087): today every investigator profile belongs to its owner's
+Personal workspace, so there is no agent profile for an agency to manage.
+
+Open for the task: the permission that sets it (likely `investigators.update`, tenancy.md §3); where
+consent lives (on the profile, held by the agent's own membership) and that withdrawing it takes
+effect on the next read; what the agent sees in their own form when the admin's choice is waiting
+on their consent.
+
+**Acceptance criteria**
+- [ ] An agency member with the permission sets PSEUDONYM or LEGAL for each agency-held profile; without it, refused, and audited either way
+- [ ] The legal name reaches a customer only when the agency chose LEGAL **and** the agent consented; the identity walk (`test/identity-masking.spec.ts`) proves each of the four combinations
+- [ ] The agent can give and withdraw consent from their own profile; withdrawal hides the legal name on the next read
+- [ ] Independent investigators (Personal workspace) keep T-182 unchanged
+- [ ] Agency console: the choice per agent on the investigators list (card on phones, table from desktop), showing when consent is missing; en/ru/hy
+- [ ] KB (agency and investigator profile articles), tenancy.md, profiles.md
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

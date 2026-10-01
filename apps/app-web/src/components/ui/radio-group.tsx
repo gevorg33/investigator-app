@@ -2,9 +2,9 @@
 
 // @shadcn/radio-group, adopted in T-119 and re-tokenised: a 20px ring in `border-control` (3:1,
 // WCAG 1.4.11), the primary colour when chosen, and no ring of its own — the app's one focus
-// outline. The 44px target is the row: always pair an item with a <label> spanning the row.
+// outline. The 44px target is the row: `RadioGroupChoice` pairs an item with a <label> spanning it.
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
-import type { ComponentProps } from 'react';
+import { useId, type ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
 function RadioGroup({ className, ...props }: ComponentProps<typeof RadioGroupPrimitive.Root>) {
@@ -35,4 +35,18 @@ function RadioGroupItem({ className, ...props }: ComponentProps<typeof RadioGrou
   );
 }
 
-export { RadioGroup, RadioGroupItem };
+/** One choice as a row the thumb can hit: the item and its label, the whole row a 44px target. */
+function RadioGroupChoice({ value, label }: { value: string; label: string }) {
+  const id = useId();
+  return (
+    <label
+      htmlFor={id}
+      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-4 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-subtle"
+    >
+      <RadioGroupItem id={id} value={value} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+export { RadioGroup, RadioGroupChoice, RadioGroupItem };
