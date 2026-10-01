@@ -21,7 +21,10 @@ export function LegalOutstandingForm({ documents }: { documents: readonly LegalD
     () => router.refresh(),
   );
   return (
-    <form onSubmit={onSubmit} className="grid gap-3">
+    // One column the form's width (`minmax(0, 1fr)`): the documents' fieldset otherwise widens an
+    // implicit `auto` column to its longest line — a translation note in Armenian or Russian — and the
+    // page past a phone's edge (T-177).
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3">
       <FormError error={error} />
       <LegalDocuments
         documents={documents}

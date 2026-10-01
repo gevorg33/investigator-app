@@ -7686,7 +7686,7 @@ pnpm --filter api test notifications
 ---
 
 ### T-172 — A saved-search spec orders two saves by clock
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01. Newest first is the claim, so the order stays asserted: the spec dates the first save an hour earlier as the owner instead of trusting the clock between two saves. Reproduced first: giving the second save the first's timestamp (millisecond `Date` against microsecond `created_at`) reordered the list 6/6. Now 10/10 runs pass, and listing oldest first fails it
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -7702,7 +7702,7 @@ fall to the random id. Same shape as T-167. Give the spec distinct timestamps (o
 order the service promises for a tie) rather than relying on the clock; do not weaken the assertion.
 
 **Acceptance criteria**
-- [ ] The spec is deterministic, and still fails if the list is not newest first
+- [x] The spec is deterministic, and still fails if the list is not newest first
 
 **Validation**
 ```bash
@@ -7850,13 +7850,13 @@ result at once do it themselves, as T-052's block does.
 ---
 
 ### T-177 — Armenian says “գործ” for a mission; the notification emails say “առաջադրանք”
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01. Owner decision: the word is «առաջադրանք», the knowledge base's, not the app's «գործ» (the reverse of the description below). The app's 65 mission strings changed; «գործ» kept where it means something else; the articles' quoted UI labels follow; the phone tab's label may take two lines; an Account-page overflow found on the way fixed
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** localization
-- **Affected:** packages/i18n/src/messages/hy.ts (`email`), docs/knowledge-base/*/notifications-and-email.hy.md
+- **Affected:** packages/i18n/src/messages/hy.ts, docs/knowledge-base/{customer,investigator}/*.hy.md (9 files), apps/app-web/src/components/shell/nav-links.tsx, apps/app-web/src/components/account/{add-role-form,legal-outstanding}.tsx, docs/product/translation-glossary.md, ACTIONS-FOR-ME.md
 
 **Description**
 Found in T-052: the app calls a mission «գործ» (149 uses, the navigation included), but T-036's
@@ -7864,7 +7864,7 @@ Armenian email templates and notification articles use «առաջադրանք».
 articles stay drafts for the native-speaker review (ACTIONS-FOR-ME #22).
 
 **Acceptance criteria**
-- [ ] One word for a mission across hy.ts and the hy knowledge base
+- [x] One word for a mission across hy.ts and the hy knowledge base
 
 **Validation**
 ```bash
@@ -7872,16 +7872,32 @@ pnpm --filter @investigator/i18n test && python3 scripts/validate-knowledge-base
 ```
 
 
+
+**Done 2026-10-01 — the owner chose «առաջադրանք».** The knowledge base already used it in 31 articles;
+the app said «գործ» in 65 strings, the navigation included. Each «գործ» in `hy.ts` was read in
+context: 65 lines take «առաջադրանք» with its endings (plural «առաջադրանքներ»); eight keep «գործ»
+because it means something else there — «ում հետ գործ ունեմ» (dealings), «իրավական գործում» (a legal
+case), and «գործում է» (works / is valid: rules, links, a quote). In the articles, «գործ» meaning a
+mission — the quoted labels **Առաջադրանքներ → Նոր առաջադրանք**, **Բաց առաջադրանքներ**,
+**Չեղարկել առաջադրանքը** and the Emails switch among them — changed in 9 files; its other senses
+(a case, «did its job», «is in force») stay. The glossary's open conflict #2 is settled.
+
+Verified at 375 px in Armenian: «Առաջադրանքներ» was cut to «Առաջադ…» in the phone tab, so the tab's
+label may now take two lines, broken inside a word when one is wider than its column («Առաջադր|
+անքներ» — ACTIONS-FOR-ME #23 asks the reviewer whether that reads); the sidebar keeps one line. The
+same look found the Account page 402 px wide in Armenian and Russian: the add-role and outstanding-
+documents forms are grids whose implicit `auto` column grew to the legal documents' "not yet
+translated" note. Both forms are now `grid-cols-1`, as T-178's cards.
 ---
 
 ### T-178 — A category name with no spaces pushes the mission card past a phone's width
-- **Status:** TODO
+- **Status:** DONE — the cause was `CardHeader`'s implicit `auto` grid column, not the badge: it grew to the unbroken label. `grid-cols-1` on `CardHeader` and `break-words` on `CardTitle` (app-web and admin-web `ui/card.tsx`); `blocks.e2e.ts` seeds a 60-character category and a title with a URL
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/app-web/src/components/missions/mission-card.tsx, apps/app-web/e2e/blocks.e2e.ts
+- **Affected:** apps/app-web/src/components/ui/card.tsx, apps/admin-web/src/components/ui/card.tsx, apps/app-web/e2e/blocks.e2e.ts, docs/product/component-inventory.md
 
 **Description**
 Found in T-169. On `dev`, a published mission whose category label is one long unbroken word
@@ -7893,14 +7909,67 @@ fails. Real labels have spaces today, but a long compound word in any locale doe
 badge shrink so the label truncates, and hold it with a long unbroken label in the card's spec.
 
 **Acceptance criteria**
-- [ ] A 60-character unbroken category label truncates within the card at 375 px
-- [ ] No horizontal scroll on the investigator browse with such a label (e2e)
+- [x] A 60-character unbroken category label truncates within the card at 375 px
+- [x] No horizontal scroll on the investigator browse with such a label (e2e)
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+**Done 2026-10-01.** The description's guess (the badge is `shrink-0`) was wrong: the badge is not a
+flex item, its `min-w-0` wrapper is. `CardHeader` is `grid` with one implicit `auto` column, and a
+grid item's automatic minimum is its min-content — the whole unbroken label — so the column, the card
+and the page grew to it. Verifying the fix found the same with a long unbroken word in the **title**
+(a pasted address, which a customer can type): fixed in the same card with `break-words`, and held by
+the same spec. The regression failed on `dev` before each fix. The browse list's own `grid` did not
+need changing once the card stops asking for the width.
+
+---
+
+### T-180 — Flaky tests: audit order trusted, and a filter-sheet walk-through near its timeout
+- **Status:** DONE — 2026-10-01. Five API specs now read audit rows in content order; two app-web filter-sheet specs drive user-event without a pause between steps. Found by six full runs of `pnpm test` and five of `test:e2e` side by side (load average up to ~29), plus a search of every spec that reads `audit_logs`
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/{blocks/blocks.service,notifications/notifications.service,ai/discovery/ai-discovery.answer,auth/auth-oauth.service,teams/teams}.spec.ts, apps/app-web/src/components/{missions/mission-browse,discovery/discovery}.spec.tsx
+
+**Description**
+A sweep for flaky tests, after T-172. Every CI failure on our own branches in the last 100 runs was
+explained (audit advisories, Dependabot updates), so the sweep ran the suites repeatedly under load
+and searched for the shape behind T-155, T-167 and T-172.
+
+**What was found and done**
+- **Seen failing: the missions filter sheet.** `mission-browse.spec.tsx` › "shows what is applied,
+  and turns every choice into the address at once" timed out at 5 s in one of six full runs. Alone, it
+  took 1.4–3.8 s: user-event's default `delay: 0` yields to a timer after every keystroke and step, and
+  the test takes dozens. `delay: null` dispatches the same events in the same order, each awaited:
+  0.65–0.8 s at the same load. `discovery.spec.tsx`, the other filter-sheet walk-through (1.3 s),
+  gets the same. No timeout was raised, no step removed.
+- **Latent: audit order.** `audit_logs` has no write-order column, and `occurred_at` is the writing
+  transaction's start, so rows written together tie and a clock step reorders separate ones. A read
+  with no `ORDER BY` returns heap or index order instead, which moves when a row is placed elsewhere.
+  Five specs asserted an order nothing guarantees: blocks (3 assertions) and notifications (1),
+  ordered by `occurred_at`; AI discovery (2, plus two `.at(-1)` taken as "the answer row"); and
+  auth-oauth (2) and teams (1), with no `ORDER BY`. Each helper now orders by what the rows say
+  (action, then reason or resource), the answer row is found by its action, and every row's content
+  and the count are still asserted — only the claim of a sequence the table cannot hold is gone.
+  Shown first: reversing the rows' `occurred_at` and moving the earliest row to the heap's end (a
+  delete and re-insert as the owner — a no-op update is HOT and moves nothing an index scan sees)
+  failed 13 tests across the five old specs, and none of the new.
+- Not a test: T-176 (a refresh not applied under load) stays BLOCKED on Next's bundled React.
+
+**Acceptance criteria**
+- [x] Each fix is shown against the failure it prevents, and the claim each test makes is kept
+- [x] Full `pnpm test:coverage` green, 100% gate held; e2e 5/5 under load
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
 
 ---
 

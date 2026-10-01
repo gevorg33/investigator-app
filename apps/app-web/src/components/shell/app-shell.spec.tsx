@@ -116,7 +116,7 @@ describe('the app shell', () => {
     expect(
       screen.getByRole('link', { name: catalogs.hy.shell.skip_to_content }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Գործեր' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Առաջադրանքներ' })).toHaveLength(2);
   });
 
   it('lets a keyboard skip straight to the content, which clears the bottom bar', async () => {

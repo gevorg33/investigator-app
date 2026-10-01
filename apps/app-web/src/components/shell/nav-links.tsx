@@ -15,6 +15,9 @@ const LAYOUT = {
     // Not colour alone: the current item also gains a bar above it and a heavier label.
     current:
       'text-primary font-semibold before:absolute before:inset-x-5 before:top-0 before:h-1 before:rounded-full before:bg-primary',
+    // Up to two lines, broken inside a word when one is wider than its column: a fifth of a phone
+    // is narrow, and Armenian's «Առաջադրանքներ» is one word (T-177). The bar's height has room.
+    label: 'line-clamp-2 text-center wrap-anywhere',
   },
   // The sidebar from tablet up.
   rail: {
@@ -22,6 +25,7 @@ const LAYOUT = {
     link: 'flex min-h-11 items-center gap-3 rounded-md px-3 text-sm hover:bg-surface-sunken hover:text-text',
     current:
       'bg-primary-subtle text-primary font-semibold hover:bg-primary-subtle hover:text-primary',
+    label: 'truncate',
   },
 } as const;
 
@@ -49,7 +53,7 @@ export function NavLinks({ layout }: { layout: keyof typeof LAYOUT }) {
         const inner = (
           <>
             <Icon aria-hidden className="size-5 shrink-0" />
-            <span className="max-w-full truncate">{t(label)}</span>
+            <span className={cn('max-w-full', styles.label)}>{t(label)}</span>
           </>
         );
         return (

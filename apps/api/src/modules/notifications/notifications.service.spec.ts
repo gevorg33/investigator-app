@@ -68,9 +68,12 @@ describe('notifications', () => {
     return row!.id;
   };
 
+  // What the rows say, in a fixed order — not when: `occurred_at` is the writing transaction's
+  // start, so rows written together tie and a clock step reorders separate ones, and the table has no
+  // write-order column. The audit claims which events were recorded, not their sequence (T-180).
   const auditOf = (userId: string) => owner<{ action: string; reason: string | null }[]>`
     SELECT action, reason FROM audit_logs WHERE actor_id = ${userId}
-      AND action LIKE 'notifications.%' ORDER BY occurred_at`;
+      AND action LIKE 'notifications.%' ORDER BY action, reason`;
 
   describe('the centre', () => {
     it('lists newest first, a page at a time, with a cursor to the next', async () => {

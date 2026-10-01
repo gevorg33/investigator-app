@@ -1,7 +1,9 @@
 // @shadcn/card, adopted in T-054 and re-tokenised: the raised surface and its token shadow; a
 // phone-first inset (px-4) that grows from `md`; `CardTitle` is an `h3`, not a div, so a list of
 // cards reads as a list of headed items; CardAction, CardDescription and (in the console, T-070) CardFooter
-// dropped until something uses them.
+// dropped until something uses them. The header's one column is `minmax(0, 1fr)` and a title wraps
+// a word with nowhere to break, as in app-web (T-178): an `auto` column grows to the widest such
+// word and takes the card past a phone's edge.
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +22,11 @@ function Card({ className, ...props }: ComponentProps<'div'>) {
 
 function CardHeader({ className, ...props }: ComponentProps<'div'>) {
   return (
-    <div data-slot="card-header" className={cn('grid gap-2 px-4 md:px-5', className)} {...props} />
+    <div
+      data-slot="card-header"
+      className={cn('grid grid-cols-1 gap-2 px-4 md:px-5', className)}
+      {...props}
+    />
   );
 }
 
@@ -28,7 +34,7 @@ function CardTitle({ className, ...props }: ComponentProps<'h3'>) {
   return (
     <h3
       data-slot="card-title"
-      className={cn('text-lg leading-snug font-semibold', className)}
+      className={cn('text-lg leading-snug font-semibold break-words', className)}
       {...props}
     />
   );
