@@ -68,7 +68,10 @@ const discovery = (filters: DiscoveryFilters = {}, locale: 'en' | 'ru' = 'en') =
     />,
     locale,
   );
-const user = () => userEvent.setup();
+// No pause between keystrokes and steps (`delay: null`): the same events, in the same order, each
+// awaited. The default yields to a timer after every one, and a filter-sheet test takes dozens: the
+// missions sheet's timed out under load that way (T-180).
+const user = () => userEvent.setup({ delay: null });
 
 /** The device's answer to "where am I": a position, a refusal (1) or failure (2), or none yet. */
 const device = (answer: [number, number] | 1 | 2 | null) => {

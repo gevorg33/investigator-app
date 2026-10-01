@@ -25,9 +25,13 @@ describe('agency teams', () => {
     return { tenantId, memberships, owner: people[0]!, others: people.slice(1) };
   };
 
+  // What the rows say, in a fixed order — not when: `occurred_at` is the writing transaction's
+  // start, so rows written together tie and a clock step reorders separate ones, and the table has no
+  // write-order column. The audit claims which events were recorded, not their sequence (T-180).
   const audited = (action: string, teamId: string) =>
     h.owner<{ reason: string | null }[]>`
-      SELECT reason FROM audit_logs WHERE action = ${action} AND resource_id = ${teamId}`;
+      SELECT reason FROM audit_logs WHERE action = ${action} AND resource_id = ${teamId}
+      ORDER BY reason`;
 
   describe('creating and changing', () => {
     it('creates a team, trimmed, and lists it for every member', async () => {
@@ -110,8 +114,8 @@ describe('agency teams', () => {
       expect(again.body.description).toBe('Yerevan');
       expect((await h.as(a.owner, a.tenantId).patch(`${TEAMS}/${id}`, {})).status).toBe(200);
       expect((await audited('teams.updated', id)).map((r) => r.reason)).toEqual([
-        'name,description',
         'description',
+        'name,description',
       ]);
     });
 

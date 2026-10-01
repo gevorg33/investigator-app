@@ -53,7 +53,10 @@ const context = (
 
 const show = async (params: SearchParams = {}, locale: Locale = 'en') =>
   renderIntl(await resolveServer(await MissionBrowse({ params, locale })), locale);
-const user = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+// No pause between keystrokes and steps (`delay: null`): the same events, in the same order, each
+// awaited. The default yields to a timer after every one, and a filter-sheet test takes dozens — the
+// sheet's walk-through took up to 3.8 s of a 5 s budget alone and timed out under load (T-180).
+const user = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: null });
 const body = () => api.calls.find((c) => c.path === '/search/missions')!.body;
 
 describe('open missions', () => {

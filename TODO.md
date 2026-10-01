@@ -7883,6 +7883,52 @@ and the page grew to it. Verifying the fix found the same with a long unbroken w
 (a pasted address, which a customer can type): fixed in the same card with `break-words`, and held by
 the same spec. The regression failed on `dev` before each fix. The browse list's own `grid` did not
 need changing once the card stops asking for the width.
+
+---
+
+### T-180 — Flaky tests: audit order trusted, and a filter-sheet walk-through near its timeout
+- **Status:** DONE — 2026-10-01. Five API specs now read audit rows in content order; two app-web filter-sheet specs drive user-event without a pause between steps. Found by six full runs of `pnpm test` and five of `test:e2e` side by side (load average up to ~29), plus a search of every spec that reads `audit_logs`
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/{blocks/blocks.service,notifications/notifications.service,ai/discovery/ai-discovery.answer,auth/auth-oauth.service,teams/teams}.spec.ts, apps/app-web/src/components/{missions/mission-browse,discovery/discovery}.spec.tsx
+
+**Description**
+A sweep for flaky tests, after T-172. Every CI failure on our own branches in the last 100 runs was
+explained (audit advisories, Dependabot updates), so the sweep ran the suites repeatedly under load
+and searched for the shape behind T-155, T-167 and T-172.
+
+**What was found and done**
+- **Seen failing: the missions filter sheet.** `mission-browse.spec.tsx` › "shows what is applied,
+  and turns every choice into the address at once" timed out at 5 s in one of six full runs. Alone, it
+  took 1.4–3.8 s: user-event's default `delay: 0` yields to a timer after every keystroke and step, and
+  the test takes dozens. `delay: null` dispatches the same events in the same order, each awaited:
+  0.65–0.8 s at the same load. `discovery.spec.tsx`, the other filter-sheet walk-through (1.3 s),
+  gets the same. No timeout was raised, no step removed.
+- **Latent: audit order.** `audit_logs` has no write-order column, and `occurred_at` is the writing
+  transaction's start, so rows written together tie and a clock step reorders separate ones. A read
+  with no `ORDER BY` returns heap or index order instead, which moves when a row is placed elsewhere.
+  Five specs asserted an order nothing guarantees: blocks (3 assertions) and notifications (1),
+  ordered by `occurred_at`; AI discovery (2, plus two `.at(-1)` taken as "the answer row"); and
+  auth-oauth (2) and teams (1), with no `ORDER BY`. Each helper now orders by what the rows say
+  (action, then reason or resource), the answer row is found by its action, and every row's content
+  and the count are still asserted — only the claim of a sequence the table cannot hold is gone.
+  Shown first: reversing the rows' `occurred_at` and moving the earliest row to the heap's end (a
+  delete and re-insert as the owner — a no-op update is HOT and moves nothing an index scan sees)
+  failed 13 tests across the five old specs, and none of the new.
+- Not a test: T-176 (a refresh not applied under load) stays BLOCKED on Next's bundled React.
+
+**Acceptance criteria**
+- [x] Each fix is shown against the failure it prevents, and the claim each test makes is kept
+- [x] Full `pnpm test:coverage` green, 100% gate held; e2e 5/5 under load
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
 ---
 
 ## Backlog

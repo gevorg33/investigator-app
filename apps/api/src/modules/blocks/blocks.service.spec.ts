@@ -56,6 +56,9 @@ describe('blocks', () => {
     await owner.end();
   });
 
+  // What the rows say, in a fixed order — not when: `occurred_at` is the writing transaction's
+  // start, so rows written together tie and a clock step reorders separate ones, and the table has no
+  // write-order column. The audit claims which events were recorded, not their sequence (T-180).
   const auditOf = (actorId: string) =>
     ownerDb
       .select({
@@ -66,7 +69,7 @@ describe('blocks', () => {
       })
       .from(auditLogs)
       .where(eq(auditLogs.actorId, actorId))
-      .orderBy(auditLogs.occurredAt);
+      .orderBy(auditLogs.action, auditLogs.resourceId);
 
   const statusOf = async (quoteId: string) =>
     (await ownerDb.select().from(quotes).where(eq(quotes.id, quoteId)))[0]!.status;
@@ -262,8 +265,8 @@ describe('blocks', () => {
         expect(row!.status).toBe('IN_PROGRESS');
       }
       expect((await auditOf(a.customer.userId)).map((e) => e.action)).toEqual([
-        'user.blocked',
         'block.live_assignment',
+        'user.blocked',
       ]);
 
       const flags = await service.liveAssignments(staff('DISPUTES'), req());

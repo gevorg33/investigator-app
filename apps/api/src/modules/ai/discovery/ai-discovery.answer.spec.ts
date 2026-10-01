@@ -134,12 +134,15 @@ describe('the assistant finding investigators (T-018)', () => {
     asRequests(service(model, store), owner);
   const as = async () => (await member(owner)).actor;
   const req = () => ({ correlationId: randomUUID(), ip: '203.0.113.9', userAgent: 'spec' });
+  // What the rows say, in a fixed order — not when: `occurred_at` is the writing transaction's
+  // start, so rows written together tie and a clock step reorders separate ones, and the table has no
+  // write-order column. The audit claims which events were recorded, not their sequence (T-180).
   const auditOf = (correlationId: string) =>
     ownerDb
       .select()
       .from(auditLogs)
       .where(eq(auditLogs.correlationId, correlationId))
-      .orderBy(asc(auditLogs.occurredAt));
+      .orderBy(asc(auditLogs.action), asc(auditLogs.reason));
   const ask = async (
     model: ChatModel | null,
     input: Partial<DiscoveryRequest> = {},
@@ -472,7 +475,7 @@ describe('the assistant finding investigators (T-018)', () => {
       expect(second.results.map((m) => m.investigatorId)).toEqual([listed.profileId]);
       // The model's concern is kept for review, beside the outcome.
       const rows = await auditOf(r.correlationId);
-      expect(rows.at(-1)!.reason).toBe(
+      expect(rows.find((row) => row.action === 'assistant.discovery_answered')!.reason).toBe(
         `results: 1, policy_concern (fake-model, ${DISCOVERY_PROMPT_VERSION})`,
       );
     });
@@ -490,9 +493,11 @@ describe('the assistant finding investigators (T-018)', () => {
         status: 'clarification',
         clarification: { code: 'location' },
       });
-      expect((await auditOf(r.correlationId)).at(-1)!.reason).toBe(
-        `clarification: location (fake-model, ${DISCOVERY_PROMPT_VERSION})`,
-      );
+      expect(
+        (await auditOf(r.correlationId)).find(
+          (row) => row.action === 'assistant.discovery_answered',
+        )!.reason,
+      ).toBe(`clarification: location (fake-model, ${DISCOVERY_PROMPT_VERSION})`);
     });
 
     it('answers "nearest" from a real point, by distance, and never shows the model the point', async () => {

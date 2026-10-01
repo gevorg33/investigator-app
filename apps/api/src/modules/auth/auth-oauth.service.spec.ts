@@ -212,8 +212,15 @@ describe('Google sign-in (T-062)', () => {
     ownerDb.select().from(userIdentities).where(eq(userIdentities.userId, userId));
   const sessionsOf = (userId: string) =>
     ownerDb.select().from(userSessions).where(eq(userSessions.userId, userId));
+  // What the rows say, in a fixed order — not when: `occurred_at` is the writing transaction's
+  // start, so rows written together tie and a clock step reorders separate ones, and the table has no
+  // write-order column. The audit claims which events were recorded, not their sequence (T-180).
   const audited = (correlationId: string) =>
-    ownerDb.select().from(auditLogs).where(eq(auditLogs.correlationId, correlationId));
+    ownerDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.correlationId, correlationId))
+      .orderBy(auditLogs.action, auditLogs.reason);
 
   describe('believing the callback', () => {
     it('refuses a callback whose state is not the one this browser was given', async () => {
@@ -366,11 +373,11 @@ describe('Google sign-in (T-062)', () => {
       expect(await sessionsOf(user!.id)).toHaveLength(1);
       // Each acceptance is audited by the gate itself, as at any registration.
       expect((await audited(c.correlationId)).map((e) => [e.action, e.reason])).toEqual([
-        ['legal.consent.accepted', 'PRIVACY_POLICY v1 (en)'],
-        ['legal.consent.accepted', 'TERMS_OF_SERVICE v1 (en)'],
-        ['auth.register', 'google'],
         ['auth.identity.linked', 'signup'],
         ['auth.login', 'google'],
+        ['auth.register', 'google'],
+        ['legal.consent.accepted', 'PRIVACY_POLICY v1 (en)'],
+        ['legal.consent.accepted', 'TERMS_OF_SERVICE v1 (en)'],
       ]);
 
       // Done once: the same sign-up cannot make a second account, or be read again.
