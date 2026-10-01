@@ -15,7 +15,7 @@ screen for all of this is app-web's `/account/investigator` (T-123, `app-web.md`
 | `PATCH /profiles/investigator/me` | INVESTIGATOR | Updates any of: `displayName`, headline, bio, years, pricing, rate, currency, phone, `visibility`, `acceptingWork`, languages, specialties, availability — the lists are replaced whole |
 | `GET /profiles/investigator/:id` | Signed in | Somebody else's profile through the public projection; 404 unless published |
 | `GET /profiles/customer/me`, `PATCH /profiles/customer/me` | CUSTOMER | The own customer profile |
-| `GET /profiles/customer/:id` | Signed in | Deliberately almost nothing |
+| `GET /profiles/customer/:id` | Signed in | Deliberately almost nothing: `{ id, displayName }`, and `displayName` is `null` unless the caller is that customer or an investigator they hired — an assignment between them, not cancelled (T-100) |
 
 ## One projection for the public view and the preview
 

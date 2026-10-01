@@ -949,7 +949,7 @@ Two kinds of conversation, one model (§30):
 
 Rules for both:
 
-- **The customer's identity is masked until hire.** Investigators see a first name and the mission — never a surname, email, phone or photo. After hire they see what the assignment requires; anything more is the customer's choice to disclose.
+- **The customer's identity is masked until hire.** Investigators see the mission and a per-mission alias — no name at all, nor a surname, email, phone or photo (owner decision 2026-10-01, T-100: no first name is collected, and a free-text display name can lead with the surname). The alias is derived from the mission alone, so it cannot link two missions. After hire they see what the assignment requires; anything more is the customer's choice to disclose.
 - **Contact details are blocked, not delivered.** Phone numbers, email addresses and messaging-app handles are detected server-side before delivery; the sender is told why. Repeated attempts are flagged to moderation. Work and payment stay on the platform.
 - **Messages pass the same deterministic policy screening as missions.** A request for something prohibited (ADR-0009's standing prohibitions) is flagged to moderation and the investigator is shown the policy, not left to judge alone.
 - **In-app voice calling is planned for later** (T-108): masked numbers, no recording by default, and recording consent confirmed by counsel first.
@@ -1915,7 +1915,7 @@ The owner's reference product is **Pursuut** (pursuut.com, reviewed 2026-09-19):
 
 | Question | Decision |
 |---|---|
-| Pre-hire messaging and identity masking | **Adopted.** First name only until hire; contact details blocked; one unanswered message per investigator |
+| Pre-hire messaging and identity masking | **Adopted.** A per-mission alias, no name, until hire (2026-10-01; first name was the earlier plan); contact details blocked; one unanswered message per investigator |
 | In-app calling | **Later.** After messaging; masked numbers; no recording by default; counsel confirms recording consent (counsel brief Q32) |
 | Agencies' own off-platform clients and cases | **Marketplace first.** The lead inbox and reporting ship with agencies; off-platform clients come later under their own ADR, and would still pass lawful-use screening |
 | Matching within minutes vs moderation | **Every mission reviewed at launch.** Latency measured from day one; auto-publishing low-risk categories is a later, data-based decision confirmed by counsel; partner investigation never auto-published |

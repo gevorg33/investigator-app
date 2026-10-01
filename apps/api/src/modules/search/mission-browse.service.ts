@@ -6,6 +6,7 @@ import { AppError, type FieldIssue } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
 import { missions, savedMissionSearches, serviceAreas } from '../../database/schema';
+import { customerAliasOf } from '../missions/customer-alias';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import { requireQuotingProfile } from '../profiles/quoting-eligibility';
 import { toReportedKm } from '../service-areas/service-areas.policy';
@@ -42,6 +43,8 @@ export interface MissionListing {
   currency: string;
   languages: string[];
   publishedAt: Date;
+  /** The customer as investigators may know them before hire: a per-mission code, never a name (T-100). */
+  customerAlias: string;
 }
 
 export interface MissionBrowsePage {
@@ -327,6 +330,7 @@ export class MissionBrowseService {
           budgetMaxMinor: r.budgetMaxMinor!,
           currency: r.currency!,
           publishedAt: r.publishedAt!,
+          customerAlias: customerAliasOf(r.id),
           distanceKm: p.distanceM === null ? null : toReportedKm(Number(p.distanceM)),
         },
       ];

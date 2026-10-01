@@ -108,7 +108,10 @@ export interface OwnMission extends MissionFields {
   review: MissionReview | null;
 }
 
-/** A published mission as an investigator browsing sees it (T-054): nothing about the customer. */
+/**
+ * A published mission as an investigator browsing sees it (T-054): nothing about the customer but a
+ * per-mission alias, which names no one and links to no other mission (T-100).
+ */
 export interface MissionListing {
   id: string;
   title: string;
@@ -124,6 +127,7 @@ export interface MissionListing {
   currency: string;
   languages: string[];
   publishedAt: string;
+  customerAlias: string;
 }
 
 export interface MissionBrowsePage {

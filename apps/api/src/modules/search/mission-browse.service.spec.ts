@@ -27,6 +27,7 @@ import { AuthzService } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import * as schema from '../../database/schema';
+import { customerAliasOf } from '../missions/customer-alias';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import type { BrowseMissionsDto } from './mission-browse.dto';
 import {
@@ -462,6 +463,7 @@ describe('mission browse', () => {
           'budgetMaxMinor',
           'budgetMinMinor',
           'countryCode',
+          'customerAlias',
           'currency',
           'deadline',
           'description',
@@ -475,7 +477,9 @@ describe('mission browse', () => {
           'title',
         ].sort(),
       );
-      const text = JSON.stringify(item);
+      // The customer is a per-mission alias (T-100) — from the mission's id, nothing of theirs.
+      expect(item!.customerAlias).toBe(customerAliasOf(item!.id));
+      const text = JSON.stringify(Object.values(item!));
       // The fixture's purpose and relationship are in the row; none of it is in the listing.
       expect(text).not.toMatch(/Deciding whether to sign|BUSINESS_RELATIONSHIP|customer|@example/);
       expect(item!.publishedAt).toBeInstanceOf(Date);

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import { requiredForRole } from '../legal/legal.policy';
@@ -8,6 +8,7 @@ import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import { DB, type Db } from '../../database/database.module';
 import {
+  assignments,
   customerProfiles,
   investigatorAvailability,
   investigatorLanguages,
@@ -232,7 +233,31 @@ export class ProfilesService {
       where: eq(customerProfiles.id, profileId),
     });
     const row = await this.authz.visible(actor, found, c);
-    return toPublicCustomerProfile(row, await this.displayNameOf(row.userId));
+    // A customer's name is masked until hire (T-100): it reaches the customer themself and an
+    // investigator they have hired, and nobody else — an investigator who has only seen or quoted on
+    // their mission reads `null`.
+    const named = row.userId === actor.userId || (await this.hiredBy(actor, row.userId));
+    return toPublicCustomerProfile(row, named ? await this.displayNameOf(row.userId) : null);
+  }
+
+  /** Whether `actor` has been hired by this customer: an assignment between them, not cancelled. */
+  private async hiredBy(actor: Actor, customerId: string): Promise<boolean> {
+    const [hired] = await this.db
+      .select({ id: assignments.id })
+      .from(assignments)
+      .innerJoin(
+        investigatorProfiles,
+        eq(investigatorProfiles.id, assignments.investigatorProfileId),
+      )
+      .where(
+        and(
+          eq(assignments.customerId, customerId),
+          eq(investigatorProfiles.userId, actor.userId),
+          ne(assignments.status, 'CANCELLED'),
+        ),
+      )
+      .limit(1);
+    return hired !== undefined;
   }
 
   // ── Writing ───────────────────────────────────────────────────────────────────

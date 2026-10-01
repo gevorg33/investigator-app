@@ -95,6 +95,7 @@ export const listing = (over: Partial<MissionListing> = {}): MissionListing => (
   currency: 'AMD',
   languages: ['hy', 'en'],
   publishedAt: '2026-09-25T08:00:00.000Z',
+  customerAlias: 'K7Q2',
   ...over,
 });
 

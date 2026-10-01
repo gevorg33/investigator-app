@@ -4,12 +4,14 @@ title: Messaging your investigator
 audience: customer
 visibility: authenticated
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-19
+updated: 2026-10-01
 source_of_truth: docs
 implementation_status: specified
 related_code:
+  - apps/api/src/modules/profiles
+  - apps/api/src/modules/missions/customer-alias.ts
   - apps/api/src/modules/messaging
 tags: [messaging, communication, attachments]
 ---
@@ -47,9 +49,11 @@ approaches.
 
 ## Do investigators see my name before I hire them?
 
-They see your first name and your mission, and nothing else: not your surname, email, phone
-number or photo. After you hire, the investigator sees what the assignment requires, and you
-decide whether to share anything more.
+No. Before you hire, investigators see your mission and nothing about you: not your first name,
+surname, email, phone number or photo. You are "the customer" of that mission, with an anonymous
+code that belongs to that mission alone and cannot be linked to your other missions. After you
+hire, the investigator you hired sees the name on your account and what the assignment requires,
+and you decide whether to share anything more.
 
 ## Can I send files in a message?
 

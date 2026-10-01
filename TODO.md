@@ -5292,7 +5292,7 @@ T-105 and T-107 land with agencies. T-108 comes later.
 ---
 
 ### T-100 — Customer identity masked until hire (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-01 (owner approved in chat). Owner decision: **alias only, no name** — no first name is collected and `display_name` is free text that can lead with the surname. `customerAlias` on the browse listing (`modules/missions/customer-alias.ts`); `GET /profiles/customer/:id` names the customer only to themself and to an investigator they hired; `test/identity-masking.spec.ts` walks every read
 - **Priority:** P1
 - **Depends on:** T-077
 - **Risk:** MEDIUM
@@ -5307,15 +5307,23 @@ shows a surname, email, phone, photo or user id. After hire, the assignment expo
 requires; anything further is the customer's choice.
 
 **Acceptance criteria**
-- [ ] A generated spec walks every investigator-facing view and fails if it contains a customer surname, email, phone, avatar or user id before hire
-- [ ] The per-mission alias cannot be correlated across missions
-- [ ] KB already describes this (`kb-customer-privacy-data` v2, `kb-customer-messaging` v2, `kb-investigator-finding-work` v2): confirm it matches what shipped
+- [x] A generated spec walks every investigator-facing view and fails if it contains a customer surname, email, phone, avatar or user id before hire — every GET and `/search` POST read from the router (75 routes, 33 answering the investigator), each path parameter filled with every id they hold; customers have no avatar column. Seen failing first: with the profile unmasked it reports `GET /profiles/customer/:id → <surname>`
+- [x] The per-mission alias cannot be correlated across missions — derived from the mission id alone (`sha256`, four Crockford base-32 characters); `customer-alias.spec.ts`
+- [x] KB already describes this (`kb-customer-privacy-data` v2, `kb-customer-messaging` v2, `kb-investigator-finding-work` v2): confirm it matches what shipped — it promised a **first name**; now privacy-and-data v4, messaging v3, getting-started v6 and investigator finding-work v4 say no name and a per-mission code (en, and the ru/hy drafts); plan.md §13 and its decision row record the change
 
 **Validation**
 ```bash
 pnpm --filter api test missions quotes identity-masking
 ```
 
+
+**Done 2026-10-01.** Before T-100 no investigator view sent the customer's name except one:
+`GET /profiles/customer/:id` returned `display_name` to anyone signed in (its row policy is
+`public_read`); no view handed out customer profile ids, so it was not reachable in practice, but it
+was the one leak. It now returns `null` unless the caller is the customer or an investigator with a
+non-cancelled assignment from them — fail-closed for everyone else, staff included (they have the
+console). Not covered, because not built: conversations (pre-hire messaging) — when they are, their
+id joins the walker's `ids` (`docs/architecture/missions.md`, Privacy).
 ---
 
 ### T-101 — Conversations: pre-hire and assignment (API)
@@ -7971,6 +7979,14 @@ and searched for the shape behind T-155, T-167 and T-172.
 pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
 ```
 
+
+**Addendum (found in T-100's full run, 2026-10-01).** Three more, fixed the same way:
+`assistant-sessions.spec.tsx` dated a conversation `2026-09-24` and expected "… ago"; once a week had
+passed it read "last week" and failed every day — now three days before the run, asserted exactly.
+`assistant-turn.service.spec.ts` and `ai-discovery.search-tool.spec.ts` look for a coordinate in
+stored JSON by `/44\.5|40\.1/` and `/44\.51/`; an ISO timestamp whose seconds read `:40.1…` or
+`:44.5…` matched by chance (shown with a timestamp of `…:44.512Z`). Timestamps are removed before the
+check, which still catches the point at any precision.
 ---
 
 ### T-179 — Take Next 15.5.27's security fixes (self-hosted cache poisoning)

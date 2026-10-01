@@ -16,7 +16,9 @@ import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
+import { assignment } from '../../../test/assignment-fixtures';
 import { testPool } from '../../../test/db';
+import { quotableMission, submittedQuote } from '../../../test/quote-fixtures';
 import { roleDocumentIds } from '../../../test/legal-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 
@@ -156,7 +158,7 @@ describe('profile authorization', () => {
       expect(draft).toEqual(missing);
     });
 
-    it('a customer profile shows a name and nothing else', async () => {
+    it('a customer profile shows no more than a name, and a stranger not even that (T-100)', async () => {
       const customer = await person(['CUSTOMER']);
       const own = await profiles.getMyCustomerProfile(customer, req);
       await profiles.updateMyCustomerProfile(
@@ -168,9 +170,49 @@ describe('profile authorization', () => {
       const view = await profiles.getPublicCustomerProfile(stranger, own.id, req);
 
       expect(Object.keys(view).sort()).toEqual(['displayName', 'id']);
+      expect(view.displayName).toBeNull();
       const blob = JSON.stringify(view);
       expect(blob).not.toContain('Acme Holdings');
       expect(blob).not.toContain('555-0101');
+    });
+
+    it('names the customer to themself and to an investigator they hired, and to nobody else (T-100)', async () => {
+      const customer = await person(['CUSTOMER']);
+      const own = await profiles.getMyCustomerProfile(customer, req);
+      // Each assignment is a mission's one hire, so each engagement is on a mission of its own.
+      const quoteFrom = async (profileId: string) => {
+        const m = await quotableMission(ownerDb, { customerId: customer.userId });
+        return (
+          await submittedQuote(ownerDb, {
+            missionId: m.missionId,
+            investigatorProfileId: profileId,
+          })
+        ).id;
+      };
+
+      const hired = await publishedInvestigator();
+      await assignment(ownerDb, {
+        quoteId: await quoteFrom(hired.profileId),
+        customerId: customer.userId,
+        status: 'ACCEPTED',
+      });
+      const quoting = await publishedInvestigator();
+      await quoteFrom(quoting.profileId);
+      const dropped = await publishedInvestigator();
+      await assignment(ownerDb, {
+        quoteId: await quoteFrom(dropped.profileId),
+        customerId: customer.userId,
+        status: 'CANCELLED',
+      });
+
+      const nameAs = async (a: Actor) =>
+        (await profiles.getPublicCustomerProfile(a, own.id, req)).displayName;
+      expect(await nameAs(customer)).toBe('Test Person');
+      expect(await nameAs(hired.actor)).toBe('Test Person');
+      // Seeing the mission and quoting on it is not being hired.
+      expect(await nameAs(quoting.actor)).toBeNull();
+      // Nor is an engagement that was cancelled: the name goes with it.
+      expect(await nameAs(dropped.actor)).toBeNull();
     });
   });
 
