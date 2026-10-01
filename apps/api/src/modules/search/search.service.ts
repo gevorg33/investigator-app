@@ -11,6 +11,7 @@ import {
   investigatorSpecialties,
   users,
 } from '../../database/schema';
+import { agenciesOf } from '../profiles/profile-agency';
 import {
   toPublicInvestigatorProfile,
   type PublicInvestigatorProfile,
@@ -77,7 +78,8 @@ export interface SearchCursor {
  *
  * ```
  * hard filters   country / region / city / taxonomy (incl. tree) / language / availability / pricing
- *   → eligibility  published, VERIFIED, accepting work, account ACTIVE and not deleted
+ *   → eligibility  published, VERIFIED, accepting work, account ACTIVE and not deleted,
+ *                  workspace ACTIVE
  *   → geography    ST_DWithin filters; ST_Distance only sorts
  *   → quality      experience, where no location decided the order
  *   → projection   public fields only
@@ -175,6 +177,11 @@ export class SearchService {
         .where(inArray(investigatorSpecialties.profileId, ids)),
     ]);
 
+    // The agency each belongs to (T-087), from the workspaces the profiles found are in.
+    const agencies = await agenciesOf(
+      this.db,
+      profiles.map((p) => p.profile.tenantId),
+    );
     const byId = new Map(profiles.map((p) => [p.profile.id, p]));
     const requestedLanguages = new Set(dto.languages ?? []);
     const closureSet = new Set([...reach.values()].flat());
@@ -192,6 +199,7 @@ export class SearchService {
         specialtyNodeIds: specialties
           .filter((s) => s.profileId === row.profileId)
           .map((s) => s.taxonomyNodeId),
+        agency: agencies.get(found.profile.tenantId) ?? null,
       };
       const place =
         dto.countryCode === undefined && dto.region === undefined && dto.city === undefined
@@ -256,6 +264,9 @@ export function investigatorSearchQuery(
     sql`ip.accepting_work = true`,
     sql`u.status = 'ACTIVE'`,
     sql`u.deleted_at IS NULL`,
+    // The workspace the profile belongs to is open for business (T-087): a suspended, archived or
+    // deleted agency's investigators leave discovery on the next query, and come back with it.
+    sql`w.status = 'ACTIVE'`,
     // Nobody blocked either way with the person searching (T-052). Evaluated once per statement.
     sql`ip.user_id <> ALL ((SELECT app_blocked_users())::uuid[])`,
   ];
@@ -334,6 +345,7 @@ export function investigatorSearchQuery(
            ${point === null ? sql`NULL::double precision` : sql`min(ST_Distance(sa.area, ${point}))`} AS "distanceM"
     FROM investigator_profiles ip
     JOIN users u ON u.id = ip.user_id
+    JOIN tenants w ON w.id = ip.tenant_id
     ${usesArea ? sql`JOIN service_areas sa ON sa.profile_id = ip.id` : sql``}
     WHERE ${sql.join(where, sql` AND `)}
     GROUP BY ip.id

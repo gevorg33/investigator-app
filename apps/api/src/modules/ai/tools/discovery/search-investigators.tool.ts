@@ -130,6 +130,7 @@ function toMatch(
     name: i.name,
     nameCode: i.nameCode,
     headline: i.headline,
+    agency: i.agency,
     yearsExperience: i.yearsExperience,
     verificationStatus: i.verificationStatus,
     languages: i.languages.map((l) => ({ code: l.languageCode, proficiency: l.proficiency })),

@@ -57,3 +57,47 @@ export class ServiceAreasController {
     await this.areas.deleteMine(actor, id, requestContext(req));
   }
 }
+
+/**
+ * The areas of a profile the agency the request acts in holds (T-087). The same shapes and limits
+ * as the holder's own; the profile is named by id, and one in any other workspace is a 404.
+ */
+@ApiTags('agencies')
+@Controller('agencies/current/investigators/:profileId/service-areas')
+@UseGuards(ActorGuard)
+export class AgencyServiceAreasController {
+  constructor(private readonly areas: ServiceAreasService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'A held profile’s service areas. Requires investigators.read.' })
+  async list(
+    @CurrentActor() actor: Actor,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Req() req: Request,
+  ): Promise<OwnServiceArea[]> {
+    return this.areas.listForAgency(actor, profileId, requestContext(req));
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Add a service area to a held profile. Requires investigators.update.' })
+  async create(
+    @CurrentActor() actor: Actor,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() dto: CreateServiceAreaDto,
+    @Req() req: Request,
+  ): Promise<OwnServiceArea> {
+    return this.areas.createForAgency(actor, profileId, dto, requestContext(req));
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Remove a held profile’s service area. Requires investigators.update.' })
+  async remove(
+    @CurrentActor() actor: Actor,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.areas.deleteForAgency(actor, profileId, id, requestContext(req));
+  }
+}

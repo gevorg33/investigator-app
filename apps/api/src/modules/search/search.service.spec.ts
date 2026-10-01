@@ -22,6 +22,7 @@ import { SearchService } from './search.service';
 import { testPool } from '../../../test/db';
 import { blockBetween } from '../../../test/block-fixtures';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
+import { agency, member } from '../../../test/workspace-fixtures';
 
 describe('investigator discovery', () => {
   let sqlClient: postgres.Sql;
@@ -416,6 +417,8 @@ describe('investigator discovery', () => {
         verificationStatus: 'VERIFIED',
         // The public projection's own flag agrees: only verified investigators are listed.
         verified: true,
+        // Independent: their profile is in their Personal workspace (T-087).
+        agency: null,
       });
       // No legal name, no contact details, no coordinates, no geometry, no account id.
       expect(serialised).not.toContain('Legalname');
@@ -487,6 +490,62 @@ describe('investigator discovery', () => {
         availability: false,
       });
     });
+  });
+
+  describe('agencies (T-087)', () => {
+    /** An eligible profile an agency holds for one of its members, and the agency. */
+    const heldByAgency = async () => {
+      const boss = await member(ownerSql);
+      const agent = await member(ownerSql, { roles: ['INVESTIGATOR'] });
+      const { tenantId } = await agency(ownerSql, [
+        { userId: boss.actor.userId },
+        { userId: agent.actor.userId, role: 'INVESTIGATOR' },
+      ]);
+      const held = await mine({ heldIn: { tenantId, userId: agent.actor.userId } });
+      const [registered] = await ownerSql<{ name: string }[]>`
+        SELECT name FROM tenants WHERE id = ${tenantId}`;
+      return { ...held, tenantId, registeredName: registered!.name };
+    };
+
+    it('lists an agency’s investigator with the agency it belongs to, by its public name', async () => {
+      const held = await heldByAgency();
+      const [item] = (await near(held.centre)).items;
+      expect(item).toMatchObject({ id: held.profileId, agency: { id: held.tenantId } });
+      // No published agency profile yet: the registered name is what a customer deals with.
+      expect(item!.agency!.name).toBe(held.registeredName);
+
+      await ownerSql`
+        INSERT INTO tenant_profiles (tenant_id, display_name, headline, published_at)
+        VALUES (${held.tenantId}, 'Ararat Agency', 'Records and due diligence', now())`;
+      expect((await near(held.centre)).items[0]!.agency).toEqual({
+        id: held.tenantId,
+        name: 'Ararat Agency',
+      });
+
+      // A draft agency profile's name is never shown, not even the one it had.
+      await ownerSql`UPDATE tenant_profiles SET published_at = NULL WHERE tenant_id = ${held.tenantId}`;
+      expect((await near(held.centre)).items[0]!.agency!.name).toBe(held.registeredName);
+    });
+
+    it.each(['SUSPENDED', 'ARCHIVED'] as const)(
+      'leaves discovery on the next query when its agency is %s, and comes back with it',
+      async (status) => {
+        const held = await heldByAgency();
+        const independent = await mine({ centre: held.centre });
+        expect(ids(await near(held.centre)).sort()).toEqual(
+          [held.profileId, independent.profileId].sort(),
+        );
+
+        await ownerSql`UPDATE tenants SET status = ${status} WHERE id = ${held.tenantId}`;
+        // Nothing to invalidate: the next query is the one that leaves it out.
+        expect(ids(await near(held.centre))).toEqual([independent.profileId]);
+
+        await ownerSql`UPDATE tenants SET status = 'ACTIVE' WHERE id = ${held.tenantId}`;
+        expect(ids(await near(held.centre)).sort()).toEqual(
+          [held.profileId, independent.profileId].sort(),
+        );
+      },
+    );
   });
 
   describe('region', () => {

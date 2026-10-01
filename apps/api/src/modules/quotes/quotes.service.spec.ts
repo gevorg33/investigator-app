@@ -488,11 +488,10 @@ describe('quotes', () => {
       expect(denial).toMatchObject({ reason: 'permission_not_held' });
     });
 
-    it('gets a member who holds it past authorization — and stops at the database', async () => {
-      // The permission is held, so nothing refuses the call. The write still fails, because the
-      // investigator's profile belongs to their Personal workspace and a quote must belong to one
-      // of its two parties (T-076, T-077). Quoting *as* an agency needs agency-owned investigator
-      // profiles, which do not exist in v1 — this is where that boundary actually is.
+    it('does not let a member quote for the agency with their Personal profile', async () => {
+      // Their profile in their Personal workspace is theirs, not the agency's: a request in the
+      // agency finds no profile of theirs there (T-087). Before T-087 it found the Personal one,
+      // got past authorization, and only the database refused the write (T-078).
       const mission = await quotableMission(ownerDb);
       const inv = await eligibleInvestigator(ownerDb);
       const boss = await member(ownerSql);
@@ -506,14 +505,42 @@ describe('quotes', () => {
         runInContext(await contextIn(inv.actor.userId, tenantId), () =>
           raw.submit(inv.actor, mission.missionId, offer() as never, { ...req(), correlationId }),
         ),
-        // Drizzle wraps the driver's error; the database's own words are on `cause`.
-      ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/row-level security/) } });
+      ).rejects.toMatchObject({ status: 404 });
 
-      const denials = await ownerDb
+      const [denial] = await ownerDb
         .select()
         .from(auditLogs)
         .where(eq(auditLogs.correlationId, correlationId));
-      expect(denials).toEqual([]);
+      expect(denial).toMatchObject({ reason: 'resource_not_visible' });
+      expect(
+        await ownerDb.select().from(quotes).where(eq(quotes.missionId, mission.missionId)),
+      ).toEqual([]);
+    });
+
+    it('quotes as the agency with the profile the agency holds for them (T-087)', async () => {
+      const mission = await quotableMission(ownerDb);
+      const inv = await eligibleInvestigator(ownerDb);
+      const boss = await member(ownerSql);
+      const { tenantId } = await agency(ownerSql, [
+        { userId: boss.actor.userId },
+        { userId: inv.actor.userId, role: 'INVESTIGATOR' },
+      ]);
+      const held = await eligibleInvestigator(ownerDb, {
+        heldIn: { tenantId, userId: inv.actor.userId },
+      });
+
+      const quote = await runInContext(await contextIn(inv.actor.userId, tenantId), () =>
+        raw.submit(inv.actor, mission.missionId, offer() as never, req()),
+      );
+
+      // The agency's profile, and the agency as the supplier party — not the person's Personal one.
+      expect(quote.investigatorProfileId).toBe(held.profileId);
+      const [row] = await ownerDb.select().from(quotes).where(eq(quotes.id, quote.id));
+      expect(row).toMatchObject({
+        supplierTenantId: tenantId,
+        investigatorProfileId: held.profileId,
+      });
+      expect(await service.listForMission(mission.actor, mission.missionId, req())).toHaveLength(1);
     });
   });
 });

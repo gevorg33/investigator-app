@@ -263,6 +263,9 @@ and customer actions keep their platform-role checks until an agency version of 
 | List own quotes | `investigations.read` |
 | Read own investigator profile, service areas, verification applications | `investigators.read` |
 | Change them, or apply for verification | `investigators.update` |
+| List or read the profiles the agency holds, and their service areas (T-087) | `investigators.read` |
+| Make a profile for a member (T-087) | `investigators.create` |
+| Change a held profile's storefront and service areas (T-087) | `investigators.update` |
 | Read the agency's core details — name, country, business email, time zone, currency (T-150) | `company.read` |
 | Complete or change them — the OWNER only | `company.update_details` |
 | Read the agency's own public profile, published or not (T-084) | `company.read` |

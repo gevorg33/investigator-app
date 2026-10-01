@@ -98,6 +98,16 @@ User ─────────────< Membership >───────�
   their Personal workspace. The same person can hold one in their Personal workspace and
   another in an agency; `UNIQUE (tenant_id, user_id)`.
 
+  > **Built in T-087** (migration 0037). The holder is a membership of the profile's own workspace,
+  > held by the database (`investigator_profiles_membership_fk`). An agency makes one for an ACTIVE
+  > member who has taken up the INVESTIGATOR role (`investigators.create`) and manages its storefront
+  > (`investigators.read` / `investigators.update`) at `/agencies/current/investigators`; the legal
+  > name stays the account's, and choosing it for an agent waits for their consent (T-183). A
+  > member's `…/me` routes answer for the profile they hold in the workspace the request acts in,
+  > never another. A membership leaving ACTIVE takes its profile there back to a draft, not
+  > accepting work. Discovery lists a profile only while its workspace is ACTIVE and names the agency
+  > it belongs to. Details: `profiles.md` § Profiles under workspaces.
+
 ### Tenant lifecycle
 
 ```
@@ -180,7 +190,9 @@ tenant_memberships:  ACTIVE ◄──► SUSPENDED
 >   even from the admin, so this is the third function allowed to raise platform access; its body is
 >   held to the one UPDATE by `rls.spec.ts`. **Pending confirmations** do not exist yet: voiding a
 >   departed member's is T-048's to build.
-> - **Not yet:** teams in an invitation (T-086) and an investigator profile to take over (T-087).
+> - **Not yet:** teams in an invitation (T-086) and an investigator profile to take over (T-184 —
+>   agency-held profiles exist since T-087, but a profile is held by a membership and changing its
+>   holder touches verification and reputation).
 
 ---
 
@@ -244,10 +256,11 @@ this member do in this workspace*. Authorization checks **permissions**, never r
 > `authorization.md`; marketplace and customer actions keep their platform-role checks, because
 > this catalog is a supplier organisation's vocabulary (owner decision, 2026-09-20).
 >
-> **Where v1 stops:** an agency member who holds `investigations.create` still cannot quote as the
-> agency — their investigator profile belongs to their Personal workspace, and a quote must belong
-> to one of its two parties, so the database refuses the write. Agency-owned investigator profiles
-> are what would make it work.
+> **Quoting as the agency (T-087).** Until T-087 a member holding `investigations.create` could not
+> quote as the agency: their only profile was in their Personal workspace, and a quote must belong
+> to one of its two parties, so the database refused the write. Now the agency holds a profile for
+> them, and a quote made with it has the agency as its supplier; their Personal profile is not found
+> in the agency at all (404). Naming another member's profile as the lead is T-089.
 >
 > **`company.update_details` (T-150, owner decision 2026-09-26).** An agency's name, country,
 > business email, time zone and currency are who the agency is to customers and to the platform —
@@ -298,7 +311,8 @@ Agency or independent ──quotes──► Quote (customer_tenant_id, supplier_
 ```
 
 - **Quoting is a workspace act.** A member with `investigations.create` quotes for the workspace
-  and names a lead investigator profile from it. The eligibility checks of T-012 (published,
+  and names a lead investigator profile from it. **Built in T-087** for the member's own profile in
+  that workspace; naming a colleague's is T-089. The eligibility checks of T-012 (published,
   VERIFIED, accepting work) apply to that profile.
 - **Inside the supplier, access is not automatic.** A member reads an assignment only if they
   are staffed on it, are in a staffed team, or hold `investigations.read_all`. RLS stops other
@@ -580,7 +594,9 @@ visibility fails *open*: the owner check returns early when it cannot see the wo
 
 New tables are all tenant-owned unless they appear in this table:
 
-- `tenants` (policy: own row, or public read of the published profile)
+- `tenants` (policy: own row, or public read of the published profile; `listing_read`, T-087 — any
+  workspace reads one that holds a published investigator profile, so discovery can see its status
+  and name the agency; the service selects kind, status and name only)
 - `tenant_profiles`, `tenant_settings`, `tenant_memberships`, `tenant_invitations`
 - `teams`, `team_members`
 - `membership_roles`, `assignment_staff`

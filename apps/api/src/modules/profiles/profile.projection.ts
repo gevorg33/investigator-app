@@ -20,6 +20,17 @@ export interface ProfileRelations {
   languages: LanguageRow[];
   availability: AvailabilityRow[];
   specialtyNodeIds: string[];
+  /** The agency the profile belongs to (T-087); null in a Personal workspace. */
+  agency: ProfileAgency | null;
+}
+
+/**
+ * The agency a profile belongs to, as customers see it (T-087): its public name — the published
+ * agency profile's, else the registered one — and its id. An independent investigator has none.
+ */
+export interface ProfileAgency {
+  id: string;
+  name: string | null;
 }
 
 /**
@@ -58,6 +69,11 @@ export interface PublicInvestigatorProfile {
   languages: Array<{ languageCode: string; proficiency: LanguageRow['proficiency'] }>;
   specialtyNodeIds: string[];
   availability: Array<{ dayOfWeek: number; startMinute: number; endMinute: number }>;
+  /**
+   * The agency this profile works for (T-087), or null for an independent investigator. Customers
+   * deal with the agency; never its members, teams or other work.
+   */
+  agency: ProfileAgency | null;
 }
 
 /** The owner's view: the public fields plus the ones only they may see. */
@@ -111,6 +127,7 @@ export function toPublicInvestigatorProfile(
       startMinute: a.startMinute,
       endMinute: a.endMinute,
     })),
+    agency: rel.agency,
   };
 }
 

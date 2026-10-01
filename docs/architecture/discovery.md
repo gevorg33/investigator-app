@@ -8,7 +8,8 @@ Geography itself is `service-areas.md`.
 
 ```
 hard filters   country / region / city / taxonomy (incl. tree) / language / availability / pricing
-  → eligibility  published · VERIFIED · accepting work · account ACTIVE and not deleted
+  → eligibility  published · VERIFIED · accepting work · account ACTIVE and not deleted ·
+                 workspace ACTIVE
   → geography    ST_DWithin filters; ST_Distance only sorts
   → quality      experience, where no location decided the order
   → projection   public fields only
@@ -39,13 +40,20 @@ offering it as a filter would imply otherwise.
 | `verification_status = 'VERIFIED'` | plan.md §9. Staff grant it; nobody arrives holding it |
 | `accepting_work = true` | The investigator's own switch |
 | `users.status = 'ACTIVE'` and `deleted_at IS NULL` | A suspended or deleted account never appears |
+| `tenants.status = 'ACTIVE'` for the profile's workspace (T-087) | A suspended, archived or deleted agency's investigators leave on the next query and come back with it. A Personal workspace is ACTIVE from birth. The workspace row is readable through `listing_read` (migration 0037) |
+
+**Each result names its agency** (T-087): `agency: { id, name } | null` from the public projection —
+`null` for an independent investigator, otherwise the published agency profile's display name, else
+the registered name. Whether an unverified agency's verified investigators are listed is T-088's
+decision; today they are, since verification attaches to the individual.
 
 **T-011 added the `verification_status` column** as a structural subset — T-013 owns the queue,
 the documents and the decisions. Until T-013 ships nobody is `VERIFIED`, so discovery lists
 nobody. That is the correct direction for an eligibility gate to fail, and it is why the column
 could not wait for the task that fills it.
 
-Verification is enforced in the **coverage query too** (`service-areas.md`), not only here.
+Verification, and since T-087 the workspace's status, are enforced in the **coverage query too**
+(`service-areas.md`), not only here.
 "Never appears by any path" is only true if every path enforces it.
 
 ## The taxonomy walks the tree both ways

@@ -12,6 +12,7 @@ import { investigatorProfiles, taxonomyNodes, users } from '../../database/schem
 import { expectAuthorized } from '../../../test/authz-cases';
 import { testActor } from '../../../test/actor';
 import { ProfilesService } from './profiles.service';
+import { InvestigatorProfileStore } from './profile-store';
 import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
@@ -44,6 +45,7 @@ describe('profile authorization', () => {
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
         new LegalService(db, new AuditService(db)),
+        new InvestigatorProfileStore(db),
       ),
       ownerSql,
     );

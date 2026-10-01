@@ -14,6 +14,7 @@ import { TokenService } from '../auth/token.service';
 import { testActor } from '../../../test/actor';
 import { asRequests, scopedDb } from '../../../test/workspace-context';
 import { ProfilesService } from './profiles.service';
+import { InvestigatorProfileStore } from './profile-store';
 import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
@@ -48,6 +49,7 @@ describe('one account, both roles', () => {
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
         new LegalService(db, new AuditService(db)),
+        new InvestigatorProfileStore(db),
       ),
       ownerSql,
     );

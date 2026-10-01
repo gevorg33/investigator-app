@@ -1180,6 +1180,13 @@ export const en = {
         already_invited: 'This address already has an invitation waiting. Send it again instead.',
         suspended: 'Your membership in this agency is suspended. Ask the agency to reactivate it.',
       },
+      agency_investigators: {
+        not_an_investigator:
+          'This member has not taken up the investigator role. They can add it from their own account.',
+        already_held: 'This member already has an investigator profile in the agency.',
+        holder_inactive:
+          'This member is suspended or has left the agency, so their profile cannot be published or take work.',
+      },
       agency_profile: {
         agency_setup:
           'Finish setting up the agency first: name, country, business email, time zone and currency.',

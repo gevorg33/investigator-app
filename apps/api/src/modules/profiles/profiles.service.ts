@@ -1,23 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import { requiredForRole } from '../legal/legal.policy';
-import { normalisePseudonym, pseudonymIssue } from './pseudonym';
 import { LegalService } from '../legal/legal.service';
 import type { Actor } from '../../common/authz/contract';
+import { currentContext } from '../../common/context/execution-context';
 import { AppError } from '../../common/errors/app-error';
 import { DB, type Db } from '../../database/database.module';
 import {
   assignments,
   customerProfiles,
-  investigatorAvailability,
-  investigatorLanguages,
   investigatorProfiles,
-  investigatorSpecialties,
-  taxonomyNodes,
   userRoles,
-  users,
 } from '../../database/schema';
 import {
   toOwnCustomerProfile,
@@ -26,7 +21,6 @@ import {
   toPublicInvestigatorProfile,
   type OwnCustomerProfile,
   type OwnInvestigatorProfile,
-  type ProfileRelations,
   type PublicCustomerProfile,
   type PublicInvestigatorProfile,
 } from './profile.projection';
@@ -35,6 +29,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from './profiles.repository';
 import type { UpdateInvestigatorProfileDto, UpdateCustomerProfileDto } from './profiles.dto';
+import { InvestigatorProfileStore } from './profile-store';
 
 export interface RequestContext {
   ip?: string | undefined;
@@ -64,6 +59,7 @@ export class ProfilesService {
     private readonly ownInvestigator: OwnInvestigatorProfileRepository,
     private readonly ownCustomer: OwnCustomerProfileRepository,
     private readonly legal: LegalService,
+    private readonly store: InvestigatorProfileStore,
   ) {}
 
   // ── Role activation ───────────────────────────────────────────────────────────
@@ -84,10 +80,12 @@ export class ProfilesService {
     req: RequestContext,
     acceptedDocumentIds: readonly string[] = [],
   ): Promise<{ profileId: string }> {
-    await this.authz.requireActive(
-      actor,
-      ctxFor('profile.activate_role', 'user', req, actor.userId),
-    );
+    const activating = ctxFor('profile.activate_role', 'user', req, actor.userId);
+    await this.authz.requireActive(actor, activating);
+    // The profile it creates belongs to the workspace the request acts in (T-076). In an agency
+    // that would be a profile the agency never decided to make (T-087): agencies make them with
+    // `investigators.create`. A role is the person's own, so it is taken up in their Personal one.
+    await this.authz.requirePersonalWorkspace(actor, activating);
 
     // A customer who later becomes an investigator was not an investigator when they signed up,
     // so what an investigator agrees to is accepted here (T-022, `legal-consent`). The role and
@@ -173,7 +171,7 @@ export class ProfilesService {
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
     await this.authz.requirePermission(actor, 'investigators.read', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
-    return toOwnInvestigatorProfile(row, await this.relationsFor(row.id, actor.userId));
+    return toOwnInvestigatorProfile(row, await this.store.relations(row));
   }
 
   /**
@@ -190,7 +188,7 @@ export class ProfilesService {
     await this.authz.requireRole(actor, 'INVESTIGATOR', c);
     await this.authz.requirePermission(actor, 'investigators.read', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
-    return toPublicInvestigatorProfile(row, await this.relationsFor(row.id, actor.userId));
+    return toPublicInvestigatorProfile(row, await this.store.relations(row));
   }
 
   /**
@@ -212,7 +210,7 @@ export class ProfilesService {
       ),
     });
     const row = await this.authz.visible(actor, found, c);
-    return toPublicInvestigatorProfile(row, await this.relationsFor(row.id, row.userId));
+    return toPublicInvestigatorProfile(row, await this.store.relations(row));
   }
 
   async getMyCustomerProfile(actor: Actor, req: RequestContext): Promise<OwnCustomerProfile> {
@@ -221,7 +219,7 @@ export class ProfilesService {
     await this.authz.requireRole(actor, 'CUSTOMER', c);
     await this.authz.requirePersonalWorkspace(actor, c);
     const row = await this.authz.visible(actor, await this.ownCustomer.findMine(actor), c);
-    return toOwnCustomerProfile(row, await this.displayNameOf(row.userId));
+    return toOwnCustomerProfile(row, await this.store.legalNameOf(row.userId));
   }
 
   async getPublicCustomerProfile(
@@ -238,7 +236,7 @@ export class ProfilesService {
     // investigator they have hired, and nobody else — an investigator who has only seen or quoted on
     // their mission reads `null`.
     const named = row.userId === actor.userId || (await this.hiredBy(actor, row.userId));
-    return toPublicCustomerProfile(row, named ? await this.displayNameOf(row.userId) : null);
+    return toPublicCustomerProfile(row, named ? await this.store.legalNameOf(row.userId) : null);
   }
 
   /** Whether `actor` has been hired by this customer: an assignment between them, not cancelled. */
@@ -280,14 +278,15 @@ export class ProfilesService {
     await this.authz.requirePermission(actor, 'investigators.update', c);
     const row = await this.authz.visible(actor, await this.ownInvestigator.findMine(actor), c);
 
-    if (dto.specialtyNodeIds) await this.assertDeclarable(row.id, dto.specialtyNodeIds);
-
     const name = dto.displayName?.trim();
-    const [account] = await this.db
-      .select({ displayName: users.displayName })
-      .from(users)
-      .where(eq(users.id, actor.userId));
-    const renaming = name !== undefined && name !== account?.displayName;
+    const legalName = await this.store.legalNameOf(actor.userId);
+    const renaming = name !== undefined && name !== legalName;
+    // Outside the Personal workspace (T-087) the profile is an agency's: the legal name stays the
+    // account's, changed where the person works for themself, and an agency profile shows it only
+    // with the agent's consent, which T-183 adds — until then it is never chosen here.
+    if (currentContext()?.tenantKind !== 'PERSONAL') {
+      await this.authz.stateAllows(actor, !renaming && dto.publicName !== 'LEGAL', c);
+    }
     // Verification checks documents against a name: under review or approved, it stays as checked.
     if (
       renaming &&
@@ -302,101 +301,11 @@ export class ProfilesService {
       ]);
     }
 
-    // The pseudonym (T-181) is checked against the legal name it must not reveal — the new one when
-    // this save renames — and whichever of the two changes, the pair is checked again.
-    const pseudonym =
-      dto.pseudonym === undefined || dto.pseudonym === null
-        ? dto.pseudonym
-        : normalisePseudonym(dto.pseudonym);
-    const known = pseudonym === undefined ? row.pseudonym : pseudonym;
-    const legal = renaming ? name : (account?.displayName ?? null);
-    const issue =
-      known !== null && (pseudonym !== undefined || renaming) ? pseudonymIssue(known, legal) : null;
-    if (issue !== null) {
-      throw AppError.validation([
-        issue === 'own_name'
-          ? {
-              field: 'pseudonym',
-              code: 'OWN_NAME',
-              messageKey: 'error.validation.pseudonym.own_name',
-            }
-          : {
-              field: 'pseudonym',
-              code: 'CONTACT',
-              messageKey: 'error.validation.pseudonym.contact',
-            },
-      ]);
-    }
-
-    await this.db
-      .transaction(async (tx) => {
-        if (renaming) {
-          await tx
-            .update(users)
-            .set({ displayName: name, updatedAt: new Date() })
-            .where(eq(users.id, actor.userId));
-        }
-        await tx
-          .update(investigatorProfiles)
-          .set({
-            ...(dto.headline !== undefined ? { headline: dto.headline } : {}),
-            ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
-            ...(dto.yearsExperience !== undefined ? { yearsExperience: dto.yearsExperience } : {}),
-            ...(dto.pricingModel !== undefined ? { pricingModel: dto.pricingModel } : {}),
-            ...(dto.hourlyRateMinor !== undefined ? { hourlyRateMinor: dto.hourlyRateMinor } : {}),
-            ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
-            ...(dto.acceptingWork !== undefined ? { acceptingWork: dto.acceptingWork } : {}),
-            ...(dto.visibility !== undefined ? { visibility: dto.visibility } : {}),
-            ...(dto.contactPhone !== undefined ? { contactPhone: dto.contactPhone } : {}),
-            ...(pseudonym !== undefined ? { pseudonym } : {}),
-            ...(dto.publicName !== undefined ? { publicName: dto.publicName } : {}),
-            updatedAt: new Date(),
-          })
-          .where(eq(investigatorProfiles.id, row.id));
-
-        // Replace rather than merge: the client sends the whole set, so removing a language
-        // is expressed by sending the list without it.
-        if (dto.languages) {
-          await tx.delete(investigatorLanguages).where(eq(investigatorLanguages.profileId, row.id));
-          if (dto.languages.length > 0) {
-            await tx
-              .insert(investigatorLanguages)
-              .values(dto.languages.map((l) => ({ profileId: row.id, ...l })));
-          }
-        }
-        if (dto.specialtyNodeIds) {
-          await tx
-            .delete(investigatorSpecialties)
-            .where(eq(investigatorSpecialties.profileId, row.id));
-          if (dto.specialtyNodeIds.length > 0) {
-            await tx.insert(investigatorSpecialties).values(
-              dto.specialtyNodeIds.map((taxonomyNodeId) => ({
-                profileId: row.id,
-                taxonomyNodeId,
-              })),
-            );
-          }
-        }
-        if (dto.availability) {
-          await tx
-            .delete(investigatorAvailability)
-            .where(eq(investigatorAvailability.profileId, row.id));
-          if (dto.availability.length > 0) {
-            await tx
-              .insert(investigatorAvailability)
-              .values(dto.availability.map((a) => ({ profileId: row.id, ...a })));
-          }
-        }
-      })
-      .catch((e: unknown) => {
-        // Pseudonyms are unique without case (T-181): someone already goes by this name.
-        if (pseudonymTaken(e)) {
-          throw AppError.validation([
-            { field: 'pseudonym', code: 'TAKEN', messageKey: 'error.validation.pseudonym.taken' },
-          ]);
-        }
-        throw e;
-      });
+    await this.store.save(row, dto, {
+      userId: actor.userId,
+      legalName,
+      rename: renaming ? name : undefined,
+    });
 
     await this.audit.record({
       ...req,
@@ -452,89 +361,4 @@ export class ProfilesService {
 
     return this.getMyCustomerProfile(actor, req);
   }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────────
-
-  /**
-   * A specialty must name a real node — free text can never substitute for one — and a node
-   * being added must be ACTIVE (ADR-0007, T-053).
-   *
-   * Retired means no new references, not that existing ones break: the client sends the whole
-   * set on every save, so an investigator who declared a node before it was retired keeps it
-   * and can go on editing the rest of their profile. Only adding a retired node is refused.
-   */
-  private async assertDeclarable(profileId: string, nodeIds: string[]): Promise<void> {
-    if (nodeIds.length === 0) return;
-    const found = await this.db
-      .select({ id: taxonomyNodes.id, status: taxonomyNodes.status })
-      .from(taxonomyNodes)
-      .where(inArray(taxonomyNodes.id, nodeIds));
-    if (found.length !== new Set(nodeIds).size) {
-      throw AppError.validation([
-        {
-          field: 'specialtyNodeIds',
-          code: 'UNKNOWN_TAXONOMY_NODE',
-          messageKey: 'error.validation.taxonomy_node.unknown',
-        },
-      ]);
-    }
-
-    const retired = found.filter((n) => n.status !== 'ACTIVE').map((n) => n.id);
-    if (retired.length === 0) return;
-    const held = await this.db
-      .select({ id: investigatorSpecialties.taxonomyNodeId })
-      .from(investigatorSpecialties)
-      .where(
-        and(
-          eq(investigatorSpecialties.profileId, profileId),
-          inArray(investigatorSpecialties.taxonomyNodeId, retired),
-        ),
-      );
-    if (held.length !== retired.length) {
-      throw AppError.validation([
-        {
-          field: 'specialtyNodeIds',
-          code: 'DEPRECATED_TAXONOMY_NODE',
-          messageKey: 'error.validation.taxonomy_node.deprecated',
-        },
-      ]);
-    }
-  }
-
-  private async displayNameOf(userId: string): Promise<string | null> {
-    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
-    return user?.displayName ?? null;
-  }
-
-  private async relationsFor(profileId: string, userId: string): Promise<ProfileRelations> {
-    const [languages, availability, specialties, displayName] = await Promise.all([
-      this.db
-        .select()
-        .from(investigatorLanguages)
-        .where(eq(investigatorLanguages.profileId, profileId)),
-      this.db
-        .select()
-        .from(investigatorAvailability)
-        .where(eq(investigatorAvailability.profileId, profileId)),
-      this.db
-        .select()
-        .from(investigatorSpecialties)
-        .where(eq(investigatorSpecialties.profileId, profileId)),
-      this.displayNameOf(userId),
-    ]);
-    return {
-      displayName,
-      languages,
-      availability,
-      specialtyNodeIds: specialties.map((s) => s.taxonomyNodeId),
-    };
-  }
 }
-
-/** The pseudonym index refused the write: Postgres 23505 on that constraint, and nothing else. */
-const pseudonymTaken = (e: unknown): boolean => {
-  const cause = (e as { cause?: { code?: string; constraint_name?: string } }).cause;
-  return (
-    cause?.code === '23505' && cause.constraint_name === 'investigator_profiles_pseudonym_unique'
-  );
-};

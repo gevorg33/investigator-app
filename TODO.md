@@ -3817,6 +3817,12 @@ is immediately discoverable under the existing verification.
 
 **Tenancy (ADR-0011).** Profiles belong to workspaces from T-087. Scope-level verification attaches to the profile, and an agency's added areas follow the same rule.
 
+**From T-087:** applying for verification goes through the holder's own route, which needs
+`investigators.update` — in an agency only OWNER and ADMIN hold it, so an agent cannot apply for the
+profile the agency holds for them, and the agency has no route to apply on their behalf. Decide who
+applies for an agency-held profile, and whether any part of the person's own verification carries
+over (today none does).
+
 **Acceptance criteria**
 - [ ] Verification recorded per specialty and per area, each traceable to the decision that granted it
 - [ ] A decision can approve part of a declaration and reject the rest, with reasons
@@ -4781,7 +4787,7 @@ pnpm --filter api test teams
 ---
 
 ### T-087 — Investigator profiles under workspaces (API)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-02; migration 0037, `/agencies/current/investigators`, workspace-scoped `…/me`, discovery ACTIVE-workspace filter and `agency` in the projection
 - **Priority:** P1
 - **Depends on:** T-085
 - **Risk:** MEDIUM
@@ -4799,19 +4805,51 @@ their Personal workspace. Discovery shows the agency a profile belongs to. Eligi
 > (tenancy.md §2); that half was left for this task.
 
 **Acceptance criteria**
-- [ ] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
-- [ ] The assistant's `searchInvestigators` results (T-018) show the agency a profile belongs to — add it to the tool's output schema, which strips anything it does not name
-- [ ] Several profiles per agency; one per person per workspace; no identity fields duplicated
-- [ ] A suspended or archived agency's profiles disappear from discovery on the next query
-- [ ] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
-- [ ] KB: profile articles updated for agencies
-- [ ] Leave room for T-183: an agency-held profile's public name (T-182's `public_name`) is the agency's to set, with the agent's consent for their legal name — do not let the agency write it without that consent check
+- [x] **Quoting as the agency becomes possible here** (found in T-078): a member holding `investigations.create` still cannot quote for the agency today, because their profile belongs to their Personal workspace and a quote must belong to one of its two parties — the database refuses it. An agency-owned profile is what closes that; the T-078 spec that records the current boundary is updated when it does
+- [x] The assistant's `searchInvestigators` results (T-018) show the agency a profile belongs to — add it to the tool's output schema, which strips anything it does not name
+- [x] Several profiles per agency; one per person per workspace; no identity fields duplicated
+- [x] A suspended or archived agency's profiles disappear from discovery on the next query
+- [x] T-011, T-012 and T-013 tests pass; T-071's per-scope verification builds on profiles as they are here
+- [x] KB: profile articles updated for agencies
+- [x] Leave room for T-183: an agency-held profile's public name (T-182's `public_name`) is the agency's to set, with the agent's consent for their legal name — do not let the agency write it without that consent check
 
 **Validation**
 ```bash
 pnpm --filter api test profiles search
 ```
 
+
+**Done (2026-10-02).** Migration 0037: `investigator_profiles (tenant_id, user_id)` →
+`tenant_memberships` (deferred key — a profile is held by a member of its own workspace, whoever
+writes); `tenants.listing_read` (any workspace reads one holding a published profile); trigger
+`tenant_memberships_withdraw_profile` (a membership leaving ACTIVE takes its profile there back to a
+draft, not accepting work; writer's own rights). API: `AgencyInvestigatorsService` and controller —
+list, get, create for an ACTIVE member holding the INVESTIGATOR role (409 `NOT_AN_INVESTIGATOR`,
+`ALREADY_HELD`), PATCH the storefront only (`InvestigatorStorefrontDto`; no `displayName`, no
+`publicName` — T-183's consent), 409 `HOLDER_INACTIVE` on publishing while the holder is away;
+`AgencyServiceAreasController` for held profiles. `OwnInvestigatorProfileRepository` scoped to the
+current workspace, so `…/me`, quoting, browse, service areas and verification act on the profile held
+*here*. Role activation requires the Personal workspace. Outside Personal the holder cannot rename or
+choose `LEGAL`. Shared write path moved to `InvestigatorProfileStore`. Discovery and coverage require
+`tenants.status = 'ACTIVE'`; the public projection and the assistant tool carry
+`agency: { id, name } | null`. T-078's boundary spec now proves both sides: the Personal profile
+404s in the agency, and the held one quotes with the agency as supplier.
+
+*Tests:* 3200 passing, 100% coverage. HTTP over the real app (`agency-investigators.spec.ts`, 18),
+isolation matrix (listing_read, the key, the trigger as the runtime role), search, coverage, quotes,
+assistant tool. *Negative controls*, each watched failing then restored: workspace scope dropped from
+the repository (2 quotes cases), ACTIVE filter dropped from search (3) and coverage (1), Personal-only
+role activation (1), `HOLDER_INACTIVE` (2), the agency-context rename/`LEGAL` guard (1), the in-process
+`publicName` strip (1).
+
+*Docs:* profiles.md, tenancy.md, discovery.md, service-areas.md, authorization.md,
+assistant-tools.md; KB `kb-agency-investigators` v1 (new; ru/hy drafts),
+`kb-investigator-profile-service-areas` v7, `kb-customer-finding-investigator` v7 (ru/hy drafts
+extended). Knowledge sync: 0 conflicts.
+
+*Not done here:* the invitation half from T-085 (T-184); showing the agency in app-web (T-185); an
+agent without `investigators.update` cannot apply for verification of their agency profile (added to
+T-071); the rename lock reads only the current workspace's profile (added to T-148).
 ---
 
 ### T-088 — Agency verification
@@ -7008,6 +7046,10 @@ happens to VERIFIED meanwhile.
 **Acceptance criteria**
 - [ ] A verified investigator's name can be changed through a documented, audited path
 - [ ] The name customers see never differs from the one last verified without that being visible to staff
+- [ ] **From T-087:** the lock reads only the profile in the workspace the request acts in. A person
+      whose agency-held profile is PENDING or VERIFIED can still rename from their Personal workspace
+      while their Personal profile is unverified. Agency profiles never show the legal name until T-183,
+      so no customer sees the difference yet; the lock should consider every profile the person holds
 
 **Validation**
 ```bash
@@ -8137,6 +8179,61 @@ on their consent.
 **Validation**
 ```bash
 pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-184 — An invitation names an investigator profile the new member takes over
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-087, T-071
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it changes who holds a profile customers know, and its verification and reviews
+- **Owner agent:** backend-domain + database
+- **Affected:** apps/api/src/modules/{tenants/employees,profiles}/**, migrations
+
+**Description**
+From T-085 (tenancy.md §2): an invitation "may also name an investigator profile the new member
+takes over". Left out of T-087 because a profile is held by one membership (migration 0037's key),
+and changing its holder changes whose verification and whose reviews it carries. Decide what moves
+with the profile (storefront, reviews, quotes in flight) and what is reset (verification, which
+attaches to a person), then build it as part of accepting the invitation.
+
+**Acceptance criteria**
+- [ ] An invitation may name a held profile whose holder has left; accepting makes the new member its holder in one transaction
+- [ ] Verification and the name customers see follow the decision above; the change is audited
+- [ ] KB `kb-agency-employees` and `kb-agency-investigators` updated
+
+**Validation**
+```bash
+pnpm --filter api test invitations profiles
+```
+
+---
+
+### T-185 — Show the agency an investigator works for (app-web)
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-087
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/{discovery,assistant,investigator}/**, apps/app-web/src/lib/api/types.ts, packages/i18n
+
+**Description**
+From T-087: the public projection, discovery results and the assistant's `searchInvestigators` output
+carry `agency: { id, name } | null`, but app-web renders none of it. Show the agency's name on the
+discovery card, the investigator's profile page, the assistant's result card and the investigator's
+own preview, so a customer sees what `kb-customer-finding-investigator` v7 describes.
+
+**Acceptance criteria**
+- [ ] The agency's name appears where the investigator's name does, and nothing appears for an independent one
+- [ ] The preview shows it exactly as customers will see it
+- [ ] Verified at 375 and 1280; en/ru/hy
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---
