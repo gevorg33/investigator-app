@@ -8268,7 +8268,7 @@ pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web 
 ---
 
 ### T-186 — `loading.tsx` and streamed segments: refresh that never commits, copies left in the DOM
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; cause is upstream (vercel/next.js#86151, fixed in 16.3.0, not in 15.x); all three mission `loading.tsx` removed, `src/app/loading-states.spec.ts` keeps them out below 16.3; `e2e/missions.e2e.ts`; `app-web.md` "Route loading states"
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -8287,9 +8287,9 @@ decide per route whether its loading state earns its place, and prove the missio
 change (cancelling, editing a draft) in the production build.
 
 **Acceptance criteria**
-- [ ] Every page with a `loading.tsx` above it shows a save without a reload, in the production build, checked by Playwright
-- [ ] No streamed copy of a page is left in the DOM after hydration
-- [ ] app-web.md says what was found and which routes keep a loading state
+- [x] Every page with a `loading.tsx` above it shows a save without a reload, in the production build, checked by Playwright
+- [x] No streamed copy of a page is left in the DOM after hydration
+- [x] app-web.md says what was found and which routes keep a loading state
 
 **Validation**
 ```bash
@@ -8350,6 +8350,34 @@ are short today, but a translation or an unlabelled node is not bounded. Let a s
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-189 — Move to Next 16.3+, then decide again where a route loading state earns its place
+- **Status:** TODO — gated on the version bar: 16.3 must have been out long enough (CLAUDE.md, "Pinned versions")
+- **Priority:** P3
+- **Depends on:** T-186
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a major framework bump is the owner's call (as T-179)
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/package.json, apps/admin-web/package.json, apps/marketing-web/package.json, apps/app-web/src/app/**/loading.tsx
+
+**Description**
+From T-186. Next 15's router can lose a `router.refresh()` under a `loading.tsx` (vercel/next.js#86151);
+the fix (vercel/next.js#95391) shipped in 16.3.0 and was not backported, so app-web has no route
+loading states and `src/app/loading-states.spec.ts` refuses one. Navigating to a slow page now shows
+the previous one until the next is ready, with no sign that anything is happening. On 16.3+ the guard
+lets go: restore a loading state only where the wait needs one, and prove it with the same journeys.
+
+**Acceptance criteria**
+- [ ] On Next ≥ 16.3 (peer ranges checked: React, eslint-config-next, typescript-eslint)
+- [ ] `/agency/loading.tsx` restored temporarily: `agency.e2e.ts` passes 10 of 10 in the production build — the evidence the fix holds here
+- [ ] Each loading state brought back is named in `app-web.md` with why it earns its place; `missions.e2e.ts` and `agency.e2e.ts` pass with them
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

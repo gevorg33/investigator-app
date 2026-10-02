@@ -1,5 +1,5 @@
 import { catalogs } from '@investigator/i18n';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OwnMissions } from '@/components/missions/own-missions';
@@ -11,9 +11,7 @@ import { NotFound, Redirected, router } from '@/test/navigation';
 import { request } from '@/test/request';
 import { resolveServer } from '@/test/server';
 import MissionPage, { generateMetadata as missionMeta } from './[id]/page';
-import MissionLoading from './[id]/loading';
 import NewMissionPage, { generateMetadata as newMeta } from './new/page';
-import NewMissionLoading from './new/loading';
 
 vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextNavigation);
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
@@ -348,11 +346,5 @@ describe('the mission pages', () => {
       renderIntl(await resolveServer(await OwnMissions({ locale: 'en', now: new Date() })));
       expect(screen.getByText(en.own.empty.title)).toBeInTheDocument();
     });
-  });
-
-  it('shows the shape of a question while a mission loads', () => {
-    const { container } = render(<MissionLoading />);
-    expect(container.querySelectorAll('[data-slot=skeleton]').length).toBeGreaterThan(3);
-    expect(NewMissionLoading).toBe(MissionLoading);
   });
 });

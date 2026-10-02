@@ -210,7 +210,8 @@ a `<details>`; it worked and looked like a form, not a product.
   description; place, distance and languages; then the budget, prominent, and the deadline — a
   deadline within 7 days is a `warning` badge that says "Due in 3 days". Budgets drop ".00" when both
   ends are whole (`formatMoneyRange`), and both ends always share one precision.
-- **Loading** is a skeleton of the controls and three cards (`missions/loading.tsx`).
+- **Loading:** no route skeleton since T-186 — the browse stays on screen until the new one is
+  ready ("Route loading states", below). The discovery list keeps its own in-page skeleton.
 - Refused by the API: 403 says what opens browsing; 422 names the filter to change. Saved searches
   are chips above the list; "Save this search" opens a name field and appears only when something
   is filtered or searched.
@@ -628,13 +629,44 @@ each sends the reader to `/account#agencies` (`currentAgency()`). API: `tenancy.
 - **No `loading.tsx` under `/agency`.** One was tried and removed: in the production build it left
   `router.refresh()` uncommitted on the dynamic `[id]` page — the refresh payload arrived, carried the
   new data, and was never applied, so a save did not show until a reload (0 of 5 refreshes applied with
-  it, 6 of 6 without; the e2e journey's heading check fails with it restored). `/missions` keeps its
-  own, and shows the related symptom of a streamed copy of the page left hidden in the DOM (T-186).
+  it, 6 of 6 without; the e2e journey's heading check fails with it restored). T-186 found the cause
+  and removed the rest ("Route loading states", below).
 
 **Browser flows:** `e2e/agency.e2e.ts` gained three steps at 375 and 1280 — invite, send again and
 cancel; a team made, filled, emptied, renamed and deleted; an investigator profile made for the owner,
 saved, its heading updated without a reload, and published — with axe on each page and open sheet.
 Checked by hand at 768: no page scrolls sideways.
+
+## Route loading states (T-186)
+
+**There are none, and `src/app/loading-states.spec.ts` keeps it that way while Next is below 16.3.**
+
+- **What was found.** With a `loading.tsx` above a page, Next 15.5.25's router sometimes never
+  commits a `router.refresh()` (or the `router.push` before it) in the production build: the RSC
+  request for the refreshed tree starts, the browser cancels it part-way (`net::ERR_ABORTED`, while
+  the same request replayed reads to the end), and the page keeps showing what it showed before the
+  save. It is upstream — vercel/next.js#86151, closed by vercel/next.js#95391 in **16.3.0**, not
+  backported to 15.x (15.5.27, T-179, does not have it). Whether it happens depends on how long the
+  page takes to render on the device: restoring `/agency/loading.tsx` failed the held-profile journey
+  3 of 3 — a lost name save, a lost publish switch, and once the empty state found twice — while the
+  mission pages passed every run with theirs, throttled (150 ms, 9 Mbit/s, CPU ×4) or not.
+- **Decided per route — none earns its place yet.** `/missions` (list, browse and discovery),
+  `/missions/[id]` and `/missions/new` each had a skeleton. Each sits above a page that saves and
+  refreshes: cancelling a draft (push + refresh), a cancel refused because the draft changed
+  (refresh in place), saved searches, blocking from a profile. A skeleton saves a moment of blank
+  waiting; the bug, when it hits a slow phone, loses a change the reader just made, silently. A
+  passing run cannot rule it out, so all three were removed. Without them the previous page stays on
+  screen until the next is ready.
+- **The streamed copy** (`<div hidden id="S:0">`) is the same boundary's: it is how a page streams in
+  behind a loading state. With no route loading state there is no such boundary; `missions.e2e.ts`
+  checks every page it visits for one, and for a second `main`.
+- **When Next reaches 16.3**, the guard lets go. A loading state comes back only where the wait is
+  long enough to need one, and only with `missions.e2e.ts` and `agency.e2e.ts` passing on it.
+
+**Browser flows:** `e2e/missions.e2e.ts` (new), at 375 and 1280 — an edited draft's title on
+Missions after "Finish later", a cancelled draft listed as cancelled, and a draft changed in another
+tab shown as it stands when cancelling it is refused — none with a reload, each page with one copy
+of itself; axe on the list and the draft.
 
 ## Cancelling a mission (T-154)
 
