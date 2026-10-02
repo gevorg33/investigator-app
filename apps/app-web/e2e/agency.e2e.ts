@@ -344,7 +344,10 @@ test('makes an investigator profile for a member, and each save shows on the pag
   await expect(page.getByRole('radiogroup')).toHaveCount(0);
   await expectAccessible(page);
 
-  const pseudonym = `Ararat Desk ${Date.now().toString(36)}`;
+  // Letters only: six digits in a pseudonym read as a phone number and are refused.
+  const pseudonym = `Ararat Desk ${Date.now()
+    .toString(36)
+    .replace(/\d/g, (d) => 'ghijklmnop'[Number(d)]!)}`;
   await page
     .getByRole('textbox', { name: text('investigator.details.agency_pseudonym') })
     .fill(pseudonym);

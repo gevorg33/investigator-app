@@ -9,6 +9,16 @@ import { AgencyInvestigatorsService } from './agency-investigators.service';
  * member, who holds it; the agency manages its storefront; the holder works with it in the agency
  * and with their own profile in their Personal workspace, and the two never stand in for each other.
  */
+/**
+ * A unique, letters-only word from an id: a pseudonym with six digits in it reads as a phone number
+ * and is refused (`pseudonym.ts`), which a hex slice of an id is, one time in sixteen.
+ */
+const lettersOf = (id: string) =>
+  id
+    .replace(/-/g, '')
+    .slice(0, 8)
+    .replace(/\d/g, (d) => 'ghijklmnop'[Number(d)]!);
+
 describe('agency investigator profiles', () => {
   let h: Awaited<ReturnType<typeof employeesApp>>;
 
@@ -172,14 +182,14 @@ describe('agency investigator profiles', () => {
       const p = await held();
       const res = await h.as(p.owner, p.tenantId).patch(`${PROFILES}/${p.profileId}`, {
         headline: 'Corporate due diligence',
-        pseudonym: `Ararat Desk ${p.profileId.slice(0, 6)}`,
+        pseudonym: `Ararat Desk ${lettersOf(p.profileId)}`,
         languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
         acceptingWork: true,
       });
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
         headline: 'Corporate due diligence',
-        name: `Ararat Desk ${p.profileId.slice(0, 6)}`,
+        name: `Ararat Desk ${lettersOf(p.profileId)}`,
         languages: [{ languageCode: 'hy', proficiency: 'NATIVE' }],
         acceptingWork: true,
       });
