@@ -22,6 +22,7 @@ import { ApiError } from '@/lib/api/errors';
 import { callApi } from '@/lib/api/browser';
 import type { OwnInvestigatorProfile, PublicInvestigatorProfile } from '@/lib/api/types';
 import { PublicProfileCard } from './public-profile-card';
+import { useProfileTarget } from './profile-target';
 
 /**
  * Where the profile stands (T-123): what stands between the investigator and being listed — each
@@ -35,22 +36,29 @@ export function StatusCard({
   specialties,
 }: {
   profile: OwnInvestigatorProfile;
-  preview: PublicInvestigatorProfile;
+  /** The API's public projection of it; absent where the API offers none (an agency-held profile). */
+  preview?: PublicInvestigatorProfile;
   areas: number;
   specialties: ReadonlyArray<readonly [string, string]>;
 }) {
   const t = useTranslations('investigator');
   const router = useRouter();
+  const target = useProfileTarget();
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
 
   const checks: Array<[string, boolean, string]> = [
     [t('status.published'), profile.visibility === 'PUBLISHED', '#status'],
-    [t('status.verified'), profile.verificationStatus === 'VERIFIED', '#verification'],
+    // An agency does not apply for its members' verification here, so there is no section to link.
+    [
+      t('status.verified'),
+      profile.verificationStatus === 'VERIFIED',
+      target.agency ? '#status' : '#verification',
+    ],
     [t('status.accepting'), profile.acceptingWork, '#status'],
     [t('status.languages'), profile.languages.length > 0, '#languages'],
     [t('status.specialties'), profile.specialtyNodeIds.length > 0, '#specialties'],
-    [t('status.areas'), areas > 0, '#areas'],
+    [target.agency ? t('status.agency_areas') : t('status.areas'), areas > 0, '#areas'],
   ];
   const ready = checks.every(([, done]) => done);
 
@@ -58,7 +66,7 @@ export function StatusCard({
     setBusy(true);
     setError(null);
     try {
-      await callApi('/profiles/investigator/me', { method: 'PATCH', body: patch });
+      await callApi(target.profile, { method: 'PATCH', body: patch });
       router.refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, 'NETWORK', 'error.common.internal'));
@@ -77,7 +85,15 @@ export function StatusCard({
               {t(`verification_status.${profile.verificationStatus}`)}
             </Badge>
           </div>
-          <p className="text-sm text-text-muted">{ready ? t('status.ready') : t('status.body')}</p>
+          <p className="text-sm text-text-muted">
+            {target.agency
+              ? ready
+                ? t('status.agency_ready')
+                : t('status.agency_body')
+              : ready
+                ? t('status.ready')
+                : t('status.body')}
+          </p>
         </CardHeader>
         <CardContent className="grid gap-4">
           <ul className="grid gap-1">
@@ -107,7 +123,7 @@ export function StatusCard({
               [
                 [
                   'publish',
-                  t('status.publish'),
+                  target.agency ? t('status.agency_publish') : t('status.publish'),
                   profile.visibility === 'PUBLISHED',
                   (on: boolean) => ({ visibility: on ? 'PUBLISHED' : 'DRAFT' }),
                 ],
@@ -135,32 +151,34 @@ export function StatusCard({
             ))}
           </div>
 
-          <Drawer direction="bottom">
-            <DrawerTrigger asChild>
-              <Button variant="outline">
-                <Eye aria-hidden />
-                {t('status.preview')}
-              </Button>
-            </DrawerTrigger>
-            <DrawerContent aria-describedby="preview-body">
-              <DrawerHeader>
-                <DrawerTitle>{t('status.preview_title')}</DrawerTitle>
-                <DrawerClose asChild>
-                  <Button variant="ghost" size="icon" aria-label={t('status.close')}>
-                    <X aria-hidden />
-                  </Button>
-                </DrawerClose>
-              </DrawerHeader>
-              <DrawerDescription id="preview-body" className="px-4">
-                {t('status.preview_body')}
-              </DrawerDescription>
-              <div className="overflow-y-auto p-4">
-                <div className="mx-auto max-w-2xl rounded-lg border border-border p-4">
-                  <PublicProfileCard profile={preview} specialties={new Map(specialties)} />
+          {preview !== undefined && (
+            <Drawer direction="bottom">
+              <DrawerTrigger asChild>
+                <Button variant="outline">
+                  <Eye aria-hidden />
+                  {t('status.preview')}
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent aria-describedby="preview-body">
+                <DrawerHeader>
+                  <DrawerTitle>{t('status.preview_title')}</DrawerTitle>
+                  <DrawerClose asChild>
+                    <Button variant="ghost" size="icon" aria-label={t('status.close')}>
+                      <X aria-hidden />
+                    </Button>
+                  </DrawerClose>
+                </DrawerHeader>
+                <DrawerDescription id="preview-body" className="px-4">
+                  {t('status.preview_body')}
+                </DrawerDescription>
+                <div className="overflow-y-auto p-4">
+                  <div className="mx-auto max-w-2xl rounded-lg border border-border p-4">
+                    <PublicProfileCard profile={preview} specialties={new Map(specialties)} />
+                  </div>
                 </div>
-              </div>
-            </DrawerContent>
-          </Drawer>
+              </DrawerContent>
+            </Drawer>
+          )}
         </CardContent>
       </Card>
     </section>

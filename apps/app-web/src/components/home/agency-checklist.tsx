@@ -3,14 +3,20 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getT } from '@/i18n/server';
 import { serverApi } from '@/lib/api/server';
-import type { AgencyDetails, GeneralSection, OwnAgencyProfile } from '@/lib/api/types';
+import type {
+  AgencyDetails,
+  EmployeeView,
+  GeneralSection,
+  InvitationView,
+  OwnAgencyProfile,
+} from '@/lib/api/types';
 import { DismissChecklist } from './dismiss-checklist';
 
 /**
  * What is left of an agency's setup, on Home, for its owner (T-149, plan.md: a dismissible
  * checklist, not a wizard). Each item links to the screen where it is done and is ticked from what
  * the API says now — never from a flag this app keeps. Only items whose screens exist are listed:
- * inviting employees joins when their screen does (T-093), verification when it exists (T-088).
+ * inviting the team since its screen exists (T-093), verification when it exists (T-088).
  *
  * Who sees it is the API's to say: `mayChange` on the agency's details is true for the one who may
  * change them — the owner. Dismissed, it stays hidden for the workspace on every device.
@@ -18,9 +24,11 @@ import { DismissChecklist } from './dismiss-checklist';
 export async function AgencyChecklist() {
   const agency = await serverApi<AgencyDetails>('/agencies/current');
   if (agency === null || !agency.mayChange) return null;
-  const [settings, profile, t] = await Promise.all([
+  const [settings, profile, members, invitations, t] = await Promise.all([
     serverApi<{ general: GeneralSection }>('/agencies/current/settings'),
     serverApi<OwnAgencyProfile>('/agencies/current/profile'),
+    serverApi<EmployeeView[]>('/agencies/current/members'),
+    serverApi<InvitationView[]>('/agencies/current/invitations'),
     getT(),
   ]);
   const general = settings!.general;
@@ -33,6 +41,12 @@ export async function AgencyChecklist() {
       href: '/agencies/current',
     },
     { label: t('home.checklist.profile'), done: profile!.publishedAt !== null, href: '/agency' },
+    {
+      // Someone besides the owner has joined, or is on their way (T-093).
+      label: t('home.checklist.invite'),
+      done: (members ?? []).length > 1 || (invitations ?? []).some((i) => i.status === 'PENDING'),
+      href: '/agency/people#invitations',
+    },
   ];
   const complete = items.every((i) => i.done);
 

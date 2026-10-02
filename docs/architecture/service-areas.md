@@ -14,13 +14,20 @@ Both are searched through a single `area geography(Polygon, 4326)` column with a
 A radius is stored buffered because `ST_DWithin` can use the index only with a **constant**
 distance — testing each row against its own radius cannot, and would scan every area.
 
+**An agency's profiles (T-087).** The same areas, managed by the agency that holds the profile at
+`/agencies/current/investigators/:profileId/service-areas` — read with `investigators.read`, changed
+with `investigators.update` — while the holder reads them at `/service-areas/me` in that agency. A
+profile in any other workspace is a 404. A removal is audited with reason `agency`.
+
 ## The coverage query
 
 ```sql
 SELECT sa.profile_id, min(ST_Distance(sa.area, :point)) AS distance_m
 FROM service_areas sa
 JOIN investigator_profiles ip ON ip.id = sa.profile_id
-WHERE ip.visibility = 'PUBLISHED' AND ip.accepting_work = true
+JOIN tenants w ON w.id = ip.tenant_id
+WHERE ip.visibility = 'PUBLISHED' AND ip.verification_status = 'VERIFIED'
+  AND ip.accepting_work = true AND w.status = 'ACTIVE'  -- the workspace is open (T-087)
   AND ST_DWithin(sa.area, :point, :search_radius_m)   -- filters, index-usable
 GROUP BY sa.profile_id                                 -- one result per investigator
 ORDER BY distance_m, sa.profile_id                     -- ST_Distance only sorts

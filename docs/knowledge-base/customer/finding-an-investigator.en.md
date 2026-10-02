@@ -4,9 +4,9 @@ title: How investigators are matched to your mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 6
+version: 7
 status: current
-updated: 2026-10-01
+updated: 2026-10-02
 source_of_truth: database
 implementation_status: implemented
 related_code:
@@ -15,7 +15,7 @@ related_code:
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/ai/tools
   - apps/app-web/src/components/discovery
-tags: [discovery, investigators, location, specialties]
+tags: [discovery, investigators, agency, location, specialties]
 ---
 
 # Finding an investigator
@@ -64,6 +64,15 @@ the investigator's reply. Reviews never name who wrote them.
 
 It does not show where their service areas are. The search tells you how far away they are
 instead.
+
+## What does it mean when an investigator works for an agency?
+
+Some investigators work for an agency rather than on their own. When the assistant suggests one, it
+tells you which agency they work for. Their quote comes from the agency, with that investigator named
+on it. You never see the agency's other members, its teams or its other work.
+
+An agency's investigators are listed only while the agency is active on the platform. If the agency
+is suspended or closed, its investigators stop appearing in searches and suggestions straight away.
 
 ## Can I find investigators near a specific place?
 

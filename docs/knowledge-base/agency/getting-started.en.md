@@ -4,9 +4,9 @@ title: Setting up an agency on the platform
 audience: agency
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-26
+updated: 2026-10-02
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -87,10 +87,12 @@ No. An agency owner runs the company; whether you also work cases is up to you.
 ## Who else can join?
 
 People you invite. Nobody can add themselves to your agency, and joining is always your
-decision — invitations, roles and teams are covered in their own articles as they arrive.
+decision. Invitations, roles and teams work as the employees article describes.
 
 ## What can I not do yet?
 
-Some of this is still being built. Today you can create an agency, complete or change its
-details, and switch between it and your personal workspace. Inviting employees, teams,
-agency-owned investigator profiles and agency verification are arriving in later releases.
+Some of this is still being built. Today you can create an agency, complete or change its details,
+publish its profile and set its colours, invite employees and manage their roles, group them into
+teams, and run investigator profiles for the members who work as your investigators. Agency
+verification is arriving in a later release, and so is choosing a colleague as the lead investigator on
+a quote.

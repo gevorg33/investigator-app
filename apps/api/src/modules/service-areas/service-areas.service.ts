@@ -7,7 +7,7 @@ import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db } from '../../database/database.module';
-import { serviceAreas } from '../../database/schema';
+import { investigatorProfiles, serviceAreas } from '../../database/schema';
 import type { LonLat } from '../../database/schema/types';
 import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repository';
 import type { CreateServiceAreaDto } from './service-areas.dto';
@@ -44,6 +44,10 @@ export interface Coverage {
   distanceKm: number;
 }
 
+/** Whose areas: the caller's own profile in this workspace, or one the agency holds (T-087). */
+const MINE = 'mine' as const;
+type Whose = typeof MINE | { profileId: string };
+
 /** Constraint name → the reason reported back, for shape rules the database enforces. */
 const SHAPE_VIOLATIONS: Record<string, string> = {
   service_areas_min_area: 'TOO_SMALL',
@@ -67,9 +71,11 @@ export function coverageQuery(point: LonLat, searchRadiusM: number, limit: numbe
     SELECT sa.profile_id AS "profileId", min(ST_Distance(sa.area, ${at})) AS "distanceM"
     FROM service_areas sa
     JOIN investigator_profiles ip ON ip.id = sa.profile_id
+    JOIN tenants w ON w.id = ip.tenant_id
     WHERE ip.visibility = 'PUBLISHED'
       AND ip.verification_status = 'VERIFIED'
       AND ip.accepting_work = true
+      AND w.status = 'ACTIVE'
       AND ST_DWithin(sa.area, ${at}, ${searchRadiusM})
     GROUP BY sa.profile_id
     ORDER BY "distanceM" ASC, sa.profile_id ASC
@@ -86,11 +92,61 @@ export class ServiceAreasService {
   ) {}
 
   async listMine(actor: Actor, req: RequestContext): Promise<OwnServiceArea[]> {
-    const profileId = await this.myProfileId(
+    return this.list(actor, MINE, req);
+  }
+
+  async createMine(
+    actor: Actor,
+    dto: CreateServiceAreaDto,
+    req: RequestContext,
+  ): Promise<OwnServiceArea> {
+    return this.create(actor, MINE, dto, req);
+  }
+
+  async deleteMine(actor: Actor, id: string, req: RequestContext): Promise<void> {
+    return this.delete(actor, MINE, id, req);
+  }
+
+  /** The areas of a profile the agency holds (T-087), read with `investigators.read`. */
+  async listForAgency(
+    actor: Actor,
+    profileId: string,
+    req: RequestContext,
+  ): Promise<OwnServiceArea[]> {
+    return this.list(actor, { profileId }, req);
+  }
+
+  /** Adds one to a profile the agency holds, with `investigators.update`. */
+  async createForAgency(
+    actor: Actor,
+    profileId: string,
+    dto: CreateServiceAreaDto,
+    req: RequestContext,
+  ): Promise<OwnServiceArea> {
+    return this.create(actor, { profileId }, dto, req);
+  }
+
+  /** Removes one from a profile the agency holds, with `investigators.update`. */
+  async deleteForAgency(
+    actor: Actor,
+    profileId: string,
+    id: string,
+    req: RequestContext,
+  ): Promise<void> {
+    return this.delete(actor, { profileId }, id, req);
+  }
+
+  private async list(actor: Actor, whose: Whose, req: RequestContext): Promise<OwnServiceArea[]> {
+    const profileId = await this.profileId(
       actor,
+      whose,
       this.ctx('service_area.list', req),
       'investigators.read',
     );
+    return this.areasOf(profileId);
+  }
+
+  private async areasOf(profileId: string): Promise<OwnServiceArea[]> {
     const rows = await this.db
       .select()
       .from(serviceAreas)
@@ -114,13 +170,14 @@ export class ServiceAreasService {
     }));
   }
 
-  async createMine(
+  private async create(
     actor: Actor,
+    whose: Whose,
     dto: CreateServiceAreaDto,
     req: RequestContext,
   ): Promise<OwnServiceArea> {
     const c = this.ctx('service_area.create', req);
-    const profileId = await this.myProfileId(actor, c, 'investigators.update');
+    const profileId = await this.profileId(actor, whose, c, 'investigators.update');
 
     // COUNT with no GROUP BY always returns exactly one row.
     const [existing] = await this.db
@@ -169,13 +226,13 @@ export class ServiceAreasService {
     if (!row) throw new AppError('INTERNAL_ERROR');
 
     await this.record(actor, req, 'service_area.created', row.id, values.kind);
-    const created = (await this.listMine(actor, req)).find((a) => a.id === row.id);
+    const created = (await this.areasOf(profileId)).find((a) => a.id === row.id);
     return created!;
   }
 
-  async deleteMine(actor: Actor, id: string, req: RequestContext): Promise<void> {
+  private async delete(actor: Actor, whose: Whose, id: string, req: RequestContext): Promise<void> {
     const c = this.ctx('service_area.delete', req, id);
-    const profileId = await this.myProfileId(actor, c, 'investigators.update');
+    const profileId = await this.profileId(actor, whose, c, 'investigators.update');
     // The profile id in the predicate is the ownership check: another investigator's area id
     // matches nothing, and the answer is the same 404 as an id that never existed.
     const [deleted] = await this.db
@@ -183,7 +240,7 @@ export class ServiceAreasService {
       .where(and(eq(serviceAreas.id, id), eq(serviceAreas.profileId, profileId)))
       .returning({ id: serviceAreas.id });
     await this.authz.visible(actor, deleted, c);
-    await this.record(actor, req, 'service_area.deleted', id, 'owner');
+    await this.record(actor, req, 'service_area.deleted', id, whose === MINE ? 'owner' : 'agency');
   }
 
   /**
@@ -252,19 +309,36 @@ export class ServiceAreasService {
   }
 
   /**
-   * The caller's own investigator profile. `permission` is what this particular action needs in
-   * the workspace it is running in — reading an area and changing one are not the same right.
+   * The profile whose areas these are: the caller's own in this workspace, or one the agency holds
+   * (T-087). `permission` is what this particular action needs in the workspace it is running in —
+   * reading an area and changing one are not the same right.
    */
-  private async myProfileId(
+  private async profileId(
     actor: Actor,
+    whose: Whose,
     c: AuthzContext,
     permission: TenantPermission,
   ): Promise<string> {
     await this.authz.requireActive(actor, c);
-    await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+    if (whose === MINE) {
+      await this.authz.requireRole(actor, 'INVESTIGATOR', c);
+      await this.authz.requirePermission(actor, permission, c);
+      const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
+      return profile.id;
+    }
+    // An agency's manager need not be an investigator: the workspace's permission is the right.
+    await this.authz.requireAgencyWorkspace(actor, c);
     await this.authz.requirePermission(actor, permission, c);
-    const profile = await this.authz.visible(actor, await this.profiles.findMine(actor), c);
-    return profile.id;
+    const [profile] = await this.db
+      .select({ id: investigatorProfiles.id })
+      .from(investigatorProfiles)
+      .where(
+        and(
+          eq(investigatorProfiles.id, whose.profileId),
+          eq(investigatorProfiles.tenantId, sql`app_current_tenant()`),
+        ),
+      );
+    return (await this.authz.visible(actor, profile, c)).id;
   }
 
   private async record(

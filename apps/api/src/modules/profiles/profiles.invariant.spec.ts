@@ -17,7 +17,10 @@ describe('role activation invariants', () => {
     };
     // Role activation writes the role and its consent rows in one transaction (T-022).
     db['transaction'] = async (fn: (tx: unknown) => Promise<unknown>) => fn(db);
-    const authz = { requireActive: vi.fn().mockResolvedValue(undefined) };
+    const authz = {
+      requireActive: vi.fn().mockResolvedValue(undefined),
+      requirePersonalWorkspace: vi.fn().mockResolvedValue(undefined),
+    };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
     const noProfile = { findMine: vi.fn().mockResolvedValue(undefined) };
     const service = new ProfilesService(
@@ -27,6 +30,7 @@ describe('role activation invariants', () => {
       noProfile as never,
       noProfile as never,
       { requireAcceptance: vi.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
     );
     return { service, audit };
   };

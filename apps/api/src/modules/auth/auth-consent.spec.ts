@@ -20,6 +20,7 @@ import {
   OwnInvestigatorProfileRepository,
 } from '../profiles/profiles.repository';
 import { ProfilesService } from '../profiles/profiles.service';
+import { InvestigatorProfileStore } from '../profiles/profile-store';
 import { AuthService } from './auth.service';
 import { MemoryRateLimitStore, RateLimitService } from './rate-limit.service';
 import { SessionRepository } from './session.repository';
@@ -92,6 +93,7 @@ describe('the acceptance gate', () => {
       new OwnInvestigatorProfileRepository(db),
       new OwnCustomerProfileRepository(db),
       legal,
+      new InvestigatorProfileStore(db),
     );
   });
 

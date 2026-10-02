@@ -93,16 +93,26 @@ async function walk(h: Harness, cookie: string, ids: Ids, markers: Record<string
   const reads = routes(h).filter(isRead);
   const leaks: string[] = [];
   const reached = new Set<string>();
-  for (const route of reads) {
-    for (const path of fillings(route.path, ids)) {
-      const res = await call(h, cookie, route.method, path);
-      if (res.status < 200 || res.status >= 300) continue;
+  const requests = reads.flatMap((route) =>
+    fillings(route.path, ids).map((path) => ({ route, path })),
+  );
+  // Every route, with every id, is still walked — a few at a time rather than one by one, because
+  // the walk grows with the route table and the ids, and one by one it outgrew its time (T-087's
+  // agency routes took it past 15 seconds under a full run).
+  const next = async (): Promise<void> => {
+    const request = requests.shift();
+    if (request === undefined) return;
+    const { route, path } = request;
+    const res = await call(h, cookie, route.method, path);
+    if (res.status >= 200 && res.status < 300) {
       reached.add(`${route.method} ${route.path}`);
       for (const [what, m] of Object.entries(markers)) {
         if (res.text.includes(m)) leaks.push(`${route.method} ${path} → ${what}`);
       }
     }
-  }
+    return next();
+  };
+  await Promise.all(Array.from({ length: 4 }, next));
   return { walked: reads.length, leaks, reached: [...reached] };
 }
 

@@ -4,9 +4,9 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 6
+version: 7
 status: current
-updated: 2026-10-01
+updated: 2026-10-02
 source_of_truth: database
 implementation_status: partial
 related_code:
@@ -15,7 +15,7 @@ related_code:
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/taxonomy
   - apps/app-web/src/components/investigator
-tags: [profile, service-areas, specialties, availability, languages, discovery, taxonomy]
+tags: [profile, agency, service-areas, specialties, availability, languages, discovery, taxonomy]
 ---
 
 # Profile and service areas
@@ -192,6 +192,40 @@ histories and two reputations for one person, and nothing tying them together.
 While you are working in one role, the platform acts as though you hold only that one. Your
 investigator profile is not reachable from the customer workspace, which keeps the two sides
 of your account from blurring together.
+
+## I also work for an agency. Which profile is mine?
+
+Both, in different places. Your own investigator profile, in your Personal workspace, is yours: you
+set it up, and it is how customers find you when you work independently. An agency you belong to can
+also run a profile for you — the agency's profile, held by you, shown to customers with the agency's
+name on it. The two are separate: their own headline, areas, prices, verification and listing.
+
+When you switch to the agency's workspace, your investigator profile is the agency's one; switch back
+to Personal for your own. A quote is made with the profile of the workspace you are working in, so a
+quote you make in the agency is the agency's, and your own profile is never used for it.
+
+To hold a profile in an agency you first take up the investigator role yourself, from your Personal
+workspace — that is where you accept the investigator terms, and an agency cannot accept them for you.
+An agency profile starts unverified and hidden, like any new profile; your own profile's verification
+does not carry over to it.
+
+## Who can change my agency profile?
+
+The agency's owners and admins. They manage what customers see on it: the headline and description,
+the name you are shown by, prices, languages, specialties, availability, service areas, and whether
+the profile is shown and accepting work.
+
+They cannot change your legal name, which belongs to your account, and they cannot choose to show
+customers your legal name: on an agency profile customers see your pseudonym, or a stand-in code.
+You do not change your legal name from the agency either — that is done in your Personal workspace,
+under the usual rule that it is locked while verification is under review or approved.
+
+## What happens to my agency profile if I leave the agency?
+
+If the agency suspends or removes you, its profile for you is taken off the listing straight away: it
+goes back to a draft and stops accepting work, so customers no longer find it and nobody can quote
+with it. If you are reactivated, the agency decides whether to show it again. Your own profile in
+your Personal workspace is not affected.
 
 ## Why does availability matter so much?
 

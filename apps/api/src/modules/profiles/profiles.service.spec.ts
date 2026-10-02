@@ -18,6 +18,7 @@ import {
 } from '../../database/schema';
 import { testActor } from '../../../test/actor';
 import { ProfilesService } from './profiles.service';
+import { InvestigatorProfileStore } from './profile-store';
 import {
   OwnCustomerProfileRepository,
   OwnInvestigatorProfileRepository,
@@ -48,6 +49,7 @@ describe('profile persistence', () => {
         new OwnInvestigatorProfileRepository(db),
         new OwnCustomerProfileRepository(db),
         new LegalService(db, new AuditService(db)),
+        new InvestigatorProfileStore(db),
       ),
       ownerSql,
     );
@@ -163,8 +165,11 @@ describe('profile persistence', () => {
         'languages',
         'specialtyNodeIds',
         'availability',
+        // The agency it belongs to; none for a profile in a Personal workspace (T-087).
+        'agency',
       ].sort(),
     );
+    expect(preview.agency).toBeNull();
     // Whether the investigator is verified is public (T-120); where an application stands is not.
     expect(preview.verified).toBe(false);
     expect(preview).not.toHaveProperty('verificationStatus');

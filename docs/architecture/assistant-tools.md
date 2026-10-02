@@ -186,7 +186,10 @@ Tools run in the caller's execution context; `ToolRunner` refuses outside one. N
 a workspace, tenant, user or membership — `assertRegistrable` refuses the declaration, and the
 strict input refuses the argument. Investigator profiles are tenant-owned with a public
 projection (`tenancy.md`), so a search returns the same public results from any workspace.
-Showing each profile's agency waits for agency-owned profiles (T-087).
+Each result names the agency the investigator works for — `agency: { id, name } | null`, `null` for
+an independent investigator — in the output schema, which strips anything it does not name; never
+the agency's members, teams or other work. An agency that is not ACTIVE takes its investigators out
+of the results on the next search (T-087).
 
 ## Not built here
 

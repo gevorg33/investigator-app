@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
   ValidateIf,
@@ -49,23 +50,15 @@ export class AvailabilityWindowDto {
   endMinute!: number;
 }
 
-export class UpdateInvestigatorProfileDto {
-  /**
-   * The legal name (T-123), which verification checks — never shown to customers, who see the
-   * pseudonym below (T-181). It lives on the account, and can change only while no
-   * application is under review and none has been approved — verification checks documents
-   * against a name, and "verified" must keep meaning that name (owner decision, 2026-09-25).
-   * `\S` so a name of spaces is refused.
-   */
-  @IsOptional()
-  @IsString()
-  @Length(1, 80)
-  @Matches(/\S/, { message: 'error.validation.display_name.blank' })
-  displayName?: string;
-
+/**
+ * What makes up an investigator's storefront: everything on the profile except who the person is.
+ * An agency managing a profile it holds (T-087) writes these and nothing more — the legal name is
+ * the person's own, and whether customers see it waits for the agent's consent (T-183).
+ */
+export class InvestigatorStorefrontDto {
   /**
    * The name customers know the investigator by (T-181) — theirs to choose, and the only one
-   * customers ever see: the legal name above is for verification. Unique without case; may not
+   * customers ever see unless the holder chooses otherwise. Unique without case; may not
    * share a word with the legal name or carry contact details (`pseudonym.ts`). `null` clears it,
    * and customers see the stand-in code again.
    */
@@ -75,14 +68,6 @@ export class UpdateInvestigatorProfileDto {
   @Matches(/\S/, { message: 'error.validation.pseudonym.blank' })
   @Length(2, 60, { message: 'error.validation.pseudonym.length' })
   pseudonym?: string | null;
-
-  /**
-   * Which name customers know the investigator by (T-182): `PSEUDONYM`, the default, or `LEGAL` —
-   * the name above, which verification checks. Their choice, changeable at any time.
-   */
-  @IsOptional()
-  @IsIn(PUBLIC_NAME_CHOICES)
-  publicName?: (typeof PUBLIC_NAME_CHOICES)[number];
 
   @IsOptional()
   @IsString()
@@ -148,6 +133,39 @@ export class UpdateInvestigatorProfileDto {
   @ValidateNested({ each: true })
   @Type(() => AvailabilityWindowDto)
   availability?: AvailabilityWindowDto[];
+}
+
+/** The holder's own changes: the storefront, plus their legal name and which name customers see. */
+export class UpdateInvestigatorProfileDto extends InvestigatorStorefrontDto {
+  /**
+   * The legal name (T-123), which verification checks — never shown to customers, who see the
+   * pseudonym below (T-181). It lives on the account, and can change only while no
+   * application is under review and none has been approved — verification checks documents
+   * against a name, and "verified" must keep meaning that name (owner decision, 2026-09-25).
+   * `\S` so a name of spaces is refused.
+   */
+  @IsOptional()
+  @IsString()
+  @Length(1, 80)
+  @Matches(/\S/, { message: 'error.validation.display_name.blank' })
+  displayName?: string;
+
+  /**
+   * Which name customers know the investigator by (T-182): `PSEUDONYM`, the default, or `LEGAL` —
+   * the name above, which verification checks. Their choice, changeable at any time.
+   */
+  @IsOptional()
+  @IsIn(PUBLIC_NAME_CHOICES)
+  publicName?: (typeof PUBLIC_NAME_CHOICES)[number];
+}
+
+/** An agency's changes to a profile it holds (T-087): the storefront only. */
+export class UpdateAgencyInvestigatorDto extends InvestigatorStorefrontDto {}
+
+/** A profile the agency makes for one of its members, who will hold it (T-087). */
+export class CreateAgencyInvestigatorDto {
+  @IsUUID()
+  membershipId!: string;
 }
 
 export class UpdateCustomerProfileDto {

@@ -109,6 +109,11 @@ export const investigatorMatchSchema = z.object({
   /** Stands in for an unchosen name: "Investigator" and this code. From the profile id alone. */
   nameCode: z.string(),
   headline: z.string().nullable(),
+  /**
+   * The agency the investigator works for (T-087), or null for an independent one. Hiring them is
+   * hiring through the agency — its name, never its members, teams or other work.
+   */
+  agency: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
   yearsExperience: z.number().nullable(),
   verificationStatus: z.literal('VERIFIED'),
   languages: z.array(z.object({ code: z.string(), proficiency: z.string() })),

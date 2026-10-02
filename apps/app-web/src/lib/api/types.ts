@@ -205,6 +205,8 @@ export interface PublicInvestigatorProfile {
   languages: Array<{ languageCode: string; proficiency: Proficiency }>;
   specialtyNodeIds: string[];
   availability: AvailabilityWindow[];
+  /** The agency the profile belongs to (T-087): its public name; null for an independent one. */
+  agency: { id: string; name: string | null } | null;
 }
 
 /** The investigator's own profile: the public fields and the ones only they see (T-123). */
@@ -427,4 +429,59 @@ export interface NotificationPreference {
   category: 'activity';
   channel: 'email';
   enabled: boolean;
+}
+
+/** Where a member of an agency stands (T-085). A removed member is not listed. */
+export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
+
+/** A member of the agency, as `GET /agencies/current/members` lists them (T-085). */
+export interface EmployeeView {
+  membershipId: string;
+  userId: string;
+  email: string;
+  displayName: string | null;
+  status: 'ACTIVE' | 'SUSPENDED';
+  /** The catalog's role keys — shown, never used to decide what the reader may do. */
+  roles: string[];
+  jobTitle: string | null;
+  department: string | null;
+  locale: string | null;
+  timezone: string | null;
+  joinedAt: string;
+  /** Whether this is the reader. */
+  you: boolean;
+}
+
+/** An invitation into the agency (T-085). EXPIRED is a pending one past `expiresAt`. */
+export interface InvitationView {
+  id: string;
+  email: string;
+  role: string;
+  status: 'PENDING' | 'EXPIRED' | 'ACCEPTED' | 'CANCELLED';
+  expiresAt: string;
+  invitedAt: string;
+  lastSentAt: string;
+  sentCount: number;
+  acceptedAt: string | null;
+}
+
+/** A team and its members (T-086). */
+export interface TeamView {
+  id: string;
+  name: string;
+  description: string | null;
+  members: Array<{
+    membershipId: string;
+    userId: string;
+    email: string;
+    displayName: string | null;
+    status: 'ACTIVE' | 'SUSPENDED';
+  }>;
+  createdAt: string;
+}
+
+/** A profile the agency holds for a member (T-087): the holder's own view, and who holds it. */
+export interface AgencyInvestigatorView extends OwnInvestigatorProfile {
+  membershipId: string;
+  holderStatus: MembershipStatus;
 }

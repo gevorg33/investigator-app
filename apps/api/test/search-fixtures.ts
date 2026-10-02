@@ -32,6 +32,12 @@ export interface DiscoverableOptions {
   languages?: string[];
   specialtyNodeIds?: string[];
   availability?: Array<{ dayOfWeek: number; startMinute: number; endMinute: number }>;
+
+  /**
+   * A profile an agency holds (T-087): this existing person — already a member of it, which the
+   * database requires — holds it in that workspace. Without it, a new person in their Personal one.
+   */
+  heldIn?: { tenantId: string; userId: string };
 }
 
 export interface Discoverable {
@@ -55,21 +61,25 @@ export async function discoverable(
   const centre = opts.centre ?? somewhere();
   const verificationStatus = opts.verificationStatus ?? 'VERIFIED';
 
-  const [user] = await db
-    .insert(schema.users)
-    .values({
-      email: `search-${randomUUID()}@example.test`,
-      status: opts.accountStatus ?? 'ACTIVE',
-      displayName: opts.displayName ?? 'Test Investigator',
-      ...(opts.deleted === true ? { deletedAt: new Date() } : {}),
-    })
-    .returning();
+  const [user] =
+    opts.heldIn === undefined
+      ? await db
+          .insert(schema.users)
+          .values({
+            email: `search-${randomUUID()}@example.test`,
+            status: opts.accountStatus ?? 'ACTIVE',
+            displayName: opts.displayName ?? 'Test Investigator',
+            ...(opts.deleted === true ? { deletedAt: new Date() } : {}),
+          })
+          .returning()
+      : [{ id: opts.heldIn.userId }];
   const userId = user?.id ?? '';
 
   const [profile] = await db
     .insert(schema.investigatorProfiles)
     .values({
       userId,
+      ...(opts.heldIn !== undefined ? { tenantId: opts.heldIn.tenantId } : {}),
       visibility: opts.visibility ?? 'PUBLISHED',
       acceptingWork: opts.acceptingWork ?? true,
       verificationStatus,

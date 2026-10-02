@@ -295,6 +295,8 @@ describe('the application routes', () => {
       general: { version: 0, values: { onboardingDismissed: false } },
     });
     api.on('GET /agencies/current/profile', 200, ownAgencyProfile());
+    api.on('GET /agencies/current/members', 200, []);
+    api.on('GET /agencies/current/invitations', 200, []);
     renderIntl(await resolveServer(await HomePage()));
     expect(screen.getAllByRole('heading').map((h) => h.textContent)).toEqual([
       'Home',
@@ -508,6 +510,25 @@ describe('the application routes', () => {
       expect(link).toHaveTextContent(
         'What customers see about Ararat Investigations, and the colours it uses.',
       );
+      // Its people, teams and investigators (T-093).
+      const console = [
+        [
+          /^People/,
+          '/agency/people',
+          'Members of Ararat Investigations, their roles, and invitations.',
+        ],
+        [/^Teams/, '/agency/teams', 'Group the members of Ararat Investigations into teams.'],
+        [
+          /^Investigators/,
+          '/agency/investigators',
+          'The investigator profiles Ararat Investigations runs for its members.',
+        ],
+      ] as const;
+      for (const [name, href, body] of console) {
+        const to = within(agencies).getByRole('link', { name });
+        expect(to).toHaveAttribute('href', href);
+        expect(to).toHaveTextContent(body);
+      }
     });
 
     it('offers neither from a Personal workspace, or when none is listed', async () => {
@@ -550,6 +571,7 @@ describe('the application routes', () => {
       expect(screen.getByRole('heading', { level: 1, name: 'Agency profile' })).toBeVisible();
       expect(screen.getByText('What customers see about Ararat Checks, and the colours it uses.'));
       expect(screen.getAllByRole('region').map((r) => r.id)).toEqual(['profile', 'branding']);
+      expect(screen.getByRole('navigation', { name: catalogs.en.agency.nav.label })).toBeVisible();
       expect(screen.getByRole('textbox', { name: 'Headline' })).toHaveValue(
         'Due diligence across the Caucasus',
       );
@@ -687,7 +709,9 @@ describe('the application routes', () => {
       renderIntl(await resolveServer(await InvestigatorPage()));
       expect(screen.getByText(en.areas.empty)).toBeVisible();
       expect(screen.getByText(en.verification.none)).toBeVisible();
-      expect(screen.getByText(en.specialties.none)).toBeInTheDocument();
+      // No specialties to choose from is said as such — not an empty list (T-093, axe).
+      expect(screen.getByText(en.specialties.unavailable)).toBeVisible();
+      expect(screen.queryByRole('listbox')).toBeNull();
     });
 
     it.each([

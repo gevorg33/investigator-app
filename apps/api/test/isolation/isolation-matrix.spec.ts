@@ -346,6 +346,79 @@ describe('the isolation matrix', () => {
     });
   });
 
+  describe('investigator profiles under workspaces (T-087)', () => {
+    /** An agency with an owner and an agent, and a draft profile it holds for the agent. */
+    const agencyWithProfile = async () => {
+      const boss = await member(owner);
+      const agent = await member(owner);
+      const { tenantId } = await agency(owner, [
+        { userId: boss.actor.userId },
+        { userId: agent.actor.userId, role: 'INVESTIGATOR' },
+      ]);
+      const [profile] = await owner<{ id: string }[]>`
+        INSERT INTO investigator_profiles (user_id, tenant_id)
+        VALUES (${agent.actor.userId}, ${tenantId}) RETURNING id`;
+      return { tenantId, boss, agent, profileId: profile!.id };
+    };
+
+    const workspaceSeen = async (context: ExecutionContext, tenantId: string) => {
+      const [row] = await as(
+        context,
+        (tx) => tx<{ n: number }[]>`SELECT count(*)::int AS n FROM tenants WHERE id = ${tenantId}`,
+      );
+      return row!.n;
+    };
+
+    it('shows the workspace behind a published profile to any workspace, only while published', async () => {
+      const a = await agencyWithProfile();
+      expect(await workspaceSeen(outsider, a.tenantId)).toBe(0);
+      await owner`UPDATE investigator_profiles SET visibility = 'PUBLISHED' WHERE id = ${a.profileId}`;
+      expect(await workspaceSeen(outsider, a.tenantId)).toBe(1);
+      await owner`UPDATE investigator_profiles SET visibility = 'DRAFT' WHERE id = ${a.profileId}`;
+      expect(await workspaceSeen(outsider, a.tenantId)).toBe(0);
+      // An independent investigator's Personal workspace, the same way: the graph's profile is a draft.
+      expect(await workspaceSeen(outsider, graph.supplier.tenantId)).toBe(0);
+    });
+
+    it('lets an agency make a profile only for its own member, whoever writes', async () => {
+      const a = await agencyWithProfile();
+      const stranger = await member(owner);
+      const inAgency = await agencyContext(owner, a.boss.actor.userId, a.tenantId);
+      // Row-level security admits the row — it is the agency's — and the key refuses it at commit.
+      await expect(
+        as(
+          inAgency,
+          (tx) => tx`INSERT INTO investigator_profiles (user_id) VALUES (${stranger.actor.userId})`,
+        ),
+      ).rejects.toMatchObject({ constraint_name: 'investigator_profiles_membership_fk' });
+      // Its own member is fine, and lands in the agency.
+      const [made] = await as(
+        inAgency,
+        (tx) =>
+          tx<{ tenant_id: string }[]>`
+          INSERT INTO investigator_profiles (user_id) VALUES (${a.boss.actor.userId})
+          RETURNING tenant_id`,
+      );
+      expect(made!.tenant_id).toBe(a.tenantId);
+    });
+
+    it('withdraws a departing member’s profile, written as the agency itself', async () => {
+      const a = await agencyWithProfile();
+      await owner`UPDATE investigator_profiles SET visibility = 'PUBLISHED', accepting_work = true
+                   WHERE id = ${a.profileId}`;
+      const inAgency = await agencyContext(owner, a.boss.actor.userId, a.tenantId);
+      await as(
+        inAgency,
+        (tx) =>
+          tx`UPDATE tenant_memberships SET status = 'SUSPENDED'
+            WHERE tenant_id = ${a.tenantId} AND user_id = ${a.agent.actor.userId}`,
+      );
+      const [row] = await owner<{ visibility: string; accepting_work: boolean }[]>`
+        SELECT visibility, accepting_work FROM investigator_profiles WHERE id = ${a.profileId}`;
+      expect(row).toEqual({ visibility: 'DRAFT', accepting_work: false });
+    });
+  });
+
   describe('joining an agency by invitation (T-085)', () => {
     /** A person with a confirmed address, their Personal workspace as their context. */
     const person = async () => {

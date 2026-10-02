@@ -16,7 +16,7 @@ import {
   type TestDb,
 } from '../../../../../test/search-fixtures';
 import { asRequests, scopedDb } from '../../../../../test/workspace-context';
-import { agency } from '../../../../../test/workspace-fixtures';
+import { agency, member } from '../../../../../test/workspace-fixtures';
 import { AuditService } from '../../../../common/audit/audit.service';
 import { AuthzService } from '../../../../common/authz/authz.service';
 import type { Actor } from '../../../../common/authz/contract';
@@ -262,6 +262,8 @@ describe('assistant discovery tools (T-018)', () => {
     const [result] = out.results;
     expect(Object.keys(result!).sort()).toEqual(
       [
+        // The agency they work for, by name; null for an independent investigator (T-087).
+        'agency',
         'availability',
         'distanceKm',
         'headline',
@@ -281,7 +283,34 @@ describe('assistant discovery tools (T-018)', () => {
     for (const leak of ['hacking', '555-0142', '9876543', 'AMD', String(centre.lon), 'userId']) {
       expect(json).not.toContain(leak);
     }
-    expect(result).toMatchObject({ headline: 'Records research', verificationStatus: 'VERIFIED' });
+    expect(result).toMatchObject({
+      headline: 'Records research',
+      verificationStatus: 'VERIFIED',
+      agency: null,
+    });
+  });
+
+  it('names the agency an investigator works for, and leaves out one whose agency is suspended (T-087)', async () => {
+    const centre = offGrid();
+    const boss = await member(owner);
+    const agent = await member(owner, { roles: ['INVESTIGATOR'] });
+    const { tenantId } = await agency(owner, [
+      { userId: boss.actor.userId },
+      { userId: agent.actor.userId, role: 'INVESTIGATOR' },
+    ]);
+    const held = await mine({ centre, heldIn: { tenantId, userId: agent.actor.userId } });
+    const [registered] = await owner<
+      { name: string }[]
+    >`SELECT name FROM tenants WHERE id = ${tenantId}`;
+
+    const [result] = (await find({ near: { ...centre, radiusKm: 0 } })).results;
+    expect(result).toMatchObject({
+      investigatorId: held.profileId,
+      agency: { id: tenantId, name: registered!.name },
+    });
+
+    await owner`UPDATE tenants SET status = 'SUSPENDED' WHERE id = ${tenantId}`;
+    expect(ids(await find({ near: { ...centre, radiusKm: 0 } }))).toEqual([]);
   });
 
   describe('relevance', () => {

@@ -1,7 +1,10 @@
 import type { AiMessage, AiSession, DiscoveryAnswer, InvestigatorMatch } from '@/lib/api/assistant';
 import type { Account } from '@/lib/api/server';
 import type {
+  AgencyInvestigatorView,
   BrandingSection,
+  EmployeeView,
+  InvitationView,
   LegalDocument,
   MissionListing,
   OwnAgencyProfile,
@@ -9,6 +12,7 @@ import type {
   OwnMission,
   OwnServiceArea,
   SessionSummary,
+  TeamView,
   VerificationApplication,
   WorkspaceView,
 } from '@/lib/api/types';
@@ -173,6 +177,7 @@ export const ownProfile = (over: Partial<OwnInvestigatorProfile> = {}): OwnInves
   contactPhone: '+37410000000',
   visibility: 'PUBLISHED',
   verificationStatus: 'VERIFIED',
+  agency: null,
   ...over,
 });
 
@@ -324,4 +329,56 @@ export const brandingSection = (over: Partial<BrandingSection> = {}): BrandingSe
 export const deliveryUrl = (name: string) => ({
   signedUrl: `https://res.example.test/${name}.png?signature=sig`,
   expiresAt: '2026-09-27T12:00:00.000Z',
+});
+
+/** A member of the agency, as `GET /agencies/current/members` lists them (T-085). */
+export const employee = (over: Partial<EmployeeView> = {}): EmployeeView => ({
+  membershipId: 'm-ani',
+  userId: 'u-ani',
+  email: 'ani@ararat.test',
+  displayName: 'Ani Petrosyan',
+  status: 'ACTIVE',
+  roles: ['INVESTIGATOR'],
+  jobTitle: null,
+  department: null,
+  locale: null,
+  timezone: null,
+  joinedAt: '2026-09-27T10:00:00.000Z',
+  you: false,
+  ...over,
+});
+
+/** An invitation into the agency, still waiting (T-085). */
+export const invitation = (over: Partial<InvitationView> = {}): InvitationView => ({
+  id: 'inv-1',
+  email: 'davit@ararat.test',
+  role: 'INVESTIGATOR',
+  status: 'PENDING',
+  expiresAt: '2026-10-09T10:00:00.000Z',
+  invitedAt: '2026-10-02T10:00:00.000Z',
+  lastSentAt: '2026-10-02T10:00:00.000Z',
+  sentCount: 1,
+  acceptedAt: null,
+  ...over,
+});
+
+/** A team and its members (T-086). */
+export const team = (over: Partial<TeamView> = {}): TeamView => ({
+  id: 'team-1',
+  name: 'Yerevan office',
+  description: null,
+  members: [],
+  createdAt: '2026-10-01T10:00:00.000Z',
+  ...over,
+});
+
+/** A profile the agency holds for a member (T-087). */
+export const agencyInvestigator = (
+  over: Partial<AgencyInvestigatorView> = {},
+): AgencyInvestigatorView => ({
+  ...ownProfile({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } }),
+  id: 'p-held',
+  membershipId: 'm-ani',
+  holderStatus: 'ACTIVE',
+  ...over,
 });

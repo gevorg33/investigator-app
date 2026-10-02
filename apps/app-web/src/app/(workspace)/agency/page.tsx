@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { BrandingForm } from '@/components/agency/branding-form';
+import { AgencyNav } from '@/components/agency/console/agency-nav';
 import { ProfileEditor } from '@/components/agency/profile-editor';
 import { Page } from '@/components/page';
 import { SectionCard } from '@/components/section-card';
@@ -54,6 +55,7 @@ export default async function AgencyPage() {
       <p className="mt-1 text-sm text-text-muted">
         {t('agency.intro', { name: profile?.name ?? registeredName })}
       </p>
+      <AgencyNav />
       <SectionCard id="profile" title={t('agency.profile.title')} body={t('agency.profile.body')}>
         {profile === null ? (
           forbidden

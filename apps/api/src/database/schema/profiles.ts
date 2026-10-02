@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants';
+import { tenantMemberships, tenants } from './tenants';
 import { taxonomyNodes } from './taxonomy';
 import { users } from './users';
 
@@ -151,6 +151,15 @@ export const investigatorProfiles = pgTable(
     ),
     unique('investigator_profiles_id_tenant_unique').on(t.id, t.tenantId),
     index('investigator_profiles_tenant_idx').on(t.tenantId),
+    // Held by one membership of the workspace it belongs to (T-087): an agency can make a profile
+    // only for its own member, whoever writes. NO ACTION and DEFERRABLE INITIALLY DEFERRED, set by
+    // hand in migration 0037, so deleting a user — whose Personal membership and profile cascade
+    // away in the same statement — is checked at commit, as the membership's own key is.
+    foreignKey({
+      name: 'investigator_profiles_membership_fk',
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [tenantMemberships.tenantId, tenantMemberships.userId],
+    }),
     // Serves the uniqueness rule itself, and ProfilesService's "is this name taken" on save.
     uniqueIndex('investigator_profiles_pseudonym_unique').on(sql`lower(${t.pseudonym})`),
     check(

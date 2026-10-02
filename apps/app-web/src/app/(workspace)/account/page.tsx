@@ -44,8 +44,8 @@ export default async function AccountPage({
     getOutstanding(),
     getWorkspaces(),
   ]);
-  // In an agency, its details (T-150) and its profile (T-094) are a tap away; each page decides
-  // what the reader may change.
+  // In an agency, its details (T-150), its profile (T-094), and its people, teams and investigators
+  // (T-093) are a tap away; each page decides what the reader may change.
   const agency = workspaces.find((w) => w.current && w.kind === 'AGENCY');
   const agencyLinks = [
     {
@@ -54,6 +54,13 @@ export default async function AccountPage({
       body: 'workspace.agency_details.link_body',
     },
     { href: '/agency', title: 'agency.link', body: 'agency.link_body' },
+    { href: '/agency/people', title: 'agency.people.link', body: 'agency.people.link_body' },
+    { href: '/agency/teams', title: 'agency.teams.link', body: 'agency.teams.link_body' },
+    {
+      href: '/agency/investigators',
+      title: 'agency.investigators.link',
+      body: 'agency.investigators.link_body',
+    },
   ] as const;
   return (
     <Page title={t('nav.account')}>

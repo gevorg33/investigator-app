@@ -13,8 +13,14 @@ import { OwnInvestigatorProfileRepository } from '../profiles/profiles.repositor
 import { MAX_AREAS_PER_PROFILE } from './service-areas.policy';
 import { ServiceAreasService } from './service-areas.service';
 import { testPool } from '../../../test/db';
-import { member } from '../../../test/workspace-fixtures';
-import { asRequests, inWorkspaceOf, scopedDb } from '../../../test/workspace-context';
+import { agency, member } from '../../../test/workspace-fixtures';
+import {
+  agencyContext,
+  asRequests,
+  inWorkspaceOf,
+  scopedDb,
+} from '../../../test/workspace-context';
+import { runInContext } from '../../common/context/execution-context';
 
 describe('service areas', () => {
   let sql: postgres.Sql;
@@ -23,6 +29,8 @@ describe('service areas', () => {
   let ownerSql: postgres.Sql;
   let ownerDb: TestDb;
   let areas: ServiceAreasService;
+  /** The same service without the harness that enters the caller's Personal workspace. */
+  let raw: ServiceAreasService;
   /** Someone in another workspace, doing the searching. */
   let searcher: { userId: string };
   const req = () => ({ ip: '198.51.100.50', userAgent: 'vitest', correlationId: randomUUID() });
@@ -36,16 +44,43 @@ describe('service areas', () => {
   });
 
   beforeEach(() => {
-    areas = asRequests(
-      new ServiceAreasService(
-        db,
-        new AuthzService(new AuditService(db)),
-        new AuditService(db),
-        new OwnInvestigatorProfileRepository(db),
-      ),
-      ownerSql,
+    raw = new ServiceAreasService(
+      db,
+      new AuthzService(new AuditService(db)),
+      new AuditService(db),
+      new OwnInvestigatorProfileRepository(db),
     );
+    areas = asRequests(raw, ownerSql);
   });
+
+  /**
+   * An agency with an owner, a viewer and an agent, and a published, verified profile it holds for
+   * the agent (T-087). `in(who)` runs a call in that person's context in the agency.
+   */
+  const agencyWithProfile = async () => {
+    const owner = await member(ownerSql);
+    const viewer = await member(ownerSql);
+    const agent = await member(ownerSql, { roles: ['INVESTIGATOR'] });
+    const { tenantId } = await agency(ownerSql, [
+      { userId: owner.actor.userId },
+      { userId: viewer.actor.userId, role: 'VIEWER' },
+      { userId: agent.actor.userId, role: 'INVESTIGATOR' },
+    ]);
+    const [profile] = await ownerDb
+      .insert(schema.investigatorProfiles)
+      .values({
+        userId: agent.actor.userId,
+        tenantId,
+        visibility: 'PUBLISHED',
+        acceptingWork: true,
+        verificationStatus: 'VERIFIED',
+        verifiedAt: new Date(),
+      })
+      .returning();
+    const inAgency = async <T>(who: { actor: { userId: string } }, fn: () => Promise<T>) =>
+      runInContext(await agencyContext(ownerSql, who.actor.userId, tenantId), fn);
+    return { tenantId, owner, viewer, agent, profileId: profile!.id, in: inAgency };
+  };
 
   afterAll(async () => {
     await sql.end();
@@ -58,6 +93,11 @@ describe('service areas', () => {
     centre: at,
     radiusKm,
   });
+
+  // Coverage is read by whoever is searching: another workspace entirely, seeing published
+  // profiles and their areas through the public projection (T-077).
+  const coverage = async (...args: Parameters<ServiceAreasService['findCoverage']>) =>
+    inWorkspaceOf(ownerSql, searcher.userId, () => areas.findCoverage(...args));
 
   describe('managing your own areas', () => {
     it('coarsens a radius centre to about a kilometre before storing it', async () => {
@@ -238,11 +278,82 @@ describe('service areas', () => {
     });
   });
 
+  describe('an agency’s areas for a profile it holds (T-087)', () => {
+    it('are managed by whoever holds investigators.update there, and audited as the agency’s', async () => {
+      const a = await agencyWithProfile();
+      const at = somewhere();
+      const created = await a.in(a.owner, () =>
+        raw.createForAgency(a.owner.actor as never, a.profileId, radius(at, 10), req()),
+      );
+      expect(created).toMatchObject({ kind: 'RADIUS', radiusKm: 10, centre: at });
+      // The same areas the holder sees as their own, in the agency.
+      expect(await a.in(a.agent, () => raw.listMine(a.agent.actor as never, req()))).toEqual([
+        created,
+      ]);
+      // And what discovery reads.
+      expect(await coverage(at)).toContainEqual({ profileId: a.profileId, distanceKm: 0 });
+
+      await a.in(a.owner, () =>
+        raw.deleteForAgency(a.owner.actor as never, a.profileId, created.id, req()),
+      );
+      expect(
+        await a.in(a.owner, () => raw.listForAgency(a.owner.actor as never, a.profileId, req())),
+      ).toEqual([]);
+      const reasons = await ownerDb
+        .select({ action: auditLogs.action, reason: auditLogs.reason })
+        .from(auditLogs)
+        .where(eq(auditLogs.resourceId, created.id));
+      expect(reasons).toEqual(
+        expect.arrayContaining([
+          { action: 'service_area.created', reason: 'RADIUS' },
+          { action: 'service_area.deleted', reason: 'agency' },
+        ]),
+      );
+    });
+
+    it('are read, not changed, by a member holding only investigators.read', async () => {
+      const a = await agencyWithProfile();
+      expect(
+        await a.in(a.viewer, () => raw.listForAgency(a.viewer.actor as never, a.profileId, req())),
+      ).toEqual([]);
+      await expect(
+        a.in(a.viewer, () =>
+          raw.createForAgency(a.viewer.actor as never, a.profileId, radius(somewhere()), req()),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+    });
+
+    it('reach no profile outside the agency, nor anything outside an agency', async () => {
+      const a = await agencyWithProfile();
+      const other = await agencyWithProfile();
+      const independent = await investigator(ownerDb);
+      for (const profileId of [other.profileId, independent.profileId]) {
+        await expect(
+          a.in(a.owner, () => raw.listForAgency(a.owner.actor as never, profileId, req())),
+        ).rejects.toMatchObject({ status: 404 });
+      }
+      // Another profile's area id is the same 404 as one that never existed.
+      const theirs = await other.in(other.owner, () =>
+        raw.createForAgency(
+          other.owner.actor as never,
+          other.profileId,
+          radius(somewhere()),
+          req(),
+        ),
+      );
+      await expect(
+        a.in(a.owner, () =>
+          raw.deleteForAgency(a.owner.actor as never, a.profileId, theirs.id, req()),
+        ),
+      ).rejects.toMatchObject({ status: 404 });
+      // In a Personal workspace there is no agency to hold anything.
+      await expect(
+        areas.listForAgency(a.owner.actor as never, a.profileId, req()),
+      ).rejects.toMatchObject({ status: 403 });
+    });
+  });
+
   describe('coverage', () => {
-    // Coverage is read by whoever is searching: another workspace entirely, seeing published
-    // profiles and their areas through the public projection (T-077).
-    const coverage = async (...args: Parameters<ServiceAreasService['findCoverage']>) =>
-      inWorkspaceOf(ownerSql, searcher.userId, () => areas.findCoverage(...args));
     it('finds an investigator whose area contains the point, at distance 0', async () => {
       const at = somewhere();
       const { actor, profileId } = await investigator(ownerDb);
@@ -303,6 +414,17 @@ describe('service areas', () => {
       const ids = (await coverage(at)).map((c) => c.profileId);
       expect(ids).not.toContain(draft.profileId);
       expect(ids).not.toContain(busy.profileId);
+    });
+
+    it('leaves out a profile whose agency is not ACTIVE (T-087)', async () => {
+      const a = await agencyWithProfile();
+      const at = somewhere();
+      await a.in(a.owner, () =>
+        raw.createForAgency(a.owner.actor as never, a.profileId, radius(at, 10), req()),
+      );
+      expect((await coverage(at)).map((c) => c.profileId)).toContain(a.profileId);
+      await ownerSql`UPDATE tenants SET status = 'SUSPENDED' WHERE id = ${a.tenantId}`;
+      expect((await coverage(at)).map((c) => c.profileId)).not.toContain(a.profileId);
     });
 
     it('returns an id and a whole-kilometre distance, and nothing that locates an area', async () => {
