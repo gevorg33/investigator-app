@@ -121,6 +121,9 @@ Identity — the legal name, email, phone — is the account's and is never copi
   for a Personal workspace; otherwise the published agency profile's display name, else the
   registered name (a draft agency profile's name is never used, so the preview matches). Discovery,
   the assistant's `searchInvestigators` output and the profile page take it from the same projection.
+  app-web shows it as "Works for {name}" under the investigator's name (`AgencyLine`, T-185) on the
+  discovery card, the profile page, the assistant's card and the holder's preview; nothing for `null`,
+  nor for a stored assistant reply from before the field existed.
 - **Quoting as the agency.** A member holding `investigations.create` quotes with the profile the
   agency holds for them, published, verified and accepting work as discovery requires; the quote's
   supplier party is the agency. Their Personal profile never acts for the agency (404). Naming

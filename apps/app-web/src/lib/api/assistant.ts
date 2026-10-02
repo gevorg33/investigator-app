@@ -116,6 +116,11 @@ export interface InvestigatorMatch {
    */
   name: string | null;
   nameCode: string;
+  /**
+   * The agency they work for, or null for an independent one (T-087). Absent on a reply stored
+   * before discovery carried it: the reply is kept whole, as it was given.
+   */
+  agency?: { id: string; name: string | null } | null;
   headline: string | null;
   yearsExperience: number | null;
   verificationStatus: 'VERIFIED';

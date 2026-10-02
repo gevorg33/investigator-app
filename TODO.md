@@ -8241,7 +8241,7 @@ pnpm --filter api test invitations profiles
 ---
 
 ### T-185 — Show the agency an investigator works for (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; "Works for {agency}" (`AgencyLine`) under the name on the discovery card, profile page, assistant card and preview; e2e in `agency.e2e.ts`; KB customer v8/ru v4/hy v4, investigator v8/ru v5/hy v5
 - **Priority:** P2
 - **Depends on:** T-087
 - **Risk:** LOW
@@ -8256,9 +8256,9 @@ discovery card, the investigator's profile page, the assistant's result card and
 own preview, so a customer sees what `kb-customer-finding-investigator` v7 describes.
 
 **Acceptance criteria**
-- [ ] The agency's name appears where the investigator's name does, and nothing appears for an independent one
-- [ ] The preview shows it exactly as customers will see it
-- [ ] Verified at 375 and 1280; en/ru/hy
+- [x] The agency's name appears where the investigator's name does, and nothing appears for an independent one
+- [x] The preview shows it exactly as customers will see it
+- [x] Verified at 375 and 1280; en/ru/hy
 
 **Validation**
 ```bash
@@ -8322,6 +8322,34 @@ stay names to show, never something the client decides from.
 **Validation**
 ```bash
 pnpm --filter api test workspaces && pnpm --filter @investigator/app-web test
+```
+
+---
+
+### T-188 — Specialty badges that do not wrap widen a phone page
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/investigator/public-profile-card.tsx, apps/app-web/src/components/ui/badge.tsx
+
+**Description**
+From T-185. `Badge` is `whitespace-nowrap`, and `PublicProfileCard` shows each specialty as one. A
+long label — an unbroken 60-character node with no label in the reader's language, which the profile
+shows by its id or slug — ran past the preview drawer at 375px and made the whole page wider than
+the screen: on an emulated phone, Playwright could no longer hit the drawer's Close button. Real labels
+are short today, but a translation or an unlabelled node is not bounded. Let a specialty badge wrap
+(or truncate with its full text available) without changing the badge everywhere else.
+
+**Acceptance criteria**
+- [ ] A 60-character unbroken specialty leaves `/account/investigator`'s preview and `/missions/investigators/[id]` without horizontal scroll at 375px
+- [ ] Other badges are unchanged
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

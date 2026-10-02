@@ -691,6 +691,7 @@ export const ru: Catalog = {
   investigator: {
     public_name: {
       unnamed: 'Детектив {code}',
+      agency: 'Работает в агентстве «{name}»',
     },
     title: 'Профиль детектива',
     intro: 'Что видят заказчики, где вы работаете и ваша проверка.',

@@ -9,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { InvestigatorMatch, MatchReason } from '@/lib/api/assistant';
 import { labels, languageName, list, placeName, windowParts } from './discovery-format';
 import { investigatorName } from '@/lib/investigator-name';
+import { AgencyLine } from '@/components/investigator/agency-line';
 
 /**
  * One investigator a search found (T-059), as a card: who they are in their own words (name,
- * headline), that they are verified, and why they are here — **only** from `matchedOn` and
+ * the agency they work for, headline), that they are verified, and why they are here — **only** from `matchedOn` and
  * `notMatched`, as the search returned them. No sentence on it was written by a model
  * (`investigator-discovery`): each reason is a code phrased here, from the data.
  */
@@ -51,6 +52,7 @@ export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
         <CardTitle id={title}>
           {investigatorName(match, (code) => ti('public_name.unnamed', { code }))}
         </CardTitle>
+        <AgencyLine agency={match.agency} />
         {match.headline !== null && <p className="text-text-muted">{match.headline}</p>}
         <p className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="secondary">

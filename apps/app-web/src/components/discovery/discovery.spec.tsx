@@ -200,6 +200,26 @@ describe('finding investigators', () => {
     expect(bodies()).toEqual([{ taxonomyNodeIds: [DD] }]);
   });
 
+  it('names the agency an investigator works for under their name, and none for an independent one (T-185)', async () => {
+    api.on(
+      SEARCH,
+      200,
+      page([
+        result({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } }),
+        result({ id: 'p-2', name: 'Davit' }),
+      ]),
+    );
+    discovery();
+    const agent = await screen.findByRole('article', { name: 'Ararat Lantern' });
+    const title = within(agent).getByRole('heading', { name: 'Ararat Lantern' });
+    const line = within(agent).getByText('Works for Ararat Investigations').closest('p')!;
+    // Directly under the name, before their line.
+    expect(title.nextElementSibling).toBe(line);
+    expect(line.nextElementSibling).toHaveTextContent('Corporate due diligence in the Caucasus');
+    const independent = screen.getByRole('article', { name: 'Davit' });
+    expect(independent).not.toHaveTextContent('Works for');
+  });
+
   it('says nothing it was not told: no match line, no distance, no pricing, no name', async () => {
     api.on(
       SEARCH,

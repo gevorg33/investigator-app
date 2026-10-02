@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Badge } from '@/components/ui/badge';
 import type { PublicInvestigatorProfile } from '@/lib/api/types';
 import { investigatorName } from '@/lib/investigator-name';
+import { AgencyLine } from './agency-line';
 
 const minutes = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -50,6 +51,7 @@ export function PublicProfileCard({
             {investigatorName(profile, (code) => t('public_name.unnamed', { code }))}
           </h3>
         )}
+        <AgencyLine agency={profile.agency} />
         {profile.headline !== null && <p className="text-text-muted">{profile.headline}</p>}
         <div className="mt-1 flex flex-wrap gap-2">
           {profile.verified && (

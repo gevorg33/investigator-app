@@ -694,6 +694,7 @@ export const hy: Catalog = {
   investigator: {
     public_name: {
       unnamed: 'Դետեկտիվ {code}',
+      agency: 'Աշխատում է «{name}» գործակալությունում',
     },
     title: 'Դետեկտիվի պրոֆիլ',
     intro: 'Ինչ են տեսնում պատվիրատուները, որտեղ եք աշխատում և ձեր ստուգումը։',

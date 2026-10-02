@@ -404,6 +404,9 @@ decision, 2026-09-26). Someone working as an investigator is sent back to Missio
   narrowing, "No investigators are listed yet".
 - **Why listed** comes only from the API's `matchedOn` and `notMatched` — the card phrases them and
   adds nothing.
+- **The agency** (T-185): an agency's investigator carries "Works for {agency}" (`AgencyLine`)
+  directly under their name on the card, the profile page, the assistant's card and the preview; an
+  independent one has no line. It wraps anywhere, so a 200-character name cannot widen a phone page.
 - **The profile page** (`/missions/investigators/[id]`) is `PublicProfileCard` (T-123's preview, now
   with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
   the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
@@ -483,7 +486,7 @@ by a fresh one saying "That conversation is no longer available", showing nothin
 
 **Structured results (T-059).** A discovery reply renders from its stored answer, never as prose:
 what was searched, said out loud (and "every area" when no place was named), the order, then each
-investigator as a card (`InvestigatorCard`): name and headline in their own words, Verified,
+investigator as a card (`InvestigatorCard`): name, the agency they work for (T-185) and headline in their own words, Verified,
 experience, the reasons from `matchedOn` / `notMatched` — a gap said plainly — and languages,
 specialties and declared hours, all phrased here in the reader's language (`discovery-format.ts`:
 `Intl.DisplayNames`, `ListFormat`, weekdays from Monday). At most ten; "more match" says how to

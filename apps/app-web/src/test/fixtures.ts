@@ -212,6 +212,7 @@ export const investigatorMatch = (over: Partial<InvestigatorMatch> = {}): Invest
   investigatorId: 'inv-1',
   name: 'Silver Fox',
   nameCode: 'M3R8',
+  agency: null,
   headline: 'Corporate due diligence across the South Caucasus',
   yearsExperience: 9,
   verificationStatus: 'VERIFIED',

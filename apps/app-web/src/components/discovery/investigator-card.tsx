@@ -5,6 +5,7 @@ import { BadgeCheck, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'use-intl';
 import { investigatorName } from '@/lib/investigator-name';
+import { AgencyLine } from '@/components/investigator/agency-line';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { InvestigatorSearchResult } from '@/lib/api/types';
@@ -12,7 +13,7 @@ import { DISCOVERY_PATH } from './discovery-query';
 
 /**
  * One investigator a search found (T-120), as an `article` named by their name: verified, how far,
- * their line; why they are listed — only from what the search matched on, never a reason the API
+ * the agency they work for (T-185), their line; why they are listed — only from what the search matched on, never a reason the API
  * did not give (`discovery.md`) — and, when some specialties asked for are not theirs, that too;
  * then languages, experience and how they charge. Matches (T-107) will reuse it.
  */
@@ -73,6 +74,7 @@ export function InvestigatorCard({
               {name}
             </Link>
           </CardTitle>
+          <AgencyLine agency={result.agency} />
           {result.headline !== null && <p className="text-text-muted">{result.headline}</p>}
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
