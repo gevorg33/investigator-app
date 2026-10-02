@@ -8241,7 +8241,7 @@ pnpm --filter api test invitations profiles
 ---
 
 ### T-185 — Show the agency an investigator works for (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; "Works for {agency}" (`AgencyLine`) under the name on the discovery card, profile page, assistant card and preview; e2e in `agency.e2e.ts`; KB customer v8/ru v4/hy v4, investigator v8/ru v5/hy v5
 - **Priority:** P2
 - **Depends on:** T-087
 - **Risk:** LOW
@@ -8256,9 +8256,9 @@ discovery card, the investigator's profile page, the assistant's result card and
 own preview, so a customer sees what `kb-customer-finding-investigator` v7 describes.
 
 **Acceptance criteria**
-- [ ] The agency's name appears where the investigator's name does, and nothing appears for an independent one
-- [ ] The preview shows it exactly as customers will see it
-- [ ] Verified at 375 and 1280; en/ru/hy
+- [x] The agency's name appears where the investigator's name does, and nothing appears for an independent one
+- [x] The preview shows it exactly as customers will see it
+- [x] Verified at 375 and 1280; en/ru/hy
 
 **Validation**
 ```bash
@@ -8268,7 +8268,7 @@ pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web 
 ---
 
 ### T-186 — `loading.tsx` and streamed segments: refresh that never commits, copies left in the DOM
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; cause is upstream (vercel/next.js#86151, fixed in 16.3.0, not in 15.x); all three mission `loading.tsx` removed, `src/app/loading-states.spec.ts` keeps them out below 16.3; `e2e/missions.e2e.ts`; `app-web.md` "Route loading states"
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -8287,9 +8287,9 @@ decide per route whether its loading state earns its place, and prove the missio
 change (cancelling, editing a draft) in the production build.
 
 **Acceptance criteria**
-- [ ] Every page with a `loading.tsx` above it shows a save without a reload, in the production build, checked by Playwright
-- [ ] No streamed copy of a page is left in the DOM after hydration
-- [ ] app-web.md says what was found and which routes keep a loading state
+- [x] Every page with a `loading.tsx` above it shows a save without a reload, in the production build, checked by Playwright
+- [x] No streamed copy of a page is left in the DOM after hydration
+- [x] app-web.md says what was found and which routes keep a loading state
 
 **Validation**
 ```bash
@@ -8322,6 +8322,91 @@ stay names to show, never something the client decides from.
 **Validation**
 ```bash
 pnpm --filter api test workspaces && pnpm --filter @investigator/app-web test
+```
+
+---
+
+### T-188 — Specialty badges that do not wrap widen a phone page
+- **Status:** DONE — 2026-10-03; specialty badges wrap on `PublicProfileCard` and `SpecialtiesPicker` (the picker widened the page too); `agency.e2e.ts` keeps a 60-character slug and checks for sideways scroll; `app-web.md` "Long specialty labels"
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/investigator/public-profile-card.tsx, apps/app-web/src/components/ui/badge.tsx
+
+**Description**
+From T-185. `Badge` is `whitespace-nowrap`, and `PublicProfileCard` shows each specialty as one. A
+long label — an unbroken 60-character node with no label in the reader's language, which the profile
+shows by its id or slug — ran past the preview drawer at 375px and made the whole page wider than
+the screen: on an emulated phone, Playwright could no longer hit the drawer's Close button. Real labels
+are short today, but a translation or an unlabelled node is not bounded. Let a specialty badge wrap
+(or truncate with its full text available) without changing the badge everywhere else.
+
+**Acceptance criteria**
+- [x] A 60-character unbroken specialty leaves `/account/investigator`'s preview and `/missions/investigators/[id]` without horizontal scroll at 375px
+- [x] Other badges are unchanged
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-189 — Move to Next 16.3+, then decide again where a route loading state earns its place
+- **Status:** TODO — gated on the version bar: 16.3 must have been out long enough (CLAUDE.md, "Pinned versions")
+- **Priority:** P3
+- **Depends on:** T-186
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a major framework bump is the owner's call (as T-179)
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/package.json, apps/admin-web/package.json, apps/marketing-web/package.json, apps/app-web/src/app/**/loading.tsx
+
+**Description**
+From T-186. Next 15's router can lose a `router.refresh()` under a `loading.tsx` (vercel/next.js#86151);
+the fix (vercel/next.js#95391) shipped in 16.3.0 and was not backported, so app-web has no route
+loading states and `src/app/loading-states.spec.ts` refuses one. Navigating to a slow page now shows
+the previous one until the next is ready, with no sign that anything is happening. On 16.3+ the guard
+lets go: restore a loading state only where the wait needs one, and prove it with the same journeys.
+
+**Acceptance criteria**
+- [ ] On Next ≥ 16.3 (peer ranges checked: React, eslint-config-next, typescript-eslint)
+- [ ] `/agency/loading.tsx` restored temporarily: `agency.e2e.ts` passes 10 of 10 in the production build — the evidence the fix holds here
+- [ ] Each loading state brought back is named in `app-web.md` with why it earns its place; `missions.e2e.ts` and `agency.e2e.ts` pass with them
+
+**Validation**
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-190 — `/account/investigator` fails with a server error when the reader shows the platform as a customer
+- **Status:** DONE — 2026-10-03; `/account/investigator` and Account's link to it use `actsAsInvestigator`; unit tests (seen failing first) and a step in `agency.e2e.ts`; `app-web.md`, KB `kb-customer-getting-started` en/ru/hy
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/(workspace)/account/investigator/page.tsx
+
+**Description**
+From T-188. Someone holding both roles who chooses **Show the platform as: Customer** (T-127) and then
+opens their investigator profile — linked from Account — gets "Application error: a server-side
+exception". The page checks only that `INVESTIGATOR` is held, not the active role; the API narrows to
+the chosen role and answers `/profiles/investigator/me` with 403, which the page does not handle. It
+should do what `/missions` does with `actsAsInvestigator`: not offer the page while acting as a
+customer (redirect to Account, where the role choice is), rather than throw.
+
+**Acceptance criteria**
+- [x] Acting as a customer, `/account/investigator` lands on Account's role choice; no server error
+- [x] Acting as an investigator, or as both, the page is unchanged
+- [x] A test holds both roles with the customer one chosen
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

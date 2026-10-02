@@ -689,6 +689,7 @@ export const en = {
   investigator: {
     public_name: {
       unnamed: 'Investigator {code}',
+      agency: 'Works for {name}',
     },
     title: 'Investigator profile',
     intro: 'What customers see, where you work, and your verification.',

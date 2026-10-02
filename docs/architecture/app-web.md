@@ -156,7 +156,9 @@ the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Ro
 httpOnly, so the browser is told the role instead: `WorkspaceScope` pins it, and every browser call —
 `callApi` and the assistant's client alike — sends it as `X-Active-Role` too (T-145). Before that,
 someone with both roles who chose to act as a customer was their full self for every call made from
-the browser.
+the browser. Acting as a customer, `/account/investigator` sends them to `/account#roles` and Account
+does not link to it (`actsAsInvestigator`, as `/missions` does): the API answers every investigator
+read with 403 then, and the page threw a server error until T-190.
 
 **Time zone.** Stored on the account (`users.timezone`, validated as an IANA name — a fixed offset
 is refused because it ignores daylight saving). Every date on these screens is formatted in it. The
@@ -210,7 +212,8 @@ a `<details>`; it worked and looked like a form, not a product.
   description; place, distance and languages; then the budget, prominent, and the deadline — a
   deadline within 7 days is a `warning` badge that says "Due in 3 days". Budgets drop ".00" when both
   ends are whole (`formatMoneyRange`), and both ends always share one precision.
-- **Loading** is a skeleton of the controls and three cards (`missions/loading.tsx`).
+- **Loading:** no route skeleton since T-186 — the browse stays on screen until the new one is
+  ready ("Route loading states", below). The discovery list keeps its own in-page skeleton.
 - Refused by the API: 403 says what opens browsing; 422 names the filter to change. Saved searches
   are chips above the list; "Save this search" opens a name field and appears only when something
   is filtered or searched.
@@ -404,6 +407,9 @@ decision, 2026-09-26). Someone working as an investigator is sent back to Missio
   narrowing, "No investigators are listed yet".
 - **Why listed** comes only from the API's `matchedOn` and `notMatched` — the card phrases them and
   adds nothing.
+- **The agency** (T-185): an agency's investigator carries "Works for {agency}" (`AgencyLine`)
+  directly under their name on the card, the profile page, the assistant's card and the preview; an
+  independent one has no line. It wraps anywhere, so a 200-character name cannot widen a phone page.
 - **The profile page** (`/missions/investigators/[id]`) is `PublicProfileCard` (T-123's preview, now
   with a Verified badge and `named={false}` under the page's own heading) and `ProfileReviews`:
   the summary, then each review's stars (read as "4 out of 5"), date, words and reply, never the
@@ -483,7 +489,7 @@ by a fresh one saying "That conversation is no longer available", showing nothin
 
 **Structured results (T-059).** A discovery reply renders from its stored answer, never as prose:
 what was searched, said out loud (and "every area" when no place was named), the order, then each
-investigator as a card (`InvestigatorCard`): name and headline in their own words, Verified,
+investigator as a card (`InvestigatorCard`): name, the agency they work for (T-185) and headline in their own words, Verified,
 experience, the reasons from `matchedOn` / `notMatched` — a gap said plainly — and languages,
 specialties and declared hours, all phrased here in the reader's language (`discovery-format.ts`:
 `Intl.DisplayNames`, `ListFormat`, weekdays from Monday). At most ten; "more match" says how to
@@ -625,13 +631,44 @@ each sends the reader to `/account#agencies` (`currentAgency()`). API: `tenancy.
 - **No `loading.tsx` under `/agency`.** One was tried and removed: in the production build it left
   `router.refresh()` uncommitted on the dynamic `[id]` page — the refresh payload arrived, carried the
   new data, and was never applied, so a save did not show until a reload (0 of 5 refreshes applied with
-  it, 6 of 6 without; the e2e journey's heading check fails with it restored). `/missions` keeps its
-  own, and shows the related symptom of a streamed copy of the page left hidden in the DOM (T-186).
+  it, 6 of 6 without; the e2e journey's heading check fails with it restored). T-186 found the cause
+  and removed the rest ("Route loading states", below).
 
 **Browser flows:** `e2e/agency.e2e.ts` gained three steps at 375 and 1280 — invite, send again and
 cancel; a team made, filled, emptied, renamed and deleted; an investigator profile made for the owner,
 saved, its heading updated without a reload, and published — with axe on each page and open sheet.
 Checked by hand at 768: no page scrolls sideways.
+
+## Route loading states (T-186)
+
+**There are none, and `src/app/loading-states.spec.ts` keeps it that way while Next is below 16.3.**
+
+- **What was found.** With a `loading.tsx` above a page, Next 15.5.25's router sometimes never
+  commits a `router.refresh()` (or the `router.push` before it) in the production build: the RSC
+  request for the refreshed tree starts, the browser cancels it part-way (`net::ERR_ABORTED`, while
+  the same request replayed reads to the end), and the page keeps showing what it showed before the
+  save. It is upstream — vercel/next.js#86151, closed by vercel/next.js#95391 in **16.3.0**, not
+  backported to 15.x (15.5.27, T-179, does not have it). Whether it happens depends on how long the
+  page takes to render on the device: restoring `/agency/loading.tsx` failed the held-profile journey
+  3 of 3 — a lost name save, a lost publish switch, and once the empty state found twice — while the
+  mission pages passed every run with theirs, throttled (150 ms, 9 Mbit/s, CPU ×4) or not.
+- **Decided per route — none earns its place yet.** `/missions` (list, browse and discovery),
+  `/missions/[id]` and `/missions/new` each had a skeleton. Each sits above a page that saves and
+  refreshes: cancelling a draft (push + refresh), a cancel refused because the draft changed
+  (refresh in place), saved searches, blocking from a profile. A skeleton saves a moment of blank
+  waiting; the bug, when it hits a slow phone, loses a change the reader just made, silently. A
+  passing run cannot rule it out, so all three were removed. Without them the previous page stays on
+  screen until the next is ready.
+- **The streamed copy** (`<div hidden id="S:0">`) is the same boundary's: it is how a page streams in
+  behind a loading state. With no route loading state there is no such boundary; `missions.e2e.ts`
+  checks every page it visits for one, and for a second `main`.
+- **When Next reaches 16.3**, the guard lets go. A loading state comes back only where the wait is
+  long enough to need one, and only with `missions.e2e.ts` and `agency.e2e.ts` passing on it.
+
+**Browser flows:** `e2e/missions.e2e.ts` (new), at 375 and 1280 — an edited draft's title on
+Missions after "Finish later", a cancelled draft listed as cancelled, and a draft changed in another
+tab shown as it stands when cancelling it is refused — none with a reload, each page with one copy
+of itself; axe on the list and the draft.
 
 ## Cancelling a mission (T-154)
 
@@ -648,6 +685,17 @@ A published mission is not offered here (T-121).
 `BlockPerson` on an investigator's profile (a button) and on each browse card (**More actions**);
 Account → **People you blocked** (`BlocksSection`, `Unblock`). Asked first in an `AlertDialog`,
 shown at once when done, then refreshed. Rules and enforcement: `blocks.md`.
+
+## Long specialty labels (T-188)
+
+A specialty is shown by its label in the reader's language, or by its id when it has none, and
+neither has a bound on its length. On the public profile, its preview and the specialties picker,
+a specialty badge wraps (`max-w-full whitespace-normal wrap-anywhere`, on its `li` too) instead of
+staying on one line: a 60-character unbroken slug widened `/account/investigator` and its preview at
+375px, until the drawer's close button could not be hit. Wrapping rather than cutting short, as the
+mission card does with its category (T-178): a specialty is what the investigator does, and a hover
+title has no tap path. `agency.e2e.ts` keeps a 60-character slug and checks the preview, the page
+behind it and the customer's profile page for sideways scroll.
 
 ## Not found (T-151)
 

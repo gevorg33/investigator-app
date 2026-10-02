@@ -135,8 +135,17 @@ describe('where the profile stands', () => {
     expect(within(preview).getByRole('heading', { name: 'Ararat Lantern' })).toBeVisible();
     expect(preview).toHaveTextContent('Due diligence');
     expect(preview).not.toHaveTextContent('+37410000000');
+    expect(preview).not.toHaveTextContent('Works for');
     await user().click(within(preview).getByRole('button', { name: en.status.close }));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('previews the agency they work for, under their name, as a customer sees it (T-185)', async () => {
+    status(ownProfile({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } }));
+    await user().click(screen.getByRole('button', { name: en.status.preview }));
+    const preview = await screen.findByRole('dialog', { name: en.status.preview_title });
+    const name = within(preview).getByRole('heading', { name: 'Ararat Lantern' });
+    expect(name.nextElementSibling).toHaveTextContent('Works for Ararat Investigations');
   });
 });
 
@@ -202,6 +211,34 @@ describe('the public profile', () => {
     expect(article.querySelectorAll('[data-slot=badge]')).toHaveLength(0);
     expect(article.querySelectorAll('p')).toHaveLength(0);
     expect(within(article).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  it('names the agency they work for, as the customer will see it, and none for an independent one (T-185)', () => {
+    const { unmount } = card(
+      ownProfile({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } }),
+    );
+    const article = screen.getByRole('article', { name: 'Ararat Lantern' });
+    const line = within(article).getByText('Works for Ararat Investigations').closest('p')!;
+    expect(within(article).getByRole('heading').nextElementSibling).toBe(line);
+    unmount();
+    // The profile page heads the card with the name itself: the agency still leads the card.
+    const page = renderIntl(
+      <PublicProfileCard
+        profile={ownProfile({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } })}
+        specialties={new Map(SPECIALTIES)}
+        named={false}
+      />,
+    );
+    expect(
+      screen.getByRole('article').querySelector('header')!.firstElementChild,
+    ).toHaveTextContent('Works for Ararat Investigations');
+    page.unmount();
+    // Independent, and an agency the API gave no name for: nothing, rather than an empty line.
+    for (const agency of [null, { id: 'ws-x', name: null }]) {
+      const { unmount: done } = card(ownProfile({ agency }));
+      expect(screen.getByRole('article')).not.toHaveTextContent('Works for');
+      done();
+    }
   });
 
   it('says a verified investigator is verified, and names them only where the page does not', () => {

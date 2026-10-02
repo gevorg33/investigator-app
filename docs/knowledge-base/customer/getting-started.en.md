@@ -4,9 +4,9 @@ title: What the platform does and how to get started
 audience: customer
 visibility: authenticated
 locale: en
-version: 6
+version: 7
 status: current
-updated: 2026-10-01
+updated: 2026-10-03
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -47,7 +47,9 @@ again or signing out. Adding a role needs a confirmed email address, and adding 
 role asks you to accept the investigator agreement first.
 
 With both roles, **Show the platform as** chooses what you see: **Both**, **Customer** or
-**Investigator**. It narrows what is shown and lasts until you close the browser.
+**Investigator**. It narrows what is shown and lasts until you close the browser. While it is
+**Customer**, your investigator profile is not offered: opening it brings you back to this choice.
+Choose **Both** or **Investigator** to work on it.
 
 Each role sees only what belongs to it. Switching to your investigator role does not give
 you access to your customer missions' data in that role, and the reverse is also true.

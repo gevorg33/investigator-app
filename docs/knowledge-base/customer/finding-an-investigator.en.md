@@ -4,9 +4,9 @@ title: How investigators are matched to your mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 7
+version: 8
 status: current
-updated: 2026-10-02
+updated: 2026-10-03
 source_of_truth: database
 implementation_status: implemented
 related_code:
@@ -56,7 +56,7 @@ Choose how far from you to look, from "Covers me" up to 100 km. There is no map 
 ## What does an investigator's profile show me?
 
 The name they chose to be known by — a pseudonym, or their own name if they chose to use it, the
-same before and after you hire them — their
+same before and after you hire them — the agency they work for, if they work for one, their
 headline and description, whether they are verified, whether they are taking
 on work, their specialties, languages and levels, experience, how they charge and their usual
 hours — and their reviews: the average and number of ratings, then each review with its words and
@@ -67,8 +67,9 @@ instead.
 
 ## What does it mean when an investigator works for an agency?
 
-Some investigators work for an agency rather than on their own. When the assistant suggests one, it
-tells you which agency they work for. Their quote comes from the agency, with that investigator named
+Some investigators work for an agency rather than on their own. Wherever you see one — in the
+search, on their profile, and when the assistant suggests them — "Works for" and the agency's name
+appear under their name. An investigator who works on their own has no such line. Their quote comes from the agency, with that investigator named
 on it. You never see the agency's other members, its teams or its other work.
 
 An agency's investigators are listed only while the agency is active on the platform. If the agency

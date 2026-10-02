@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { actsAsInvestigator } from '@/components/discovery/missions-views';
 import { AvailabilityEditor } from '@/components/investigator/availability-editor';
 import { DetailsForm } from '@/components/investigator/details-form';
 import { LanguagesEditor } from '@/components/investigator/languages-editor';
@@ -28,11 +29,13 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * The investigator's own profile (T-123): where it stands, what it says, where they work, and
  * verification — everything that decides whether customers find them and they see open missions.
- * Only for someone who holds the role; anyone else is sent to Account, where it is added.
+ * Only for someone acting as an investigator: anyone without the role is sent to Account, where it
+ * is added, and so is someone holding both who shows the platform as a customer (T-190) — the API
+ * answers every investigator read with 403 then, and Account is where that choice is changed.
  */
 export default async function InvestigatorProfilePage() {
   const account = await getAccount();
-  if (account === null || !account.roles.includes('INVESTIGATOR')) redirect('/account#roles');
+  if (!actsAsInvestigator(account)) redirect('/account#roles');
   const [t, { locale }] = await Promise.all([getT(), getLocale()]);
   const [profile, preview, areas, applications, taxonomy] = await Promise.all([
     serverApi<OwnInvestigatorProfile>('/profiles/investigator/me'),

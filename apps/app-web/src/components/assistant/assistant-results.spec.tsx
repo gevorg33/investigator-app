@@ -83,6 +83,37 @@ describe('structured results in the assistant (T-059)', () => {
       expect(unnamed).not.toHaveTextContent('years of experience');
     });
 
+    it('names the agency an investigator works for, and nothing for an independent one or an older reply (T-185)', async () => {
+      const { agency: _, ...stored } = investigatorMatch({
+        investigatorId: 'inv-3',
+        name: 'Old Reply',
+      });
+      await showing(
+        QUESTION,
+        aiDiscoveryReply(
+          discoveryAnswer({
+            results: [
+              investigatorMatch({ agency: { id: 'ws-ararat', name: 'Ararat Investigations' } }),
+              investigatorMatch({ investigatorId: 'inv-2', name: 'Lone Wolf' }),
+              // Stored before discovery carried the agency (T-087): no `agency` key at all.
+              stored,
+            ],
+          }),
+        ),
+      );
+      const [agent, independent, older] = screen.getAllByRole('article') as [
+        HTMLElement,
+        HTMLElement,
+        HTMLElement,
+      ];
+      const name = within(agent).getByRole('heading', { name: 'Silver Fox' });
+      expect(name.nextElementSibling).toHaveTextContent('Works for Ararat Investigations');
+      expect(independent).toHaveAccessibleName('Lone Wolf');
+      expect(independent).not.toHaveTextContent('Works for');
+      expect(older).toHaveAccessibleName('Old Reply');
+      expect(older).not.toHaveTextContent('Works for');
+    });
+
     it('says what it searched for, and what it assumed, so it can be corrected', async () => {
       await showing(
         QUESTION,

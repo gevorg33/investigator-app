@@ -1,5 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
 import { text } from './support/text';
 
@@ -8,6 +9,9 @@ import { text } from './support/text';
  * preview its profile, publish it, and see that the public page is what the preview showed; then
  * its colours — a refused one said beside its field, a saved one drawn on a light surface even in
  * dark mode. Serial, on one account per viewport.
+ *
+ * Then (T-185) a customer finds that agency's investigator: the agency's name under theirs, on the
+ * discovery card and on their profile.
  *
  * Logo and cover uploads are not driven here: they go to Cloudinary, which neither CI nor local
  * development has (ACTIONS-FOR-ME #4). Their flow is covered against a stand-in in Vitest.
@@ -19,6 +23,18 @@ const HEADLINE = 'Due diligence across the Caucasus';
 let page: Page;
 let email: string;
 const password = 'a long agency password';
+
+/** Drawn inside its container, and the page as wide as the screen: nothing scrolls sideways. */
+const fitsInside = async (inner: Locator, outer: Locator) => {
+  await expect(inner).toBeVisible();
+  const [a, b] = await Promise.all([inner.boundingBox(), outer.boundingBox()]);
+  expect(a!.x + a!.width).toBeLessThanOrEqual(b!.x + b!.width);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+};
 
 const heading = (name: string) => page.getByRole('heading', { level: 1, name });
 
@@ -69,6 +85,9 @@ test('creates an agency and reaches its profile from Account', async () => {
   await page.getByLabel(text('workspace.create_agency.accept')).check();
   await page.getByRole('button', { name: text('workspace.create_agency.submit') }).click();
   await expect(page).toHaveURL(/\/$/);
+  // Home says where they now work (T-092). Waited for before axe runs: it mounts after hydration and
+  // fades in, and measured mid-fade it is briefly low-contrast by design.
+  await expect(page.getByText(text('workspace.switched', { name: AGENCY }))).toBeVisible();
 
   // Home shows its owner what is left (T-149): the details are complete — the form asked for them
   // all — and the profile is not published yet.
@@ -368,4 +387,100 @@ test('makes an investigator profile for a member, and each save shows on the pag
     page.getByText(text('agency.investigators.shown')).filter({ visible: true }),
   ).toBeVisible();
   await expectAccessible(page);
+});
+
+test('a customer sees the agency an investigator works for, on the card and the profile (T-185)', async () => {
+  const info = test.info();
+  const [held] = (await (
+    await page.request.get('/api/v1/agencies/current/investigators')
+  ).json()) as Array<{ id: string; name: string }>;
+  // What staff verification would have left (T-013 is staff's screen, not this spec's subject), and
+  // a specialty nobody else declares, so the search finds this profile and no other.
+  // 60 characters with nowhere to break: a node with no label in the reader's language is shown by
+  // its slug, and its badge must wrap inside the card rather than widen the page (T-188).
+  const slug = `agencycard${Date.now()}${info.project.name}`.padEnd(60, 'x');
+  const works = text('investigator.public_name.agency', { name: AGENCY });
+  const sql = owner();
+  let node: string;
+  try {
+    await sql`UPDATE investigator_profiles SET verification_status = 'VERIFIED', verified_at = now(),
+                accepting_work = true WHERE id = ${held!.id}`;
+    const [created] = await sql<{ id: string }[]>`
+      INSERT INTO taxonomy_nodes (slug) VALUES (${slug}) RETURNING id`;
+    node = created!.id;
+    await sql`INSERT INTO investigator_specialties (profile_id, taxonomy_node_id)
+              VALUES (${held!.id}, ${node})`;
+  } finally {
+    await sql.end();
+  }
+
+  // The holder previews it from their own profile, inside the agency (T-123): the agency's name is
+  // there exactly as customers will see it.
+  await page.goto('/account/investigator');
+  await page.getByRole('button', { name: text('investigator.status.preview') }).click();
+  const preview = page.getByRole('dialog', { name: text('investigator.status.preview_title') });
+  await expect(preview.getByText(works)).toBeVisible();
+  await fitsInside(preview.getByText(slug, { exact: true }), preview);
+  await expectAccessible(page);
+  await preview.getByRole('button', { name: text('investigator.status.close') }).click();
+
+  // As a customer would: from the Personal workspace, not from inside the agency.
+  const personal = (
+    (await (await page.request.get('/api/v1/workspaces')).json()) as Array<{
+      id: string;
+      kind: string;
+    }>
+  ).find((w) => w.kind === 'PERSONAL')!.id;
+  expect((await page.request.post(`/api/v1/workspaces/${personal}/activate`)).ok()).toBe(true);
+
+  // A customer is who searches: the owner also takes up hiring, as account.e2e.ts does, and shows
+  // the platform as a customer — holding both, they would otherwise see an investigator's Missions.
+  await page.goto('/account');
+  const add = page.getByRole('button', {
+    name: `${text('account.roles.add_customer')} — ${text('account.roles.add_submit')}`,
+  });
+  await page.locator('form').filter({ has: add }).getByLabel(text('account.roles.accept')).check();
+  await add.click();
+  await expect(add).toHaveCount(0);
+  const customer = page.getByRole('button', { name: text('account.roles.act_customer') });
+  await customer.click();
+  await expect(customer).toHaveAttribute('aria-pressed', 'true');
+
+  await page.goto(`/missions/investigators?category=${node}`);
+  const card = page.getByRole('article', { name: held!.name });
+  await expect(card.getByText(works)).toBeVisible();
+  await expectAccessible(page);
+
+  await card.getByRole('link', { name: held!.name, exact: true }).click();
+  await expect(heading(held!.name)).toBeVisible();
+  await expect(page.getByRole('article').getByText(works)).toBeVisible();
+  await fitsInside(
+    page.getByRole('article').getByText(slug, { exact: true }),
+    page.getByRole('article'),
+  );
+  await expectAccessible(page);
+});
+
+test('showing the platform as a customer, the investigator profile sends them to the role choice (T-190)', async () => {
+  // Left by the journey above: both roles held, the customer one chosen.
+  await page.goto('/account/investigator');
+  await expect(page).toHaveURL(/\/account#roles$/);
+  const roles = page.getByRole('region', { name: text('account.roles.title') });
+  await expect(
+    roles.getByRole('button', { name: text('account.roles.act_customer') }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  // No link to a page that would only send them back here.
+  await expect(
+    roles.getByRole('link', { name: new RegExp(text('investigator.link')) }),
+  ).toHaveCount(0);
+  await expectAccessible(page);
+
+  // Shown as both again, the profile is theirs to open.
+  await roles.getByRole('button', { name: text('account.roles.act_both') }).click();
+  await expect(roles.getByRole('button', { name: text('account.roles.act_both') })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await roles.getByRole('link', { name: new RegExp(text('investigator.link')) }).click();
+  await expect(heading(text('investigator.title'))).toBeVisible();
 });

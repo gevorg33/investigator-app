@@ -4,9 +4,9 @@ title: Your profile, specialties, service areas and availability
 audience: investigator
 visibility: authenticated
 locale: en
-version: 7
+version: 8
 status: current
-updated: 2026-10-02
+updated: 2026-10-03
 source_of_truth: database
 implementation_status: partial
 related_code:
@@ -198,7 +198,10 @@ of your account from blurring together.
 Both, in different places. Your own investigator profile, in your Personal workspace, is yours: you
 set it up, and it is how customers find you when you work independently. An agency you belong to can
 also run a profile for you — the agency's profile, held by you, shown to customers with the agency's
-name on it. The two are separate: their own headline, areas, prices, verification and listing.
+name on it — "Works for" and the agency's name, under the name customers know you by. The two are
+separate: their own headline, areas, prices, verification and listing. Your own profile shows no
+agency. In the agency's workspace, **Preview as a customer** shows the agency's name exactly as
+customers will see it.
 
 When you switch to the agency's workspace, your investigator profile is the agency's one; switch back
 to Personal for your own. A quote is made with the profile of the workspace you are working in, so a

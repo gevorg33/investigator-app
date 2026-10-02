@@ -62,8 +62,11 @@ export function SpecialtiesPicker({
       {ids.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {ids.map((id) => (
-            <li key={id}>
-              <Badge variant="secondary">{labels.get(id) ?? id}</Badge>
+            <li key={id} className="max-w-full">
+              {/* Wraps, as on the public profile: a label has no bound on its length (T-188). */}
+              <Badge variant="secondary" className="max-w-full whitespace-normal wrap-anywhere">
+                {labels.get(id) ?? id}
+              </Badge>
             </li>
           ))}
         </ul>
