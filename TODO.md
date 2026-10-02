@@ -8327,7 +8327,7 @@ pnpm --filter api test workspaces && pnpm --filter @investigator/app-web test
 ---
 
 ### T-188 — Specialty badges that do not wrap widen a phone page
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; specialty badges wrap on `PublicProfileCard` and `SpecialtiesPicker` (the picker widened the page too); `agency.e2e.ts` keeps a 60-character slug and checks for sideways scroll; `app-web.md` "Long specialty labels"
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -8344,8 +8344,8 @@ are short today, but a translation or an unlabelled node is not bounded. Let a s
 (or truncate with its full text available) without changing the badge everywhere else.
 
 **Acceptance criteria**
-- [ ] A 60-character unbroken specialty leaves `/account/investigator`'s preview and `/missions/investigators/[id]` without horizontal scroll at 375px
-- [ ] Other badges are unchanged
+- [x] A 60-character unbroken specialty leaves `/account/investigator`'s preview and `/missions/investigators/[id]` without horizontal scroll at 375px
+- [x] Other badges are unchanged
 
 **Validation**
 ```bash
@@ -8378,6 +8378,35 @@ lets go: restore a loading state only where the wait needs one, and prove it wit
 **Validation**
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-190 — `/account/investigator` fails with a server error when the reader shows the platform as a customer
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/(workspace)/account/investigator/page.tsx
+
+**Description**
+From T-188. Someone holding both roles who chooses **Show the platform as: Customer** (T-127) and then
+opens their investigator profile — linked from Account — gets "Application error: a server-side
+exception". The page checks only that `INVESTIGATOR` is held, not the active role; the API narrows to
+the chosen role and answers `/profiles/investigator/me` with 403, which the page does not handle. It
+should do what `/missions` does with `actsAsInvestigator`: not offer the page while acting as a
+customer (redirect to Account, where the role choice is), rather than throw.
+
+**Acceptance criteria**
+- [ ] Acting as a customer, `/account/investigator` lands on Account's role choice; no server error
+- [ ] Acting as an investigator, or as both, the page is unchanged
+- [ ] A test holds both roles with the customer one chosen
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

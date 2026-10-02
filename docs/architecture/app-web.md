@@ -684,6 +684,17 @@ A published mission is not offered here (T-121).
 Account → **People you blocked** (`BlocksSection`, `Unblock`). Asked first in an `AlertDialog`,
 shown at once when done, then refreshed. Rules and enforcement: `blocks.md`.
 
+## Long specialty labels (T-188)
+
+A specialty is shown by its label in the reader's language, or by its id when it has none, and
+neither has a bound on its length. On the public profile, its preview and the specialties picker,
+a specialty badge wraps (`max-w-full whitespace-normal wrap-anywhere`, on its `li` too) instead of
+staying on one line: a 60-character unbroken slug widened `/account/investigator` and its preview at
+375px, until the drawer's close button could not be hit. Wrapping rather than cutting short, as the
+mission card does with its category (T-178): a specialty is what the investigator does, and a hover
+title has no tap path. `agency.e2e.ts` keeps a 60-character slug and checks the preview, the page
+behind it and the customer's profile page for sideways scroll.
+
 ## Not found (T-151)
 
 `notFound()` anywhere in the workspace renders `NotFoundPage` (`components/not-found-page.tsx`)

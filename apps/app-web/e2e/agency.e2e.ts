@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
@@ -23,6 +23,18 @@ const HEADLINE = 'Due diligence across the Caucasus';
 let page: Page;
 let email: string;
 const password = 'a long agency password';
+
+/** Drawn inside its container, and the page as wide as the screen: nothing scrolls sideways. */
+const fitsInside = async (inner: Locator, outer: Locator) => {
+  await expect(inner).toBeVisible();
+  const [a, b] = await Promise.all([inner.boundingBox(), outer.boundingBox()]);
+  expect(a!.x + a!.width).toBeLessThanOrEqual(b!.x + b!.width);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+};
 
 const heading = (name: string) => page.getByRole('heading', { level: 1, name });
 
@@ -381,8 +393,9 @@ test('a customer sees the agency an investigator works for, on the card and the 
   ).json()) as Array<{ id: string; name: string }>;
   // What staff verification would have left (T-013 is staff's screen, not this spec's subject), and
   // a specialty nobody else declares, so the search finds this profile and no other.
-  // Short: a profile's specialties are badges that do not wrap, and the preview shows them (T-188).
-  const slug = `agency-card-${Date.now()}-${info.project.name}`;
+  // 60 characters with nowhere to break: a node with no label in the reader's language is shown by
+  // its slug, and its badge must wrap inside the card rather than widen the page (T-188).
+  const slug = `agencycard${Date.now()}${info.project.name}`.padEnd(60, 'x');
   const works = text('investigator.public_name.agency', { name: AGENCY });
   const sql = owner();
   let node: string;
@@ -404,6 +417,7 @@ test('a customer sees the agency an investigator works for, on the card and the 
   await page.getByRole('button', { name: text('investigator.status.preview') }).click();
   const preview = page.getByRole('dialog', { name: text('investigator.status.preview_title') });
   await expect(preview.getByText(works)).toBeVisible();
+  await fitsInside(preview.getByText(slug, { exact: true }), preview);
   await expectAccessible(page);
   await preview.getByRole('button', { name: text('investigator.status.close') }).click();
 
@@ -437,5 +451,9 @@ test('a customer sees the agency an investigator works for, on the card and the 
   await card.getByRole('link', { name: held!.name, exact: true }).click();
   await expect(heading(held!.name)).toBeVisible();
   await expect(page.getByRole('article').getByText(works)).toBeVisible();
+  await fitsInside(
+    page.getByRole('article').getByText(slug, { exact: true }),
+    page.getByRole('article'),
+  );
   await expectAccessible(page);
 });

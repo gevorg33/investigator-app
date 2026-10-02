@@ -74,8 +74,12 @@ export function PublicProfileCard({
       {profile.specialtyNodeIds.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label={t('specialties.title')}>
           {profile.specialtyNodeIds.map((id) => (
-            <li key={id}>
-              <Badge variant="secondary">{specialties.get(id) ?? id}</Badge>
+            <li key={id} className="max-w-full">
+              {/* Wraps rather than widening the card: a label in another language, or a node shown
+                  by its id, has no bound on its length (T-188). */}
+              <Badge variant="secondary" className="max-w-full whitespace-normal wrap-anywhere">
+                {specialties.get(id) ?? id}
+              </Badge>
             </li>
           ))}
         </ul>
