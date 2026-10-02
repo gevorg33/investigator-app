@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { cn } from '@/lib/utils';
 
 /**
  * The one shape an empty screen takes here: an icon, what will appear, and why — composed from
@@ -19,14 +20,17 @@ export function EmptyState({
   title,
   body,
   children,
+  className,
 }: {
   icon: LucideIcon;
   title: string;
   body: string;
   children?: ReactNode;
+  /** Where it sits: `mt-6` below a page's heading by default. */
+  className?: string;
 }) {
   return (
-    <Empty className="mt-6 border border-border bg-surface-raised">
+    <Empty className={cn('mt-6 border border-border bg-surface-raised', className)}>
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Icon aria-hidden />

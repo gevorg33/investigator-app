@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { callApi } from '@/lib/api/browser';
 import type { AvailabilityWindow } from '@/lib/api/types';
+import { useProfileTarget } from './profile-target';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 
@@ -35,6 +36,7 @@ export function AvailabilityEditor({ windows }: { windows: readonly Availability
   const t = useTranslations('investigator.availability');
   const locale = useLocale();
   const router = useRouter();
+  const target = useProfileTarget();
   const [rows, setRows] = useState<AvailabilityWindow[]>(
     [...windows].sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startMinute - b.startMinute),
   );
@@ -48,7 +50,7 @@ export function AvailabilityEditor({ windows }: { windows: readonly Availability
         return false;
       }
       setInvalid(false);
-      await callApi('/profiles/investigator/me', {
+      await callApi(target.profile, {
         method: 'PATCH',
         body: { availability: rows },
       });

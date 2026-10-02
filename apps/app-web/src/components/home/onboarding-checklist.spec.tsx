@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgencyDetails } from '@/lib/api/types';
 import { api, apiError } from '@/test/api';
-import { ownAgencyProfile } from '@/test/fixtures';
+import { employee, invitation, ownAgencyProfile } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
 import { router } from '@/test/navigation';
 import { resolveServer } from '@/test/server';
@@ -29,15 +29,29 @@ const details = (over: Partial<AgencyDetails> = {}): AgencyDetails => ({
   ...over,
 });
 
-/** The three reads the checklist makes, as the API would answer them. */
+/** The reads the checklist makes, as the API would answer them. */
 const answers = (
   over: {
     agency?: Partial<AgencyDetails>;
     dismissed?: boolean;
     version?: number;
     published?: boolean;
+    /** Who else is there: nobody, a member, or someone invited (T-093). Invited by default. */
+    team?: 'alone' | 'member' | 'invited';
   } = {},
 ) => {
+  const team = over.team ?? 'invited';
+  api.on('GET /agencies/current/members', 200, [
+    employee({ you: true, roles: ['OWNER'] }),
+    ...(team === 'member' ? [employee({ membershipId: 'm-2', you: false })] : []),
+  ]);
+  api.on(
+    'GET /agencies/current/invitations',
+    200,
+    team === 'invited'
+      ? [invitation(), invitation({ id: 'inv-old', status: 'CANCELLED' })]
+      : [invitation({ status: 'EXPIRED' })],
+  );
   api.on('GET /agencies/current', 200, details(over.agency));
   api.on('GET /agencies/current/settings', 200, {
     general: {
@@ -72,8 +86,33 @@ describe('the agency onboarding checklist (T-149)', () => {
     expect(links).toEqual([
       [`${en.details}${en.todo}`, '/agencies/current'],
       [`${en.profile}${en.done}`, '/agency'],
+      [`${en.invite}${en.done}`, '/agency/people#invitations'],
     ]);
   });
+
+  it('counts an empty answer as nobody yet (T-093)', async () => {
+    answers({ published: true });
+    api.on('GET /agencies/current/members', 204);
+    api.on('GET /agencies/current/invitations', 204);
+    await checklist();
+    expect(screen.getByRole('link', { name: new RegExp(en.invite) })).toHaveTextContent(
+      `${en.invite}${en.todo}`,
+    );
+  });
+
+  it.each([
+    ['alone, with only an expired invitation', 'alone', en.todo],
+    ['someone else has joined', 'member', en.done],
+    ['an invitation is waiting', 'invited', en.done],
+  ] as const)(
+    'ticks inviting the team only when it has happened: %s (T-093)',
+    async (_l, who, state) => {
+      answers({ published: true, team: who });
+      await checklist();
+      const invite = screen.getByRole('link', { name: new RegExp(en.invite) });
+      expect(invite).toHaveTextContent(`${en.invite}${state}`);
+    },
+  );
 
   it('says so when everything is done, and still offers to hide itself', async () => {
     answers({ published: true });

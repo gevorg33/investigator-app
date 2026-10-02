@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupChoice } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { callApi } from '@/lib/api/browser';
 import type { OwnInvestigatorProfile, PricingModel, PublicName } from '@/lib/api/types';
+import { useProfileTarget } from './profile-target';
 
 const PRICING: readonly PricingModel[] = ['HOURLY', 'FIXED_FEE', 'RETAINER', 'MIXED'];
 const PUBLIC_NAMES: readonly PublicName[] = ['PSEUDONYM', 'LEGAL'];
@@ -29,6 +30,9 @@ const text = (form: FormData, name: string) => {
  * alone — it is not in the public projection, and the form says so where it is asked for. The legal
  * name is too, unless they choose to be known by it: customers see a pseudonym by default (T-181),
  * and the investigator picks which of the two goes on their profile (T-182).
+ *
+ * For a profile an agency holds (T-093), the legal name and that choice are not shown: they are the
+ * holder's, and the agency edits everything else. Such a profile always shows its pseudonym (T-087).
  */
 export function DetailsForm({
   profile,
@@ -40,6 +44,7 @@ export function DetailsForm({
 }) {
   const t = useTranslations('investigator.details');
   const router = useRouter();
+  const target = useProfileTarget();
   const [saved, setSaved] = useState(false);
   const [currency, setCurrency] = useState(profile.currency ?? '');
   const [publicName, setPublicName] = useState(profile.publicName);
@@ -54,12 +59,13 @@ export function DetailsForm({
       const rate = toMinorAmount(text(form, 'rate'), currency || undefined);
       const pricing = text(form, 'pricing') as PricingModel | undefined;
       const name = text(form, 'name');
-      return callApi('/profiles/investigator/me', {
+      return callApi(target.profile, {
         method: 'PATCH',
         body: {
-          // A locked name is not sent at all: it is shown, not edited.
-          ...(!nameLocked && name !== undefined ? { displayName: name } : {}),
-          publicName,
+          // An agency writes the storefront only (T-087): the holder's name and their choice of
+          // which one customers see are not its to send. A locked name is not sent at all either.
+          ...(!target.agency && !nameLocked && name !== undefined ? { displayName: name } : {}),
+          ...(target.agency ? {} : { publicName }),
           // Blank clears it, and customers see the stand-in code again (T-181). Not asked for while
           // the legal name is chosen, so not sent: it is kept for the day they switch back (T-182).
           ...(publicName === 'PSEUDONYM' ? { pseudonym: text(form, 'pseudonym') ?? null } : {}),
@@ -85,41 +91,51 @@ export function DetailsForm({
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
       <FormError error={error} shown={['displayName', 'pseudonym']} />
-      <Field
-        label={t('name')}
-        hint={nameLocked ? t('name_locked') : t('name_hint')}
-        name="name"
-        autoComplete="name"
-        maxLength={80}
-        required={!nameLocked}
-        readOnly={nameLocked}
-        defaultValue={profile.displayName ?? ''}
-        error={fields['displayName'] && tl(fields['displayName'])}
-      />
-      {/* Which name customers see: a pseudonym unless they choose the legal one above (T-182). */}
-      <div className="grid gap-2">
-        <p id={publicNameLabel} className="text-sm font-medium">
-          {t('public_name')}
-        </p>
-        <RadioGroup
-          aria-labelledby={publicNameLabel}
-          value={publicName}
-          onValueChange={(v) => setPublicName(v as PublicName)}
-        >
-          {PUBLIC_NAMES.map((choice) => (
-            <RadioGroupChoice key={choice} value={choice} label={t(`public_name_${choice}`)} />
-          ))}
-        </RadioGroup>
-      </div>
+      {!target.agency && (
+        <>
+          <Field
+            label={t('name')}
+            hint={nameLocked ? t('name_locked') : t('name_hint')}
+            name="name"
+            autoComplete="name"
+            maxLength={80}
+            required={!nameLocked}
+            readOnly={nameLocked}
+            defaultValue={profile.displayName ?? ''}
+            error={fields['displayName'] && tl(fields['displayName'])}
+          />
+          {/* Which name customers see: a pseudonym unless they choose the legal one above (T-182). */}
+          <div className="grid gap-2">
+            <p id={publicNameLabel} className="text-sm font-medium">
+              {t('public_name')}
+            </p>
+            <RadioGroup
+              aria-labelledby={publicNameLabel}
+              value={publicName}
+              onValueChange={(v) => setPublicName(v as PublicName)}
+            >
+              {PUBLIC_NAMES.map((choice) => (
+                <RadioGroupChoice key={choice} value={choice} label={t(`public_name_${choice}`)} />
+              ))}
+            </RadioGroup>
+          </div>
+        </>
+      )}
+      {target.agency && <p className="text-sm text-text-muted">{t('agency_name_note')}</p>}
       {publicName === 'PSEUDONYM' && (
         <Field
-          label={t('pseudonym')}
-          hint={t('pseudonym_hint')}
+          label={target.agency ? t('agency_pseudonym') : t('pseudonym')}
+          hint={target.agency ? t('agency_pseudonym_hint') : t('pseudonym_hint')}
           name="pseudonym"
           autoComplete="off"
           maxLength={60}
           defaultValue={profile.pseudonym ?? ''}
-          error={fields['pseudonym'] && tl(fields['pseudonym'])}
+          error={
+            fields['pseudonym'] &&
+            (target.agency && fields['pseudonym'] === 'error.validation.pseudonym.own_name'
+              ? t('agency_pseudonym_own_name')
+              : tl(fields['pseudonym']))
+          }
         />
       )}
       <Field
@@ -130,7 +146,7 @@ export function DetailsForm({
         defaultValue={profile.headline ?? ''}
       />
       <label className="grid gap-1.5 text-sm font-medium">
-        {t('bio')}
+        {target.agency ? t('agency_bio') : t('bio')}
         <Textarea name="bio" maxLength={4000} rows={5} defaultValue={profile.bio ?? ''} />
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -144,7 +160,7 @@ export function DetailsForm({
           defaultValue={profile.yearsExperience ?? ''}
         />
         <label className="grid gap-1.5 text-sm font-medium">
-          {t('pricing')}
+          {target.agency ? t('agency_pricing') : t('pricing')}
           <NativeSelect name="pricing" defaultValue={profile.pricingModel ?? ''}>
             <option value="">{t('not_set')}</option>
             {PRICING.map((p) => (
@@ -178,7 +194,7 @@ export function DetailsForm({
       </div>
       <Field
         label={t('phone')}
-        hint={t('phone_hint')}
+        hint={target.agency ? t('agency_phone_hint') : t('phone_hint')}
         name="phone"
         type="tel"
         autoComplete="tel"

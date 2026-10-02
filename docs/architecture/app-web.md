@@ -335,8 +335,9 @@ reference. The rest was driven in the browser at 375px against the real API.
 - **The onboarding checklist** (T-149) is on Home, for the agency's owner — the API's `mayChange`
   on `GET /agencies/current` says who that is. Each item links to the screen where it is done and
   is ticked from the API as it stands: the core details (`missing` empty → `/agencies/current`) and
-  the public profile (`publishedAt` → `/agency`). Inviting employees joins when its screen does
-  (T-093), verification when it exists (T-088). "Hide this list" saves
+  the public profile (`publishedAt` → `/agency`), and inviting the team (T-093) — ticked once someone
+  besides the owner has joined or an invitation is waiting, linking to `/agency/people#invitations`.
+  Verification joins when it exists (T-088). "Hide this list" saves
   `general.onboardingDismissed` to the agency's settings against the version read, so it stays
   hidden for the workspace on every device — checked in the browser from a second one. A
   plan.md checklist, not a wizard: nothing in it blocks anything.
@@ -572,6 +573,65 @@ completes the minimum says the agency is ready and refreshes the shell, so the n
 switcher change with it. Inside an agency, Account's Agencies section links to it ("Agency
 details") above the profile and colours (T-094) — who the agency is, then how it is shown. Publishing
 a profile needs these five complete; the notice is above `/agency` too while they are not.
+
+## The agency console (T-093)
+
+`/agency/people`, `/agency/teams`, `/agency/investigators` and `/agency/investigators/[id]`, reached
+from Account's Agencies section and, on every agency page including `/agency`, from `AgencyNav` — four
+pill links that wrap rather than scroll, the current one marked by more than colour. Outside an agency
+each sends the reader to `/account#agencies` (`currentAgency()`). API: `tenancy.md` §2, §4,
+`profiles.md` § Profiles under workspaces.
+
+- **People** (`Members`, `Invitations`). Members are a card list up to `lg` and a `Table` from `lg` —
+  at `md` the 240px sidebar leaves too little width for five columns and an address, and the page
+  scrolled sideways (found in the browser at 768px). The table's wrapper is `min-w-0`, so a wide table
+  scrolls in its own container rather than widening its grid cell. Each member has one **Manage**
+  button opening a sheet (`Drawer`, bottom on a phone, right from `md`): details, roles (the whole set,
+  in the catalog's order), access. Suspending and removing are a second step in the same sheet, titled
+  with the person's name and saying what follows; reactivating is not asked. The reader is never
+  offered their own suspension or removal. Invitations: an address and a starting role; the list shows
+  only `PENDING` and `EXPIRED`, each with **Send again** and **Cancel** (asked first, `ConfirmSheet`).
+- **Teams** are cards at every width — a team is a group of people with its own actions, not a row of
+  values: create, rename in place (focus to the name, back to **Edit** after), add a member not yet in
+  it, take one out in one tap (not asked: they stay in the agency), delete once confirmed by name.
+- **Investigators** (`AgencyInvestigators`): a card list up to `lg`, a table from there — name, holder,
+  and where it stands for customers as badges, a holder who is away said as one. **Make a profile**
+  offers active members without one here; whether they hold the investigator role is the API's to say,
+  and its refusal says what to do. The new profile opens straight away.
+- **A held profile** (`/agency/investigators/[id]`) reuses the investigator's own sections through
+  `ProfileTargetProvider` (`profile-target.tsx`; the plain paths in `profile-target-paths.ts`, so a
+  server page can build them): the same `StatusCard`, `DetailsForm`, languages, specialties,
+  availability and areas, writing to `/agencies/current/investigators/:id[/service-areas]`. In agency
+  mode the sections speak of the investigator rather than to them (`agency_*` strings); `DetailsForm`
+  shows neither the legal name nor the name choice and sends neither; there is no preview (the API
+  has no public projection route for a held profile) and no verification section — a card says
+  applying is not available yet (T-071). A holder who is away is said at the top.
+- **Permissions are the API's.** Nothing shows, hides or allows an action by a role's name; a refusal
+  is said where it happened in the agency's words (`agency.console.forbidden`). The app does not know
+  the reader's permissions, so actions are offered to everyone and refused by the API — T-187 would let
+  it leave them out.
+- **A refusal names its reason.** `errorMessageKey` now prefers a non-validation error's field detail
+  when the catalog has it — a 409 from the API's `conflictOn` ("already a member", "the agency must
+  keep an owner", "not an investigator yet") rather than the generic "this changed while you were
+  working".
+- **Focus.** Our `Drawer` now defaults vaul's `autoFocus` to true: vaul does not move focus into a sheet
+  by default, and Radix's trap only holds focus it already has, so Tab walked out of every open sheet
+  to the page behind — the workspace switcher included. Sheets opened from state rather than a
+  `DrawerTrigger` return focus to their opener with `useReturnFocus` (noted in `onOpenAutoFocus`,
+  before focus moves).
+- **An empty specialty catalogue is said, not searched.** With no specialties to choose from,
+  `SpecialtiesPicker` shows a sentence instead of a listbox with nothing in it — axe's
+  `aria-required-children` on the held profile in a fresh database; `/account/investigator` had the same.
+- **No `loading.tsx` under `/agency`.** One was tried and removed: in the production build it left
+  `router.refresh()` uncommitted on the dynamic `[id]` page — the refresh payload arrived, carried the
+  new data, and was never applied, so a save did not show until a reload (0 of 5 refreshes applied with
+  it, 6 of 6 without; the e2e journey's heading check fails with it restored). `/missions` keeps its
+  own, and shows the related symptom of a streamed copy of the page left hidden in the DOM (T-186).
+
+**Browser flows:** `e2e/agency.e2e.ts` gained three steps at 375 and 1280 — invite, send again and
+cancel; a team made, filled, emptied, renamed and deleted; an investigator profile made for the owner,
+saved, its heading updated without a reload, and published — with axe on each page and open sheet.
+Checked by hand at 768: no page scrolls sideways.
 
 ## Cancelling a mission (T-154)
 

@@ -8,8 +8,9 @@ export interface LooseT {
 
 /**
  * The message for an error: a form's own wording for a code where it has one (sign-in says "the
- * email or password is not right", never the API's generic 401), else the API's `messageKey`
- * where the catalog has it, else a generic one. Never the raw key.
+ * email or password is not right", never the API's generic 401), else the reason a refusal names on
+ * one of its fields, else the API's `messageKey` where the catalog has it, else a generic one. Never
+ * the raw key.
  */
 export function errorMessageKey(
   error: ApiError,
@@ -18,6 +19,12 @@ export function errorMessageKey(
 ): string {
   const own = overrides[error.code];
   if (own !== undefined) return own;
+  // A refusal that names its reason on a field (a 409 from `conflictOn`: "already a member", "the
+  // agency must keep an owner") says that reason, not the generic "this changed" (T-093).
+  if (error.code !== 'VALIDATION_FAILED') {
+    const reason = error.details.find((d) => t.has(d.messageKey));
+    if (reason !== undefined) return reason.messageKey;
+  }
   return t.has(error.messageKey) ? error.messageKey : 'error.common.internal';
 }
 

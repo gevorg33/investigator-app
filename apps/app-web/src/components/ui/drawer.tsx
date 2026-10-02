@@ -9,8 +9,13 @@ import type { ComponentProps } from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
 import { cn } from '@/lib/utils';
 
-function Drawer(props: ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
+/**
+ * Focus moves into the sheet when it opens (T-093). vaul's own default is not to, and Radix's trap
+ * only holds focus it already has — so without this, Tab walked out of an open sheet to the page
+ * behind it, and a keyboard or screen-reader user never reached what had opened.
+ */
+function Drawer({ autoFocus = true, ...props }: ComponentProps<typeof DrawerPrimitive.Root>) {
+  return <DrawerPrimitive.Root data-slot="drawer" autoFocus={autoFocus} {...props} />;
 }
 
 function DrawerTrigger(props: ComponentProps<typeof DrawerPrimitive.Trigger>) {

@@ -5085,7 +5085,7 @@ suite to add them to yet (T-139).
 ---
 
 ### T-093 — Agency console: employees, teams and investigators (app-web)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-02; `/agency/people`, `/agency/teams`, `/agency/investigators[/id]`, `AgencyNav`, `ConfirmSheet`, `Table`
 - **Priority:** P2
 - **Depends on:** T-092, T-085, T-086, T-087
 - **Risk:** MEDIUM
@@ -5105,15 +5105,44 @@ Employees, invitations, teams and investigator profiles:
 > ticked when the agency has a second member or a pending invitation.
 
 **Acceptance criteria**
-- [ ] Every action has a tap path, and a hover affordance is never the only path
-- [ ] Empty states say what to do next; errors say what failed and how to fix it
-- [ ] Visual QA at three widths; flows tested end to end against the API
+- [x] Every action has a tap path, and a hover affordance is never the only path
+- [x] Empty states say what to do next; errors say what failed and how to fix it
+- [x] Visual QA at three widths; flows tested end to end against the API
 
 **Validation**
 ```bash
 pnpm --filter app-web test agency
 ```
 
+
+**Done (2026-10-02).** People (members as cards up to `lg`, a table from `lg`; one **Manage** sheet per
+member: details, roles, access, with suspend and remove confirmed in the sheet by name; invitations
+sent, sent again and cancelled once asked), Teams (cards: create, rename in place, add, take out, delete
+once asked), Investigators (the agency's profiles with their standing for customers; making one for a
+member; editing one with the investigator's own sections pointed at the agency's routes through
+`ProfileTargetProvider`, in agency wording, without the holder's name fields). `AgencyNav` on every
+agency page; Account links; Home's checklist gained "Invite your team" (T-149's note). en/ru/hy. No bulk
+actions: the API has no bulk command.
+
+*Found and fixed on the way:* every `Drawer` let Tab walk out of an open sheet (vaul's `autoFocus`
+default) — now on, and sheets opened from state return focus to their opener; a 409's named reason
+was shown as the generic "this changed" (`errorMessageKey` now prefers it); an empty specialty
+catalogue rendered an empty listbox (axe, `aria-required-children`, `/account/investigator` too); a
+`loading.tsx` under `/agency` kept `router.refresh()` from committing on the dynamic profile page in
+production — removed (T-186 for the rest); member and profile tables made the page scroll sideways at
+768px — moved to `lg`, wrapper `min-w-0`. The identity-masking walk (`test/identity-masking.spec.ts`)
+timed out under a full run after T-087 added routes to walk: it now makes four requests at a time,
+every route and id still walked (3.6s from ~11s; a planted leak still fails it).
+
+*Verified:* in the browser at 375, 768 and 1280 against the real API (owner, agent, viewer): every
+flow, the refusals (viewer inviting, a member without the investigator role, a suspended holder's
+profile), empty states, keyboard focus in and out of sheets. Vitest 837 passing, 100%; negative controls
+(focus default, focus return, agency mode sending the name choice, the named-reason rule, the
+open-only invitation list) each failed their test. Playwright 44 passing at 375 and 1280 with axe; the
+new heading-after-save check fails with the `loading.tsx` restored.
+
+*Not done:* hiding actions the reader's role does not include (T-187 — the app does not know its
+permissions); the Playwright projects have no 768 width (checked by hand).
 ---
 
 ### T-094 — Agency profile, settings and branding (app-web)
@@ -8234,6 +8263,65 @@ own preview, so a customer sees what `kb-customer-finding-investigator` v7 descr
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-186 — `loading.tsx` and streamed segments: refresh that never commits, copies left in the DOM
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/**/loading.tsx, apps/app-web/e2e/**
+
+**Description**
+From T-093. In the production build, a route segment's `loading.tsx` above a dynamic page left
+`router.refresh()` uncommitted: the refresh payload arrived with the new data and was never applied, so
+a save did not show until a reload (0 of 5 on `/agency/investigators/[id]` with an `/agency/loading.tsx`,
+6 of 6 without; dev builds unaffected). `/missions` and `/missions/[id]` still have one, and pages under
+them keep a hidden streamed copy of the page (`<div hidden id="S:0">`) after it has been swapped in —
+duplicate ids, and locators that find two of everything. Find the cause (Next 15.5.25 / React 19.2.8),
+decide per route whether its loading state earns its place, and prove the mission pages refresh after a
+change (cancelling, editing a draft) in the production build.
+
+**Acceptance criteria**
+- [ ] Every page with a `loading.tsx` above it shows a save without a reload, in the production build, checked by Playwright
+- [ ] No streamed copy of a page is left in the DOM after hydration
+- [ ] app-web.md says what was found and which routes keep a loading state
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-187 — Tell the app which permissions the reader holds in the workspace
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-093
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it exposes the authorization model to the client (display only; the API still decides)
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/tenants/workspaces.*, apps/app-web/src/components/agency/console/**
+
+**Description**
+From T-093. The agency console offers every action to every member and lets the API refuse it — a
+viewer sees **Send invitation** and **Manage** and is told afterwards that their role does not include
+them. `GET /workspaces` already resolves the reader's permissions for the current workspace; returning
+them (display only, never trusted) would let the console leave out what the reader cannot do. Roles
+stay names to show, never something the client decides from.
+
+**Acceptance criteria**
+- [ ] The current workspace's permission keys reach the client, read per request like everything else
+- [ ] The console leaves out actions the reader does not hold, and the API's refusal still covers anything that gets through
+- [ ] A spec holds that no client code decides from a role name
+
+**Validation**
+```bash
+pnpm --filter api test workspaces && pnpm --filter @investigator/app-web test
 ```
 
 ---

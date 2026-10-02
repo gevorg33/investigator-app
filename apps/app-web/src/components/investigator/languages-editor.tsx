@@ -11,6 +11,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { callApi } from '@/lib/api/browser';
 import type { Proficiency } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
+import { useProfileTarget } from './profile-target';
 
 const LEVELS: readonly Proficiency[] = ['BASIC', 'CONVERSATIONAL', 'FLUENT', 'NATIVE'];
 
@@ -30,6 +31,7 @@ export function LanguagesEditor({
 }) {
   const t = useTranslations('investigator.languages');
   const router = useRouter();
+  const target = useProfileTarget();
   const [rows, setRows] = useState<Row[]>([...languages]);
   const [adding, setAdding] = useState('');
   const [saved, setSaved] = useState(false);
@@ -37,7 +39,7 @@ export function LanguagesEditor({
   const { pending, error, onSubmit } = useSubmit(
     () => {
       setSaved(false);
-      return callApi('/profiles/investigator/me', { method: 'PATCH', body: { languages: rows } });
+      return callApi(target.profile, { method: 'PATCH', body: { languages: rows } });
     },
     () => {
       setSaved(true);

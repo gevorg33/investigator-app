@@ -4,9 +4,9 @@ title: Your agency's employees — inviting, roles, teams, suspending and removi
 audience: agency
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-27
+updated: 2026-10-02
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -14,6 +14,7 @@ related_code:
   - apps/api/src/database/migrations/0028_add_employees.sql
   - apps/api/src/modules/teams
   - apps/app-web/src/app/(auth)/invitations
+  - apps/app-web/src/components/agency/console
 tags: [agency, employees, invitations, roles, members, suspend, remove, teams]
 ---
 
@@ -110,6 +111,18 @@ its own copy.
 
 ## Where is this in the app?
 
-Joining by invitation works in the app: the link opens the page that joins you. The screens for
-inviting and managing employees are still being built; what this article describes is how they will
-work.
+Working in your agency, open **Account** and choose **People**, **Teams** or **Investigators** — or
+move between them, and the agency's profile, with the links at the top of each of those pages.
+
+- **People** lists every member: their roles, whether they are active or suspended, and their job
+  title. On a phone each member is a card; on a wide screen, a row. **Manage** opens a sheet with their
+  details, their roles and their access. Suspending or removing someone is asked first, in that sheet,
+  by their name, and says what follows; reactivating is not asked, because it takes nothing away.
+- **Invitations**, on the same page, sends an invitation by email with the role it starts with, and
+  lists the invitations still waiting or expired, each with **Send again** and **Cancel**. Cancelling
+  is asked first. An accepted invitation is a member in the list above.
+- **Teams** creates a team, renames it, puts members in and takes them out, and deletes a team once
+  you confirm its name.
+
+If your role does not include an action, the page says so where you tried it: ask an owner or admin.
+Every action works by tapping — nothing depends on hovering.

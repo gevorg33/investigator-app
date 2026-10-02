@@ -138,6 +138,15 @@ test('ticks the published profile on Home, and hides the list for every device o
   const checklist = page.getByRole('region', {
     name: text('home.checklist.title', { name: AGENCY }),
   });
+  // Published, but nobody invited yet (T-093): the list is not done until someone is on the way.
+  const invite = checklist.getByRole('link', { name: new RegExp(text('home.checklist.invite')) });
+  await expect(invite).toContainText(text('home.checklist.todo'));
+  await expect(invite).toHaveAttribute('href', '/agency/people#invitations');
+  const invited = await page.request.post('/api/v1/agencies/current/invitations', {
+    data: { email: `colleague-${info.project.name}-${Date.now()}@example.test`, role: 'VIEWER' },
+  });
+  expect(invited.ok()).toBe(true);
+  await page.reload();
   await expect(checklist).toContainText(text('home.checklist.complete'));
   await checklist.getByRole('button', { name: text('home.checklist.dismiss') }).click();
   await expect(checklist).toHaveCount(0);
@@ -200,4 +209,160 @@ test('refuses an unreadable colour beside its field, and draws a saved one on a 
   await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgb(247, 247, 248)');
   await expectAccessible(page);
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: null });
+});
+
+// ── The agency console (T-093): people, teams and investigator profiles, on the same account ──────
+
+test('invites someone, sends it again, and cancels it only once asked by address', async () => {
+  await page.goto('/account');
+  await page.getByRole('link', { name: new RegExp(`^${text('agency.people.link')}`) }).click();
+  await expect(page).toHaveURL(/\/agency\/people$/);
+  await expect(heading(text('agency.people.title'))).toBeVisible();
+  // The owner is the agency's one member so far, and is told it is them.
+  const members = page.getByRole('region', { name: text('agency.people.members_title') });
+  // A card list on a phone, a table from `lg`: one of the two is shown at each width.
+  await expect(members.getByText(email).filter({ visible: true })).toBeVisible();
+  await expect(
+    members.getByText(text('agency.console.you')).filter({ visible: true }),
+  ).toBeVisible();
+  await expectAccessible(page);
+
+  const invitee = `invitee-${Date.now()}@example.test`;
+  await page.getByRole('textbox', { name: text('agency.invitations.email') }).fill(invitee);
+  await page
+    .getByRole('combobox', { name: text('agency.invitations.role') })
+    .selectOption('VIEWER');
+  await page.getByRole('button', { name: text('agency.invitations.send') }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    text('agency.invitations.sent', { email: invitee }),
+  );
+  const row = page.getByRole('listitem').filter({ hasText: invitee });
+  await expect(row).toContainText(text('agency.invitations.status_PENDING'));
+  await expect(row).toContainText(text('agency.roles.VIEWER'));
+
+  await row
+    .getByRole('button', { name: text('agency.invitations.resend_label', { email: invitee }) })
+    .click();
+  await expect(row.getByRole('status')).toHaveText(
+    text('agency.invitations.resent', { email: invitee }),
+  );
+
+  await row
+    .getByRole('button', { name: text('agency.invitations.cancel_label', { email: invitee }) })
+    .click();
+  const sheet = page.getByRole('dialog', {
+    name: text('agency.invitations.cancel_title', { email: invitee }),
+  });
+  await expect(sheet).toContainText(text('agency.invitations.cancel_body', { email: invitee }));
+  await expectAccessible(page);
+  await sheet.getByRole('button', { name: text('agency.invitations.cancel_confirm') }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(row).toHaveCount(0);
+});
+
+test('makes a team, puts the owner in and takes them out, renames it, and deletes it once asked', async () => {
+  await page
+    .getByRole('navigation', { name: text('agency.nav.label') })
+    .getByRole('link', { name: text('agency.nav.teams') })
+    .click();
+  await expect(heading(text('agency.teams.title'))).toBeVisible();
+  await expect(page.getByText(text('agency.teams.empty_title'))).toBeVisible();
+  await expectAccessible(page);
+
+  await page.getByRole('textbox', { name: text('agency.teams.name') }).fill('Yerevan office');
+  await page.getByRole('button', { name: text('agency.teams.create') }).click();
+  const team = page.getByRole('heading', { name: 'Yerevan office' });
+  await expect(team).toBeVisible();
+
+  await page
+    .getByRole('combobox', { name: text('agency.teams.add_label') })
+    .selectOption({ label: email });
+  await page.getByRole('button', { name: text('agency.teams.add') }).click();
+  const out = page.getByRole('button', {
+    name: text('agency.teams.remove_member', { name: email, team: 'Yerevan office' }),
+  });
+  await expect(out).toBeVisible();
+  await expect(page.getByText(text('agency.teams.everyone_in'))).toBeVisible();
+  await out.click();
+  await expect(out).toHaveCount(0);
+
+  await page
+    .getByRole('button', { name: text('agency.teams.edit_label', { team: 'Yerevan office' }) })
+    .click();
+  const name = page.getByRole('textbox', { name: text('agency.teams.name') }).last();
+  await expect(name).toBeFocused();
+  await name.fill('Gyumri office');
+  await page.getByRole('button', { name: text('agency.teams.save') }).click();
+  const edit = page.getByRole('button', {
+    name: text('agency.teams.edit_label', { team: 'Gyumri office' }),
+  });
+  await expect(edit).toBeFocused();
+
+  await page
+    .getByRole('button', { name: text('agency.teams.delete_label', { team: 'Gyumri office' }) })
+    .click();
+  const sheet = page.getByRole('dialog', {
+    name: text('agency.teams.delete_title', { team: 'Gyumri office' }),
+  });
+  await expectAccessible(page);
+  await sheet
+    .getByRole('button', { name: text('agency.teams.delete_confirm', { team: 'Gyumri office' }) })
+    .click();
+  await expect(page.getByText(text('agency.teams.empty_title'))).toBeVisible();
+});
+
+test('makes an investigator profile for a member, and each save shows on the page at once', async () => {
+  // The owner takes up the investigator role themself, in their Personal workspace (T-087) — an
+  // agency cannot do it for them.
+  const workspaces = (await (await page.request.get('/api/v1/workspaces')).json()) as Array<{
+    id: string;
+    kind: string;
+  }>;
+  const personal = workspaces.find((w) => w.kind === 'PERSONAL')!.id;
+  const required = (await (
+    await page.request.get('/api/v1/legal/required?for=INVESTIGATOR&locale=en')
+  ).json()) as Array<{ id: string }>;
+  const role = await page.request.post('/api/v1/profiles/roles', {
+    headers: { 'x-workspace': personal },
+    data: { role: 'INVESTIGATOR', acceptedDocumentIds: required.map((d) => d.id) },
+  });
+  expect(role.ok()).toBe(true);
+
+  await page.goto('/agency/investigators');
+  await expect(heading(text('agency.investigators.title'))).toBeVisible();
+  await expect(page.getByText(text('agency.investigators.empty_title'))).toBeVisible();
+  await page
+    .getByRole('combobox', { name: text('agency.investigators.member') })
+    .selectOption({ label: email });
+  await page.getByRole('button', { name: text('agency.investigators.make') }).click();
+  await expect(page).toHaveURL(/\/agency\/investigators\/[0-9a-f-]{36}$/);
+  await expect(
+    page.getByText(text('agency.investigators.held_by', { person: email })),
+  ).toBeVisible();
+  await expect(page.getByText(text('investigator.status.agency_body'))).toBeVisible();
+  // The holder's legal name and their choice of name are theirs, not the agency's.
+  await expect(page.getByRole('radiogroup')).toHaveCount(0);
+  await expectAccessible(page);
+
+  const pseudonym = `Ararat Desk ${Date.now().toString(36)}`;
+  await page
+    .getByRole('textbox', { name: text('investigator.details.agency_pseudonym') })
+    .fill(pseudonym);
+  await page.getByRole('button', { name: text('investigator.details.save'), exact: true }).click();
+  await expect(page.getByText(text('investigator.details.saved'))).toBeVisible();
+  // The page shows the save without a reload: the heading is the name customers will see.
+  await expect(heading(pseudonym)).toBeVisible();
+
+  await page.getByRole('switch', { name: text('investigator.status.agency_publish') }).click();
+  await expect(
+    page.getByRole('switch', { name: text('investigator.status.agency_publish') }),
+  ).toBeChecked();
+  await page.getByRole('link', { name: text('agency.investigators.back') }).click();
+  await expect(
+    page.getByRole('link', { name: text('agency.investigators.edit_label', { name: pseudonym }) }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(text('agency.investigators.shown')).filter({ visible: true }),
+  ).toBeVisible();
+  await expectAccessible(page);
 });

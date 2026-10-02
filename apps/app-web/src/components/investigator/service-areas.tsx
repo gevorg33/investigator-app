@@ -13,6 +13,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { callApi } from '@/lib/api/browser';
 import type { LonLat, OwnServiceArea } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
+import { useProfileTarget } from './profile-target';
 
 /** The radii offered, in kilometres. The API takes 5 to 300. */
 export const RADII = [5, 10, 25, 50, 100] as const;
@@ -31,8 +32,9 @@ type Locating = 'idle' | 'locating' | 'found' | 'denied' | 'failed';
 function Remove({ area }: { area: OwnServiceArea }) {
   const t = useTranslations('investigator.areas');
   const router = useRouter();
+  const target = useProfileTarget();
   const { pending, error, onSubmit } = useSubmit(
-    () => callApi(`/service-areas/me/${encodeURIComponent(area.id)}`, { method: 'DELETE' }),
+    () => callApi(`${target.areas}/${encodeURIComponent(area.id)}`, { method: 'DELETE' }),
     () => router.refresh(),
   );
   return (
@@ -67,6 +69,7 @@ export function ServiceAreas({
 }) {
   const t = useTranslations('investigator.areas');
   const router = useRouter();
+  const target = useProfileTarget();
   const [locating, setLocating] = useState<Locating>('idle');
   const [centre, setCentre] = useState<LonLat | null>(null);
   const [radius, setRadius] = useState<string>('25');
@@ -89,7 +92,7 @@ export function ServiceAreas({
       // Both are always in the form: it is only submitted once a location is found.
       const country = String(form.get('country'));
       const city = String(form.get('city')).trim();
-      return callApi('/service-areas/me', {
+      return callApi(target.areas, {
         body: {
           kind: 'RADIUS',
           label: String(form.get('label')).trim(),
@@ -110,7 +113,7 @@ export function ServiceAreas({
   return (
     <div className="grid gap-6">
       {areas.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('empty')}</p>
+        <p className="text-sm text-text-muted">{target.agency ? t('agency_empty') : t('empty')}</p>
       ) : (
         <ul className="grid gap-2">
           {areas.map((area) => (
@@ -168,14 +171,16 @@ export function ServiceAreas({
         {centre !== null && (
           <>
             <fieldset className="grid gap-2">
-              <legend className="mb-2 text-sm font-medium">{t('radius')}</legend>
+              <legend className="mb-2 text-sm font-medium">
+                {target.agency ? t('agency_radius') : t('radius')}
+              </legend>
               <ToggleGroup
                 type="single"
                 value={radius}
                 onValueChange={(v) => {
                   if (v !== '') setRadius(v);
                 }}
-                aria-label={t('radius')}
+                aria-label={target.agency ? t('agency_radius') : t('radius')}
               >
                 {RADII.map((km) => (
                   <ToggleGroupItem key={km} value={String(km)}>
@@ -184,7 +189,13 @@ export function ServiceAreas({
                 ))}
               </ToggleGroup>
             </fieldset>
-            <Field label={t('label')} hint={t('label_hint')} name="label" required maxLength={80} />
+            <Field
+              label={t('label')}
+              hint={target.agency ? t('agency_label_hint') : t('label_hint')}
+              name="label"
+              required
+              maxLength={80}
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium">
                 {t('country')}

@@ -12,6 +12,8 @@ import { LanguagesEditor } from './languages-editor';
 import { PublicProfileCard } from './public-profile-card';
 import { SectionCard } from '@/components/section-card';
 import { coarse, RADII, ServiceAreas } from './service-areas';
+import { ProfileTargetProvider } from './profile-target';
+import { heldProfile } from './profile-target-paths';
 import { SpecialtiesPicker } from './specialties-picker';
 import { StatusCard } from './status-card';
 
@@ -451,8 +453,8 @@ describe('specialties', () => {
     { id: 'deep', label: 'Supplier checks', depth: 2 },
     { id: 'family', label: 'Family', depth: 0 },
   ];
-  const picker = (chosen: string[] = [DD]) =>
-    renderIntl(<SpecialtiesPicker chosen={chosen} categories={CATEGORIES} />);
+  const picker = (chosen: string[] = [DD], categories = CATEGORIES) =>
+    renderIntl(<SpecialtiesPicker chosen={chosen} categories={categories} />);
   const option = (name: RegExp) => screen.getByRole('option', { name });
 
   it('finds by name, toggles each, and saves the set', async () => {
@@ -473,6 +475,13 @@ describe('specialties', () => {
     expect(patched()).toEqual({ specialtyNodeIds: ['retired', 'deep'] });
     expect(await screen.findByRole('status')).toHaveTextContent(en.specialties.saved);
     expect(router.refresh).toHaveBeenCalled();
+  });
+
+  it('says when there is nothing to choose from, rather than an empty list', () => {
+    picker([], []);
+    expect(screen.getByText(en.specialties.unavailable)).toBeVisible();
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 
   it('says when nothing matches, and when nothing is chosen', async () => {
@@ -740,5 +749,137 @@ describe('where the investigator works', () => {
     const button = screen.getByRole('button', { name: en.areas.locating });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute('aria-busy', 'true');
+  });
+});
+
+describe('a profile an agency holds, edited by the agency (T-093)', () => {
+  const HELD = '/agencies/current/investigators/p-held';
+  const asAgency = (ui: React.ReactNode) =>
+    renderIntl(<ProfileTargetProvider target={heldProfile('p-held')}>{ui}</ProfileTargetProvider>);
+
+  it('builds the agency’s routes for the profile, not the reader’s own', () => {
+    expect(heldProfile('p/1')).toEqual({
+      profile: '/agencies/current/investigators/p%2F1',
+      areas: '/agencies/current/investigators/p%2F1/service-areas',
+      agency: true,
+    });
+  });
+
+  it('speaks of the investigator, not to them, and has nothing to preview or apply for', () => {
+    const profile = ownProfile({ verificationStatus: 'UNVERIFIED', visibility: 'DRAFT' });
+    asAgency(<StatusCard profile={profile} areas={0} specialties={SPECIALTIES} />);
+    const region = screen.getByRole('region', { name: en.status.title });
+    expect(region).toHaveTextContent(en.status.agency_body);
+    expect(
+      within(region).getByRole('link', { name: new RegExp(en.status.verified) }),
+    ).toHaveAttribute('href', '#status');
+    expect(
+      within(region).getByRole('link', { name: new RegExp(en.status.agency_areas) }),
+    ).toBeVisible();
+    expect(screen.getByRole('switch', { name: en.status.agency_publish })).toBeVisible();
+    expect(screen.queryByRole('button', { name: en.status.preview })).toBeNull();
+  });
+
+  it('says when it is listed, and saves its switches to the agency’s route', async () => {
+    api.on(`PATCH ${HELD}`, 200, {});
+    asAgency(<StatusCard profile={ownProfile()} areas={1} specialties={SPECIALTIES} />);
+    expect(screen.getByText(en.status.agency_ready)).toBeVisible();
+    await user().click(screen.getByRole('switch', { name: en.status.accept }));
+    expect(api.calls[0]).toMatchObject({
+      method: 'PATCH',
+      path: HELD,
+      body: { acceptingWork: false },
+    });
+  });
+
+  it('offers no legal name and no choice of name, and sends neither', async () => {
+    api.on(`PATCH ${HELD}`, 200, {});
+    asAgency(<DetailsForm profile={ownProfile()} currencies={['AMD']} />);
+    expect(screen.queryByRole('textbox', { name: en.details.name })).toBeNull();
+    expect(screen.queryByRole('radiogroup')).toBeNull();
+    expect(screen.getByText(en.details.agency_name_note)).toBeVisible();
+    const pseudonym = screen.getByRole('textbox', { name: en.details.agency_pseudonym });
+    expect(pseudonym).toHaveAccessibleDescription(en.details.agency_pseudonym_hint);
+    expect(screen.getByRole('textbox', { name: en.details.agency_bio })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: en.details.agency_pricing })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: en.details.phone })).toHaveAccessibleDescription(
+      en.details.agency_phone_hint,
+    );
+    await user().click(screen.getByRole('button', { name: en.details.save }));
+    const sent = api.calls[0]!;
+    expect(sent.path).toBe(HELD);
+    expect(sent.body).not.toHaveProperty('displayName');
+    expect(sent.body).not.toHaveProperty('publicName');
+    expect(sent.body).toMatchObject({ pseudonym: 'Ararat Lantern' });
+  });
+
+  it('says a refused pseudonym shares a word with the investigator’s legal name — not “your own”', async () => {
+    const refused = (messageKey: string) =>
+      apiError('VALIDATION_FAILED', 'error.common.validation_failed', {
+        details: [{ field: 'pseudonym', code: 'X', messageKey }],
+      });
+    api.on(`PATCH ${HELD}`, 422, refused('error.validation.pseudonym.own_name'));
+    asAgency(<DetailsForm profile={ownProfile()} currencies={['AMD']} />);
+    await user().click(screen.getByRole('button', { name: en.details.save }));
+    const pseudonym = screen.getByRole('textbox', { name: en.details.agency_pseudonym });
+    expect(pseudonym).toHaveAccessibleDescription(
+      expect.stringContaining(en.details.agency_pseudonym_own_name),
+    );
+    // Any other refusal is the API's own words.
+    api.on(`PATCH ${HELD}`, 422, refused('error.validation.pseudonym.taken'));
+    await user().click(screen.getByRole('button', { name: en.details.save }));
+    expect(pseudonym).toHaveAccessibleDescription(
+      expect.stringContaining(catalogs.en.error.validation.pseudonym.taken),
+    );
+  });
+
+  it('saves languages, specialties and hours to the agency’s route', async () => {
+    api.on(`PATCH ${HELD}`, 200, {});
+    asAgency(
+      <>
+        <LanguagesEditor languages={[]} options={[{ code: 'hy', name: 'Armenian' }]} />
+        <SpecialtiesPicker
+          chosen={[DD]}
+          categories={[{ id: DD, label: 'Due diligence', depth: 0 }]}
+        />
+        <AvailabilityEditor windows={[]} />
+      </>,
+    );
+    await user().click(screen.getByRole('button', { name: en.languages.save }));
+    await user().click(screen.getByRole('button', { name: en.specialties.save }));
+    await user().click(screen.getByRole('button', { name: en.availability.save }));
+    expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `PATCH ${HELD}`,
+      `PATCH ${HELD}`,
+      `PATCH ${HELD}`,
+    ]);
+  });
+
+  it('lists, adds and removes the profile’s areas through the agency', async () => {
+    api.on(`DELETE ${HELD}/service-areas/sa-1`, 204);
+    api.on(`POST ${HELD}/service-areas`, 201, serviceArea());
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: {
+        getCurrentPosition: (ok: PositionCallback) =>
+          ok({ coords: { longitude: 44.51, latitude: 40.18 } } as GeolocationPosition),
+      },
+    });
+    const { unmount } = asAgency(<ServiceAreas areas={[]} countries={[]} />);
+    expect(screen.getByText(en.areas.agency_empty)).toBeVisible();
+    await user().click(screen.getByRole('button', { name: en.areas.locate }));
+    expect(screen.getByRole('group', { name: en.areas.agency_radius })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: en.areas.label })).toHaveAccessibleDescription(
+      en.areas.agency_label_hint,
+    );
+    await user().type(screen.getByRole('textbox', { name: en.areas.label }), 'Yerevan');
+    await user().click(screen.getByRole('button', { name: en.areas.add }));
+    unmount();
+    asAgency(<ServiceAreas areas={[serviceArea({ id: 'sa-1' })]} countries={[]} />);
+    await user().click(screen.getByRole('button', { name: /^Remove / }));
+    expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `POST ${HELD}/service-areas`,
+      `DELETE ${HELD}/service-areas/sa-1`,
+    ]);
   });
 });

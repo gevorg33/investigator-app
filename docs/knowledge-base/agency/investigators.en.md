@@ -4,13 +4,14 @@ title: Your agency's investigator profiles
 audience: agency
 visibility: authenticated
 locale: en
-version: 1
+version: 2
 status: current
 updated: 2026-10-02
 source_of_truth: database
 implementation_status: partial
 related_code:
   - apps/api/src/modules/profiles
+  - apps/app-web/src/components/agency/console
   - apps/api/src/modules/service-areas
   - apps/api/src/modules/search
   - apps/api/src/database/migrations/0037_add_agency_investigator_profiles.sql
@@ -41,6 +42,19 @@ No. An investigator can have their own profile in their Personal workspace, for 
 independently, and a separate profile in each agency they work for. Each has its own headline, prices,
 areas, verification and listing, and neither stands in for the other. When the investigator works in
 your agency's workspace, the profile they see and quote with is the agency's one.
+
+## Where do I manage our investigator profiles?
+
+Working in your agency, open **Account** and choose **Investigators**. Each profile shows who holds it
+and where it stands for customers — shown or hidden, verified or not, taking work or not — and says
+when its holder is suspended or has left. On a phone each profile is a card; on a wide screen, a row.
+
+**Make a profile** offers the members who are active and have none here yet. **Edit** opens a profile's
+own page, with the same sections an investigator sees on their own profile — what customers read,
+languages, specialties, hours and areas — except the holder's legal name and their choice of name, which
+are theirs. Each section saves on its own, and the page shows the change at once. When the holder is
+suspended or has left, the page says so at the top, and the profile cannot be shown again until they
+are reactivated.
 
 ## Who in my agency can see and change our investigator profiles?
 

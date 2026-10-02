@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/command';
 import { callApi } from '@/lib/api/browser';
 import { cn } from '@/lib/utils';
+import { useProfileTarget } from './profile-target';
 
 /**
  * What an investigator does (T-123), chosen from the shared taxonomy — never typed (ADR-0007): a
@@ -32,6 +33,7 @@ export function SpecialtiesPicker({
 }) {
   const t = useTranslations('investigator.specialties');
   const router = useRouter();
+  const target = useProfileTarget();
   const [ids, setIds] = useState<string[]>([...chosen]);
   const [saved, setSaved] = useState(false);
   const labels = new Map(categories.map((c) => [c.id, c.label]));
@@ -40,7 +42,7 @@ export function SpecialtiesPicker({
   const { pending, error, onSubmit } = useSubmit(
     () => {
       setSaved(false);
-      return callApi('/profiles/investigator/me', {
+      return callApi(target.profile, {
         method: 'PATCH',
         body: { specialtyNodeIds: ids },
       });
@@ -66,38 +68,46 @@ export function SpecialtiesPicker({
           ))}
         </ul>
       )}
-      <Command
-        label={t('search')}
-        filter={(value, search) =>
-          labels.get(value)?.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
-        }
-      >
-        <CommandInput placeholder={t('search')} />
-        <CommandList>
-          <CommandEmpty>{t('none')}</CommandEmpty>
-          {categories.map((c) => (
-            <CommandItem
-              key={c.id}
-              value={c.id}
-              onSelect={() => toggle(c.id)}
-              className={cn(c.depth === 0 && 'font-medium')}
-            >
-              <Check
-                aria-hidden
-                className={cn('size-4', ids.includes(c.id) ? 'opacity-100' : 'opacity-0')}
-              />
-              <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>{c.label}</span>
-              {/* The space keeps "selected" a word of its own in the option's accessible name. */}
-              {ids.includes(c.id) && (
-                <>
-                  {' '}
-                  <span className="sr-only">{t('selected')}</span>
-                </>
-              )}
-            </CommandItem>
-          ))}
-        </CommandList>
-      </Command>
+      {categories.length === 0 ? (
+        // An empty catalogue is said, not offered as a search with nothing in it: a list with no
+        // options is no list at all to a screen reader (axe, aria-required-children).
+        <p className="text-sm text-text-muted">{t('unavailable')}</p>
+      ) : (
+        <Command
+          label={t('search')}
+          filter={(value, search) =>
+            labels.get(value)?.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+          }
+        >
+          <CommandInput placeholder={t('search')} />
+          <CommandList>
+            <CommandEmpty>{t('none')}</CommandEmpty>
+            {categories.map((c) => (
+              <CommandItem
+                key={c.id}
+                value={c.id}
+                onSelect={() => toggle(c.id)}
+                className={cn(c.depth === 0 && 'font-medium')}
+              >
+                <Check
+                  aria-hidden
+                  className={cn('size-4', ids.includes(c.id) ? 'opacity-100' : 'opacity-0')}
+                />
+                <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                  {c.label}
+                </span>
+                {/* The space keeps "selected" a word of its own in the option's accessible name. */}
+                {ids.includes(c.id) && (
+                  <>
+                    {' '}
+                    <span className="sr-only">{t('selected')}</span>
+                  </>
+                )}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      )}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending} aria-busy={pending}>
           {t('save')}
