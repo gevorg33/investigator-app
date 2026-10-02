@@ -8383,7 +8383,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @investi
 ---
 
 ### T-190 — `/account/investigator` fails with a server error when the reader shows the platform as a customer
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; `/account/investigator` and Account's link to it use `actsAsInvestigator`; unit tests (seen failing first) and a step in `agency.e2e.ts`; `app-web.md`, KB `kb-customer-getting-started` en/ru/hy
 - **Priority:** P2
 - **Depends on:** —
 - **Risk:** LOW
@@ -8400,9 +8400,9 @@ should do what `/missions` does with `actsAsInvestigator`: not offer the page wh
 customer (redirect to Account, where the role choice is), rather than throw.
 
 **Acceptance criteria**
-- [ ] Acting as a customer, `/account/investigator` lands on Account's role choice; no server error
-- [ ] Acting as an investigator, or as both, the page is unchanged
-- [ ] A test holds both roles with the customer one chosen
+- [x] Acting as a customer, `/account/investigator` lands on Account's role choice; no server error
+- [x] Acting as an investigator, or as both, the page is unchanged
+- [x] A test holds both roles with the customer one chosen
 
 **Validation**
 ```bash

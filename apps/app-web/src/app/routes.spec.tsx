@@ -725,5 +725,16 @@ describe('the application routes', () => {
       await expect(InvestigatorPage()).rejects.toEqual(new Redirected('/account#roles'));
       expect(api.calls.map((c) => c.path)).toEqual(['/me']);
     });
+
+    it('sends someone showing the platform as a customer to the role choice, asking the API nothing more (T-190)', async () => {
+      // Both held, the customer one chosen: the API would refuse every investigator read with 403.
+      api.on(
+        'GET /me',
+        200,
+        account({ roles: ['CUSTOMER', 'INVESTIGATOR'], activeRole: 'CUSTOMER' }),
+      );
+      await expect(InvestigatorPage()).rejects.toEqual(new Redirected('/account#roles'));
+      expect(api.calls.map((c) => c.path)).toEqual(['/me']);
+    });
   });
 });

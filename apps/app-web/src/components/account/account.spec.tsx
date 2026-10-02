@@ -230,6 +230,31 @@ describe('roles', () => {
     await show(RolesSection({ account: account({ roles: ['CUSTOMER'] }), locale: 'en' }));
     expect(link()).toBeNull();
   });
+
+  it('offers the investigator profile only while the platform is not shown as a customer (T-190)', async () => {
+    const both = ['CUSTOMER', 'INVESTIGATOR'] as const;
+    const link = () =>
+      screen.queryByRole('link', { name: new RegExp(catalogs.en.investigator.link) });
+    const { unmount } = await show(
+      RolesSection({
+        account: account({ roles: [...both], activeRole: 'CUSTOMER' }),
+        locale: 'en',
+      }),
+    );
+    // The choice that changes it is right here; a link that came back to it would say nothing.
+    expect(link()).toBeNull();
+    expect(screen.getByRole('button', { pressed: true })).toHaveTextContent(
+      catalogs.en.account.roles.act_customer,
+    );
+    unmount();
+    for (const activeRole of [null, 'INVESTIGATOR'] as const) {
+      const shown = await show(
+        RolesSection({ account: account({ roles: [...both], activeRole }), locale: 'en' }),
+      );
+      expect(link()).toHaveAttribute('href', '/account/investigator');
+      shown.unmount();
+    }
+  });
 });
 
 describe('documents to accept again', () => {

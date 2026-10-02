@@ -85,6 +85,9 @@ test('creates an agency and reaches its profile from Account', async () => {
   await page.getByLabel(text('workspace.create_agency.accept')).check();
   await page.getByRole('button', { name: text('workspace.create_agency.submit') }).click();
   await expect(page).toHaveURL(/\/$/);
+  // Home says where they now work (T-092). Waited for before axe runs: it mounts after hydration and
+  // fades in, and measured mid-fade it is briefly low-contrast by design.
+  await expect(page.getByText(text('workspace.switched', { name: AGENCY }))).toBeVisible();
 
   // Home shows its owner what is left (T-149): the details are complete — the form asked for them
   // all — and the profile is not published yet.
@@ -456,4 +459,28 @@ test('a customer sees the agency an investigator works for, on the card and the 
     page.getByRole('article'),
   );
   await expectAccessible(page);
+});
+
+test('showing the platform as a customer, the investigator profile sends them to the role choice (T-190)', async () => {
+  // Left by the journey above: both roles held, the customer one chosen.
+  await page.goto('/account/investigator');
+  await expect(page).toHaveURL(/\/account#roles$/);
+  const roles = page.getByRole('region', { name: text('account.roles.title') });
+  await expect(
+    roles.getByRole('button', { name: text('account.roles.act_customer') }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  // No link to a page that would only send them back here.
+  await expect(
+    roles.getByRole('link', { name: new RegExp(text('investigator.link')) }),
+  ).toHaveCount(0);
+  await expectAccessible(page);
+
+  // Shown as both again, the profile is theirs to open.
+  await roles.getByRole('button', { name: text('account.roles.act_both') }).click();
+  await expect(roles.getByRole('button', { name: text('account.roles.act_both') })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await roles.getByRole('link', { name: new RegExp(text('investigator.link')) }).click();
+  await expect(heading(text('investigator.title'))).toBeVisible();
 });

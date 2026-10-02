@@ -156,7 +156,9 @@ the browser session (`chooseActiveRole`); the server forwards it as `X-Active-Ro
 httpOnly, so the browser is told the role instead: `WorkspaceScope` pins it, and every browser call —
 `callApi` and the assistant's client alike — sends it as `X-Active-Role` too (T-145). Before that,
 someone with both roles who chose to act as a customer was their full self for every call made from
-the browser.
+the browser. Acting as a customer, `/account/investigator` sends them to `/account#roles` and Account
+does not link to it (`actsAsInvestigator`, as `/missions` does): the API answers every investigator
+read with 403 then, and the page threw a server error until T-190.
 
 **Time zone.** Stored on the account (`users.timezone`, validated as an IANA name — a fixed offset
 is refused because it ignores daylight saving). Every date on these screens is formatted in it. The

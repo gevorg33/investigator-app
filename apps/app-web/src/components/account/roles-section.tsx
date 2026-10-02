@@ -2,6 +2,7 @@ import type { Locale } from '@investigator/i18n';
 import { Check, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { chooseActiveRole } from '@/app/(workspace)/account/actions';
+import { actsAsInvestigator } from '@/components/discovery/missions-views';
 import { getT } from '@/i18n/server';
 import type { Account } from '@/lib/api/server';
 import { serverApi } from '@/lib/api/server';
@@ -51,7 +52,8 @@ export async function RolesSection({ account, locale }: { account: Account; loca
           ))}
         </ul>
       )}
-      {account.roles.includes('INVESTIGATOR') && (
+      {/* Not while the platform is shown as a customer: the page would send them back here (T-190). */}
+      {actsAsInvestigator(account) && (
         <Link
           href="/account/investigator"
           className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-4 py-3 hover:bg-surface-sunken"
