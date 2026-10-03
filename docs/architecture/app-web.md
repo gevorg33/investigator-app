@@ -260,7 +260,10 @@ in the customer's words) → the brief. Progress is `Progress` plus "Question 3 
 - **Tags** (T-055) are offered on the kind-of-help question, under the category, as optional chips
   from `GET /tags` in the reader's language, each marked with `lang` like the browse chips —
   "suggest up to 8; a moderator confirms them". They
-  are saved with the draft like any answer (`tagIds`), shown on the brief, and frozen once sent.
+  are saved with the draft like any answer (`tagIds`), shown on the brief as "Tags you suggested",
+  and frozen once sent. Once the mission is published, its page shows the tags it was published
+  with instead (`confirmedTagIds`, "Investigators find it under") — a status from QUOTED on, or a
+  cancelled mission carrying confirmed tags (`shownTags`, `lib/tags.ts`, T-194).
   The customer never types a tag. "Start a new mission from this one" carries no tags: a
   moderator decided on those.
 - **Languages start with the reader's own**, saved and removable — a default, not an assumption.

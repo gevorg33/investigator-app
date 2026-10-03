@@ -12,8 +12,10 @@ export interface BriefNames {
   category: string | null;
   country: string | null;
   languages: string[];
-  /** The suggested tags' names (T-055), in the reader's language. */
+  /** Tags' names (T-055), in the reader's language: the suggestions, unless `tagsPublished`. */
   tags: string[];
+  /** The tags are the ones the mission was published with, not the suggestions (T-194). */
+  tagsPublished?: boolean;
 }
 
 const day = (date: string, locale: Locale) =>
@@ -45,7 +47,13 @@ export function Brief({
     need: [f.title, f.description].filter((v): v is string => v !== null),
     kind: [
       ...(names.category === null ? [] : [names.category]),
-      ...(names.tags.length === 0 ? [] : [t('tags', { list: names.tags.join(', ') })]),
+      ...(names.tags.length === 0
+        ? []
+        : [
+            t(names.tagsPublished === true ? 'tags_published' : 'tags_suggested', {
+              list: names.tags.join(', '),
+            }),
+          ]),
     ],
     where: [names.country, f.locationLabel].filter((v): v is string => v !== null),
     when: [

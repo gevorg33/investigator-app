@@ -86,6 +86,11 @@ and a customer-authored word on a public listing is something to moderate.
    a return or a rejection; the API refuses `tagIds` with any outcome but PUBLISHED.
 4. **Investigators** browsing open missions see and filter by **confirmed** tags only. A suggestion
    nobody confirmed changes nothing anyone else sees.
+5. **The customer** reads both on their own mission (T-194): `tagIds` is what they suggested,
+   `confirmedTagIds` what it was published with — each as the tag it has since been merged into,
+   once, since that is what investigators now find it under. Their mission page shows the suggestions, labelled
+   as such, until it is published, then the confirmed tags as "Investigators find it under" — none
+   if it was published with none (`app-web.md`).
 
 ### Rules, and what holds each one
 

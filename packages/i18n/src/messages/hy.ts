@@ -214,7 +214,8 @@ export const hy: Catalog = {
       },
     },
     brief: {
-      tags: 'Պիտակներ՝ {list}',
+      tags_suggested: 'Ձեր առաջարկած պիտակները՝ {list}',
+      tags_published: 'Դետեկտիվները այն գտնում են այս պիտակներով՝ {list}',
       section: {
         need: 'Ինչ է պետք',
         kind: 'Օգնության տեսակը',

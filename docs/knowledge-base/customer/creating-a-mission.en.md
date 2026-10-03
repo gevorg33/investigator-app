@@ -4,9 +4,9 @@ title: Creating and submitting a mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
-updated: 2026-10-03
+updated: 2026-10-04
 source_of_truth: docs
 implementation_status: implemented
 related_code:
@@ -61,6 +61,11 @@ investigators find your mission sooner; they never decide who may see it or quot
 
 You can change your suggestions while the mission is a draft. Once you submit it they are fixed
 with the rest of your answers. A new mission started from a rejected one starts without tags.
+
+Your mission page shows the tags that matter at each stage. Until the mission is published it lists
+your suggestions, as "Tags you suggested". Once it is published it lists the tags it was published
+with instead, as "Investigators find it under" — the confirmed tags, which may differ from what you
+suggested. A mission published without tags shows none.
 
 ## Can I save a mission and finish it later?
 

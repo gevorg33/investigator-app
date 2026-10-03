@@ -290,6 +290,49 @@ describe('mission tags (T-055)', () => {
       );
     });
 
+    it('shows the customer what the mission was published with, beside what they suggested (T-194)', async () => {
+      const [kept, dropped, added] = [await tag(ownerDb), await tag(ownerDb), await tag(ownerDb)];
+      const m = await submitted([kept, dropped]);
+      // Suggested together, so in one instant: the order between them is the tag ids'.
+      const sorted = (ids: readonly string[]) => [...ids].sort();
+      const before = await missionsService.getMine(m.actor, m.id, req());
+      expect(sorted(before.tagIds)).toEqual(sorted([kept, dropped]));
+      expect(before.confirmedTagIds).toEqual([]);
+
+      await moderation.decide(
+        moderator,
+        m.id,
+        { outcome: 'PUBLISHED', reason: REASON, version: m.version, tagIds: [kept, added] },
+        req(),
+      );
+      const read = await missionsService.getMine(m.actor, m.id, req());
+      expect(sorted(read.tagIds)).toEqual(sorted([kept, dropped]));
+      expect(sorted(read.confirmedTagIds)).toEqual(sorted([kept, added]));
+      const listed = (await missionsService.listMine(m.actor, req())).find((x) => x.id === m.id)!;
+      expect(sorted(listed.confirmedTagIds)).toEqual(sorted([kept, added]));
+    });
+
+    it('shows the customer a published tag as the one it has since been merged into, once', async () => {
+      const [old, into, newer] = [await tag(ownerDb), await tag(ownerDb), await tag(ownerDb)];
+      const m = await submitted([old, into]);
+      await moderation.decide(
+        moderator,
+        m.id,
+        { outcome: 'PUBLISHED', reason: REASON, version: m.version, tagIds: [old, into] },
+        req(),
+      );
+      // Merged into a tag that is later merged itself: the customer reads the end of the chain,
+      // which is what investigators find the mission under — and only once.
+      await owner`UPDATE tags SET status = 'DEPRECATED', merged_into_id = ${into} WHERE id = ${old}`;
+      await owner`UPDATE tags SET status = 'DEPRECATED', merged_into_id = ${newer} WHERE id = ${into}`;
+
+      const read = await missionsService.getMine(m.actor, m.id, req());
+      expect(read.confirmedTagIds).toEqual([newer]);
+      // The suggestions are what the customer chose, as they chose them.
+      expect([...read.tagIds].sort()).toEqual([old, into].sort());
+      expect((await rowsOf(m.id)).map((r) => r.tagId).sort()).toEqual([old, into].sort());
+    });
+
     it('shows a tag with no label as unnamed rather than inventing a name', async () => {
       const [bare] = await ownerDb
         .insert(tags)

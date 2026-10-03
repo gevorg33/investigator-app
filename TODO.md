@@ -3024,7 +3024,7 @@ in `intake.spec.tsx` and `mission-browse.spec.tsx`, seen to fail first; `app-web
 ---
 
 ### T-194 — Show the customer the tags their mission was published with
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `confirmedTagIds` (merges followed) beside `tagIds` on the customer's own mission; the brief says "Tags you suggested" until publication, then "Investigators find it under"
 - **Priority:** P3
 - **Depends on:** T-055
 - **Risk:** LOW
@@ -3041,15 +3041,32 @@ browse it as Corporate records + Court records). Behaviour matches `taxonomy.md`
 does not.
 
 **Acceptance criteria**
-- [ ] Once published, the customer sees the confirmed tags, labelled as what investigators see
-- [ ] Before publication, the line says the tags are suggestions
-- [ ] KB `kb-customer-creating-a-mission` says which the customer sees when, en/ru/hy
+- [x] Once published, the customer sees the confirmed tags, labelled as what investigators see
+      — a tag merged since is shown as the tag it became, once; published with none, no line
+- [x] Before publication, the line says the tags are suggestions
+- [x] KB `kb-customer-creating-a-mission` says which the customer sees when, en/ru/hy (v5; ru/hy stay draft)
 
 **Validation**
 ```bash
 pnpm --filter api test missions && pnpm --filter app-web test
 ```
 
+
+*Built.* API: `OwnMissionRepository.tagsOf` reads both sets in one query and walks merges to the tag
+each confirmed one became (recursive over `merged_into_id`); `OwnMission.confirmedTagIds`. No policy
+change — `mission_tags` `reads` already admits the customer's tenant. app-web: `shownTags`
+(`lib/tags.ts`, an exhaustive map of which statuses come only after publication; a cancelled
+mission counts if it carries confirmed tags), brief messages `tags_suggested` / `tags_published` in
+en/ru/hy. Docs: `taxonomy.md`, `missions.md`, `app-web.md`, KB v5.
+
+*Validated.* `pnpm --filter api test missions` 204/204 (tag suite 17/17, repeated); app-web 861;
+coverage 100% in every package (api 3314); lint, typecheck, format, build, KB validator.
+
+*Verified.* In the browser as the customer at 375, 768 and 1280 against the local API: under review
+"Tags you suggested: Supplier vetting"; published with one suggestion dropped "Investigators find
+it under: Litigation"; a mission whose confirmed tag was merged since shows the merge target, as
+investigators' Litigation filter finds it. No horizontal scroll. Found and fixed while verifying:
+merged confirmed tags first showed no line at all.
 ---
 
 ### T-056 — Assistant shell and conversation UI

@@ -213,7 +213,8 @@ export const ru: Catalog = {
       },
     },
     brief: {
-      tags: 'Теги: {list}',
+      tags_suggested: 'Предложенные вами теги: {list}',
+      tags_published: 'Детективы находят его по тегам: {list}',
       section: {
         need: 'Что нужно',
         kind: 'Вид помощи',

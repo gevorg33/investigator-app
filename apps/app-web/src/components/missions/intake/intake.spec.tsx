@@ -357,7 +357,7 @@ describe('mission intake', () => {
 
     it('the brief names the suggested tags under the kind of help, leaving out one retired since', () => {
       open(saved({ taxonomyNodeId: DD, tagIds: ['tag-remote', 'tag-retired'] }), 'review');
-      expect(screen.getByText('Tags: Remote work')).toBeInTheDocument();
+      expect(screen.getByText('Tags you suggested: Remote work')).toBeInTheDocument();
       expect(screen.queryByText(/tag-retired/)).toBeNull();
     });
 

@@ -110,6 +110,8 @@ export interface OwnMission extends MissionFields {
   createdAt: string;
   updatedAt: string;
   review: MissionReview | null;
+  /** The tags it was published with — what investigators browse it by (T-194). Empty until then. */
+  confirmedTagIds: string[];
 }
 
 /**

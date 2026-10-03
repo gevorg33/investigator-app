@@ -27,7 +27,10 @@ const TAXONOMY = [
     children: [{ id: DD, label: 'Due diligence', slug: 'due-diligence', children: [] }],
   },
 ];
-const TAGS = [{ id: 'tag-remote', slug: 'remote', label: 'Remote work', labelLocale: 'en' }];
+const TAGS = [
+  { id: 'tag-remote', slug: 'remote', label: 'Remote work', labelLocale: 'en' },
+  { id: 'tag-urgent', slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+];
 const DECIDED = '2026-09-24T10:00:00.000Z';
 
 /** The reader, the taxonomy, and this mission as the API answers for it. */
@@ -161,6 +164,43 @@ describe('the mission pages', () => {
       context({ status, submittedAt: '2026-09-24T09:00:00.000Z' });
       await show();
       expect(screen.getByText(title)).toBeInTheDocument();
+    });
+
+    describe('its tags (T-194)', () => {
+      const brief = () => screen.getByRole('region', { name: en.view.brief });
+      const sent = { submittedAt: '2026-09-24T09:00:00.000Z', tagIds: ['tag-remote'] };
+
+      it('calls them suggestions until a moderator publishes it', async () => {
+        context({ ...sent, status: 'UNDER_REVIEW' });
+        await show();
+        expect(brief()).toHaveTextContent('Tags you suggested: Remote work');
+      });
+
+      it('once published, names what investigators find it under — not what was suggested', async () => {
+        context({ ...sent, status: 'QUOTED', confirmedTagIds: ['tag-urgent'] });
+        await show();
+        expect(brief()).toHaveTextContent('Investigators find it under: Urgent');
+        expect(brief()).not.toHaveTextContent('Remote work');
+      });
+
+      it('names none once published with none, rather than the suggestions', async () => {
+        context({ ...sent, status: 'EXPIRED', confirmedTagIds: [] });
+        await show();
+        expect(brief()).not.toHaveTextContent('Remote work');
+        expect(brief()).not.toHaveTextContent(/Tags you suggested|Investigators find it under/);
+      });
+
+      it('after cancelling, says which it is by whether it was ever published with any', async () => {
+        context({ ...sent, status: 'CANCELLED', confirmedTagIds: ['tag-urgent'] });
+        const published = await show();
+        expect(brief()).toHaveTextContent('Investigators find it under: Urgent');
+        published.unmount();
+
+        api.install();
+        context({ ...sent, status: 'CANCELLED' });
+        await show();
+        expect(brief()).toHaveTextContent('Tags you suggested: Remote work');
+      });
     });
 
     it('offers to withdraw a mission under review, and nothing past it (T-154)', async () => {

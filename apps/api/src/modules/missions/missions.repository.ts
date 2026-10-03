@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, isNotNull, type SQL } from 'drizzle-orm';
+import { desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { ActorScopedRepository } from '../../common/authz/actor-scoped.repository';
 import type { Actor } from '../../common/authz/contract';
 import { DB, type Db, type Tx } from '../../database/database.module';
@@ -15,6 +15,12 @@ export interface MissionReview {
   outcome: 'REJECTED' | 'CHANGES_REQUESTED';
   reason: string | null;
   decidedAt: Date;
+}
+
+/** A mission's tags as its customer reads them: what they suggested, and what it was published with. */
+export interface MissionTagIds {
+  suggested: string[];
+  confirmed: string[];
 }
 
 /**
@@ -84,26 +90,66 @@ export class OwnMissionRepository extends ActorScopedRepository<MissionRow> {
   }
 
   /**
-   * The tags the customer suggested on each mission (T-055), by mission, in the order suggested.
-   * Takes rows already read as the caller's own, as {@link reviewsOf} does.
+   * Each mission's tags, by mission: those the customer suggested (T-055), in the order suggested,
+   * and those a moderator confirmed at publication (T-194), in the order confirmed. One tag may be
+   * both; one the moderator added was never suggested. A confirmed tag merged since is given as the
+   * tag it became — what investigators now find the mission under (`tag-closure.ts` walks the other
+   * way) — and a tag reached twice is given once. Takes rows already read as the caller's own, as
+   * {@link reviewsOf} does.
    */
-  async suggestedTagsOf(rows: readonly MissionRow[], tx?: Tx): Promise<Map<string, string[]>> {
-    const out = new Map<string, string[]>(rows.map((r) => [r.id, []]));
+  async tagsOf(rows: readonly MissionRow[], tx?: Tx): Promise<Map<string, MissionTagIds>> {
+    const out = new Map<string, MissionTagIds>(
+      rows.map((r) => [r.id, { suggested: [], confirmed: [] }]),
+    );
     if (rows.length === 0) return out;
     const found = await (tx ?? this.db)
-      .select({ missionId: missionTags.missionId, tagId: missionTags.tagId })
+      .select({
+        missionId: missionTags.missionId,
+        tagId: missionTags.tagId,
+        suggestedAt: missionTags.suggestedAt,
+        confirmedAt: missionTags.confirmedAt,
+      })
       .from(missionTags)
       .where(
-        and(
-          inArray(
-            missionTags.missionId,
-            rows.map((r) => r.id),
-          ),
-          isNotNull(missionTags.suggestedAt),
+        inArray(
+          missionTags.missionId,
+          rows.map((r) => r.id),
         ),
       )
-      .orderBy(missionTags.missionId, missionTags.suggestedAt, missionTags.tagId);
-    for (const t of found) out.get(t.missionId)!.push(t.tagId);
+      .orderBy(missionTags.missionId, missionTags.tagId);
+    const byTime = (at: (t: (typeof found)[number]) => Date | null) =>
+      found.filter((t) => at(t) !== null).sort((a, b) => at(a)!.getTime() - at(b)!.getTime());
+    for (const t of byTime((t) => t.suggestedAt)) out.get(t.missionId)!.suggested.push(t.tagId);
+    const confirmed = byTime((t) => t.confirmedAt);
+    const became = await this.mergedInto(
+      confirmed.map((t) => t.tagId),
+      tx,
+    );
+    for (const t of confirmed) {
+      const into = out.get(t.missionId)!.confirmed;
+      const now = became.get(t.tagId)!;
+      if (!into.includes(now)) into.push(now);
+    }
     return out;
+  }
+
+  /** Each tag as the one it has since become, following merges to the end; unmerged, itself. */
+  private async mergedInto(tagIds: string[], tx?: Tx): Promise<Map<string, string>> {
+    if (tagIds.length === 0) return new Map();
+    const ids = sql.join(
+      [...new Set(tagIds)].map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const rows = (await (tx ?? this.db).execute(sql`
+      WITH RECURSIVE chain AS (
+        SELECT id AS start, id, merged_into_id FROM tags WHERE id IN (${ids})
+        UNION
+        SELECT c.start, t.id, t.merged_into_id FROM tags t JOIN chain c ON t.id = c.merged_into_id
+      )
+      SELECT start, id FROM chain WHERE merged_into_id IS NULL`)) as unknown as Array<{
+      start: string;
+      id: string;
+    }>;
+    return new Map(rows.map((r) => [r.start, r.id]));
   }
 }

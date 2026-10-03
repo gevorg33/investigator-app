@@ -213,7 +213,8 @@ export const en = {
       },
     },
     brief: {
-      tags: 'Tags: {list}',
+      tags_suggested: 'Tags you suggested: {list}',
+      tags_published: 'Investigators find it under: {list}',
       section: {
         need: 'What you need',
         kind: 'Kind of help',
