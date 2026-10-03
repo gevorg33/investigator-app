@@ -104,18 +104,50 @@ export class AuthService {
     const existing = await this.db.query.users.findFirst({ where: eq(users.email, email) });
 
     if (existing) {
-      // Deliberately silent. Telling the caller the address is taken enumerates
-      // registered users; the real signal goes to the owner by email instead.
-      await this.audit.record({
-        ...audited(ctx),
-        action: 'auth.register.duplicate',
-        resourceType: 'user',
-        resourceId: existing.id,
-      });
+      await this.registeredAlready(existing.id, ctx);
       return;
     }
 
-    const created = await this.db.transaction(async (tx) => {
+    const created = await this.createAccount(
+      email,
+      passwordHash,
+      ctx,
+      acceptedDocumentIds,
+      preferences,
+    ).catch(async (e: unknown) => {
+      // Another registration for the address committed between the look-up and the insert — two
+      // taps on Sign up, or two devices (T-195). It is answered as one that came second would be,
+      // not with an error that says the address was just taken.
+      if (!emailTaken(e)) throw e;
+      const winner = await this.db.query.users.findFirst({ where: eq(users.email, email) });
+      await this.registeredAlready(winner!.id, ctx);
+      return null;
+    });
+    if (created) await this.issueToken(created, 'EMAIL_VERIFICATION', ctx);
+  }
+
+  /**
+   * Deliberately silent. Telling the caller the address is taken enumerates registered users;
+   * the real signal goes to the owner by email instead.
+   */
+  private async registeredAlready(userId: string, ctx: RequestContext): Promise<void> {
+    await this.audit.record({
+      ...audited(ctx),
+      action: 'auth.register.duplicate',
+      resourceType: 'user',
+      resourceId: userId,
+    });
+  }
+
+  /** The account and its consent rows, in one transaction. */
+  private createAccount(
+    email: string,
+    passwordHash: string,
+    ctx: RequestContext,
+    acceptedDocumentIds: readonly string[],
+    preferences: { locale?: string | undefined; timezone?: string | undefined },
+  ) {
+    return this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(users)
         .values({
@@ -155,8 +187,6 @@ export class AuthService {
       );
       return row;
     });
-
-    await this.issueToken(created, 'EMAIL_VERIFICATION', ctx);
   }
 
   /**
@@ -599,3 +629,9 @@ export class AuthService {
     });
   }
 }
+
+/** The address index refused the insert: Postgres 23505 on that constraint, and nothing else. */
+const emailTaken = (e: unknown): boolean => {
+  const cause = (e as { cause?: { code?: string; constraint_name?: string } }).cause;
+  return cause?.code === '23505' && cause.constraint_name === 'users_email_unique';
+};

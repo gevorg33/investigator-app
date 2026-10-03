@@ -8469,7 +8469,7 @@ pnpm --filter api test mission-moderation && pnpm --filter admin-web test
 ---
 
 ### T-192 — Flaky focus check in the agency teams journey on mobile
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; `TeamCard` returns focus to **Edit** in an effect after the commit, not a frame; `agency.e2e.ts` repeat-safe
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -8487,12 +8487,94 @@ Find which, and whether a user can lose focus there too (a real defect) or only 
 re-render, and fix the cause rather than adding a wait.
 
 **Acceptance criteria**
-- [ ] The failing assertion identified, with the cause
-- [ ] The journey passes 20 of 20 on both projects (`--repeat-each=20`)
+- [x] The failing assertion identified, with the cause — `:328`, focus back on **Edit** after a
+      rename is saved (reproduced: 4 of ~11 mobile runs). `stopEditing` closed the form and focused
+      the button in a `requestAnimationFrame`; a save resolves after an `await`, so React commits the
+      closed form on its own schedule, and a frame that came first found no button — focus fell to
+      the page. A real defect: a keyboard user lost their place. Now an effect on `editing` moves it
+      after the commit, as `mission-intake` does; Cancel too
+- [x] The journey passes 20 of 20 on both projects (`--repeat-each=20`) — mobile 20/20, desktop 20/20
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test:e2e
+```
+
+*Built.* `teams.tsx`; two Vitest cases seen to fail first — a frame that comes before the commit
+(stubbed `requestAnimationFrame`), and Cancel. To run the journey twenty times at all, `agency.e2e.ts`
+gives each project and repeat its own address (five registrations an hour per IP) and its own email
+(repeats start in the same millisecond — which found T-195). `app-web.md` "Focus" states the rule.
+
+*Validated.* Lint, typecheck, format; coverage 100% (api 3312, app-web 855). The other failures the
+repeat runs found are not the teams journey's: T-195 (registration) and T-196 (desktop navigation).
+
+---
+
+### T-195 — Two registrations for one address at once: a 500, not the usual answer
+- **Status:** DONE — 2026-10-03; a lost race on `users_email_unique` answers as a duplicate (`auth.service.ts`)
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** MEDIUM
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/auth/auth.service.ts
+
+**Description**
+Found during T-192's repeated e2e runs: three journeys started in the same millisecond registered the
+same address. One got 202; the other two got **500**. `AuthService.register` looks for an existing
+account and then inserts, so two requests both pass the check and the second insert breaks
+`users_email_unique`, which nothing catches. A double-tapped Sign up does the same. The answer for
+an address already registered is otherwise the same 202 as a new one, so it gives nothing away
+(enumeration). This path should give that answer too, not an error.
+
+**Acceptance criteria**
+- [x] A unique violation on `users.email` during registration answers as an existing address does
+      (202, the same body, the same audit), and nothing else is swallowed — matched by code and
+      constraint name, as `profile-store` does; anything else rethrows
+- [x] An integration test sends two registrations for one address concurrently: exactly one account,
+      both 202 — seen to fail first. *Deterministic rather than by chance:* the other registration is
+      an owner transaction holding the row uncommitted until this one's insert is seen waiting on it
+      (`pg_blocking_pids`); then one account, a resolved register, one `auth.register.duplicate` row
+      naming the winner
+
+**Validation**
+```bash
+pnpm --filter api test auth
+```
+
+*Verified.* No browser surface; the integration test above runs against PostgreSQL as the runtime
+role. Not probed against the development API: its mailer sends through Resend. The documented contract
+already said this ("Always 202", OpenAPI; "check your email", `app-web.md`) — now the code keeps it.
+`pnpm --filter api test auth` passes; coverage 100%.
+
+---
+
+### T-196 — Navigation flakes in the agency journey on desktop under repeat
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/e2e/agency.e2e.ts, apps/app-web/src/components/agency/**, apps/app-web/src/components/workspace/**
+
+**Description**
+Found running `agency.e2e.ts --repeat-each=20` for T-192 (four workers, both projects): five
+failures, all desktop, none in the teams journey, each a navigation or refresh that did not land
+within 5s — "Now working in Ararat Checks." never shown after creating the agency (`:98`); the
+Account link to `/agency` leaving the page on `/account` (`:117`); **Make a profile** leaving the
+page on `/agency/investigators` (`:368`); the **Customer** toggle's `aria-pressed` staying `false`
+(T-185, twice). Single runs pass; the artifacts are in the run's `e2e/.output/results`. Like T-192,
+find for each whether a person could meet it (a router refresh left uncommitted, as T-186 found) or
+only the test races, and fix the cause rather than adding waits.
+
+**Acceptance criteria**
+- [ ] Each failure's cause identified
+- [ ] `agency.e2e.ts --repeat-each=20` passes on both projects
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web exec playwright test agency.e2e.ts --repeat-each=20
 ```
 
 ---
