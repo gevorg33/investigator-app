@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
 import { text } from './support/text';
@@ -17,7 +18,7 @@ test.describe.configure({ mode: 'serial' });
 
 /** The investigator's legal name: verification's, never shown to a customer (T-181). */
 const INVESTIGATOR_NAME = 'Vardan Blockfield';
-/** What customers know them by, per project: pseudonyms are unique across the platform. */
+/** What customers know them by, per journey: pseudonyms are unique across the platform. */
 let pseudonym: string;
 /** With an address in it, as a customer may paste: a word the card must wrap, not widen for (T-178). */
 const MISSION_TITLE = 'Records check for https://registry.example.test/companies/0123456789abcdef';
@@ -32,21 +33,13 @@ let customer: Page;
 let investigator: Page;
 let profileId: string;
 
-/**
- * Each person here browses from their own address, as two people would — so the registrations
- * this spec makes count against their own per-address limit, not the rest of the suite's.
- */
-const ADDRESS: Record<string, string> = {
-  'mobile-customer': '198.51.100.11',
-  'mobile-investigator': '198.51.100.12',
-  'desktop-customer': '198.51.100.21',
-  'desktop-investigator': '198.51.100.22',
-};
-
 async function signedIn(browser: Browser, info: TestInfo, who: string): Promise<Page> {
   const use = info.project.use;
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'X-Forwarded-For': ADDRESS[`${info.project.name}-${who}`]! },
+    // Each person from their own address, as two people would.
+    extraHTTPHeaders: {
+      'X-Forwarded-For': journeyAddress(info, 'blocks', who === 'customer' ? 0 : 1),
+    },
     baseURL: use.baseURL!,
     viewport: use.viewport!,
     ...(use.isMobile !== undefined && { isMobile: use.isMobile }),
@@ -55,7 +48,7 @@ async function signedIn(browser: Browser, info: TestInfo, who: string): Promise<
     ...(use.locale !== undefined && { locale: use.locale }),
   });
   const page = await context.newPage();
-  const email = `blocks-${who}-${info.project.name}-${Date.now()}@example.test`;
+  const email = `blocks-${who}-${info.project.name}-${journeyTag()}@example.test`;
   const password = `a long ${who} password`;
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')
@@ -81,9 +74,12 @@ const userOf = async (page: Page): Promise<string> =>
   ((await (await page.request.get('/api/v1/me')).json()) as { id: string }).id;
 
 test.beforeAll(async ({ browser }, info) => {
-  missionTitle = `${MISSION_TITLE} (${info.project.name})`;
-  pseudonym = `Quiet Harbour ${info.project.name}`;
-  categorySlug = `blocksrecordsverification${Date.now()}${info.project.name}`.padEnd(60, 'x');
+  // This journey's own, so a repeat running beside it lists another mission and person, not one
+  // with the same name. Letters only in the pseudonym: digits there can read as a phone number.
+  const tag = journeyTag();
+  missionTitle = `${MISSION_TITLE} (${info.project.name} ${tag})`;
+  pseudonym = `Quiet Harbour ${tag.replace(/\d/g, (d) => 'ghijklmnop'[Number(d)]!)}`;
+  categorySlug = `blocksrecordsverification${tag}${info.project.name}`.padEnd(60, 'x');
   customer = await signedIn(browser, info, 'customer');
   investigator = await signedIn(browser, info, 'investigator');
   const [customerId, investigatorId] = await Promise.all([userOf(customer), userOf(investigator)]);

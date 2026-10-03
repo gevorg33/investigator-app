@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
 import { text } from './support/text';
@@ -23,22 +23,9 @@ const AGENCY = 'Ararat Checks';
 const HEADLINE = 'Due diligence across the Caucasus';
 let page: Page;
 let email: string;
-/**
- * What makes this journey's addresses and names its own (T-196). Not the clock: journeys started
- * together by `--repeat-each` or parallel workers often share a millisecond, and two that share an
- * address share an account — each then sees the other's agency, roles and profiles, and its
- * sign-ins count against one account's limit.
- */
+/** This journey's own, for every address and name it makes (`support/journey.ts`). */
 let tag: string;
 const password = 'a long agency password';
-
-/**
- * Each viewport browses from its own address, and so does each repeat of the journey
- * (`--repeat-each`, T-192): its registration and sign-ins count against their own per-IP limits —
- * five registrations an hour — rather than every run's from one.
- */
-const address = (info: TestInfo) =>
-  `198.51.100.${(info.project.name === 'mobile' ? 100 : 150) + info.repeatEachIndex}`;
 
 /** Drawn inside its container, and the page as wide as the screen: nothing scrolls sideways. */
 const fitsInside = async (inner: Locator, outer: Locator) => {
@@ -57,7 +44,7 @@ const heading = (name: string) => page.getByRole('heading', { level: 1, name });
 test.beforeAll(async ({ browser }, info) => {
   const use = info.project.use;
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'X-Forwarded-For': address(info) },
+    extraHTTPHeaders: { 'X-Forwarded-For': journeyAddress(info, 'agency') },
     baseURL: use.baseURL!,
     viewport: use.viewport!,
     ...(use.isMobile !== undefined && { isMobile: use.isMobile }),
@@ -69,7 +56,7 @@ test.beforeAll(async ({ browser }, info) => {
 
   // A confirmed account, set up through the API as the screens would — the account screens are
   // account.e2e.ts's subject, not this one's.
-  tag = randomUUID().replaceAll('-', '').slice(0, 12);
+  tag = journeyTag();
   email = `agency-${info.project.name}-${tag}@example.test`;
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')
@@ -193,7 +180,7 @@ test('ticks the published profile on Home, and hides the list for every device o
 
   // Another device: a fresh browser, the same account, the same agency — still hidden.
   const other = await browser.newContext({
-    extraHTTPHeaders: { 'X-Forwarded-For': address(info) },
+    extraHTTPHeaders: { 'X-Forwarded-For': journeyAddress(info, 'agency') },
     baseURL: info.project.use.baseURL!,
     viewport: info.project.use.viewport!,
   });

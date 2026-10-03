@@ -8669,7 +8669,7 @@ runs above — the 8-worker run and the experiment with the old email were diagn
 ---
 
 ### T-199 — Give every e2e spec's generated accounts and names a per-journey tag
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `e2e/support/journey.ts` (`journeyTag`, `journeyAddress`) used by all five specs; `--repeat-each=5` 270/270
 - **Priority:** P3
 - **Depends on:** T-196
 - **Risk:** LOW
@@ -8686,13 +8686,25 @@ hunted — starts copies together and gives them one account. Move the tag into 
 it everywhere.
 
 **Acceptance criteria**
-- [ ] No spec builds an email, slug or name from the clock
-- [ ] Each spec passes `--repeat-each=5` on both projects
+- [x] No spec builds an email, slug or name from the clock — nor from the project alone: `blocks`
+      named its mission and pseudonym by project, so repeats beside each other listed look-alikes
+- [x] Each spec passes `--repeat-each=5` on both projects — 270 passed (2.1 m), every spec
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web exec playwright test --repeat-each=5
 ```
+
+
+*Built.* `e2e/support/journey.ts`: `journeyTag()` (twelve random hex characters, once per journey)
+and `journeyAddress(info, spec, person)` — the `X-Forwarded-For` a journey's browsers send, one per
+spec, viewport, person and repeat, in 10.0.0.0/8. Found on the way: `missions` and `notifications`
+used the same two addresses, and `account` none (loopback), so their registrations shared a limit;
+each journey now has its own. `agency.e2e.ts` moved onto the shared helpers. `app-web.md` "Browser
+flows" updated.
+
+*Validated.* `playwright test --repeat-each=5` 270 passed; prettier, ESLint and the e2e typecheck.
+No browser surface beyond the suite: verified by the run itself.
 
 ---
 

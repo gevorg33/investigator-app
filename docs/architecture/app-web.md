@@ -805,10 +805,11 @@ Specs find things by role and by the words in the catalog (`support/text.ts`), n
 test id, so the suite reads the screen as a person does and a copy change moves both together. The
 journey stays inside the API's per-account sign-in limit (five in five minutes); a new step that
 signs in again has to account for it. `agency.e2e.ts` (T-094) is the second journey: its account is
-set up through the API, since the account screens are the first journey's subject. Together they
-register four accounts a run against the API's five per IP per hour — a third journey that
-registers, or a retry of both, meets that limit; the API process is new each run, so a new run
-starts from zero. Traces, screenshots and both servers' logs land in
+set up through the API, since the account screens are the first journey's subject. Each journey's
+browsers send their own `X-Forwarded-For` (`journeyAddress`, `support/journey.ts`) — one address per
+spec, viewport, person and repeat, in 10.0.0.0/8 — so its registrations count against its own five
+per address per hour, not the run's; the API trusts only loopback as a proxy, so each address is a
+client of its own. The API process is new each run, so a new run starts from zero. Traces, screenshots and both servers' logs land in
 `e2e/.output/` (gitignored), which CI uploads when the step fails. Setup empties it at the start of
 every run, so copy out a failure's artifacts before running again.
 
@@ -817,8 +818,9 @@ together — parallel workers, or `--repeat-each` to hunt a flake — often shar
 email or slug built from `Date.now()` can be the same in two of them. Two journeys on one address
 are one account: each sees the other's agency, roles and investigator profiles, and both sign in
 against one account's limit (seen: three journeys on one account, the third refused "Too many
-attempts"; and T-195's 500s). `agency.e2e.ts` draws one random tag per journey in `beforeAll` and
-builds every email, pseudonym and slug from it.
+attempts"; and T-195's 500s). Every spec draws a random tag per journey (`journeyTag`,
+`support/journey.ts`) and builds its emails, pseudonyms, titles and slugs from it (T-199), so any
+spec can be run with `--repeat-each` to hunt a flake.
 
 ## Sign in with Google (T-062)
 

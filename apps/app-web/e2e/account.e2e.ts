@@ -8,6 +8,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
 import { PUBLISHED } from './support/stack';
@@ -28,6 +29,8 @@ const CUSTOMER_TERMS = PUBLISHED.find((d) => d.type === 'TERMS_AND_CONDITIONS')!
 
 let email: string;
 let password = 'a long first password';
+/** Where this journey's browsers come from (`support/journey.ts`), every one of them. */
+let address: string;
 let context: BrowserContext;
 let page: Page;
 
@@ -47,7 +50,7 @@ function freshContext(browser: Browser): Promise<BrowserContext> {
   ] as const) {
     if (use[key] !== undefined) Object.assign(options, { [key]: use[key] });
   }
-  return browser.newContext(options);
+  return browser.newContext({ ...options, extraHTTPHeaders: { 'X-Forwarded-For': address } });
 }
 
 async function signIn(p: Page, address: string, secret: string): Promise<void> {
@@ -59,7 +62,8 @@ async function signIn(p: Page, address: string, secret: string): Promise<void> {
 const heading = (p: Page, name: string) => p.getByRole('heading', { level: 1, name });
 
 test.beforeAll(async ({ browser }, info) => {
-  email = `e2e-${info.project.name}-${Date.now()}@example.test`;
+  address = journeyAddress(info, 'account');
+  email = `e2e-${info.project.name}-${journeyTag()}@example.test`;
   context = await freshContext(browser);
   page = await context.newPage();
 });
