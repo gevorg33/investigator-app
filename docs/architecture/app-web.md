@@ -633,7 +633,10 @@ each sends the reader to `/account#agencies` (`currentAgency()`). API: `tenancy.
   by default, and Radix's trap only holds focus it already has, so Tab walked out of every open sheet
   to the page behind — the workspace switcher included. Sheets opened from state rather than a
   `DrawerTrigger` return focus to their opener with `useReturnFocus` (noted in `onOpenAutoFocus`,
-  before focus moves).
+  before focus moves). Focus that follows a state change — a closed in-place form returning it to
+  **Edit**, a new intake question taking it to its heading — moves in an effect after the commit that
+  renders its target, never on a timer: an update made after an `await` commits on React's schedule,
+  and a frame that came first found no target (T-192, 1 in 4 on mobile).
 - **An empty specialty catalogue is said, not searched.** With no specialties to choose from,
   `SpecialtiesPicker` shows a sentence instead of a listbox with nothing in it — axe's
   `aria-required-children` on the held profile in a fresh database; `/account/investigator` had the same.

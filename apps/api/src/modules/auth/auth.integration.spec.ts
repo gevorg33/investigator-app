@@ -222,6 +222,47 @@ describe('auth end to end', () => {
     });
   });
 
+  it('answers a registration that lost a race for its address as any second one, not with an error (T-195)', async () => {
+    // Another registration for the address is mid-insert: its row exists but is not committed, so
+    // this one's look-up misses it and its own insert waits on the unique index. Held open here
+    // until that wait is seen, then committed — the race two taps on Sign up run by chance.
+    const ctx = newCtx();
+    const e = email();
+    let winnerId = '';
+    let settled: Promise<unknown> = Promise.resolve();
+    await ownerSql.begin(async (tx) => {
+      const [row] = await tx<
+        { id: string }[]
+      >`INSERT INTO users (email) VALUES (${e}) RETURNING id`;
+      winnerId = row!.id;
+      const [backend] = await tx<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
+      const pid = backend!.pid;
+      settled = auth.register(e, 'another-long-password', ctx).then(
+        () => 'resolved',
+        (x: unknown) => x,
+      );
+      for (let waited = 0; ; waited += 20) {
+        const [waiting] = await ownerSql<{ blocked: number }[]>`
+          SELECT count(*)::int AS blocked FROM pg_stat_activity
+          WHERE ${pid}::int = ANY(pg_blocking_pids(pid))`;
+        if (waiting!.blocked > 0) break;
+        if (waited > 10_000) throw new Error('the registration never reached its insert');
+        await new Promise((r) => setTimeout(r, 20));
+      }
+    });
+
+    expect(await settled).toBe('resolved');
+    const rows = await ownerDb.select().from(schema.users).where(eq(schema.users.email, e));
+    expect(rows.map((r) => r.id)).toEqual([winnerId]);
+    const audit = await ownerDb
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.correlationId, ctx.correlationId));
+    expect(audit.map((r) => [r.action, r.resourceId])).toEqual([
+      ['auth.register.duplicate', winnerId],
+    ]);
+  });
+
   it('refuses a suspended account, and records the real reason only in the audit log', async () => {
     const ctx = newCtx();
     const e = email();

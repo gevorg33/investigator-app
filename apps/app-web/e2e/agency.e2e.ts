@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
@@ -24,6 +24,14 @@ let page: Page;
 let email: string;
 const password = 'a long agency password';
 
+/**
+ * Each viewport browses from its own address, and so does each repeat of the journey
+ * (`--repeat-each`, T-192): its registration and sign-ins count against their own per-IP limits —
+ * five registrations an hour — rather than every run's from one.
+ */
+const address = (info: TestInfo) =>
+  `198.51.100.${(info.project.name === 'mobile' ? 100 : 150) + info.repeatEachIndex}`;
+
 /** Drawn inside its container, and the page as wide as the screen: nothing scrolls sideways. */
 const fitsInside = async (inner: Locator, outer: Locator) => {
   await expect(inner).toBeVisible();
@@ -41,6 +49,7 @@ const heading = (name: string) => page.getByRole('heading', { level: 1, name });
 test.beforeAll(async ({ browser }, info) => {
   const use = info.project.use;
   const context = await browser.newContext({
+    extraHTTPHeaders: { 'X-Forwarded-For': address(info) },
     baseURL: use.baseURL!,
     viewport: use.viewport!,
     ...(use.isMobile !== undefined && { isMobile: use.isMobile }),
@@ -52,7 +61,8 @@ test.beforeAll(async ({ browser }, info) => {
 
   // A confirmed account, set up through the API as the screens would — the account screens are
   // account.e2e.ts's subject, not this one's.
-  email = `agency-${info.project.name}-${Date.now()}@example.test`;
+  // The repeat in the address too: repeats start together, often in the same millisecond.
+  email = `agency-${info.project.name}-${info.repeatEachIndex}-${Date.now()}@example.test`;
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')
   ).json()) as Array<{ id: string }>;
@@ -175,6 +185,7 @@ test('ticks the published profile on Home, and hides the list for every device o
 
   // Another device: a fresh browser, the same account, the same agency — still hidden.
   const other = await browser.newContext({
+    extraHTTPHeaders: { 'X-Forwarded-For': address(info) },
     baseURL: info.project.use.baseURL!,
     viewport: info.project.use.viewport!,
   });

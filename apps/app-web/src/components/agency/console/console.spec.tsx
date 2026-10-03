@@ -520,6 +520,36 @@ describe('teams', () => {
     );
   });
 
+  it('puts focus back on Edit after a save however soon the next frame comes (T-192)', async () => {
+    // A save resolves outside any event, so React commits the closed form on its own schedule. A
+    // frame due before that commit found no Edit button yet and left focus on nothing — the 1-in-4
+    // mobile failure. The frame here comes at once, before React has committed anything.
+    vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => {
+      frame(0);
+      return 0;
+    });
+    try {
+      api.on('PATCH /agencies/current/teams/team-1', 200, office);
+      teams();
+      await user().click(within(card()).getByRole('button', { name: 'Edit Yerevan office' }));
+      const form = screen.getByRole('form', { name: 'Edit Yerevan office' });
+      await user().click(within(form).getByRole('button', { name: en.teams.save }));
+      await vi.waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Edit Yerevan office' })).toHaveFocus(),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('puts focus back on Edit when a rename is cancelled', async () => {
+    teams();
+    await user().click(within(card()).getByRole('button', { name: 'Edit Yerevan office' }));
+    const form = screen.getByRole('form', { name: 'Edit Yerevan office' });
+    await user().click(within(form).getByRole('button', { name: en.teams.cancel }));
+    expect(screen.getByRole('button', { name: 'Edit Yerevan office' })).toHaveFocus();
+  });
+
   it('keeps the form, with the reason, when a rename is refused — and Cancel leaves it as it was', async () => {
     api.on(
       'PATCH /agencies/current/teams/team-1',
