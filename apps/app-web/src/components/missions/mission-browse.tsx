@@ -11,6 +11,7 @@ import type {
   OwnInvestigatorProfile,
   OwnServiceArea,
   SavedMissionSearch,
+  TagOption,
   TaxonomyNode,
 } from '@/lib/api/types';
 import { ActiveFilters } from './active-filters';
@@ -61,8 +62,9 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
     );
   }
 
-  const [taxonomy, areas, profile, saved] = await Promise.all([
+  const [taxonomy, tags, areas, profile, saved] = await Promise.all([
     serverApi<TaxonomyNode[]>(`/taxonomy?locale=${locale}`),
+    serverApi<TagOption[]>(`/tags?locale=${locale}`),
     serverApi<OwnServiceArea[]>('/service-areas/me'),
     serverApi<OwnInvestigatorProfile>('/profiles/investigator/me'),
     serverApi<{ items: SavedMissionSearch[] }>('/search/missions/saved'),
@@ -85,9 +87,16 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
         categories={categories}
         areas={areas ?? []}
         languages={(profile?.languages ?? []).map((l) => l.languageCode)}
+        tags={tags ?? []}
       />
 
-      <ActiveFilters filters={filters} categories={labels} areas={areas ?? []} locale={locale} />
+      <ActiveFilters
+        filters={filters}
+        categories={labels}
+        areas={areas ?? []}
+        tags={new Map((tags ?? []).map((tag) => [tag.id, tag.label]))}
+        locale={locale}
+      />
 
       {(narrowed || filters.q !== undefined) && refused === null && (
         <SaveSearch current={filters} />

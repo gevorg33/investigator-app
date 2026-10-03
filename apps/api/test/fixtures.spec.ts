@@ -5,6 +5,7 @@ import * as agencies from './agency-fixtures';
 import * as ai from './ai-fixtures';
 import * as assignments from './assignment-fixtures';
 import * as blocks from './block-fixtures';
+import * as tagFixtures from './tag-fixtures';
 import * as legal from './legal-fixtures';
 import * as media from './media-fixtures';
 import * as missions from './mission-fixtures';
@@ -58,6 +59,7 @@ const FACTORY_FOR: Readonly<Record<string, string>> = {
   teams: 'agency-fixtures.team',
   team_members: 'agency-fixtures.team',
   user_blocks: 'block-fixtures.blockBetween',
+  mission_tags: 'tag-fixtures.confirmedTag',
 };
 
 /** Tables a factory must NOT write, because something else is what makes them true. */
@@ -130,6 +132,7 @@ describe('factories', () => {
       'verification-fixtures': verification,
       'workspace-fixtures': workspaces,
       'legal-fixtures': legal,
+      'tag-fixtures': tagFixtures,
     };
     for (const ref of Object.values(FACTORY_FOR)) {
       const [file, name] = ref.split('.') as [string, string];

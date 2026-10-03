@@ -4,14 +4,14 @@ title: Maintaining the taxonomy
 audience: staff
 visibility: staff
 locale: en
-version: 2
+version: 3
 status: current
-updated: 2026-09-24
+updated: 2026-10-03
 source_of_truth: database
 implementation_status: implemented
 related_code:
   - apps/api/src/modules/taxonomy
-tags: [staff, taxonomy, categories, specialties, risk-band, labels]
+tags: [staff, taxonomy, categories, specialties, risk-band, labels, tags]
 ---
 
 # Maintaining the taxonomy
@@ -83,6 +83,22 @@ In the assistant. When it finds investigators, it matches a customer's request a
 and descriptions of the live tree, and it names the specialties an investigator matched, or does
 not offer, by their labels in the customer's language. A clear, distinct label is what lets it tell
 two categories apart — and a vague one is what makes it ask the customer which they meant.
+
+## How do I maintain tags?
+
+Tags are a flat list kept beside the tree — short labels such as "remote work" or "court use" that
+refine a mission without changing who may see it. Customers suggest them, the moderator confirms
+them when publishing, and investigators filter by confirmed ones. Nobody but you can add one.
+
+With the taxonomy scope you can **add** a tag (a permanent slug and its English label),
+**relabel** it in English, Russian or Armenian, **retire** it, or **merge** it into another tag
+still in use. The console has no tag screen yet; these are API actions, and each needs a reason.
+
+- **Retiring** takes a tag out of every list. Missions that carry it keep it.
+- **Merging** retires the tag and records which tag it became. Nothing on any mission is rewritten,
+  yet filtering by the surviving tag also finds every mission that carried the merged one. A merge
+  is final, and only into a tag still in use.
+- Nothing is ever deleted, and a slug never changes.
 
 ## What does the reason I write get used for?
 

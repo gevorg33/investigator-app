@@ -23,10 +23,17 @@ const PAGE = (items = [listing()], nextCursor: string | null = null) => ({
   pageInfo: { nextCursor, hasNextPage: nextCursor !== null },
 });
 
+const REMOTE = '7a1f3c52-6b0d-4e8a-9c41-2f5d8e6a0b13';
+const URGENT = '3c9e0d71-4a2b-4f6e-8d15-6b7a9c0e2f48';
+const TAGS = [
+  { id: REMOTE, slug: 'remote', label: 'Remote work', labelLocale: 'en' },
+  { id: URGENT, slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+];
+
 /** The investigator's own context: a tree, an area, their languages, their saved searches. */
 const context = (
   locale: Locale = 'en',
-  opts: { areas?: unknown[]; languages?: string[]; saved?: unknown[] } = {},
+  opts: { areas?: unknown[]; languages?: string[]; saved?: unknown[]; tags?: unknown[] } = {},
 ) => {
   api.on(`GET /taxonomy?locale=${locale}`, 200, [
     {
@@ -44,6 +51,7 @@ const context = (
       ],
     },
   ]);
+  api.on(`GET /tags?locale=${locale}`, 200, opts.tags ?? TAGS);
   api.on('GET /service-areas/me', 200, opts.areas ?? [{ id: AREA, label: 'Yerevan' }]);
   api.on('GET /profiles/investigator/me', 200, {
     languages: (opts.languages ?? ['en', 'hy']).map((languageCode) => ({ languageCode })),
@@ -234,6 +242,59 @@ describe('open missions', () => {
       expect(router.push).toHaveBeenCalledWith('/missions');
     });
 
+    it('narrows by tags: every one chosen goes in the address and the search (T-055)', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context();
+      await show({ tag: [URGENT] });
+      expect(body()).toMatchObject({ tagIds: [URGENT] });
+      const u = user();
+      const sheet = await open(u);
+      const group = within(sheet).getByRole('group', { name: en.tags });
+      expect(group).toHaveTextContent(en.tags_hint);
+      expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await u.click(within(group).getByRole('button', { name: 'Remote work' }));
+      await u.click(within(sheet).getByRole('button', { name: en.show }));
+      expect(router.push).toHaveBeenCalledWith(`/missions?tag=${URGENT}&tag=${REMOTE}`);
+    });
+
+    it('offers no tag chips when there is no vocabulary', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context('en', { tags: [] });
+      await show();
+      const sheet = await open(user());
+      expect(within(sheet).queryByRole('group', { name: en.tags })).toBeNull();
+    });
+
+    it('takes every tag back', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context();
+      await show({ tag: REMOTE });
+      const u = user();
+      const sheet = await open(u);
+      await u.click(within(sheet).getByRole('button', { name: 'Remote work' }));
+      await u.click(within(sheet).getByRole('button', { name: en.show }));
+      expect(router.push).toHaveBeenCalledWith('/missions');
+    });
+
+    it('stops at eight tags: the rest are disabled until one is taken back', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      const many = Array.from({ length: 9 }, (_, i) => ({
+        id: `00000000-0000-4000-8000-00000000009${i}`,
+        slug: `t${i}`,
+        label: `Tag ${i}`,
+        labelLocale: 'en',
+      }));
+      context('en', { tags: many });
+      await show({ tag: many.slice(0, 8).map((m) => m.id) });
+      const sheet = await open(user());
+      const group = within(sheet).getByRole('group', { name: en.tags });
+      expect(within(group).getByRole('button', { name: 'Tag 8' })).toBeDisabled();
+      expect(within(group).getByRole('button', { name: 'Tag 0' })).toBeEnabled();
+    });
+
     it('resets to the whole list when there are no words and no order to keep', async () => {
       api.on('POST /search/missions', 200, PAGE());
       context();
@@ -285,6 +346,21 @@ describe('open missions', () => {
   });
 
   describe('the filters that are on', () => {
+    it('names each tag as a chip that removes it, and one retired since as a tag (T-055)', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context();
+      const RETIRED = '5b8d2e14-9f3a-4c7b-a2e6-1d4f8b0c3e97';
+      await show({ tag: [REMOTE, RETIRED] });
+      const links = within(screen.getByRole('list', { name: en.filters })).getAllByRole('link');
+      expect(links.map((a) => a.getAttribute('aria-label') ?? a.textContent)).toEqual([
+        'Remove filter: Remote work',
+        `Remove filter: ${en.tag}`,
+        en.clear,
+      ]);
+      expect(links[0]).toHaveAttribute('href', `/missions?tag=${RETIRED}`);
+      expect(links[1]).toHaveAttribute('href', `/missions?tag=${REMOTE}`);
+    });
+
     it('are chips that each remove themselves, and one that removes them all', async () => {
       api.on('POST /search/missions', 200, PAGE());
       context();
@@ -442,6 +518,7 @@ describe('open missions', () => {
     it('keeps going when the API has nothing to say about the investigator’s context', async () => {
       api.on('POST /search/missions', 204);
       api.on('GET /taxonomy?locale=en', 204);
+      api.on('GET /tags?locale=en', 204);
       api.on('GET /service-areas/me', 204);
       api.on('GET /profiles/investigator/me', 204);
       api.on('GET /search/missions/saved', 204);

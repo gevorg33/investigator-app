@@ -27,12 +27,14 @@ const TAXONOMY = [
     children: [{ id: DD, label: 'Due diligence', slug: 'due-diligence', children: [] }],
   },
 ];
+const TAGS = [{ id: 'tag-remote', slug: 'remote', label: 'Remote work', labelLocale: 'en' }];
 const DECIDED = '2026-09-24T10:00:00.000Z';
 
 /** The reader, the taxonomy, and this mission as the API answers for it. */
 const context = (mission?: Partial<OwnMission>) => {
   api.on('GET /me', 200, account({ timezone: 'Asia/Yerevan' }));
   api.on('GET /taxonomy?locale=en', 200, TAXONOMY);
+  api.on('GET /tags?locale=en', 200, TAGS);
   if (mission !== undefined) api.on(`GET /missions/me/${ID}`, 200, ownMission(mission));
 };
 
@@ -71,6 +73,7 @@ describe('the mission pages', () => {
       expect(api.calls.map((c) => `${c.method} ${c.path}`)).toEqual([
         'GET /me',
         'GET /taxonomy?locale=en',
+        'GET /tags?locale=en',
       ]);
       expect((await newMeta()).title).toBe(en.own.new);
     });
@@ -78,6 +81,8 @@ describe('the mission pages', () => {
     it('says a mission cannot be sent yet when there is no taxonomy at all', async () => {
       api.on('GET /me', 200, account());
       api.on('GET /taxonomy?locale=en', 204);
+      // No tag vocabulary either: nothing to suggest, and nothing breaks (T-055).
+      api.on('GET /tags?locale=en', 204);
       renderIntl(
         await resolveServer(
           await NewMissionPage({ searchParams: Promise.resolve({ step: 'kind' }) }),
@@ -223,6 +228,7 @@ describe('the mission pages', () => {
         status: 'REJECTED',
         submittedAt: DECIDED,
         lawfulPurposeConfirmedAt: DECIDED,
+        tagIds: ['tag-remote'],
       } as Partial<OwnMission>);
       api.on('POST /missions/me', 201, ownMission({ id: 'new-1' }));
       await show();
@@ -244,6 +250,8 @@ describe('the mission pages', () => {
         purpose: 'We are about to sign a distribution contract.',
         subjectRelationship: 'BUSINESS_RELATIONSHIP',
         protectiveOrderDeclared: null,
+        // Not carried over (T-055): a tag may have been retired since; suggesting again is a choice.
+        tagIds: [],
       });
       expect(router.push).toHaveBeenCalledWith('/missions/new-1?step=review');
     });

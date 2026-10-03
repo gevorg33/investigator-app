@@ -42,6 +42,8 @@ const KEY_COLUMN: Readonly<Record<string, string>> = {
   team_members: 'team_id',
   // A person's choices have no id of their own; one row per person in the graph (T-036).
   notification_preferences: 'user_id',
+  // A mission's tag has no id of its own: keyed by mission and tag; one per mission in the graph (T-055).
+  mission_tags: 'mission_id',
 };
 const keyOf = (table: string): string => KEY_COLUMN[table] ?? 'id';
 

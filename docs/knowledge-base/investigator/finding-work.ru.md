@@ -4,16 +4,16 @@ title: Поиск заданий, по которым можно отправи�
 audience: investigator
 visibility: authenticated
 locale: ru
-version: 3
+version: 5
 status: draft
-updated: 2026-09-25
+updated: 2026-10-03
 source_of_truth: docs
 implementation_status: partial
 related_code:
   - apps/app-web
   - apps/api/src/modules/missions
   - apps/api/src/modules/search
-tags: [missions, discovery, eligibility, work]
+tags: [missions, discovery, eligibility, work, tags]
 ---
 
 # Поиск работы
@@ -111,6 +111,12 @@ tags: [missions, discovery, eligibility, work]
 Фильтр языков оставляет задания, **все** нужные языки которых вы отметили: задание на армянском и
 английском не показывается, если отмечен только английский. Число рядом с **Фильтрами** — сколько
 их включено; **Сбросить фильтры** убирает все.
+
+**Теги** сужают список ещё больше: отметьте один или несколько, и показываются только задания со
+**всеми** отмеченными тегами — до восьми одновременно. Тег учитывается, только если модератор
+подтвердил его при публикации задания; то, что клиент лишь предложил, не используется никогда. Теги
+только сужают то, что вы и так могли видеть: они никогда не покажут задание вне ваших категорий,
+зон или языков.
 
 ## Как упорядочить список?
 

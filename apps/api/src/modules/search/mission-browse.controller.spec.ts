@@ -67,7 +67,13 @@ describe('mission browse controller', () => {
 
   it.each([
     ['a status — eligibility is not a filter', { status: 'DRAFT' }],
-    ['tags, which do not exist yet (T-055)', { tags: ['x'] }],
+    ['a `tags` field — the tag filter is `tagIds` (T-055)', { tags: ['x'] }],
+    ['a tag that is not an id', { tagIds: ['remote'] }],
+    ['tags as null', { tagIds: null }],
+    [
+      'more tags than a mission carries',
+      { tagIds: Array.from({ length: 9 }, () => crypto.randomUUID()) },
+    ],
     ['an unknown sort', { sort: 'cheapest' }],
     ['a distance past the ceiling', { withinKm: 201 }],
     ['a malformed date', { deadlineTo: '31/12/2026' }],

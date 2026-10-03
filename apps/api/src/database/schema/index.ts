@@ -28,3 +28,4 @@ export * from './agency-profiles';
 export * from './employees';
 export * from './teams';
 export * from './blocks';
+export * from './tags';

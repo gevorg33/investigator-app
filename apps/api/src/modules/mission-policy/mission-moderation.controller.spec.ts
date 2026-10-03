@@ -118,6 +118,9 @@ describe('moderation routes', () => {
     ['a version below one', { version: 0 }],
     ['a moderator the client chose', { decidedBy: ID }],
     ['a band the client chose', { riskBand: 'STANDARD' }],
+    ['a free-text tag (T-055)', { tagIds: ['remote work'] }],
+    ['tags as null', { tagIds: null }],
+    ['more than eight tags', { tagIds: Array.from({ length: 9 }, () => crypto.randomUUID()) }],
   ])('refuses %s', async (_what, over) => {
     const decide = vi.fn();
     app = await make({ decide });

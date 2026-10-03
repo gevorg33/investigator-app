@@ -7,11 +7,13 @@ import type { MissionFields } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
 import { PERSONAL, STEPS, type Step } from './steps';
 
-/** What the brief names rather than codes: the category, the country and the languages. */
+/** What the brief names rather than codes: the category, the country, the languages and the tags. */
 export interface BriefNames {
   category: string | null;
   country: string | null;
   languages: string[];
+  /** The suggested tags' names (T-055), in the reader's language. */
+  tags: string[];
 }
 
 const day = (date: string, locale: Locale) =>
@@ -41,7 +43,10 @@ export function Brief({
 
   const answer: Record<Exclude<Step, 'review'>, string[]> = {
     need: [f.title, f.description].filter((v): v is string => v !== null),
-    kind: names.category === null ? [] : [names.category],
+    kind: [
+      ...(names.category === null ? [] : [names.category]),
+      ...(names.tags.length === 0 ? [] : [t('tags', { list: names.tags.join(', ') })]),
+    ],
     where: [names.country, f.locationLabel].filter((v): v is string => v !== null),
     when: [
       ...(f.deadline === null ? [] : [t('deadline', { date: day(f.deadline, locale) })]),

@@ -17,7 +17,9 @@ import {
 } from '@/components/ui/command';
 import { RadioGroup, RadioGroupChoice } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import type { MissionFields, SubjectRelationship } from '@/lib/api/types';
+import type { MissionFields, SubjectRelationship, TagOption } from '@/lib/api/types';
+import { MAX_MISSION_TAGS } from '@/lib/tags';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { CodeOption } from '@/lib/codes';
 import { cn } from '@/lib/utils';
 import { PERSONAL, RELATIONSHIPS, today } from './steps';
@@ -126,7 +128,8 @@ export function KindQuestion({
   edit,
   flagged,
   categories,
-}: QuestionProps & { categories: readonly CategoryOption[] }) {
+  tags,
+}: QuestionProps & { categories: readonly CategoryOption[]; tags: readonly TagOption[] }) {
   const t = useTranslations('missions.intake');
   const chosen = fields.taxonomyNodeId;
   if (categories.length === 0) {
@@ -164,7 +167,49 @@ export function KindQuestion({
         </CommandList>
       </Command>
       {flagged.has('taxonomyNodeId') && <p className="text-sm text-danger">{t('kind.required')}</p>}
+      {tags.length > 0 && <TagPicker chosen={fields.tagIds} tags={tags} edit={edit} />}
     </div>
+  );
+}
+
+/**
+ * Tags the customer may suggest (T-055): chips from the curated vocabulary, never free text, and
+ * optional. A moderator confirms them when publishing; until then nobody else sees them. At the
+ * limit, the chips not chosen are disabled rather than the next tap being refused.
+ */
+function TagPicker({
+  chosen,
+  tags,
+  edit,
+}: {
+  chosen: readonly string[];
+  tags: readonly TagOption[];
+  edit: QuestionProps['edit'];
+}) {
+  const t = useTranslations('missions.intake');
+  const titleId = useId();
+  const full = chosen.length >= MAX_MISSION_TAGS;
+  return (
+    <fieldset aria-describedby={`${titleId}-hint`} className="mt-6 grid gap-2">
+      <legend id={titleId} className="text-sm font-medium">
+        {t('kind.tags_title')}
+      </legend>
+      <p id={`${titleId}-hint`} className="text-sm text-text-muted">
+        {t('kind.tags_hint')} {t('kind.tags_limit', { max: MAX_MISSION_TAGS })}
+      </p>
+      <ToggleGroup
+        type="multiple"
+        value={[...chosen]}
+        onValueChange={(next) => edit({ tagIds: next.slice(0, MAX_MISSION_TAGS) })}
+        aria-labelledby={titleId}
+      >
+        {tags.map((tag) => (
+          <ToggleGroupItem key={tag.id} value={tag.id} disabled={full && !chosen.includes(tag.id)}>
+            {tag.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </fieldset>
   );
 }
 

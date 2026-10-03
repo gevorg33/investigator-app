@@ -177,6 +177,11 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const screening = await id(owner`
     INSERT INTO mission_screenings (mission_id, mission_version, ruleset_version, outcome, risk_band, flags)
     VALUES (${mission}, 1, 'iso', 'ROUTINE_REVIEW', 'STANDARD', '[]'::jsonb) RETURNING id`);
+  // A tag the customer suggested on the draft (T-055): unconfirmed, so nobody else reads it.
+  const [vocabulary] = await owner<{ id: string }[]>`
+    INSERT INTO tags (slug) VALUES (${`iso-tag-${randomUUID()}`}) RETURNING id`;
+  await owner`INSERT INTO mission_tags (mission_id, tag_id, suggested_at)
+              VALUES (${mission}, ${vocabulary!.id}, now())`;
   // A moderator's decision on it (T-051): staff-only, so no workspace reads it — not even the customer's.
   const moderation = await id(owner`
     INSERT INTO mission_moderation_decisions (mission_id, mission_version, screening_id, outcome, reason,
@@ -365,6 +370,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       mission_status_history: history,
       mission_screenings: screening,
       mission_moderation_decisions: moderation,
+      // Keyed by its mission (see KEY_COLUMN in the matrix).
+      mission_tags: mission,
       quotes: quote,
       assignments: assignment,
       assignment_status_history: assignmentHistory,

@@ -213,6 +213,7 @@ export const en = {
       },
     },
     brief: {
+      tags: 'Tags: {list}',
       section: {
         need: 'What you need',
         kind: 'Kind of help',
@@ -274,6 +275,10 @@ export const en = {
         required: 'Choose one to continue.',
         unavailable:
           'No kinds of help are available yet, so a mission cannot be sent. Your answers are saved — come back later.',
+        tags_title: 'Tags (optional)',
+        tags_hint:
+          'Pick any that fit. A moderator confirms them when your mission is published; they help investigators find it.',
+        tags_limit: 'Up to {max} tags.',
       },
       where: {
         question: 'Where does the work need to happen?',
@@ -342,6 +347,9 @@ export const en = {
       },
     },
     browse: {
+      tags: 'Tags',
+      tags_hint: 'Missions carrying every tag you choose.',
+      tag: 'A tag no longer offered',
       title: 'Open missions',
       intro: 'Published missions you could quote on. Filters only narrow the list.',
       filters: 'Filters',
@@ -1461,10 +1469,17 @@ export const en = {
         expiry_range: 'Choose an expiry between an hour and 90 days from now.',
         blocked: 'You blocked this investigator. Unblock them to accept this quote.',
       },
+      tags: {
+        unknown: 'One of these tags does not exist. Choose from the list.',
+        deprecated: 'One of these tags is no longer in use. Choose a current one.',
+        slug_taken: 'Another tag already uses this address. Choose another.',
+        merge_target: 'A tag can only be merged into one that is still in use.',
+      },
       moderation: {
         reason_required:
           'Write a reason for the decision. On a rejection or a return, the customer reads it as written.',
         note_empty: 'Leave the internal note empty, or write something in it.',
+        tags_on_publish: 'Tags are confirmed only when a mission is published.',
       },
       review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
       taxonomy: {

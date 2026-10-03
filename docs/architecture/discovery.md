@@ -160,7 +160,8 @@ PostGIS, never RAG.
 requireQuotingProfile  active, INVESTIGATOR, investigations.create, own profile published + VERIFIED + accepting work
   → mission            status QUOTED, and not the investigator's own (one account holds both roles)
   → filters            taxonomy (tree), currency + budget overlap, deadline window, languages ⊆ chosen,
-                       published within N days, ST_DWithin of the investigator's own service areas
+                       published within N days, ST_DWithin of the investigator's own service areas,
+                       every confirmed tag asked for (merge closure)
   → order              newest | closest | budget | deadline | relevance, then newest, then id
   → projection         MissionListing — nothing about the customer
 ```
@@ -195,7 +196,8 @@ mission ever appears.
 | `languages` | Every language the mission requires is among those chosen (`<@`): a mission needing Armenian and English is not work for someone who ticked only English |
 | `postedWithinDays` | Relative to now, so a saved search still means "recent" later |
 | `serviceAreaId`, `withinKm` | Distance from the edge of the investigator's own area (one, or the nearest of them). `ST_DWithin` filters, `ST_Distance` only sorts. Someone else's area is refused |
-| `q` | Orders by `ts_rank` over title and description (`simple` configuration, so no stemming yet). **Never filters.** It implies `sort: relevance`, and any other sort with it is refused — it would do nothing, silently |
+| `tagIds` | Up to eight. A mission carries **every** tag asked for, *confirmed* by a moderator — a suggestion never counts. Each tag stands for its merge closure, so a tag merged into it still matches (`tag-closure.ts`); an unknown tag matches nothing. Narrows only (`taxonomy.md`, "Tags") |
+| `q` | Orders by `ts_rank` over title and description, with confirmed tag labels at weight A above them (`simple` configuration, so no stemming yet). **Never filters.** It implies `sort: relevance`, and any other sort with it is refused — it would do nothing, silently |
 
 A published mission always has a deadline, both ends of its budget, a currency and at least one
 language (`missions_submission_complete`), so only location can be missing: missions without one

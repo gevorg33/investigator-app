@@ -25,6 +25,11 @@ export type RoutePurpose =
   | 'taxonomy.create_node'
   | 'taxonomy.update_node'
   | 'taxonomy.set_label'
+  // T-055: the tag vocabulary, maintained as the taxonomy is.
+  | 'tag.create'
+  | 'tag.set_label'
+  | 'tag.deprecate'
+  | 'tag.merge'
   // T-051: the moderation queue — the publication gate, where a mission first crosses a workspace.
   | 'mission_moderation.queue'
   | 'mission_moderation.review'

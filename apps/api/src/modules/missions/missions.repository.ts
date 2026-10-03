@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq, inArray, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, type SQL } from 'drizzle-orm';
 import { ActorScopedRepository } from '../../common/authz/actor-scoped.repository';
 import type { Actor } from '../../common/authz/contract';
-import { DB, type Db } from '../../database/database.module';
-import { missions, missionStatusHistory } from '../../database/schema';
+import { DB, type Db, type Tx } from '../../database/database.module';
+import { missions, missionStatusHistory, missionTags } from '../../database/schema';
 
 export type MissionRow = typeof missions.$inferSelect;
 
@@ -80,6 +80,30 @@ export class OwnMissionRepository extends ActorScopedRepository<MissionRow> {
         decidedAt: move.occurredAt,
       });
     }
+    return out;
+  }
+
+  /**
+   * The tags the customer suggested on each mission (T-055), by mission, in the order suggested.
+   * Takes rows already read as the caller's own, as {@link reviewsOf} does.
+   */
+  async suggestedTagsOf(rows: readonly MissionRow[], tx?: Tx): Promise<Map<string, string[]>> {
+    const out = new Map<string, string[]>(rows.map((r) => [r.id, []]));
+    if (rows.length === 0) return out;
+    const found = await (tx ?? this.db)
+      .select({ missionId: missionTags.missionId, tagId: missionTags.tagId })
+      .from(missionTags)
+      .where(
+        and(
+          inArray(
+            missionTags.missionId,
+            rows.map((r) => r.id),
+          ),
+          isNotNull(missionTags.suggestedAt),
+        ),
+      )
+      .orderBy(missionTags.missionId, missionTags.suggestedAt, missionTags.tagId);
+    for (const t of found) out.get(t.missionId)!.push(t.tagId);
     return out;
   }
 }

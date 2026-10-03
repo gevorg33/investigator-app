@@ -30,6 +30,8 @@ export type MissionSort = 'newest' | 'closest' | 'budget' | 'deadline' | 'releva
 export interface BrowseFilters {
   taxonomyNodeIds?: string[];
   languages?: string[];
+  /** Curated tags (T-055): a mission must carry every one, confirmed at publication. */
+  tagIds?: string[];
   currency?: string;
   budgetMinMinor?: number;
   budgetMaxMinor?: number;
@@ -95,6 +97,8 @@ export interface MissionFields {
   purpose: string | null;
   subjectRelationship: SubjectRelationship | null;
   protectiveOrderDeclared: boolean | null;
+  /** Tags the customer suggests from the curated vocabulary (T-055); a moderator confirms them. */
+  tagIds: string[];
 }
 
 /** A mission as its own customer sees it (`GET /missions/me/:id`). No screening detail, ever. */
@@ -484,4 +488,13 @@ export interface TeamView {
 export interface AgencyInvestigatorView extends OwnInvestigatorProfile {
   membershipId: string;
   holderStatus: MembershipStatus;
+}
+
+/** A tag in the curated vocabulary, as `GET /tags` offers it (T-055). */
+export interface TagOption {
+  id: string;
+  slug: string;
+  label: string;
+  /** Which locale the label came from: English where the reader's has none. */
+  labelLocale: string;
 }

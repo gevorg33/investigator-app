@@ -26,7 +26,8 @@ import {
 } from '@/components/ui/drawer';
 import { NativeSelect } from '@/components/ui/native-select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import type { BrowseFilters, OwnServiceArea } from '@/lib/api/types';
+import type { BrowseFilters, OwnServiceArea, TagOption } from '@/lib/api/types';
+import { MAX_MISSION_TAGS } from '@/lib/tags';
 import type { CategoryOption } from '@/lib/taxonomy';
 import { cn } from '@/lib/utils';
 import {
@@ -92,11 +93,14 @@ export function FilterSheet({
   categories,
   areas,
   languages,
+  tags,
 }: {
   filters: BrowseFilters;
   categories: readonly CategoryOption[];
   areas: readonly OwnServiceArea[];
   languages: readonly string[];
+  /** The curated tag vocabulary (T-055). */
+  tags: readonly TagOption[];
 }) {
   const t = useTranslations('missions.browse');
   const locale = useLocale();
@@ -113,6 +117,8 @@ export function FilterSheet({
   const set = (patch: Patch) => setDraft((d) => compact({ ...d, ...patch }));
   const count = narrowingCount(filters);
   const category = draft.taxonomyNodeIds?.[0];
+  const chosenTags = draft.tagIds ?? [];
+  const tagsFull = chosenTags.length >= MAX_MISSION_TAGS;
 
   const apply = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -207,6 +213,29 @@ export function FilterSheet({
                 {languages.map((code) => (
                   <ToggleGroupItem key={code} value={code}>
                     {names.of(code)}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </Section>
+          )}
+
+          {tags.length > 0 && (
+            <Section title={t('tags')} hint={t('tags_hint')}>
+              <ToggleGroup
+                type="multiple"
+                value={chosenTags}
+                onValueChange={(v) =>
+                  set({ tagIds: v.length === 0 ? undefined : v.slice(0, MAX_MISSION_TAGS) })
+                }
+                aria-label={t('tags')}
+              >
+                {tags.map((tag) => (
+                  <ToggleGroupItem
+                    key={tag.id}
+                    value={tag.id}
+                    disabled={tagsFull && !chosenTags.includes(tag.id)}
+                  >
+                    {tag.label}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>

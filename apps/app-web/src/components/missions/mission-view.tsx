@@ -107,6 +107,8 @@ export async function MissionView({
               purpose: mission.purpose,
               subjectRelationship: mission.subjectRelationship,
               protectiveOrderDeclared: mission.protectiveOrderDeclared,
+              // Not carried over: a tag may have been retired since, and suggesting again is a choice.
+              tagIds: [],
             }}
           />
           <Link href={POLICY_HREF} className="min-h-11 text-sm text-primary underline">

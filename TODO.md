@@ -2943,7 +2943,7 @@ eligibility after the taxonomy seed).
 ---
 
 ### T-055 — Mission tagging
-- **Status:** TODO
+- **Status:** IN_PROGRESS — code, tests, docs and validation complete; browser verification pending
 - **Priority:** P2
 - **Depends on:** T-053, T-051
 - **Risk:** LOW
@@ -2961,19 +2961,44 @@ free-text tags in three locales are unusable for matching, and a customer-author
 moderation surface.
 
 **Acceptance criteria**
-- [ ] Tags applied from the curated vocabulary — **no free-text tag creation by customers**
-- [ ] Customers may suggest tags at mission creation; moderators confirm at publication (T-051)
-- [ ] Tags improve search ranking and browse filtering only
-- [ ] Mission browse (`POST /search/missions`, T-054) takes a tag filter that only narrows, and the app-web filters offer it — T-054 left it out because tags did not exist
-- [ ] **A tag never affects eligibility** — tested
-- [ ] Tag labels localised for en/ru/hy
-- [ ] Staff can add, merge, deprecate and relabel tags; all audited
-- [ ] Merging a tag preserves the missions that carried the old one
+- [x] Tags applied from the curated vocabulary — **no free-text tag creation by customers**
+      — `tagIds` are UUIDs of ACTIVE tags (422 otherwise); RLS admits a customer write only to an
+      unconfirmed row on their own DRAFT
+- [x] Customers may suggest tags at mission creation; moderators confirm at publication (T-051)
+      — intake chips on the kind-of-help question; the admin decision drawer's checklist on Publish.
+      `tagIds` with any other outcome is refused
+- [x] Tags improve search ranking and browse filtering only — confirmed labels at ts weight A
+- [x] Mission browse (`POST /search/missions`, T-054) takes a tag filter that only narrows, and the app-web filters offer it — T-054 left it out because tags did not exist
+      — all-of over confirmed tags; `tag` URL parameter; chips in the sheet and as active filters
+- [x] **A tag never affects eligibility** — tested (`mission-tags.spec.ts`: hired, own and
+      under-review missions stay hidden whatever tags; the unfiltered set is unchanged; screening too)
+- [x] Tag labels localised for en/ru/hy — `tag_labels`, English fallback reported as `labelLocale`
+- [x] Staff can add, merge, deprecate and relabel tags; all audited — API only (TAXONOMY scope,
+      PlatformContext, reason required), as the taxonomy is; no console screen yet
+- [x] Merging a tag preserves the missions that carried the old one — no mission rewritten;
+      browse matches the merge closure
 
 **Validation**
 ```bash
 pnpm --filter api test mission-tags
 ```
+
+*Built.* Migration 0039: `tags`, `tag_labels` (platform, staff-maintained — SELECT/INSERT/UPDATE,
+never DELETE) and `mission_tags` (two-party, filled from the mission). Trigger `keep_tag_identity`
+keeps slugs, merges once and only into an ACTIVE tag. `TagsService` and `/tags` routes in the
+taxonomy module under four new route purposes (`tag.create|set_label|deprecate|merge`). Missions
+carry `tagIds` (suggested); the moderation review view carries `tags`; a PUBLISHED decision
+confirms `tagIds`. Browse: `tagIds` filter (merge closure, `search/tag-closure.ts`) and tag labels in
+the relevance vector. app-web: intake tag picker, brief line, browse sheet chips and active-filter
+chips. admin-web: tags in the brief, publish checklist in the decision drawer.
+
+*Docs.* `taxonomy.md` "Tags", `missions.md`, `discovery.md`, `app-web.md`, `admin-web.md`,
+`retention.md`; KB `kb-customer-creating-a-mission` v4, `kb-investigator-finding-work` v5,
+`kb-staff-mission-policy-review` v7, `kb-staff-taxonomy-management` v3, each en/ru/hy (translations
+stay draft).
+
+*Validated.* `pnpm --filter api test mission-tags` 15/15; lint, typecheck, format, build; coverage
+100% in every package (api 3311 tests, app-web 853, admin-web 131).
 
 ---
 

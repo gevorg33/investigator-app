@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '@/i18n/messages';
-import type { ModerationQueuePage, ModerationReviewView } from '@/lib/api/types';
+import type { ModerationQueuePage, ModerationReviewView, TagOption } from '@/lib/api/types';
 import { api, apiError } from '@/test/api';
 import { NotFound, Redirected, router } from '@/test/navigation';
 import { request } from '@/test/request';
@@ -79,6 +79,7 @@ const mission = (over: Partial<ModerationReviewView> = {}): ModerationReviewView
     aiClassification: null,
   },
   decisions: [],
+  tags: [],
   party: false,
   ...over,
 });
@@ -90,6 +91,23 @@ const TAXONOMY = [
     slug: 'financial',
     children: [{ id: 'node-assets', label: 'Asset tracing', slug: 'assets', children: [] }],
   },
+];
+
+const tagOption = (id: string, label: string): TagOption => ({
+  id,
+  slug: label.toLowerCase().replace(/\W+/g, '-'),
+  label,
+  labelLocale: 'en',
+});
+const COURT = '00000000-0000-4000-8000-0000000c0047';
+const REMOTE = '00000000-0000-4000-8000-0000000e0e07';
+const URGENT = '00000000-0000-4000-8000-00000000a6e7';
+const RETIRED = '00000000-0000-4000-8000-0000000de1ed';
+// In label order, as GET /tags returns them.
+const TAGS = [
+  tagOption(COURT, 'Court use'),
+  tagOption(REMOTE, 'Remote'),
+  tagOption(URGENT, 'Urgent'),
 ];
 
 const signedIn = () => {
@@ -109,10 +127,14 @@ const showQueue = async (cursor?: string) => {
   );
 };
 
-const showMission = async (view: ModerationReviewView = mission()) => {
+const showMission = async (
+  view: ModerationReviewView = mission(),
+  vocabulary: TagOption[] = TAGS,
+) => {
   signedIn();
   api.on(`GET /moderation/missions/${ID}`, 200, view);
   api.on('GET /taxonomy?locale=en', 200, TAXONOMY);
+  api.on('GET /tags?locale=en', 200, vocabulary);
   return render(
     await resolveServer(await MissionReviewPage({ params: Promise.resolve({ id: ID }) })),
   );
@@ -251,7 +273,31 @@ describe('the moderation console (T-051)', () => {
         [t('mission.brief.timing'), 'Start by 2026-10-05, needed by 2026-10-20'],
         [t('mission.brief.budget'), expect.stringMatching(/500.*1,500/)],
         [t('mission.brief.relationship'), t('mission.relationship.FORMER_PARTNER')],
+        [t('mission.brief.tags'), t('mission.brief.none')],
         [t('mission.brief.protective_order'), t('mission.brief.protective_order.no')],
+      ]);
+    });
+
+    it('shows the tags the customer suggested, and which were confirmed, by name where it has one (T-055)', async () => {
+      await showMission(
+        mission({
+          tags: [
+            { id: REMOTE, label: 'Remote', suggested: true, confirmed: false },
+            { id: COURT, label: 'Court use', suggested: true, confirmed: true },
+            { id: RETIRED, label: null, suggested: false, confirmed: true },
+          ],
+        }),
+      );
+      const tags = within(section(t('mission.brief.title'))).getByText(t('mission.brief.tags'))
+        .nextElementSibling as HTMLElement;
+      expect(
+        within(tags)
+          .getAllByRole('listitem')
+          .map((li) => li.textContent),
+      ).toEqual([
+        `Remote · ${t('mission.tags.suggested')}`,
+        `Court use · ${t('mission.tags.confirmed')}`,
+        `00000000 · ${t('mission.tags.confirmed')}`,
       ]);
     });
 
@@ -572,6 +618,91 @@ describe('the moderation console (T-051)', () => {
       await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
       expect(await within(sheet).findByRole('alert')).toHaveTextContent(t('moderate.conflict'));
       expect(router.refresh).not.toHaveBeenCalled();
+    });
+
+    describe('confirming tags on publication (T-055)', () => {
+      const publish = async (sheet: HTMLElement) => {
+        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.publish') }));
+        await userEvent.type(
+          within(sheet).getByRole('textbox', { name: t('moderate.reason.staff') }),
+          'Ordinary company check.',
+        );
+      };
+      const checklist = (sheet: HTMLElement) =>
+        within(sheet).queryByRole('group', { name: t('moderate.tags') });
+      const suggesting = (...ids: string[]) =>
+        mission({
+          tags: ids.map((id) => ({ id, label: null, suggested: true, confirmed: false })),
+        });
+
+      it('offers the vocabulary only on Publish: the suggestions ticked and first, a retired one left out', async () => {
+        await showMission(suggesting(URGENT, RETIRED));
+        const sheet = await open();
+        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+        expect(checklist(sheet)).toBeNull();
+
+        await publish(sheet);
+        const group = checklist(sheet)!;
+        expect(group).toHaveAccessibleDescription(t('moderate.tags_hint'));
+        const boxes = within(group).getAllByRole('checkbox');
+        expect(
+          boxes.map((b) => [b.closest('label')!.textContent, (b as HTMLInputElement).checked]),
+        ).toEqual([
+          [t('moderate.tags_suggested', { label: 'Urgent' }), true],
+          ['Court use', false],
+          ['Remote', false],
+        ]);
+      });
+
+      it('confirms what the moderator kept and added', async () => {
+        await showMission(suggesting(URGENT, REMOTE));
+        api.on(`POST /moderation/missions/${ID}/decision`, 201, { outcome: 'PUBLISHED' });
+        const sheet = await open();
+        await publish(sheet);
+        const group = checklist(sheet)!;
+        await userEvent.click(within(group).getByRole('checkbox', { name: /Remote/ }));
+        await userEvent.click(within(group).getByRole('checkbox', { name: 'Court use' }));
+        await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+        await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+        expect(api.calls.at(-1)?.body).toEqual({
+          outcome: 'PUBLISHED',
+          reason: 'Ordinary company check.',
+          tagIds: [URGENT, COURT],
+          version: 3,
+        });
+      });
+
+      it('sends no tags on any other outcome, even ticked ones', async () => {
+        await showMission(suggesting(URGENT));
+        api.on(`POST /moderation/missions/${ID}/decision`, 201, { outcome: 'REJECTED' });
+        const sheet = await open();
+        await publish(sheet);
+        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+        await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+        await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+        expect(api.calls.at(-1)?.body).not.toHaveProperty('tagIds');
+      });
+
+      it('stops at the most a mission carries, and lets one go to choose another', async () => {
+        const many = Array.from({ length: 10 }, (_, i) =>
+          tagOption(`00000000-0000-4000-8000-0000000000${10 + i}`, `Tag ${10 + i}`),
+        );
+        await showMission(mission(), many);
+        const sheet = await open();
+        await publish(sheet);
+        const boxes = within(checklist(sheet)!).getAllByRole('checkbox');
+        for (const box of boxes.slice(0, 8)) await userEvent.click(box);
+        expect(boxes.slice(8).every((b) => (b as HTMLInputElement).disabled)).toBe(true);
+        await userEvent.click(boxes[0]!);
+        expect(boxes[8]).toBeEnabled();
+      });
+
+      it('offers no checklist when there is no vocabulary', async () => {
+        await showMission(mission(), []);
+        const sheet = await open();
+        await publish(sheet);
+        expect(checklist(sheet)).toBeNull();
+      });
     });
 
     it('opens from the side from tablet width, and closes on Cancel without sending', async () => {
