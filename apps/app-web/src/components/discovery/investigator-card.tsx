@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'use-intl';
 import { investigatorName } from '@/lib/investigator-name';
 import { AgencyLine } from '@/components/investigator/agency-line';
+import { namedList } from '@/components/named-text';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { InvestigatorSearchResult } from '@/lib/api/types';
+import type { Named } from '@/lib/taxonomy';
 import { DISCOVERY_PATH } from './discovery-query';
 
 /**
@@ -22,30 +24,30 @@ export function InvestigatorCard({
   categories,
 }: {
   result: InvestigatorSearchResult;
-  categories: ReadonlyMap<string, string>;
+  categories: ReadonlyMap<string, Named>;
 }) {
   const t = useTranslations('missions.discovery.card');
   const ti = useTranslations('investigator');
   const locale = useLocale() as Locale;
   const languages = new Intl.DisplayNames([locale], { type: 'language' });
   const regions = new Intl.DisplayNames([locale], { type: 'region' });
-  const list = (items: string[]) =>
-    new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(items);
   const label = (id: string) => categories.get(id);
+  const page = (label: string): Named => ({ label });
   const name = investigatorName(result, (code) => ti('public_name.unnamed', { code }));
   const id = `investigator-${result.id}`;
 
   const { matchedOn, notMatched } = result;
-  const matched = [
-    ...matchedOn.taxonomyNodeIds.map(label).filter((l): l is string => l !== undefined),
-    ...matchedOn.languages.map((code) => languages.of(code)!),
-    ...(matchedOn.place?.city !== undefined ? [matchedOn.place.city] : []),
+  // Specialties keep the language the API gave them in; the rest is the page's own.
+  const matched: Named[] = [
+    ...matchedOn.taxonomyNodeIds.map(label).filter((l) => l !== undefined),
+    ...matchedOn.languages.map((code) => page(languages.of(code)!)),
+    ...(matchedOn.place?.city !== undefined ? [page(matchedOn.place.city)] : []),
     ...(matchedOn.place?.countryCode !== undefined
-      ? [regions.of(matchedOn.place.countryCode)!]
+      ? [page(regions.of(matchedOn.place.countryCode)!)]
       : []),
-    ...(matchedOn.availability ? [t('available')] : []),
+    ...(matchedOn.availability ? [page(t('available'))] : []),
   ];
-  const missing = notMatched.taxonomyNodeIds.map(label).filter((l): l is string => l !== undefined);
+  const missing = notMatched.taxonomyNodeIds.map(label).filter((l) => l !== undefined);
   const rate =
     result.hourlyRateMinor !== null && result.currency !== null
       ? formatBudget(result.hourlyRateMinor, result.currency, locale)
@@ -79,9 +81,13 @@ export function InvestigatorCard({
         </CardHeader>
         <CardContent className="grid gap-2 text-sm">
           {matched.length > 0 && (
-            <p className="text-success">{t('matched', { items: list(matched) })}</p>
+            <p className="text-success">
+              {t.rich('matched', { items: () => namedList(matched, locale) })}
+            </p>
           )}
-          {missing.length > 0 && <p>{t('missing', { items: list(missing) })}</p>}
+          {missing.length > 0 && (
+            <p>{t.rich('missing', { items: () => namedList(missing, locale) })}</p>
+          )}
           <p className="text-text-muted">
             {[
               ...result.languages.map((l) => languages.of(l.languageCode)!),

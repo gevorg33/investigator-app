@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';
 import { link, mark } from './support/mailbox';
 import { text } from './support/text';
@@ -18,11 +19,6 @@ test.describe.configure({ mode: 'serial' });
 /** One more than a page (`GET /notifications` returns 20), so "Show more" has something to show. */
 const UNREAD = 21;
 
-const ADDRESS: Record<string, string> = {
-  mobile: '198.51.100.31',
-  desktop: '198.51.100.41',
-};
-
 let page: Page;
 let userId: string;
 let missionId: string;
@@ -30,7 +26,7 @@ let missionId: string;
 async function signedIn(browser: Browser, info: TestInfo): Promise<Page> {
   const use = info.project.use;
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'X-Forwarded-For': ADDRESS[info.project.name]! },
+    extraHTTPHeaders: { 'X-Forwarded-For': journeyAddress(info, 'notifications') },
     baseURL: use.baseURL!,
     viewport: use.viewport!,
     ...(use.isMobile !== undefined && { isMobile: use.isMobile }),
@@ -39,7 +35,7 @@ async function signedIn(browser: Browser, info: TestInfo): Promise<Page> {
     ...(use.locale !== undefined && { locale: use.locale }),
   });
   const p = await context.newPage();
-  const email = `notifications-${info.project.name}-${Date.now()}@example.test`;
+  const email = `notifications-${info.project.name}-${journeyTag()}@example.test`;
   const password = 'a long notifications password';
   const documents = (await (
     await p.request.get('/api/v1/legal/required?for=registration&locale=en')
@@ -92,7 +88,7 @@ test.beforeAll(async ({ browser }, info) => {
     // A mission of theirs for the notifications to lead to, sent and under review — not published,
     // so no other spec's browse lists it: every investigator there sees every published mission.
     const [node] = await sql<{ id: string }[]>`
-      INSERT INTO taxonomy_nodes (slug) VALUES (${`notifications-${Date.now()}-${info.project.name}`})
+      INSERT INTO taxonomy_nodes (slug) VALUES (${`notifications-${journeyTag()}-${info.project.name}`})
       RETURNING id`;
     const [mission] = await sql<{ id: string }[]>`
       INSERT INTO missions (customer_id, customer_tenant_id, title, description, status, version, taxonomy_node_id,

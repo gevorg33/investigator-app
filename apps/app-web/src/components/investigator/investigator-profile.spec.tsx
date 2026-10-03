@@ -21,7 +21,7 @@ vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextN
 
 const en = catalogs.en.investigator;
 const DD = '5f51f336-5c7a-442a-909f-8d54d5abf81b';
-const SPECIALTIES = [[DD, 'Due diligence']] as const;
+const SPECIALTIES = [[DD, { label: 'Due diligence', lang: 'en' }]] as const;
 const PATCH = 'PATCH /profiles/investigator/me';
 const patched = () => api.calls.find((c) => c.method === 'PATCH')!.body;
 const user = () => userEvent.setup();
@@ -178,6 +178,9 @@ describe('the public profile', () => {
       within(article).getByRole('list', { name: en.specialties.title }).querySelectorAll('li'),
     ).toHaveLength(2);
     expect(article).toHaveTextContent('retired-node');
+    // Marked with the language it is in (T-198); an id is in none.
+    expect(within(article).getByText('Due diligence')).toHaveAttribute('lang', 'en');
+    expect(within(article).getByText('retired-node')).not.toHaveAttribute('lang');
     const languages = within(article).getByRole('list', { name: en.languages.title });
     expect(
       within(languages)
@@ -485,9 +488,9 @@ describe('languages', () => {
 
 describe('specialties', () => {
   const CATEGORIES = [
-    { id: 'corp', label: 'Corporate', depth: 0 },
-    { id: DD, label: 'Due diligence', depth: 1 },
-    { id: 'deep', label: 'Supplier checks', depth: 2 },
+    { id: 'corp', label: 'Corporate', lang: 'en', depth: 0 },
+    { id: DD, label: 'Due diligence', lang: 'en', depth: 1 },
+    { id: 'deep', label: 'Supplier checks', lang: 'en', depth: 2 },
     { id: 'family', label: 'Family', depth: 0 },
   ];
   const picker = (chosen: string[] = [DD], categories = CATEGORIES) =>
@@ -499,6 +502,15 @@ describe('specialties', () => {
     picker([DD, 'retired']);
     expect(screen.getByText('2 chosen')).toBeVisible();
     expect(screen.getByText('retired')).toBeVisible();
+    // Chosen and offered alike, each name says the language it is in (T-198).
+    const chosen = screen.getByRole('list');
+    expect(within(chosen).getByText('Due diligence')).toHaveAttribute('lang', 'en');
+    expect(within(chosen).getByText('retired')).not.toHaveAttribute('lang');
+    expect(within(option(/Supplier checks/)).getByText('Supplier checks')).toHaveAttribute(
+      'lang',
+      'en',
+    );
+    expect(within(option(/Family/)).getByText('Family')).not.toHaveAttribute('lang');
     expect(option(/Due diligence/)).toHaveAccessibleName(
       `Due diligence ${en.specialties.selected}`,
     );

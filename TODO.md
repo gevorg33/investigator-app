@@ -8669,7 +8669,7 @@ runs above — the 8-worker run and the experiment with the old email were diagn
 ---
 
 ### T-199 — Give every e2e spec's generated accounts and names a per-journey tag
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `e2e/support/journey.ts` (`journeyTag`, `journeyAddress`) used by all five specs; `--repeat-each=5` 270/270
 - **Priority:** P3
 - **Depends on:** T-196
 - **Risk:** LOW
@@ -8686,13 +8686,25 @@ hunted — starts copies together and gives them one account. Move the tag into 
 it everywhere.
 
 **Acceptance criteria**
-- [ ] No spec builds an email, slug or name from the clock
-- [ ] Each spec passes `--repeat-each=5` on both projects
+- [x] No spec builds an email, slug or name from the clock — nor from the project alone: `blocks`
+      named its mission and pseudonym by project, so repeats beside each other listed look-alikes
+- [x] Each spec passes `--repeat-each=5` on both projects — 270 passed (2.1 m), every spec
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web exec playwright test --repeat-each=5
 ```
+
+
+*Built.* `e2e/support/journey.ts`: `journeyTag()` (twelve random hex characters, once per journey)
+and `journeyAddress(info, spec, person)` — the `X-Forwarded-For` a journey's browsers send, one per
+spec, viewport, person and repeat, in 10.0.0.0/8. Found on the way: `missions` and `notifications`
+used the same two addresses, and `account` none (loopback), so their registrations shared a limit;
+each journey now has its own. `agency.e2e.ts` moved onto the shared helpers. `app-web.md` "Browser
+flows" updated.
+
+*Validated.* `playwright test --repeat-each=5` 270 passed; prettier, ESLint and the e2e typecheck.
+No browser surface beyond the suite: verified by the run itself.
 
 ---
 
@@ -8742,7 +8754,7 @@ as before, 44px, no horizontal scroll at 375, 768 and 1280. The customer's brief
 ---
 
 ### T-198 — Mark fallback category labels outside the missions screens
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `NamedText` / `namedList` (`components/named-text.tsx`); discovery sheet, chips and card, specialties picker, public profile and its preview, mission card; the assistant card is T-200
 - **Priority:** P3
 - **Depends on:** T-197
 - **Risk:** LOW
@@ -8758,13 +8770,55 @@ active filters, the specialties picker, and the specialties on an investigator's
 3.1.2). Same fix — `lang={c.lang}` where a label stands alone, `t.rich` where it sits in a sentence.
 
 **Acceptance criteria**
-- [ ] Every place app-web shows a category label marks it with `lang` from `labelLocale`
-- [ ] A label inside a composed string keeps its `lang` (message tag + `t.rich`), names checked by content
-- [ ] Specs seen failing first for each surface
+- [x] Every place app-web shows a category label marks it with `lang` from `labelLocale` — all but
+      the assistant's investigator card, whose labels come from the discovery tool with no locale (T-200)
+- [x] A label inside a composed string keeps its `lang` (message tag + `t.rich`), names checked by content
+      — discovery `remove`, `card.matched`, `card.missing` in en/ru/hy
+- [x] Specs seen failing first for each surface — discovery (card, chip, sheet), the profile card, the
+      picker (chosen and offered), the public profile page, the mission card
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test
+```
+
+
+*Validated.* app-web 864 (coverage 100%), i18n 29, lint, typecheck, format, build. Component
+inventory: `NamedText`, `namedList` (registries searched first). `app-web.md` updated.
+
+*Verified.* In the browser against the local API, on a Russian page: the specialties picker's
+options (`ru` for a translated node, `en` for an English one, none for a slug) and the chosen chip;
+the preview "as a customer" and the public profile, the specialty `lang="en"`; discovery's card
+"Подходит: Demo: Background checks" and its chip "Убрать: Demo: Background checks", each label
+`lang="en"`; the sheet's options; the mission card's badge `lang="ru"`. 375, 768 and 1280, no
+horizontal scroll. The specialty added to verify was removed through the API afterwards.
+
+---
+
+### T-200 — The assistant's investigator card: say which language a specialty is in
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-198
+- **Risk:** LOW
+- **Human approval required:** No — a read-only tool's output gains a field
+- **Owner agent:** ai-rag + frontend
+- **Affected:** apps/api/src/modules/ai/tools/discovery/**, apps/app-web/src/components/assistant/**, apps/app-web/src/lib/api/assistant.ts
+
+**Description**
+From T-198. Every category label in app-web now carries the language it is in, except the
+assistant's investigator card: the discovery tool returns specialties as `NodeLabel { id, label }`
+(`discovery.schemas.ts`), with no locale, so a specialty shown in English on a Russian page cannot
+be marked (WCAG 3.1.2). Give `NodeLabel` the `labelLocale` the taxonomy already resolves, and render
+the card's specialties and reasons with `NamedText` / `namedList`.
+
+**Acceptance criteria**
+- [ ] The discovery tool's `NodeLabel` carries `labelLocale`; the tool's schema and its registry entry say so (`ai-tool-registry`)
+- [ ] The card's specialties and its "matched / not matched" reasons mark each label's language
+- [ ] Specs seen failing first, API and app-web
+
+**Validation**
+```bash
+pnpm --filter api test discovery && pnpm --filter @investigator/app-web test
 ```
 
 ---

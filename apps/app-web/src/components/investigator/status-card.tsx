@@ -23,6 +23,7 @@ import { callApi } from '@/lib/api/browser';
 import type { OwnInvestigatorProfile, PublicInvestigatorProfile } from '@/lib/api/types';
 import { PublicProfileCard } from './public-profile-card';
 import { useProfileTarget } from './profile-target';
+import type { Named } from '@/lib/taxonomy';
 
 /**
  * Where the profile stands (T-123): what stands between the investigator and being listed — each
@@ -39,7 +40,7 @@ export function StatusCard({
   /** The API's public projection of it; absent where the API offers none (an agency-held profile). */
   preview?: PublicInvestigatorProfile;
   areas: number;
-  specialties: ReadonlyArray<readonly [string, string]>;
+  specialties: ReadonlyArray<readonly [string, Named]>;
 }) {
   const t = useTranslations('investigator');
   const router = useRouter();

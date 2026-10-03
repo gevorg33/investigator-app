@@ -26,12 +26,15 @@ vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextN
 const en = catalogs.en.missions.discovery;
 const DD = '5f51f336-5c7a-442a-909f-8d54d5abf81b';
 const RECORDS = '6033b823-2a6d-4073-bc7b-f59ad3a5c2fd';
+// In English, as the API labels a node the reader's language has no label for (T-198).
 const CATEGORIES = [
-  { id: 'corp', label: 'Corporate', depth: 0 },
-  { id: DD, label: 'Due diligence', depth: 1 },
-  { id: 'deep', label: 'Supplier checks', depth: 2 },
-  { id: RECORDS, label: 'Records research', depth: 0 },
+  { id: 'corp', label: 'Corporate', lang: 'en', depth: 0 },
+  { id: DD, label: 'Due diligence', lang: 'en', depth: 1 },
+  { id: 'deep', label: 'Supplier checks', lang: 'en', depth: 2 },
+  { id: RECORDS, label: 'Records research', lang: 'en', depth: 0 },
 ];
+/** What a filter chip shows; its name, "Remove …", is read from text only a screen reader gets. */
+const seen = (chip: HTMLElement) => chip.querySelector('span[aria-hidden="true"]')!.textContent;
 const COUNTRIES = [
   { code: 'AM', name: 'Armenia' },
   { code: 'GE', name: 'Georgia' },
@@ -299,7 +302,7 @@ describe('finding investigators', () => {
     expect(screen.getByText(en.empty_body)).toBeVisible();
     const chips = screen
       .getAllByRole('link', { name: /^Remove / })
-      .map((a) => [a.textContent, a.getAttribute('href')]);
+      .map((a) => [seen(a), a.getAttribute('href')]);
     const base = '/missions/investigators?';
     expect(chips).toEqual([
       [
@@ -322,11 +325,44 @@ describe('finding investigators', () => {
     );
   });
 
+  it('marks a specialty in English on a Russian page: on the card, in the chip and in the sheet (T-198)', async () => {
+    api.on(
+      SEARCH,
+      200,
+      page([
+        result({
+          matchedOn: { taxonomyNodeIds: [DD], languages: ['hy'], place: null, availability: false },
+          notMatched: { taxonomyNodeIds: [RECORDS] },
+        }),
+      ]),
+    );
+    discovery({ taxonomyNodeId: DD }, 'ru');
+    const card = await screen.findByRole('article', { name: 'Ararat Lantern' });
+    const marked = (within: HTMLElement) =>
+      [...within.querySelectorAll('[lang]')].map((e) => [e.getAttribute('lang'), e.textContent]);
+    // The specialty is marked inside the sentence; the language the sentence names is not.
+    expect(marked(card)).toEqual([
+      ['en', 'Due diligence'],
+      ['en', 'Records research'],
+    ]);
+    const ru = catalogs.ru.missions.discovery;
+    const chip = screen.getByRole('link', {
+      name: ru.remove.replace('<filter></filter>', 'Due diligence'),
+    });
+    expect(marked(chip)).toEqual([
+      ['en', 'Due diligence'],
+      ['en', 'Due diligence'],
+    ]);
+    await user().click(screen.getByRole('button', { name: new RegExp(`^${ru.filters}`) }));
+    const sheet = await screen.findByRole('dialog', { name: ru.filters });
+    expect(within(sheet).getByText('Supplier checks')).toHaveAttribute('lang', 'en');
+  });
+
   it('names a filter it has no label for by what it is', async () => {
     api.on(SEARCH, 200, page([]));
     discovery({ taxonomyNodeId: 'retired-node', languages: ['xx'], countryCode: 'ZZ' });
     await screen.findByRole('heading', { name: en.empty_title });
-    expect(screen.getAllByRole('link', { name: /^Remove / }).map((a) => a.textContent)).toEqual([
+    expect(screen.getAllByRole('link', { name: /^Remove / }).map(seen)).toEqual([
       en.category,
       'xx',
       'ZZ',
@@ -557,7 +593,9 @@ describe('the find-investigators page', () => {
     await screen.findByRole('heading', { name: ru.discovery.empty_title });
     expect(bodies()).toEqual([{ countryCode: 'AM' }]);
     expect(
-      screen.getByRole('link', { name: `${ru.discovery.remove.replace('{filter}', 'Армения')}` }),
+      screen.getByRole('link', {
+        name: `${ru.discovery.remove.replace('<filter></filter>', 'Армения')}`,
+      }),
     ).toBeVisible();
     expect((await generateMetadata()).title).toBe(ru.discovery.title);
   });

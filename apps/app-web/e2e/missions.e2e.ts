@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
+import { journeyAddress, journeyTag } from './support/journey';
 import { link, mark } from './support/mailbox';
 import { text } from './support/text';
 
@@ -14,8 +15,6 @@ import { text } from './support/text';
  */
 test.describe.configure({ mode: 'serial' });
 
-/** Each viewport browses from its own address, so its registration counts against its own limit. */
-const ADDRESS: Record<string, string> = { mobile: '198.51.100.31', desktop: '198.51.100.41' };
 let page: Page;
 
 const heading = (name: string) => page.getByRole('heading', { level: 1, name });
@@ -37,7 +36,7 @@ const draft = async (title: string) => {
 test.beforeAll(async ({ browser }, info) => {
   const use = info.project.use;
   const context = await browser.newContext({
-    extraHTTPHeaders: { 'X-Forwarded-For': ADDRESS[info.project.name]! },
+    extraHTTPHeaders: { 'X-Forwarded-For': journeyAddress(info, 'missions') },
     baseURL: use.baseURL!,
     viewport: use.viewport!,
     ...(use.isMobile !== undefined && { isMobile: use.isMobile }),
@@ -49,7 +48,7 @@ test.beforeAll(async ({ browser }, info) => {
 
   // A confirmed customer, set up through the API as the screens would — the account screens are
   // account.e2e.ts's subject, not this one's.
-  const email = `missions-${info.project.name}-${Date.now()}@example.test`;
+  const email = `missions-${info.project.name}-${journeyTag()}@example.test`;
   const password = 'a long missions password';
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')

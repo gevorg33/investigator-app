@@ -56,7 +56,7 @@ describe('an investigator’s public profile page', () => {
     api.on(`GET /profiles/investigator/${ID}`, 200, profile);
     api.on(`GET /profiles/investigator/${ID}/reviews`, 200, list);
     api.on('GET /taxonomy?locale=en', 200, [
-      { id: DD, label: 'Due diligence', slug: 'due-diligence', children: [] },
+      { id: DD, label: 'Due diligence', labelLocale: 'en', slug: 'due-diligence', children: [] },
     ]);
     api.on('GET /blocks', 200, { items: [] });
   };
@@ -68,7 +68,7 @@ describe('an investigator’s public profile page', () => {
     expect(screen.getAllByText('Ararat Lantern')).toHaveLength(1);
     const article = screen.getByRole('article');
     expect(article).toHaveTextContent(catalogs.en.investigator.verification_status.VERIFIED);
-    expect(article).toHaveTextContent('Due diligence');
+    expect(within(article).getByText('Due diligence')).toHaveAttribute('lang', 'en');
     expect(screen.getByRole('link', { name: en.back })).toHaveAttribute(
       'href',
       '/missions/investigators',

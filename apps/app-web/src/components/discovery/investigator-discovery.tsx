@@ -30,7 +30,8 @@ type Page = {
   pageInfo: { nextCursor: string | null; hasNextPage: boolean };
 };
 type Locating = 'idle' | 'locating' | 'denied' | 'failed';
-type Chip = { key: string; label: string; without: DiscoveryFilters };
+/** `lang` where the label is a specialty's, which may be in English on any page (T-198). */
+type Chip = { key: string; label: string; lang?: string | undefined; without: DiscoveryFilters };
 
 const asError = (e: unknown) =>
   e instanceof ApiError ? e : new ApiError(0, 'NETWORK', 'error.common.internal');
@@ -69,7 +70,7 @@ export function InvestigatorDiscovery({
   const [error, setError] = useState<ApiError | null>(null);
   // Answers to an earlier search are dropped when a newer one has started.
   const generation = useRef(0);
-  const labels = new Map(categories.map((c) => [c.id, c.label]));
+  const labels = new Map(categories.map((c) => [c.id, c]));
 
   const near = centre === null ? null : { centre, radiusKm: radius };
   const key = JSON.stringify(searchBody(filters, near, null));
@@ -124,9 +125,11 @@ export function InvestigatorDiscovery({
     return next;
   };
   if (filters.taxonomyNodeId !== undefined) {
+    const category = labels.get(filters.taxonomyNodeId);
     chips.push({
       key: 'category',
-      label: labels.get(filters.taxonomyNodeId) ?? t('category'),
+      label: category?.label ?? t('category'),
+      lang: category?.lang,
       without: without('taxonomyNodeId'),
     });
   }
@@ -234,12 +237,18 @@ export function InvestigatorDiscovery({
         <ul className="flex flex-wrap gap-2">
           {chips.map((c) => (
             <li key={c.key}>
+              {/* Named "Remove …" by its content, not `aria-label`, so a specialty's label keeps its
+                  language inside the name (as the missions chips, T-197). */}
               <Link
                 href={discoveryHref(c.without)}
-                aria-label={t('remove', { filter: c.label })}
                 className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border-control bg-primary-subtle px-4 text-sm font-medium text-primary hover:bg-surface-sunken"
               >
-                {c.label}
+                <span className="sr-only">
+                  {t.rich('remove', { filter: () => <span lang={c.lang}>{c.label}</span> })}
+                </span>
+                <span aria-hidden lang={c.lang}>
+                  {c.label}
+                </span>
                 <X aria-hidden className="size-4" />
               </Link>
             </li>

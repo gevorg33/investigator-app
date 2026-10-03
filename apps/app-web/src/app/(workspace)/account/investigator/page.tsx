@@ -54,7 +54,7 @@ export default async function InvestigatorProfilePage() {
         profile={own}
         preview={preview!}
         areas={(areas ?? []).length}
-        specialties={categories.map((c) => [c.id, c.label] as const)}
+        specialties={categories.map((c) => [c.id, c] as const)}
       />
       <SectionCard id="details" title={t('investigator.details.title')}>
         <DetailsForm profile={own} currencies={Intl.supportedValuesOf('currency')} />
