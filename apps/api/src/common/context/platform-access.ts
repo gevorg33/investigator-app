@@ -25,6 +25,12 @@ export type RoutePurpose =
   | 'taxonomy.create_node'
   | 'taxonomy.update_node'
   | 'taxonomy.set_label'
+  // T-051: the moderation queue — the publication gate, where a mission first crosses a workspace.
+  | 'mission_moderation.queue'
+  | 'mission_moderation.review'
+  | 'mission_moderation.decide'
+  // T-193: review latency per category and band — aggregates only, read across every workspace.
+  | 'mission_moderation.latency'
   | 'policy_review.queue'
   | 'policy_review.resolve'
   | 'review.queue'

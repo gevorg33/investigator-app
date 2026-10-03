@@ -136,6 +136,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   },
   mission_status_history: { class: 'two_party', columns: ['customer_tenant_id'] },
   mission_screenings: { class: 'two_party', columns: ['customer_tenant_id'] },
+  mission_moderation_decisions: {
+    class: 'two_party',
+    columns: ['customer_tenant_id'],
+    note: 'staff-only: decided and read inside PlatformContext; the customer reads the decision from mission_status_history, never the internal note (T-051)',
+  },
   quotes: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
   assignments: { class: 'two_party', columns: ['customer_tenant_id', 'supplier_tenant_id'] },
   policy_reviews: {

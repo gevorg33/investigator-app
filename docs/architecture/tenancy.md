@@ -652,9 +652,10 @@ enforced one layer down.
 > reaches the database through that client, so one module doing both closes a circle whose
 > classes then resolve as `undefined`.
 >
-> **Mission moderation is not here yet.** The transition map allows `STAFF:MODERATION`, but no
-> moderation endpoint exists; T-051 carries the criterion that its queue enters through
-> `PlatformContext` from the first line.
+> **Mission moderation (T-051)** enters here from its first line: the queue, one mission and each
+> decision are `mission_moderation.queue`, `.review` and `.decide`. Its decision record,
+> `mission_moderation_decisions`, is two-party by column but read by platform access alone — the
+> customer's workspace sees none of it, because it holds the moderator's internal note.
 
 Platform staff (moderation, verification, disputes, payments) must see across workspaces. They
 do so **only inside `PlatformContext`**:

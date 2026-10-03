@@ -177,6 +177,12 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const screening = await id(owner`
     INSERT INTO mission_screenings (mission_id, mission_version, ruleset_version, outcome, risk_band, flags)
     VALUES (${mission}, 1, 'iso', 'ROUTINE_REVIEW', 'STANDARD', '[]'::jsonb) RETURNING id`);
+  // A moderator's decision on it (T-051): staff-only, so no workspace reads it — not even the customer's.
+  const moderation = await id(owner`
+    INSERT INTO mission_moderation_decisions (mission_id, mission_version, screening_id, outcome, reason,
+                                              decided_by, queued_at, taxonomy_node_id, risk_band)
+    VALUES (${mission}, 1, ${screening}, 'CHANGES_REQUESTED', 'Say which company this is about.',
+            ${customer.userId}, now() - interval '1 hour', ${node!.id}, 'STANDARD') RETURNING id`);
   const quote = await id(owner`
     INSERT INTO quotes (mission_id, investigator_profile_id, price_minor, currency,
                         estimated_duration_days, scope, deliverables, cancellation_terms, expires_at)
@@ -358,6 +364,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       missions: mission,
       mission_status_history: history,
       mission_screenings: screening,
+      mission_moderation_decisions: moderation,
       quotes: quote,
       assignments: assignment,
       assignment_status_history: assignmentHistory,

@@ -59,16 +59,17 @@ API's `POST /auth/logout`, which clears the cookie on this origin.
 `/sign-in?next=` (the middleware passes the path as `x-pathname`); signed in without `STAFF` → a
 "staff only" page with sign-out. **Scopes are the API's decision**: `/me` does not list them, and a
 queue the reader lacks the scope for answers 403, which the screen shows as "you do not have the …
-scope" rather than an empty list. `/` redirects to `/verification`, the one queue.
+scope" rather than an empty list. `/` redirects to `/verification`.
 
 **In development**, `localhost` cookies ignore the port, so the console (3002) and the app (3000)
 share one session; deployed, the hosts differ and they never do.
 
 ## The shell
 
-One bar — the console's name, its queues (Verification), who is signed in, sign-out — that wraps on
-a phone. One queue, so no sidebar and no menu hiding it; the shell grows navigation with the second
-queue.
+One bar — the console's name, its queues (Verification, Missions), who is signed in, sign-out. On a
+phone the name and sign-out share the first row and the queues take the second, full width; from
+`md` it is one row. Two queues, so still no sidebar and no menu hiding them. Every queue is listed
+for every member of staff; whether they may work it is the API's answer, which each page says.
 
 ## Verification (T-070)
 
@@ -90,6 +91,29 @@ queue.
   again. A 409 says someone else decided it. The reviewer's own application shows a notice instead of
   the form, since the API refuses it.
 
+## Moderation (T-051)
+
+- **Queue** `/moderation` — `GET /moderation/missions`: the most sensitive risk band first, then the
+  longest waiting. Each card: band (in words, with a warning mark for HIGH and RESTRICTED), priority
+  or routine, the title, how long it has been queued ("Queued 3 hours ago"), the customer's deadline,
+  how many rules matched, and its category. Paged by cursor like verification.
+- **Mission** `/moderation/[id]` — the brief as submitted, never the customer's identity; the
+  screening (band, queue, the rule ids matched, ruleset and when); the **AI classification in its own
+  dashed, labelled box**, input only; every decision on the mission across its submissions, the
+  reason the customer read set apart from the internal note.
+- **Decision** — a `Drawer` like verification's: Publish, Return for changes, Reject, none selected;
+  the reason's label and hint follow the outcome ("the customer reads this" on a rejection or a
+  return, "staff only" on a publication); an optional internal note. The control is disabled until an
+  outcome is chosen and the reason says something. A 409 says someone else decided first. The
+  moderator's own mission shows a notice instead of the form; one with no screening record says not
+  to decide it.
+
+- **Review times** `/moderation/latency` (T-193), linked from the queue — a card per category and
+  risk band: decisions, median wait, "9 in 10 decided within", longest wait, and the outcome mix;
+  periods of 30 days, 90 (the default) or a year, the current one marked. Waits read in one unit
+  ("45 min", "2.5 hr", "3.2 days"). The page says it is what a decision to open a category would be
+  made on, and that nothing opens from it.
+
 **Granting staff access** has no screen or command yet (T-152, which needs approval: it is
 authorization). For local development only, as the database owner:
 
@@ -97,6 +121,9 @@ authorization). For local development only, as the database owner:
 INSERT INTO user_roles (user_id, role) SELECT id, 'STAFF' FROM users WHERE email = 'you@example.test';
 INSERT INTO user_staff_scopes (user_id, scope, granted_by)
   SELECT id, 'VERIFICATION', id FROM users WHERE email = 'you@example.test';
+-- The moderation queue (T-051) needs its own scope:
+INSERT INTO user_staff_scopes (user_id, scope, granted_by)
+  SELECT id, 'MODERATION', id FROM users WHERE email = 'you@example.test';
 ```
 
 ## Running it
@@ -110,7 +137,7 @@ Port 3002: app-web is 3000 and the API 3001.
 
 ## Not built here
 
-- Every queue after verification — moderation (T-051), disputes, payments — and the navigation
-  that a second queue will need.
+- The queues still to come — disputes, payments — and opening mission attachments from the
+  moderation page (T-066).
 - Staff access management — T-152.
 - A theme toggle and an app icon — as in app-web.

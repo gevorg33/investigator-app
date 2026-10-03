@@ -4,9 +4,9 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 4
+version: 6
 status: current
-updated: 2026-09-24
+updated: 2026-10-03
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -23,7 +23,7 @@ tags: [staff, policy, missions, review, lawful-use]
 Whether a mission that was held can be released to investigators, needs more information
 from the customer, or must be rejected.
 
-The automatic checks decide the clear cases. What reaches you is what needs a person.
+The automatic checks decide nothing: they sort the queue, so what most needs a person reaches you first.
 
 ## Do I review every mission, or only flagged ones?
 
@@ -44,6 +44,34 @@ revise and submit again.
 whenever the problem is fixable, which it usually is.
 
 Every outcome is recorded with your identity and your reasoning.
+
+## Where do I review missions, and what does the customer see?
+
+In the staff console, under **Missions**. It needs the moderation scope. The queue puts the most
+sensitive risk band first, then whoever has waited longest, and each card says how long the mission
+has waited and when the customer needs it by.
+
+A mission's page shows the brief as the customer submitted it, the screening that sorted it — its
+band and the rules it matched — and any AI classification, set apart and labelled as input. It does
+not show who the customer is: that is not what you decide.
+
+To decide, choose an outcome and write a reason. Nothing is chosen for you, and the decision cannot
+be recorded until both are there.
+
+- On a **rejection** or a **request for changes**, the customer reads your reason **exactly as you
+  write it**. Say what to change and why. Never name the rule that matched or how the mission was
+  detected.
+- On a **publication**, the reason is for staff only.
+- The **internal note** is optional and never shown to the customer. Put there what the reason must
+  not say.
+
+**Review times**, linked from the queue, shows how long customers waited for a decision and what was
+decided, per category and risk band. It names no mission, customer or moderator. Publishing a
+category without review would be decided on this data and on counsel's confirmation — never by a
+moderator, and nothing opens from that page.
+
+You cannot decide a mission you submitted yourself; the page says so. If someone else decides first,
+or the customer cancels while you are deciding, you are told, and nothing you wrote is recorded.
 
 ## What is the test?
 

@@ -11,8 +11,9 @@ import { Notice } from '@/components/verification/notice';
 import { t, type MessageKey } from '@/i18n/messages';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
-import type { ReviewView, TaxonomyNode } from '@/lib/api/types';
+import type { ReviewView } from '@/lib/api/types';
 import { fileSize, shortId, when } from '@/lib/format';
+import { taxonomyLabels } from '@/lib/taxonomy';
 
 type Params = Promise<{ id: string }>;
 
@@ -28,20 +29,6 @@ const read = cache(async (id: string): Promise<ReviewView | 'no_scope'> => {
     throw e;
   }
 });
-
-/** Every taxonomy node's label, by id — to name what was declared by id. */
-async function labels(): Promise<Map<string, string>> {
-  const tree = (await serverApi<TaxonomyNode[]>('/taxonomy?locale=en')) ?? [];
-  const out = new Map<string, string>();
-  const walk = (nodes: TaxonomyNode[]) => {
-    for (const n of nodes) {
-      out.set(n.id, n.label ?? n.slug);
-      walk(n.children);
-    }
-  };
-  walk(tree);
-  return out;
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const view = await read((await params).id);
@@ -71,7 +58,7 @@ export default async function ReviewPage({ params }: { params: Params }) {
       />
     );
   }
-  const names = await labels();
+  const names = await taxonomyLabels();
   const tz = account!.timezone;
   const own = view.profile.userId === account!.id;
   const declared = view.declaredScope;

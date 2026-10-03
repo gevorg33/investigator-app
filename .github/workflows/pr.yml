@@ -188,8 +188,22 @@ jobs:
       - name: No source maps in public bundles
         run: ./scripts/check-no-public-sourcemaps.sh
 
+      # HIGH and above blocks. The one accepted exception is in
+      # docs/operations/dependency-audit-exceptions.md and expires here as well: past the date it is
+      # no longer ignored, so CI goes red and someone looks again.
       - name: Dependency audit
-        run: pnpm audit --audit-level=high
+        run: |
+          # `pnpm audit --ignore` also writes the id into pnpm-workspace.yaml's auditConfig, where it
+          # would never expire. The register is the only place an exception may live.
+          if grep -q '^auditConfig:' pnpm-workspace.yaml; then
+            echo "pnpm-workspace.yaml carries an auditConfig ignore; use the register instead." >&2
+            exit 1
+          fi
+          ignore=()
+          if [[ "$(date -u +%F)" < "2026-11-03" ]]; then
+            ignore+=(--ignore GHSA-vfj7-8cjw-p6xm) # braces, lint toolchain only, no patch exists
+          fi
+          pnpm audit --audit-level=high "${ignore[@]}"
 
       # Images scanned: CRITICAL or HIGH blocks, but only when a fix exists — a CVE nobody can
       # patch would keep CI red with nothing to do about it, and it is the line `pnpm audit

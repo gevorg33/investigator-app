@@ -299,3 +299,81 @@ export const missionScreenings = pgTable(
     }).onDelete('restrict'),
   ],
 );
+
+/** What a moderator decided about a mission under review (T-051). Each is one move out of review. */
+export const missionModerationOutcome = pgEnum('mission_moderation_outcome', [
+  /** UNDER_REVIEW → QUOTED: investigators can see it and quote. */
+  'PUBLISHED',
+  /** UNDER_REVIEW → REJECTED, with a reason the customer reads as written. */
+  'REJECTED',
+  /** UNDER_REVIEW → DRAFT, with what to change; the customer revises and submits again. */
+  'CHANGES_REQUESTED',
+]);
+
+/**
+ * Every moderation decision, append-only (T-051). The publication gate's own record: who decided,
+ * what, why, and how long the customer waited for it.
+ *
+ * The move itself is in `mission_status_history`, written by the transition service in the same
+ * transaction, and the customer reads the reason from there (`review`, T-119). This row adds what
+ * the customer must not see — the moderator's internal note — and what review latency is measured
+ * by: the category and risk band at the time, and when the mission entered the queue. Plan §10
+ * decided every mission is reviewed at launch, and that any later opening of the gate rests on this
+ * data.
+ *
+ * Staff read it, inside PlatformContext, and nobody else: the customer's own view is the history.
+ */
+export const missionModerationDecisions = pgTable(
+  'mission_moderation_decisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    missionId: uuid('mission_id')
+      .notNull()
+      .references(() => missions.id, { onDelete: 'restrict' }),
+    /** The version the moderator decided — the one they read. */
+    missionVersion: integer('mission_version').notNull(),
+    /** The screening shown to the moderator: the latest for that submission. */
+    screeningId: uuid('screening_id')
+      .notNull()
+      .references(() => missionScreenings.id, { onDelete: 'restrict' }),
+    outcome: missionModerationOutcome('outcome').notNull(),
+    /**
+     * Why. For a rejection or a request for changes this is what the customer reads, exactly as
+     * written; for a publication it is for staff. Required for all three.
+     */
+    reason: text('reason').notNull(),
+    /** Staff only, never shown to the customer: what the reason should not say (missions.md). */
+    internalNote: text('internal_note'),
+    // Not a foreign key, as in mission_status_history: the record outlives the account.
+    decidedBy: uuid('decided_by').notNull(),
+    /** When the mission entered UNDER_REVIEW for this submission. Latency is decided − queued. */
+    queuedAt: timestamp('queued_at', { withTimezone: true }).notNull(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
+    /** The category and band at the time, so latency per category and band survives later edits. */
+    taxonomyNodeId: uuid('taxonomy_node_id').references(() => taxonomyNodes.id, {
+      onDelete: 'restrict',
+    }),
+    riskBand: riskBand('risk_band').notNull(),
+    /**
+     * Copied from the mission by trigger `fill_party_from_parent`, never from the request, and
+     * held equal to it by a composite foreign key (T-076). The default only makes it optional
+     * to drizzle; the trigger always overwrites it.
+     */
+    customerTenantId: uuid('customer_tenant_id')
+      .notNull()
+      .default(sql`app_current_tenant()`),
+  },
+  (t) => [
+    // Serves MissionModerationService.getForReview(): one mission's decisions, oldest first.
+    index('mission_moderation_decisions_mission_idx').on(
+      t.customerTenantId,
+      t.missionId,
+      t.decidedAt,
+    ),
+    foreignKey({
+      name: 'mission_moderation_decisions_mission_tenant_fk',
+      columns: [t.missionId, t.customerTenantId],
+      foreignColumns: [missions.id, missions.customerTenantId],
+    }).onDelete('restrict'),
+  ],
+);

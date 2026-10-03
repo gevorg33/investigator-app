@@ -161,15 +161,20 @@ describe('the staff verification console (T-070)', () => {
       await waitFor(() => expect(navigated.to).toEqual(['/sign-in']));
     });
 
-    it('frames staff in the console: the queue, who is signed in, sign-out, a skip link', async () => {
+    it('frames staff in the console: the queues, who is signed in, sign-out, a skip link', async () => {
       signedIn();
       render(await resolveServer(await ConsoleLayout({ children: 'inside' })));
       expect(screen.getByRole('main')).toHaveTextContent('inside');
       const nav = screen.getByRole('navigation', { name: t('shell.nav.label') });
-      expect(within(nav).getByRole('link', { name: t('shell.verification') })).toHaveAttribute(
-        'href',
-        '/verification',
-      );
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((a) => [a.textContent, a.getAttribute('href')]),
+      ).toEqual([
+        [t('shell.verification'), '/verification'],
+        // T-051: missions under review. Every queue is listed; the API says who may work it.
+        [t('shell.moderation'), '/moderation'],
+      ]);
       expect(screen.getByText('Signed in as reviewer@example.test')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: t('shell.skip_to_content') })).toHaveAttribute(
         'href',

@@ -227,3 +227,16 @@ investigator for work already done. Staff cannot yet make that call with confide
     is lawful work the investigator performed before discovering it payable — in full, in part,
     or not at all? Does the answer change if the customer knew the material was unlawful?
 
+### Moderation (T-051, added 2026-10-03)
+
+Every mission is read by a moderator before any investigator sees it: the gate is closed at launch
+(plan.md §10). Each decision records its category, risk band and how long the customer waited, so
+that a later decision to publish a low-risk category without review — records checks, for example —
+could rest on data. Partner and relationship investigation would never be published without review.
+
+35. **Publishing without review.** If review latency ever requires it, may missions in a low-risk
+    category be published to investigators without a person reading them first, with automated
+    screening still applied? Which categories could qualify, does the answer differ by launch
+    jurisdiction, and what would the platform's position be if one of them turned out to request
+    something unlawful?
+

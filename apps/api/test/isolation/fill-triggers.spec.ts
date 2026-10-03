@@ -193,6 +193,55 @@ describe('filling a row’s workspace under row-level security', () => {
     );
   });
 
+  it('copies a moderation decision’s workspace from the mission, written by a moderator (T-051)', async () => {
+    const staff = {
+      userId: outsider.userId,
+      roles: ['STAFF'] as const,
+      staffScopes: ['MODERATION'] as const,
+      activeRole: undefined,
+    };
+    const [decision] = await runInContext(outsider, () =>
+      platform.asStaff(
+        staff as never,
+        { scope: 'MODERATION', purpose: 'mission_moderation.decide' },
+        {},
+        () =>
+          scoped.begin(
+            (tx) => tx<{ id: string }[]>`
+            INSERT INTO mission_moderation_decisions (mission_id, mission_version, screening_id,
+                                                      outcome, reason, decided_by, queued_at,
+                                                      risk_band)
+            VALUES (${graph.rows['missions']!}, 1, ${graph.rows['mission_screenings']!}, 'REJECTED',
+                    'filled', ${outsider.userId}, now() - interval '1 hour', 'STANDARD')
+            RETURNING id`,
+          ),
+      ),
+    );
+    expect(
+      await workspaceOf('mission_moderation_decisions', decision!.id, 'customer_tenant_id'),
+    ).toBe(graph.customer.tenantId);
+  });
+
+  it('lets no workspace write a moderation decision, not even the mission’s own customer', async () => {
+    await expect(
+      write(
+        customer,
+        (tx) => tx`
+          INSERT INTO mission_moderation_decisions (mission_id, mission_version, screening_id,
+                                                    outcome, reason, decided_by, queued_at,
+                                                    risk_band)
+          VALUES (${graph.rows['missions']!}, 1, ${graph.rows['mission_screenings']!}, 'PUBLISHED',
+                  'self-approved', ${graph.customer.userId}, now() - interval '1 hour', 'STANDARD')`,
+      ),
+    ).rejects.toThrow(/row-level security/);
+    const [row] = await write(
+      customer,
+      (tx) =>
+        tx<{ seen: number }[]>`SELECT count(*)::int AS seen FROM mission_moderation_decisions`,
+    );
+    expect(row!.seen).toBe(0);
+  });
+
   it('gives a mission’s history the customer’s workspace, written by the customer', async () => {
     const [entry] = await write(
       customer,
