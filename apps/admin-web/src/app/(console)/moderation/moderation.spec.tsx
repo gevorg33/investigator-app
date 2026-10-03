@@ -157,6 +157,10 @@ describe('the moderation console (T-051)', () => {
       // A category the taxonomy no longer lists is left out, not guessed at.
       expect(second.textContent).not.toContain('node-gone');
       expect(screen.queryByRole('link', { name: t('moderation.next') })).toBeNull();
+      expect(screen.getByRole('link', { name: t('moderation.latency_link') })).toHaveAttribute(
+        'href',
+        '/moderation/latency',
+      );
     });
 
     it('pages on, and back to the top', async () => {

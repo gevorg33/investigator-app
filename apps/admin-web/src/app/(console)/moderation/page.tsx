@@ -1,4 +1,4 @@
-import { CalendarClock, Flag, Inbox, ShieldX } from 'lucide-react';
+import { CalendarClock, Flag, Inbox, ShieldX, Timer } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -58,6 +58,13 @@ export default async function ModerationQueuePage({
           {t('moderation.title')}
         </h1>
         <p className="text-text-muted">{t('moderation.intro')}</p>
+        <Link
+          href="/moderation/latency"
+          className="inline-flex min-h-11 items-center gap-2 self-start text-sm font-medium text-primary hover:underline"
+        >
+          <Timer aria-hidden className="size-4" />
+          {t('moderation.latency_link')}
+        </Link>
       </div>
 
       {page.items.length === 0 ? (

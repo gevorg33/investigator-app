@@ -111,6 +111,28 @@ const en = {
   'moderation.screening_outcome.PRIORITY_REVIEW': 'Priority',
   'moderation.screening_outcome.ROUTINE_REVIEW': 'Routine',
 
+  'moderation.latency_link': 'Review times',
+
+  'latency.title': 'Review times',
+  'latency.intro':
+    'How long customers waited for a moderator’s decision, and what was decided, by category and risk band.',
+  'latency.purpose':
+    'This is what a decision to publish a category without review would be made on — with counsel’s confirmation, never from here. Nothing opens from this page.',
+  'latency.back': 'Missions to review',
+  'latency.period.label': 'Period',
+  'latency.period.30': 'Last 30 days',
+  'latency.period.90': 'Last 90 days',
+  'latency.period.365': 'Last year',
+  'latency.empty.title': 'No decisions in this period',
+  'latency.empty.body': 'Review times appear here once moderators decide missions.',
+  'latency.uncategorised': 'No category',
+  'latency.decided': 'Decisions',
+  'latency.median': 'Median wait',
+  'latency.p90': '9 in 10 decided within',
+  'latency.longest': 'Longest wait',
+  'latency.outcomes': 'Outcomes',
+  'latency.outcomes_value': '{published} published · {changes} returned · {rejected} rejected',
+
   'mission.back': 'All missions',
   'mission.status.UNDER_REVIEW': 'Waiting for a decision',
   'mission.status.QUOTED': 'Published',

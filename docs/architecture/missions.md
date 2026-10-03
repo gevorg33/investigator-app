@@ -231,6 +231,11 @@ it for a staff move — `mission-moderation.invariant.spec.ts` holds all three.
   the mission version and the screening they read, the category and band at the time, and
   `queued_at` → `decided_at`. That is review latency per category and band from the first day, the
   data any later opening of the gate rests on.
+- **Review latency** (T-193): `GET /moderation/missions/latency?days=30|90|365` (90 by default)
+  reads the record back per category and risk band — decisions, median, 90th-percentile and longest
+  wait, and how many were published, returned and rejected. Aggregates only: no mission, customer or
+  moderator is named. It enters `PlatformContext` as `mission_moderation.latency`. It is what T-191
+  would be decided on, and it opens nothing.
 - **AI classification** is shown in the console as labelled input. Nothing in the view suggests an
   outcome, and the decision names one every time.
 - **Attachments** do not exist yet; opening them, audited per access, is T-066's.

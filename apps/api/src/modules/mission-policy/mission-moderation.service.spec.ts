@@ -280,19 +280,23 @@ describe('the moderation queue (T-051)', () => {
       ],
     ];
 
-    it.each(refusals)('refuses %s the queue, the mission and the decision', async (_who, who) => {
-      const actor = await who();
-      const m = await underReview();
-      await expect(service.queue(actor, {}, req())).rejects.toMatchObject({ status: 403 });
-      await expect(service.getForReview(actor, m.id, req())).rejects.toMatchObject({
-        status: 403,
-      });
-      await expect(decide(m.id, { version: m.version }, actor)).rejects.toMatchObject({
-        status: 403,
-      });
-      expect((await missionOf(m.id)).status).toBe('UNDER_REVIEW');
-      expect(await decisionsOf(m.id)).toEqual([]);
-    });
+    it.each(refusals)(
+      'refuses %s the queue, the mission, the decision and the latency report',
+      async (_who, who) => {
+        const actor = await who();
+        const m = await underReview();
+        await expect(service.queue(actor, {}, req())).rejects.toMatchObject({ status: 403 });
+        await expect(service.latency(actor, {}, req())).rejects.toMatchObject({ status: 403 });
+        await expect(service.getForReview(actor, m.id, req())).rejects.toMatchObject({
+          status: 403,
+        });
+        await expect(decide(m.id, { version: m.version }, actor)).rejects.toMatchObject({
+          status: 403,
+        });
+        expect((await missionOf(m.id)).status).toBe('UNDER_REVIEW');
+        expect(await decisionsOf(m.id)).toEqual([]);
+      },
+    );
   });
 
   describe('one mission', () => {
@@ -603,6 +607,124 @@ describe('the moderation queue (T-051)', () => {
         ).rejects.toThrow(/permission denied/);
       }
       expect((await decisionsOf(m.id))[0]).toEqual(row);
+    });
+  });
+
+  describe('review latency (T-193)', () => {
+    const HOUR = 3_600_000;
+
+    /**
+     * A decision on a submitted mission, waited `hours` and decided `daysAgo` — written as the owner,
+     * because the report is about the arithmetic over many decisions, which no single moderation
+     * could produce on demand. The mission and its screening are real.
+     */
+    const decided = async (
+      m: Awaited<ReturnType<typeof underReview>>,
+      opts: {
+        hours: number;
+        outcome?: 'PUBLISHED' | 'REJECTED' | 'CHANGES_REQUESTED';
+        daysAgo?: number;
+        band?: RiskBandValue;
+      },
+    ) => {
+      const [screening] = await ownerDb
+        .select()
+        .from(missionScreenings)
+        .where(eq(missionScreenings.missionId, m.id));
+      const decidedAt = new Date(Date.now() - (opts.daysAgo ?? 0) * 24 * HOUR);
+      await ownerDb.insert(missionModerationDecisions).values({
+        missionId: m.id,
+        missionVersion: m.version,
+        screeningId: screening!.id,
+        outcome: opts.outcome ?? 'PUBLISHED',
+        reason: 'Decided for the report.',
+        decidedBy: moderator.userId,
+        queuedAt: new Date(decidedAt.getTime() - opts.hours * HOUR),
+        decidedAt,
+        taxonomyNodeId: m.nodeId,
+        riskBand: opts.band ?? 'STANDARD',
+      });
+    };
+
+    it('reports each category and band: how many decided, how long they waited, and what was decided', async () => {
+      const records = await underReview({ band: 'STANDARD' });
+      await decided(records, { hours: 1 });
+      await decided(records, { hours: 2 });
+      await decided(records, { hours: 3, outcome: 'CHANGES_REQUESTED' });
+      await decided(records, { hours: 4, outcome: 'REJECTED' });
+      const partner = await underReview({ band: 'RESTRICTED' });
+      await decided(partner, { hours: 30, outcome: 'REJECTED', band: 'RESTRICTED' });
+
+      const report = await service.latency(moderator, {}, req());
+      expect(report.days).toBe(90);
+      const ours = report.rows.filter((r) =>
+        [records.nodeId, partner.nodeId].includes(r.taxonomyNodeId!),
+      );
+      expect(ours).toEqual([
+        // The most sensitive band first, as in the queue.
+        {
+          taxonomyNodeId: partner.nodeId,
+          riskBand: 'RESTRICTED',
+          decided: 1,
+          medianMs: 30 * HOUR,
+          p90Ms: 30 * HOUR,
+          longestMs: 30 * HOUR,
+          outcomes: { published: 0, changesRequested: 0, rejected: 1 },
+        },
+        {
+          taxonomyNodeId: records.nodeId,
+          riskBand: 'STANDARD',
+          decided: 4,
+          medianMs: 2.5 * HOUR,
+          // Interpolated, not the nearest decision: 3 + 0.7 × (4 − 3) hours.
+          p90Ms: 3.7 * HOUR,
+          longestMs: 4 * HOUR,
+          outcomes: { published: 2, changesRequested: 1, rejected: 1 },
+        },
+      ]);
+    });
+
+    it('splits one category by the band it was decided in', async () => {
+      const m = await underReview({ band: 'ELEVATED' });
+      await decided(m, { hours: 1, band: 'ELEVATED' });
+      await decided(m, { hours: 5, band: 'HIGH' });
+      const rows = (await service.latency(moderator, {}, req())).rows.filter(
+        (r) => r.taxonomyNodeId === m.nodeId,
+      );
+      expect(rows.map((r) => [r.riskBand, r.decided, r.longestMs])).toEqual([
+        ['HIGH', 1, 5 * HOUR],
+        ['ELEVATED', 1, 1 * HOUR],
+      ]);
+    });
+
+    it('covers the period asked for — ninety days unless told otherwise', async () => {
+      const m = await underReview();
+      await decided(m, { hours: 1, daysAgo: 10 });
+      await decided(m, { hours: 2, daysAgo: 60 });
+      await decided(m, { hours: 3, daysAgo: 200 });
+      const count = async (days?: 30 | 90 | 365) =>
+        (await service.latency(moderator, days === undefined ? {} : { days }, req())).rows.find(
+          (r) => r.taxonomyNodeId === m.nodeId,
+        )?.decided;
+      expect(await count(30)).toBe(1);
+      expect(await count()).toBe(2);
+      expect(await count(365)).toBe(3);
+    });
+
+    it('names no mission, customer or moderator, and audits the crossing as the report', async () => {
+      const m = await underReview();
+      await decided(m, { hours: 2 });
+      const correlationId = randomUUID();
+      const report = await service.latency(moderator, {}, req(correlationId));
+      const body = JSON.stringify(report);
+      for (const id of [m.id, m.customer.userId, moderator.userId]) expect(body).not.toContain(id);
+      expect(await auditFor(correlationId)).toContainEqual(
+        expect.objectContaining({
+          action: 'platform.access',
+          staffScope: 'MODERATION',
+          resourceId: 'mission_moderation.latency',
+        }),
+      );
     });
   });
 });

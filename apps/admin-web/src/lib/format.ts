@@ -17,3 +17,25 @@ export function fileSize(bytes: number): string {
     ? `${Math.max(1, Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+
+/**
+ * How long a wait took, in the one unit that reads best: minutes under an hour, hours under two
+ * days, days beyond — "45 min", "2.5 hr", "3.2 days" (T-193).
+ */
+export function duration(ms: number): string {
+  const [value, unit] =
+    ms < HOUR
+      ? [ms / MINUTE, 'minute']
+      : ms < 48 * HOUR
+        ? [ms / HOUR, 'hour']
+        : [ms / (24 * HOUR), 'day'];
+  return new Intl.NumberFormat(LOCALE, {
+    style: 'unit',
+    unit,
+    unitDisplay: unit === 'day' ? 'long' : 'short',
+    maximumFractionDigits: unit === 'minute' ? 0 : 1,
+  }).format(value);
+}

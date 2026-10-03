@@ -108,6 +108,12 @@ for every member of staff; whether they may work it is the API's answer, which e
   moderator's own mission shows a notice instead of the form; one with no screening record says not
   to decide it.
 
+- **Review times** `/moderation/latency` (T-193), linked from the queue — a card per category and
+  risk band: decisions, median wait, "9 in 10 decided within", longest wait, and the outcome mix;
+  periods of 30 days, 90 (the default) or a year, the current one marked. Waits read in one unit
+  ("45 min", "2.5 hr", "3.2 days"). The page says it is what a decision to open a category would be
+  made on, and that nothing opens from it.
+
 **Granting staff access** has no screen or command yet (T-152, which needs approval: it is
 authorization). For local development only, as the database owner:
 

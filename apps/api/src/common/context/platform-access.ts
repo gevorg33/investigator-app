@@ -29,6 +29,8 @@ export type RoutePurpose =
   | 'mission_moderation.queue'
   | 'mission_moderation.review'
   | 'mission_moderation.decide'
+  // T-193: review latency per category and band — aggregates only, read across every workspace.
+  | 'mission_moderation.latency'
   | 'policy_review.queue'
   | 'policy_review.resolve'
   | 'review.queue'

@@ -4,7 +4,7 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 5
+version: 6
 status: current
 updated: 2026-10-03
 source_of_truth: docs
@@ -64,6 +64,11 @@ be recorded until both are there.
 - On a **publication**, the reason is for staff only.
 - The **internal note** is optional and never shown to the customer. Put there what the reason must
   not say.
+
+**Review times**, linked from the queue, shows how long customers waited for a decision and what was
+decided, per category and risk band. It names no mission, customer or moderator. Publishing a
+category without review would be decided on this data and on counsel's confirmation — never by a
+moderator, and nothing opens from that page.
 
 You cannot decide a mission you submitted yourself; the page says so. If someone else decides first,
 or the customer cancels while you are deciding, you are told, and nothing you wrote is recorded.

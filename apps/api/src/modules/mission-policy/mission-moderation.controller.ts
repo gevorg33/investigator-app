@@ -16,9 +16,14 @@ import { CurrentActor } from '../../common/authz/actor.decorator';
 import { ActorGuard } from '../../common/authz/actor.guard';
 import type { Actor } from '../../common/authz/contract';
 import { requestContext } from '../../common/http/request-context';
-import { DecideModerationDto, ModerationQueueQueryDto } from './mission-moderation.dto';
+import {
+  DecideModerationDto,
+  LatencyQueryDto,
+  ModerationQueueQueryDto,
+} from './mission-moderation.dto';
 import {
   MissionModerationService,
+  type LatencyReport,
   type ModerationDecisionView,
   type ModerationQueuePage,
   type ModerationReviewView,
@@ -48,6 +53,23 @@ export class MissionModerationController {
     @Req() req: Request,
   ): Promise<ModerationQueuePage> {
     return this.moderation.queue(actor, query, requestContext(req));
+  }
+
+  // Before `:id`, so "latency" is never read as a mission id.
+  @Get('latency')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary:
+      'Review latency per category and risk band: decisions, median, 90th percentile and longest wait, and outcomes.',
+    description:
+      'MODERATION staff scope. Aggregates only — no mission, customer or moderator. `days` is 30, 90 (default) or 365.',
+  })
+  async latency(
+    @CurrentActor() actor: Actor,
+    @Query() query: LatencyQueryDto,
+    @Req() req: Request,
+  ): Promise<LatencyReport> {
+    return this.moderation.latency(actor, query, requestContext(req));
   }
 
   @Get(':id')

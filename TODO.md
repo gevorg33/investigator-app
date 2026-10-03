@@ -8426,7 +8426,8 @@ risk band and queue time (`mission_moderation_decisions`), so review latency per
 exists from the first day. Plan §10 makes this the lever if review latency ever becomes the
 constraint: a configuration per category and band that could let a low-risk category — records
 checks, say — publish without a moderator. That is a second path to QUOTED, which T-051's invariant
-spec forbids today; this task is where that changes on purpose, or is decided against.
+spec forbids today; this task is where that changes on purpose, or is decided against. The data to decide on is in
+the console since T-193 (Review times, `/moderation/latency`).
 
 **Acceptance criteria**
 - [ ] The latency data and counsel's confirmation are recorded before anything opens (ACTIONS-FOR-ME)
@@ -8467,6 +8468,34 @@ re-render, and fix the cause rather than adding a wait.
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-193 — Review latency per category and risk band (admin console)
+- **Status:** DONE — 2026-10-03; `MissionModerationService.latency` (`mission_moderation.latency`), admin-web `/moderation/latency`; `missions.md`, `admin-web.md`, staff KB
+- **Priority:** P2
+- **Depends on:** T-051
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — a new staff read across workspaces (aggregates only); taken on 2026-10-03 in place of T-191's switch
+- **Owner agent:** backend-domain + admin-web
+- **Affected:** apps/api/src/modules/mission-policy/**, apps/admin-web/**
+
+**Description**
+From T-191. Opening any category of the moderation gate rests on review-latency data and counsel's
+confirmation (plan §10). T-051 records the data — every decision's category, band, queue time and
+outcome in `mission_moderation_decisions` — but nobody can read it. This is the reading half: what
+the decision to open, or not, would be made on. It adds no path to QUOTED.
+
+**Acceptance criteria**
+- [x] `GET /moderation/missions/latency` — per category and risk band over a chosen period: decisions made, median, 90th-percentile and longest wait, and how many were published, returned and rejected
+- [x] Aggregates only — no mission, customer or moderator is identified; MODERATION scope; enters through `PlatformContext` with its own purpose
+- [x] The console shows it from the moderation queue, readable at 375 and 1280, and says what it is for and that nothing opens from it
+- [x] Staff KB and `missions.md` say where the data is and what it decides
+
+**Validation**
+```bash
+pnpm --filter api test mission-moderation && pnpm --filter admin-web test
 ```
 
 ---

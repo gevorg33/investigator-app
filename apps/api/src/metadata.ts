@@ -101,7 +101,8 @@ export default async () => {
                 }],
             [m31, {
                     DecideModerationDto: { outcome: { required: true, enum: ["PUBLISHED", "REJECTED", "CHANGES_REQUESTED"] }, reason: { required: true, type: () => String, minLength: 1, pattern: "\\S" }, internalNote: { required: false, type: () => String, minLength: 1, pattern: "\\S" }, version: { required: true, type: () => Number, minimum: 1 } },
-                    ModerationQueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
+                    ModerationQueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } },
+                    LatencyQueryDto: { days: { required: false, enum: [30, 90, 365] } }
                 }],
             [m11, {
                     DeclineAssignmentDto: { reasonCode: { required: false, enum: ["OTHER", "POLICY_CONCERN", "UNAVAILABLE", "OUTSIDE_EXPERTISE"] }, reason: { required: false, type: () => String, description: "Free text. For a policy concern it is the ground staff review, at least 20 characters, and it\nis never shown to the customer (T-050); otherwise optional." } },
@@ -281,6 +282,7 @@ export default async () => {
             [m30, {
                     MissionModerationController: {
                         queue: { type: Object },
+                        latency: { type: Object },
                         getForReview: { type: Object },
                         decide: { type: Object }
                     }

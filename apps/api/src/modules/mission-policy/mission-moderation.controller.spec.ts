@@ -74,6 +74,28 @@ describe('moderation routes', () => {
     expect(s.decide.mock.calls[0]?.slice(0, 3)).toEqual([moderator, ID, withNote]);
   });
 
+  it('reads the latency report over the period asked for, kept out of caches — and refuses any other period', async () => {
+    const latency = vi.fn().mockResolvedValue({ days: 90, rows: [] });
+    const getForReview = vi.fn();
+    app = await make({ latency, getForReview });
+    const http = request(app.getHttpServer());
+
+    const res = await http.get('/api/v1/moderation/missions/latency');
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect((await http.get('/api/v1/moderation/missions/latency?days=30')).status).toBe(200);
+    expect(latency.mock.calls.map((c) => c.slice(0, 2))).toEqual([
+      [moderator, {}],
+      [moderator, { days: 30 }],
+    ]);
+    // Never read as a mission id.
+    expect(getForReview).not.toHaveBeenCalled();
+    for (const days of ['7', 'all', '-90']) {
+      expect((await http.get(`/api/v1/moderation/missions/latency?days=${days}`)).status).toBe(400);
+    }
+    expect(latency).toHaveBeenCalledTimes(2);
+  });
+
   it('answers a malformed id as a bad request, before the service', async () => {
     const getForReview = vi.fn();
     app = await make({ getForReview });

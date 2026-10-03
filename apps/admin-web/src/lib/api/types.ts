@@ -130,3 +130,19 @@ export interface ModerationReviewView {
   /** The moderator is the mission's customer, and cannot decide it. */
   party: boolean;
 }
+
+/** Review latency for one category and risk band, as `GET /moderation/missions/latency` gives it (T-193). */
+export interface LatencyRow {
+  taxonomyNodeId: string | null;
+  riskBand: RiskBand;
+  decided: number;
+  medianMs: number;
+  p90Ms: number;
+  longestMs: number;
+  outcomes: { published: number; changesRequested: number; rejected: number };
+}
+
+export interface LatencyReport {
+  days: 30 | 90 | 365;
+  rows: LatencyRow[];
+}

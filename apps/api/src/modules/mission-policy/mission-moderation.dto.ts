@@ -59,3 +59,16 @@ export class ModerationQueueQueryDto {
   @MaxLength(512)
   cursor?: string;
 }
+
+/** The periods the latency report covers, in days back from now. */
+export const LATENCY_PERIODS = [30, 90, 365] as const;
+export type LatencyPeriod = (typeof LATENCY_PERIODS)[number];
+
+/** Review latency over the last `days` (T-193). Ninety unless asked otherwise. */
+export class LatencyQueryDto {
+  // A query string is text; implicit conversion is off globally, so this field says so itself.
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn(LATENCY_PERIODS)
+  days?: LatencyPeriod;
+}

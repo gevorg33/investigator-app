@@ -16,6 +16,8 @@ import { MissionTransitionService } from '../missions/mission-transition.service
 import type { MissionStatus } from '../missions/mission-transitions';
 import type {
   DecideModerationDto,
+  LatencyPeriod,
+  LatencyQueryDto,
   ModerationOutcome,
   ModerationQueueQueryDto,
 } from './mission-moderation.dto';
@@ -96,6 +98,22 @@ export interface ModerationReviewView {
   decisions: ModerationDecisionView[];
   /** The moderator is the mission's customer: they cannot decide it. */
   party: boolean;
+}
+
+/** Review latency for one category and risk band (T-193). Waits are in milliseconds. */
+export interface LatencyRow {
+  taxonomyNodeId: string | null;
+  riskBand: RiskBandValue;
+  decided: number;
+  medianMs: number;
+  p90Ms: number;
+  longestMs: number;
+  outcomes: { published: number; changesRequested: number; rejected: number };
+}
+
+export interface LatencyReport {
+  days: LatencyPeriod;
+  rows: LatencyRow[];
 }
 
 /** Where each outcome moves the mission. The transition map says who may make each move. */
@@ -386,6 +404,75 @@ export class MissionModerationService {
             .returning();
           return decisionView(decision!);
         }),
+    );
+  }
+
+  /**
+   * Review latency per category and risk band over the last `days` (T-193): how many decisions,
+   * how long customers waited for them — median, 90th percentile, longest — and what was decided.
+   * What any decision to open the gate for a category would be made on (plan §10, T-191).
+   *
+   * Aggregates only: no mission, customer or moderator is named, so the report says how the gate is
+   * working, never who it worked on. Read across every workspace, so it enters PlatformContext too.
+   */
+  async latency(actor: Actor, query: LatencyQueryDto, req: RequestContext): Promise<LatencyReport> {
+    const c = this.ctx('mission_moderation.latency', req);
+    await this.requireModerator(actor, c);
+    const days: LatencyPeriod = query.days ?? 90;
+
+    return this.platform.asStaff(
+      actor,
+      { scope: 'MODERATION', purpose: 'mission_moderation.latency' },
+      req,
+      async () => {
+        const rows = (await this.db.execute(sql`
+          WITH waits AS (
+            SELECT taxonomy_node_id, risk_band, outcome,
+                   extract(epoch FROM decided_at - queued_at) * 1000 AS waited_ms
+              FROM mission_moderation_decisions
+             WHERE decided_at >= now() - make_interval(days => ${days})
+          )
+          SELECT taxonomy_node_id, risk_band,
+                 count(*)::int AS decided,
+                 (percentile_cont(0.5) WITHIN GROUP (ORDER BY waited_ms))::float8 AS median_ms,
+                 (percentile_cont(0.9) WITHIN GROUP (ORDER BY waited_ms))::float8 AS p90_ms,
+                 max(waited_ms)::float8 AS longest_ms,
+                 count(*) FILTER (WHERE outcome = 'PUBLISHED')::int AS published,
+                 count(*) FILTER (WHERE outcome = 'CHANGES_REQUESTED')::int AS changes_requested,
+                 count(*) FILTER (WHERE outcome = 'REJECTED')::int AS rejected
+            FROM waits
+           GROUP BY taxonomy_node_id, risk_band
+           -- The most sensitive band first, as in the queue; then where most was decided.
+           ORDER BY array_position(enum_range(NULL::risk_band), risk_band) DESC,
+                    count(*) DESC, taxonomy_node_id NULLS LAST`)) as unknown as Array<{
+          taxonomy_node_id: string | null;
+          risk_band: RiskBandValue;
+          decided: number;
+          median_ms: number;
+          p90_ms: number;
+          longest_ms: number;
+          published: number;
+          changes_requested: number;
+          rejected: number;
+        }>;
+
+        return {
+          days,
+          rows: rows.map((r) => ({
+            taxonomyNodeId: r.taxonomy_node_id,
+            riskBand: r.risk_band,
+            decided: r.decided,
+            medianMs: Math.round(r.median_ms),
+            p90Ms: Math.round(r.p90_ms),
+            longestMs: Math.round(r.longest_ms),
+            outcomes: {
+              published: r.published,
+              changesRequested: r.changes_requested,
+              rejected: r.rejected,
+            },
+          })),
+        };
+      },
     );
   }
 
