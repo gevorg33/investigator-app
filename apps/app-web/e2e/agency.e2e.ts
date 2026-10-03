@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { expectAccessible } from './support/accessibility';
 import { owner } from './support/database';
@@ -22,6 +23,13 @@ const AGENCY = 'Ararat Checks';
 const HEADLINE = 'Due diligence across the Caucasus';
 let page: Page;
 let email: string;
+/**
+ * What makes this journey's addresses and names its own (T-196). Not the clock: journeys started
+ * together by `--repeat-each` or parallel workers often share a millisecond, and two that share an
+ * address share an account — each then sees the other's agency, roles and profiles, and its
+ * sign-ins count against one account's limit.
+ */
+let tag: string;
 const password = 'a long agency password';
 
 /**
@@ -61,8 +69,8 @@ test.beforeAll(async ({ browser }, info) => {
 
   // A confirmed account, set up through the API as the screens would — the account screens are
   // account.e2e.ts's subject, not this one's.
-  // The repeat in the address too: repeats start together, often in the same millisecond.
-  email = `agency-${info.project.name}-${info.repeatEachIndex}-${Date.now()}@example.test`;
+  tag = randomUUID().replaceAll('-', '').slice(0, 12);
+  email = `agency-${info.project.name}-${tag}@example.test`;
   const documents = (await (
     await page.request.get('/api/v1/legal/required?for=registration&locale=en')
   ).json()) as Array<{ id: string }>;
@@ -172,7 +180,7 @@ test('ticks the published profile on Home, and hides the list for every device o
   await expect(invite).toContainText(text('home.checklist.todo'));
   await expect(invite).toHaveAttribute('href', '/agency/people#invitations');
   const invited = await page.request.post('/api/v1/agencies/current/invitations', {
-    data: { email: `colleague-${info.project.name}-${Date.now()}@example.test`, role: 'VIEWER' },
+    data: { email: `colleague-${tag}@example.test`, role: 'VIEWER' },
   });
   expect(invited.ok()).toBe(true);
   await page.reload();
@@ -257,7 +265,7 @@ test('invites someone, sends it again, and cancels it only once asked by address
   ).toBeVisible();
   await expectAccessible(page);
 
-  const invitee = `invitee-${Date.now()}@example.test`;
+  const invitee = `invitee-${tag}@example.test`;
   await page.getByRole('textbox', { name: text('agency.invitations.email') }).fill(invitee);
   await page
     .getByRole('combobox', { name: text('agency.invitations.role') })
@@ -375,9 +383,7 @@ test('makes an investigator profile for a member, and each save shows on the pag
   await expectAccessible(page);
 
   // Letters only: six digits in a pseudonym read as a phone number and are refused.
-  const pseudonym = `Ararat Desk ${Date.now()
-    .toString(36)
-    .replace(/\d/g, (d) => 'ghijklmnop'[Number(d)]!)}`;
+  const pseudonym = `Ararat Desk ${tag.replace(/\d/g, (d) => 'ghijklmnop'[Number(d)]!)}`;
   await page
     .getByRole('textbox', { name: text('investigator.details.agency_pseudonym') })
     .fill(pseudonym);
@@ -409,7 +415,7 @@ test('a customer sees the agency an investigator works for, on the card and the 
   // a specialty nobody else declares, so the search finds this profile and no other.
   // 60 characters with nowhere to break: a node with no label in the reader's language is shown by
   // its slug, and its badge must wrap inside the card rather than widen the page (T-188).
-  const slug = `agencycard${Date.now()}${info.project.name}`.padEnd(60, 'x');
+  const slug = `agencycard${tag}${info.project.name}`.padEnd(60, 'x');
   const works = text('investigator.public_name.agency', { name: AGENCY });
   const sql = owner();
   let node: string;

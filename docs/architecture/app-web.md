@@ -804,7 +804,16 @@ set up through the API, since the account screens are the first journey's subjec
 register four accounts a run against the API's five per IP per hour — a third journey that
 registers, or a retry of both, meets that limit; the API process is new each run, so a new run
 starts from zero. Traces, screenshots and both servers' logs land in
-`e2e/.output/` (gitignored), which CI uploads when the step fails.
+`e2e/.output/` (gitignored), which CI uploads when the step fails. Setup empties it at the start of
+every run, so copy out a failure's artifacts before running again.
+
+**A journey's addresses and names are its own, never the clock's** (T-196). Journeys started
+together — parallel workers, or `--repeat-each` to hunt a flake — often share a millisecond, so an
+email or slug built from `Date.now()` can be the same in two of them. Two journeys on one address
+are one account: each sees the other's agency, roles and investigator profiles, and both sign in
+against one account's limit (seen: three journeys on one account, the third refused "Too many
+attempts"; and T-195's 500s). `agency.e2e.ts` draws one random tag per journey in `beforeAll` and
+builds every email, pseudonym and slug from it.
 
 ## Sign in with Google (T-062)
 

@@ -8617,7 +8617,7 @@ already said this ("Always 202", OpenAPI; "check your email", `app-web.md`) — 
 ---
 
 ### T-196 — Navigation flakes in the agency journey on desktop under repeat
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; journeys that shared an account, not the app: `agency.e2e.ts` builds every address and name from a per-journey random tag; 360/360 on both projects
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -8636,12 +8636,62 @@ find for each whether a person could meet it (a router refresh left uncommitted,
 only the test races, and fix the cause rather than adding waits.
 
 **Acceptance criteria**
-- [ ] Each failure's cause identified
-- [ ] `agency.e2e.ts --repeat-each=20` passes on both projects
+- [x] Each failure's cause identified — as far as the evidence allows: the run's artifacts were gone
+      (setup empties `e2e/.output` every run), so the class is proven and the five are not each pinned.
+      **Shared accounts.** Those runs built the owner's email from `Date.now()` without the repeat
+      index; journeys started together share a millisecond, and so an account — the same runs gave
+      T-195's 500s. Reproduced with that email restored: three journeys on one account, the third's
+      sign-in refused "Too many attempts" (five per account per five minutes). Sharing an account
+      shares its agencies, roles and investigator profiles, which fits "Make a profile" refused in
+      place and the Customer toggle; not a defect a person meets. Four more identifiers in the spec
+      were clock-built (colleague and invitee emails, pseudonym, taxonomy slug — the invitee's had
+      neither project nor repeat). **Contention.** At 8 workers the first wave stalled the whole
+      stack ~10 s (API reads 10–15 s, `/agencies/new` rendered in 26.5 s), and `:117` failed on the
+      test's own 30 s budget with the `/agency` payload delivered 200 ms before the page closed — a
+      laptop overloaded by the suite, not a lost navigation
+- [x] `agency.e2e.ts --repeat-each=20` passes on both projects — 360/360 (180 mobile, 180 desktop), twice: before the change 360/360, after it 360/360
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web exec playwright test agency.e2e.ts --repeat-each=20
+```
+
+
+*Built.* `agency.e2e.ts`: one random tag per journey (`beforeAll`), every generated email, pseudonym
+and slug built from it. `app-web.md` "Browser flows": a journey's identifiers are its own, never the
+clock's; `e2e/.output` is emptied each run. No app change: no failure traced to app code. Filed T-199
+(the same in the other four specs).
+
+*Validated.* `playwright test agency.e2e.ts --repeat-each=20` 360 passed (4.4 m); prettier, ESLint
+and the e2e typecheck on the spec. No browser surface beyond the suite itself: verified by the
+runs above — the 8-worker run and the experiment with the old email were diagnostic, not shipped.
+
+---
+
+### T-199 — Give every e2e spec's generated accounts and names a per-journey tag
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-196
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/e2e/{account,blocks,missions,notifications}.e2e.ts, apps/app-web/e2e/support/**
+
+**Description**
+From T-196. `agency.e2e.ts` now builds every email and slug from a per-journey random tag, because
+journeys started together share a millisecond and two on one address share an account. The other
+four specs still build emails (and `blocks`, `notifications` their taxonomy slugs) from
+`${info.project.name}-${Date.now()}`: safe for one run of each, but `--repeat-each` — how a flake is
+hunted — starts copies together and gives them one account. Move the tag into `e2e/support` and use
+it everywhere.
+
+**Acceptance criteria**
+- [ ] No spec builds an email, slug or name from the clock
+- [ ] Each spec passes `--repeat-each=5` on both projects
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web exec playwright test --repeat-each=5
 ```
 
 ---
