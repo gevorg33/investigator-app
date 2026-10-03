@@ -161,7 +161,9 @@ export function KindQuestion({
                 aria-hidden
                 className={cn('size-4', chosen === c.id ? 'opacity-100' : 'opacity-0')}
               />
-              <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>{c.label}</span>
+              <span lang={c.lang} className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                {c.label}
+              </span>
             </CommandItem>
           ))}
         </CommandList>

@@ -70,7 +70,7 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
     serverApi<{ items: SavedMissionSearch[] }>('/search/missions/saved'),
   ]);
   const categories = categoryOptions(taxonomy ?? []);
-  const labels = new Map(categories.map((c) => [c.id, c.label]));
+  const labels = new Map(categories.map((c) => [c.id, c]));
   const items = page?.items ?? [];
   const narrowed = narrowingCount(filters) > 0;
   const now = new Date();
@@ -94,7 +94,9 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
         filters={filters}
         categories={labels}
         areas={areas ?? []}
-        tags={new Map((tags ?? []).map((tag) => [tag.id, tag.label]))}
+        tags={
+          new Map((tags ?? []).map((tag) => [tag.id, { label: tag.label, lang: tag.labelLocale }]))
+        }
         locale={locale}
       />
 
@@ -128,7 +130,7 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
               <li>
                 <MissionCard
                   mission={m}
-                  category={labels.get(m.taxonomyNodeId) ?? null}
+                  category={labels.get(m.taxonomyNodeId)?.label ?? null}
                   locale={locale}
                   now={now}
                 />

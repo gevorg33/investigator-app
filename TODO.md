@@ -8647,7 +8647,7 @@ pnpm --filter @investigator/app-web exec playwright test agency.e2e.ts --repeat-
 ---
 
 ### T-197 — Mark the language of fallback labels inside composed text
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `Named.lang` from `labelLocale` (`lib/taxonomy.ts`); `t.rich` with `<name></name>` / `<list></list>` for the active-filter chip and the brief; category options marked too
 - **Priority:** P3
 - **Depends on:** T-055
 - **Risk:** LOW
@@ -8665,14 +8665,56 @@ labels have the same gap one step earlier: `TaxonomyNode` carries no label local
 nothing can mark them (WCAG 3.1.2, language of parts).
 
 **Acceptance criteria**
-- [ ] The active-filter chip's name marks a fallback tag or category label with its language
-- [ ] The brief's tag and category lines mark a fallback label with its language
-- [ ] Category options (`GET /taxonomy`) report the locale their label came from, as `GET /tags` does
-- [ ] Catalog parity holds across en/ru/hy for any message that gains a tag
+- [x] The active-filter chip's name marks a fallback tag or category label with its language
+      — named by its content (visually hidden "Remove filter: …"), not `aria-label`
+- [x] The brief's tag and category lines mark a fallback label with its language
+- [x] Category options (`GET /taxonomy`) report the locale their label came from, as `GET /tags` does
+      — already did (T-053, `taxonomy.service.spec.ts`); app-web's `TaxonomyNode` now types and uses it
+- [x] Catalog parity holds across en/ru/hy for any message that gains a tag
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter api test taxonomy
+```
+
+
+*Validated.* `pnpm --filter @investigator/app-web test` 863 (coverage 100%); `pnpm --filter api test
+taxonomy` 67/67; i18n 29 (parity); lint, typecheck, format, app-web build. Specs seen failing
+first: the chip (category and tag, on a Russian page), the brief, the sheet's and intake's options.
+
+*Verified.* In the browser against the local API, on a Russian page: the chips read "Убрать фильтр:
+Проверка контрагента" (`lang="ru"`) and "Убрать фильтр: Litigation" (`lang="en"`), names checked in
+Chromium's accessibility tree (Playwright snapshot); the language chip carries no `lang`; chips look
+as before, 44px, no horizontal scroll at 375, 768 and 1280. The customer's brief: the category in
+`lang="ru"`, "Детективы находят его по тегам: Litigation" with Litigation in `lang="en"`. Docs:
+`app-web.md`. Filed T-198 for the category labels outside missions.
+
+---
+
+### T-198 — Mark fallback category labels outside the missions screens
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-197
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/{discovery,investigator}/**, apps/app-web/src/components/missions/mission-card.tsx, apps/app-web/src/app/(workspace)/**/investigators/**
+
+**Description**
+From T-197. Category labels now carry their language (`Named.lang`, from `labelLocale`) and the
+missions screens mark them. Elsewhere a category shown in English on a Russian or Armenian page is
+still unmarked: the mission card's category badge, the discovery sheet's category options and
+active filters, the specialties picker, and the specialties on an investigator's profile (WCAG
+3.1.2). Same fix — `lang={c.lang}` where a label stands alone, `t.rich` where it sits in a sentence.
+
+**Acceptance criteria**
+- [ ] Every place app-web shows a category label marks it with `lang` from `labelLocale`
+- [ ] A label inside a composed string keeps its `lang` (message tag + `t.rich`), names checked by content
+- [ ] Specs seen failing first for each surface
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test
 ```
 
 ---

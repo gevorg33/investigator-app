@@ -3,9 +3,11 @@ import { X } from 'lucide-react';
 import Link from 'next/link';
 import { getT } from '@/i18n/server';
 import type { BrowseFilters, OwnServiceArea } from '@/lib/api/types';
+import type { Named } from '@/lib/taxonomy';
 import { browseHref, narrowingCount } from './browse-query';
 
-type Chip = { key: string; label: string; without: BrowseFilters };
+/** `lang` where the label is a category's or tag's, which may be in English on any page (T-197). */
+type Chip = { key: string; label: string; lang?: string | undefined; without: BrowseFilters };
 
 const without = (f: BrowseFilters, ...keys: Array<keyof BrowseFilters>): BrowseFilters => {
   const next = { ...f };
@@ -26,9 +28,9 @@ export async function ActiveFilters({
   locale,
 }: {
   filters: BrowseFilters;
-  categories: ReadonlyMap<string, string>;
+  categories: ReadonlyMap<string, Named>;
   /** Tag names by id (T-055). */
-  tags: ReadonlyMap<string, string>;
+  tags: ReadonlyMap<string, Named>;
   areas: readonly OwnServiceArea[];
   locale: Locale;
 }) {
@@ -38,9 +40,11 @@ export async function ActiveFilters({
   const chips: Chip[] = [];
   const node = filters.taxonomyNodeIds?.[0];
   if (node !== undefined) {
+    const category = categories.get(node);
     chips.push({
       key: 'category',
-      label: categories.get(node) ?? t('missions.browse.category'),
+      label: category?.label ?? t('missions.browse.category'),
+      lang: category?.lang,
       without: without(filters, 'taxonomyNodeIds'),
     });
   }
@@ -56,10 +60,12 @@ export async function ActiveFilters({
   const tagIds = filters.tagIds ?? [];
   for (const id of tagIds) {
     const rest = tagIds.filter((other) => other !== id);
+    const tag = tags.get(id);
     chips.push({
       key: `tag-${id}`,
       // A tag retired since the address was made is still a filter; it is named as one.
-      label: tags.get(id) ?? t('missions.browse.tag'),
+      label: tag?.label ?? t('missions.browse.tag'),
+      lang: tag?.lang,
       without: rest.length === 0 ? without(filters, 'tagIds') : { ...filters, tagIds: rest },
     });
   }
@@ -130,12 +136,20 @@ export async function ActiveFilters({
     >
       {chips.map((chip) => (
         <li key={chip.key}>
+          {/* Named "Remove filter: …" from its content, so the label inside the name keeps its
+              language; what is seen is the label alone. */}
           <Link
             href={browseHref(chip.without)}
-            aria-label={t('missions.browse.chip.remove', { name: chip.label })}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary bg-primary-subtle pr-3 pl-4 text-sm font-medium text-primary transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-sunken"
           >
-            {chip.label}
+            <span className="sr-only">
+              {t.rich('missions.browse.chip.remove', {
+                name: () => <span lang={chip.lang}>{chip.label}</span>,
+              })}
+            </span>
+            <span aria-hidden lang={chip.lang}>
+              {chip.label}
+            </span>
             <X aria-hidden className="size-4" />
           </Link>
         </li>

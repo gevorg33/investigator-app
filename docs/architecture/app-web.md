@@ -213,6 +213,15 @@ a `<details>`; it worked and looked like a form, not a product.
   investigator may see (`taxonomy.md`, "Tags"). No vocabulary yet, no section.
 - **Active filters** are chips under the toolbar, each named in words ("AMD 1,500–2,000", "Due by
   Oct 31", "Inside the area") and each a link to the same browse without it.
+- **A label in another language** (T-197). Category and tag labels fall back to English where the
+  reader's language has none; the API says which (`labelLocale`), and `categoryOptions` / `tagNames`
+  carry it as `Named.lang`. Wherever such a label is shown it is in an element with `lang` — the
+  sheet's and the intake's options and chips, the active-filter chip, the brief's category and tag
+  lines. Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
+  `<list></list>`) filled with `t.rich`, so the label keeps its own `lang` inside the sentence. The
+  active-filter chip is therefore named by its content — a visually hidden "Remove filter: …" — not
+  an `aria-label`, which is a plain string and cannot mark a part. A slug shown for a node with no
+  label at all has no language.
 - **Cards** (`MissionCard` on `Card`): category badge and freshness; title; two lines of
   description; place, distance and languages; then the budget, prominent, and the deadline — a
   deadline within 7 days is a `warning` badge that says "Due in 3 days". Budgets drop ".00" when both

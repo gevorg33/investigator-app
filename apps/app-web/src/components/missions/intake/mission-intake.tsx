@@ -186,7 +186,7 @@ export function MissionIntake({
   const byCode = (list: readonly CodeOption[], code: string) =>
     list.find((o) => o.code === code)?.name ?? code;
   const names = {
-    category: categories.find((c) => c.id === fields.taxonomyNodeId)?.label ?? null,
+    category: categories.find((c) => c.id === fields.taxonomyNodeId) ?? null,
     country: fields.countryCode === null ? null : byCode(countries, fields.countryCode),
     languages: fields.languages.map((code) => byCode(languages, code)),
     tags: tagNames(fields.tagIds, tags),

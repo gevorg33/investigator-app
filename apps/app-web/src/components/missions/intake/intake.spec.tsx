@@ -19,9 +19,9 @@ const DD = '5f51f336-5c7a-442a-909f-8d54d5abf81b';
 const CORP = '6033b823-2a6d-4073-bc7b-f59ad3a5c2fd';
 const OPTIONS = {
   categories: [
-    { id: CORP, label: 'Corporate', depth: 0 },
-    { id: DD, label: 'Due diligence', depth: 1 },
-    { id: 'deep', label: 'Deep checks', depth: 2 },
+    { id: CORP, label: 'Corporate', lang: 'en', depth: 0 },
+    { id: DD, label: 'Due diligence', lang: 'en', depth: 1 },
+    { id: 'deep', label: 'Deep checks', lang: 'en', depth: 2 },
   ],
   countries: [
     { code: 'AM', name: 'Armenia' },
@@ -350,6 +350,10 @@ describe('mission intake', () => {
         { id: 'tag-urgent', slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
       ];
       open(saved(), 'kind', { tags });
+      expect(within(screen.getByRole('listbox')).getByText('Due diligence')).toHaveAttribute(
+        'lang',
+        'en',
+      );
       const group = screen.getByRole('group', { name: en.intake.kind.tags_title });
       expect(within(group).getByRole('button', { name: 'Удалённо' })).toHaveAttribute('lang', 'ru');
       expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute('lang', 'en');
@@ -357,8 +361,31 @@ describe('mission intake', () => {
 
     it('the brief names the suggested tags under the kind of help, leaving out one retired since', () => {
       open(saved({ taxonomyNodeId: DD, tagIds: ['tag-remote', 'tag-retired'] }), 'review');
-      expect(screen.getByText('Tags you suggested: Remote work')).toBeInTheDocument();
+      expect(screen.getByText(/^Tags you suggested:/)).toHaveTextContent(
+        /^Tags you suggested: Remote work$/,
+      );
       expect(screen.queryByText(/tag-retired/)).toBeNull();
+    });
+
+    it('the brief marks each category and tag name with the language it is in (T-197)', () => {
+      const tags = [
+        { id: 'tag-remote', slug: 'remote', label: 'Удалённо', labelLocale: 'ru' },
+        { id: 'tag-urgent', slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+      ];
+      const categories = [{ id: DD, label: 'Due diligence', lang: 'ru', depth: 0 }];
+      open(saved({ taxonomyNodeId: DD, tagIds: ['tag-remote', 'tag-urgent'] }), 'review', {
+        tags,
+        categories,
+      });
+      expect(screen.getByText('Due diligence')).toHaveAttribute('lang', 'ru');
+      const line = screen.getByText(/^Tags you suggested:/);
+      expect(line).toHaveTextContent('Tags you suggested: Удалённо, Urgent');
+      expect(
+        [...line.querySelectorAll('[lang]')].map((e) => [e.getAttribute('lang'), e.textContent]),
+      ).toEqual([
+        ['ru', 'Удалённо'],
+        ['en', 'Urgent'],
+      ]);
     });
 
     it('kind: shows no tag picker when there is no vocabulary', () => {

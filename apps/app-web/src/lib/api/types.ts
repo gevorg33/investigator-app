@@ -153,6 +153,8 @@ export interface SavedMissionSearch {
 export interface TaxonomyNode {
   id: string;
   label: string | null;
+  /** Which locale the label came from: English where the reader's has none (T-197). */
+  labelLocale: string | null;
   slug: string;
   children: TaxonomyNode[];
 }

@@ -213,8 +213,8 @@ export const en = {
       },
     },
     brief: {
-      tags_suggested: 'Tags you suggested: {list}',
-      tags_published: 'Investigators find it under: {list}',
+      tags_suggested: 'Tags you suggested: <list></list>',
+      tags_published: 'Investigators find it under: <list></list>',
       section: {
         need: 'What you need',
         kind: 'Kind of help',
@@ -404,7 +404,7 @@ export const en = {
       show: 'Show missions',
       reset: 'Reset',
       chip: {
-        remove: 'Remove filter: {name}',
+        remove: 'Remove filter: <name></name>',
         budget_from: '{amount} or more',
         budget_to: 'Up to {amount}',
         due: 'Due by {date}',
