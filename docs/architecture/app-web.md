@@ -206,8 +206,9 @@ a `<details>`; it worked and looked like a form, not a product.
   and distance are chips (`ToggleGroup`); currency and area are native selects. Choices are held in
   the sheet until "Show missions", then pushed as the address; "Reset" clears what narrows and keeps
   the words and the order.
-- **Tags** (T-055) are chips in the sheet too, from `GET /tags` in the reader's language; with
-  several, a mission must carry all of them. At most eight; past that the rest are disabled. Each
+- **Tags** (T-055) are chips in the sheet too, from `GET /tags` in the reader's language (English
+  where it has no label yet — the chip carries `lang` from `labelLocale`, so a screen reader
+  pronounces it as English); with several, a mission must carry all of them. At most eight; past that the rest are disabled. Each
   is a `tag` URL parameter (UUIDs only, deduplicated). Tags only narrow — they never widen what an
   investigator may see (`taxonomy.md`, "Tags"). No vocabulary yet, no section.
 - **Active filters** are chips under the toolbar, each named in words ("AMD 1,500–2,000", "Due by
@@ -257,7 +258,8 @@ in the customer's words) → the brief. Progress is `Progress` plus "Question 3 
   answer for a personal relationship), asked one screen at a time: Continue with one missing flags
   it beside the field and moves focus to it. Optional ones are labelled so.
 - **Tags** (T-055) are offered on the kind-of-help question, under the category, as optional chips
-  from `GET /tags` in the reader's language — "suggest up to 8; a moderator confirms them". They
+  from `GET /tags` in the reader's language, each marked with `lang` like the browse chips —
+  "suggest up to 8; a moderator confirms them". They
   are saved with the draft like any answer (`tagIds`), shown on the brief, and frozen once sent.
   The customer never types a tag. "Start a new mission from this one" carries no tags: a
   moderator decided on those.

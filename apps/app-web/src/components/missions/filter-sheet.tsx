@@ -234,6 +234,9 @@ export function FilterSheet({
                     key={tag.id}
                     value={tag.id}
                     disabled={tagsFull && !chosenTags.includes(tag.id)}
+                    // English where the reader's language has no label yet; a screen reader
+                    // should pronounce it as English.
+                    lang={tag.labelLocale}
                   >
                     {tag.label}
                   </ToggleGroupItem>

@@ -204,7 +204,13 @@ function TagPicker({
         aria-labelledby={titleId}
       >
         {tags.map((tag) => (
-          <ToggleGroupItem key={tag.id} value={tag.id} disabled={full && !chosen.includes(tag.id)}>
+          <ToggleGroupItem
+            key={tag.id}
+            value={tag.id}
+            disabled={full && !chosen.includes(tag.id)}
+            // English where the reader's language has no label yet: pronounced as English.
+            lang={tag.labelLocale}
+          >
             {tag.label}
           </ToggleGroupItem>
         ))}

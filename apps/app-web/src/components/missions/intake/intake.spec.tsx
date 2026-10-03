@@ -344,6 +344,17 @@ describe('mission intake', () => {
       expect(within(group).getByRole('button', { name: 'Tag 0' })).toBeEnabled();
     });
 
+    it('kind: each tag chip says which language its label is in, for screen readers', () => {
+      const tags = [
+        { id: 'tag-remote', slug: 'remote', label: 'Удалённо', labelLocale: 'ru' },
+        { id: 'tag-urgent', slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+      ];
+      open(saved(), 'kind', { tags });
+      const group = screen.getByRole('group', { name: en.intake.kind.tags_title });
+      expect(within(group).getByRole('button', { name: 'Удалённо' })).toHaveAttribute('lang', 'ru');
+      expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute('lang', 'en');
+    });
+
     it('the brief names the suggested tags under the kind of help, leaving out one retired since', () => {
       open(saved({ taxonomyNodeId: DD, tagIds: ['tag-remote', 'tag-retired'] }), 'review');
       expect(screen.getByText('Tags: Remote work')).toBeInTheDocument();

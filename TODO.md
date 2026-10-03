@@ -2943,7 +2943,7 @@ eligibility after the taxonomy seed).
 ---
 
 ### T-055 — Mission tagging
-- **Status:** DONE — 2026-10-03; curated `tags` with en/ru/hy labels, customer suggestions on drafts, confirmation on a PUBLISHED decision, browse filter over the merge closure; browser-verified after merge (#105)
+- **Status:** DONE — 2026-10-03; curated `tags` with en/ru/hy labels, customer suggestions on drafts, confirmation on a PUBLISHED decision, browse filter over the merge closure; browser-verified after merge (#105); re-verified 2026-10-04, fallback-language tag chips now carry `lang`
 - **Priority:** P2
 - **Depends on:** T-053, T-051
 - **Risk:** LOW
@@ -3013,6 +3013,13 @@ fallback; after merging a tag, filtering by the target finds the old tag's missi
 `?tag=` link still matches as "A tag no longer offered"; retired tags leave every picker. Staff
 writes 403 for a customer, a second merge 409, every write in `audit_logs`. axe (WCAG 2.1 AA):
 no violations on the intake step, the filter sheet or the decision drawer. No horizontal scroll.
+
+*Re-verified 2026-10-04* after the close above sat unmerged: customer → moderator → investigator end
+to end at 375, then 768 and 1280, on the built stack. Found: a tag shown in English for want of a
+translation was unmarked on a Russian page, so a screen reader read it with Russian rules (WCAG
+3.1.2). Fixed: the intake and browse-sheet chips carry `lang` from `labelLocale` — regression tests
+in `intake.spec.tsx` and `mission-browse.spec.tsx`, seen to fail first; `app-web.md`. Composed text
+(the active-filter chip's name, the brief line) is T-197.
 
 ---
 
@@ -8618,6 +8625,37 @@ only the test races, and fix the cause rather than adding waits.
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web exec playwright test agency.e2e.ts --repeat-each=20
+```
+
+---
+
+### T-197 — Mark the language of fallback labels inside composed text
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-055
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend + localization
+- **Affected:** apps/app-web/src/components/missions/**, packages/i18n (catalogs), apps/api/src/modules/taxonomy/** (category label locale)
+
+**Description**
+Found re-verifying T-055. A label the reader's language lacks is shown in English; where it is a
+control's whole name, the chip carries `lang` (T-055). Where it sits inside a composed string it
+cannot: the active-filter chip's accessible name is `aria-label` "Убрать фильтр: Litigation", and
+the brief line is one message, "Теги: Litigation, …". `use-intl`'s `t.rich` takes tag functions,
+not elements as values, so marking the part means a tag in the message across en/ru/hy. Category
+labels have the same gap one step earlier: `TaxonomyNode` carries no label locale at all, so
+nothing can mark them (WCAG 3.1.2, language of parts).
+
+**Acceptance criteria**
+- [ ] The active-filter chip's name marks a fallback tag or category label with its language
+- [ ] The brief's tag and category lines mark a fallback label with its language
+- [ ] Category options (`GET /taxonomy`) report the locale their label came from, as `GET /tags` does
+- [ ] Catalog parity holds across en/ru/hy for any message that gains a tag
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter api test taxonomy
 ```
 
 ---

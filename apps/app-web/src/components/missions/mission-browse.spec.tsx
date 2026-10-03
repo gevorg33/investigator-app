@@ -260,6 +260,21 @@ describe('open missions', () => {
       expect(router.push).toHaveBeenCalledWith(`/missions?tag=${URGENT}&tag=${REMOTE}`);
     });
 
+    it('marks each tag chip with the language its label is in, for screen readers', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context('en', {
+        tags: [
+          { id: REMOTE, slug: 'remote', label: 'Удалённо', labelLocale: 'ru' },
+          { id: URGENT, slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+        ],
+      });
+      await show();
+      const sheet = await open(user());
+      const group = within(sheet).getByRole('group', { name: en.tags });
+      expect(within(group).getByRole('button', { name: 'Удалённо' })).toHaveAttribute('lang', 'ru');
+      expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute('lang', 'en');
+    });
+
     it('offers no tag chips when there is no vocabulary', async () => {
       api.on('POST /search/missions', 200, PAGE());
       context('en', { tags: [] });
