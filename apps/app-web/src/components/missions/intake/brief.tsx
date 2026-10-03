@@ -3,6 +3,7 @@
 import { formatDateTime, formatMoneyRange, type Locale } from '@investigator/i18n';
 import { Fragment, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
+import { NamedText } from '@/components/named-text';
 import { Button } from '@/components/ui/button';
 import type { MissionFields } from '@/lib/api/types';
 import type { Named } from '@/lib/taxonomy';
@@ -19,9 +20,6 @@ export interface BriefNames {
   /** The tags are the ones the mission was published with, not the suggestions (T-194). */
   tagsPublished?: boolean;
 }
-
-/** A name in the language it is in, which is not always the page's (T-197). */
-const named = (n: Named) => <span lang={n.lang}>{n.label}</span>;
 
 const day = (date: string, locale: Locale) =>
   formatDateTime(date, { locale, timeZone: 'UTC', style: 'date' });
@@ -51,7 +49,7 @@ export function Brief({
   const answer: Record<Exclude<Step, 'review'>, ReactNode[]> = {
     need: [f.title, f.description].filter((v): v is string => v !== null),
     kind: [
-      ...(names.category === null ? [] : [named(names.category)]),
+      ...(names.category === null ? [] : [<NamedText named={names.category} />]),
       ...(names.tags.length === 0
         ? []
         : [
@@ -60,7 +58,7 @@ export function Brief({
                 names.tags.map((n, i) => (
                   <Fragment key={n.label}>
                     {i > 0 && ', '}
-                    {named(n)}
+                    <NamedText named={n} />
                   </Fragment>
                 )),
             }),

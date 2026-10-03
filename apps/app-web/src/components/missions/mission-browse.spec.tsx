@@ -91,6 +91,8 @@ describe('open missions', () => {
         name: 'Supplier background before a distribution deal',
       });
       expect(card).toHaveTextContent('Due diligence');
+      // In English, as the API gave it, and said so (T-198).
+      expect(within(card).getByText('Due diligence')).toHaveAttribute('lang', 'en');
       expect(card).toHaveTextContent('Posted 2 hours ago');
       expect(card).toHaveTextContent(`Yerevan, Kentron · ${en.card.inside}`);
       expect(card).toHaveTextContent('In Armenian and English');

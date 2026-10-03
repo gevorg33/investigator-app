@@ -36,7 +36,7 @@ export function SpecialtiesPicker({
   const target = useProfileTarget();
   const [ids, setIds] = useState<string[]>([...chosen]);
   const [saved, setSaved] = useState(false);
-  const labels = new Map(categories.map((c) => [c.id, c.label]));
+  const labels = new Map(categories.map((c) => [c.id, c]));
   const toggle = (id: string) =>
     setIds((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id]));
   const { pending, error, onSubmit } = useSubmit(
@@ -64,8 +64,12 @@ export function SpecialtiesPicker({
           {ids.map((id) => (
             <li key={id} className="max-w-full">
               {/* Wraps, as on the public profile: a label has no bound on its length (T-188). */}
-              <Badge variant="secondary" className="max-w-full whitespace-normal wrap-anywhere">
-                {labels.get(id) ?? id}
+              <Badge
+                variant="secondary"
+                lang={labels.get(id)?.lang}
+                className="max-w-full whitespace-normal wrap-anywhere"
+              >
+                {labels.get(id)?.label ?? id}
               </Badge>
             </li>
           ))}
@@ -79,7 +83,7 @@ export function SpecialtiesPicker({
         <Command
           label={t('search')}
           filter={(value, search) =>
-            labels.get(value)?.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+            labels.get(value)?.label.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
           }
         >
           <CommandInput placeholder={t('search')} />
@@ -96,7 +100,7 @@ export function SpecialtiesPicker({
                   aria-hidden
                   className={cn('size-4', ids.includes(c.id) ? 'opacity-100' : 'opacity-0')}
                 />
-                <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                <span lang={c.lang} className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
                   {c.label}
                 </span>
                 {/* The space keeps "selected" a word of its own in the option's accessible name. */}

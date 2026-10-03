@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getT } from '@/i18n/server';
 import type { MissionListing } from '@/lib/api/types';
+import type { Named } from '@/lib/taxonomy';
 
 /** A deadline this close is flagged, in words as well as colour. */
 const SOON_DAYS = 7;
@@ -35,7 +36,8 @@ export async function MissionCard({
   now,
 }: {
   mission: MissionListing;
-  category: string | null;
+  /** The category's name, in the language it is in (T-198). */
+  category: Named | null;
   locale: Locale;
   now: Date;
 }) {
@@ -64,7 +66,9 @@ export async function MissionCard({
             <span className="min-w-0">
               {category !== null && (
                 <Badge variant="secondary" className="max-w-full">
-                  <span className="min-w-0 truncate">{category}</span>
+                  <span lang={category.lang} className="min-w-0 truncate">
+                    {category.label}
+                  </span>
                 </Badge>
               )}
             </span>

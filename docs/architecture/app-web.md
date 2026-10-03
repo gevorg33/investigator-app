@@ -217,7 +217,12 @@ a `<details>`; it worked and looked like a form, not a product.
   reader's language has none; the API says which (`labelLocale`), and `categoryOptions` / `tagNames`
   carry it as `Named.lang`. Wherever such a label is shown it is in an element with `lang` — the
   sheet's and the intake's options and chips, the active-filter chip, the brief's category and tag
-  lines. Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
+  lines, the mission card's category; and outside missions (T-198) the discovery sheet's options and
+  chips, the discovery card's "Matches …" / "Does not offer …", the specialties picker, and the
+  specialties on a public profile and its preview. `NamedText` renders one; `namedList` joins
+  several as the locale joins a list (`Intl.ListFormat.formatToParts`), each part keeping its own
+  `lang` (`components/named-text.tsx`). The assistant's investigator card is the one place left —
+  its labels come from the discovery tool without a locale (T-200). Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
   `<list></list>`) filled with `t.rich`, so the label keeps its own `lang` inside the sentence. The
   active-filter chip is therefore named by its content — a visually hidden "Remove filter: …" — not
   an `aria-label`, which is a plain string and cannot mark a part. A slug shown for a node with no

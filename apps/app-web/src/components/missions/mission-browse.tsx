@@ -130,7 +130,7 @@ export async function MissionBrowse({ params, locale }: { params: SearchParams; 
               <li>
                 <MissionCard
                   mission={m}
-                  category={labels.get(m.taxonomyNodeId)?.label ?? null}
+                  category={labels.get(m.taxonomyNodeId) ?? null}
                   locale={locale}
                   now={now}
                 />

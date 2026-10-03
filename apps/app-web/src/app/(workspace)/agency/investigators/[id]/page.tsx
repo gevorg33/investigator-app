@@ -99,7 +99,7 @@ export default async function HeldInvestigatorPage({ params }: Props) {
         <StatusCard
           profile={profile}
           areas={(areas ?? []).length}
-          specialties={categories.map((c) => [c.id, c.label] as const)}
+          specialties={categories.map((c) => [c.id, c] as const)}
         />
         <SectionCard id="details" title={t('agency.investigators.sections.details_title')}>
           <DetailsForm profile={profile} currencies={Intl.supportedValuesOf('currency')} />

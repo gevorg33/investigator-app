@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import type { PublicInvestigatorProfile } from '@/lib/api/types';
 import { investigatorName } from '@/lib/investigator-name';
 import { AgencyLine } from './agency-line';
+import type { Named } from '@/lib/taxonomy';
 
 const minutes = (m: number) =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -31,7 +32,8 @@ export function PublicProfileCard({
 }: {
   profile: PublicInvestigatorProfile;
   /** Labels for the profile's specialty ids, in the reader's language. */
-  specialties: ReadonlyMap<string, string>;
+  /** Each node's name, in the language it is in (T-198). */
+  specialties: ReadonlyMap<string, Named>;
   /** False where the page is already headed with the name — the public profile page (T-120). */
   named?: boolean;
 }) {
@@ -77,8 +79,12 @@ export function PublicProfileCard({
             <li key={id} className="max-w-full">
               {/* Wraps rather than widening the card: a label in another language, or a node shown
                   by its id, has no bound on its length (T-188). */}
-              <Badge variant="secondary" className="max-w-full whitespace-normal wrap-anywhere">
-                {specialties.get(id) ?? id}
+              <Badge
+                variant="secondary"
+                lang={specialties.get(id)?.lang}
+                className="max-w-full whitespace-normal wrap-anywhere"
+              >
+                {specialties.get(id)?.label ?? id}
               </Badge>
             </li>
           ))}

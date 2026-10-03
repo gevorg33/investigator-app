@@ -156,7 +156,10 @@ export function DiscoverySheet({
                         draft.taxonomyNodeId === c.id ? 'opacity-100' : 'opacity-0',
                       )}
                     />
-                    <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                    <span
+                      lang={c.lang}
+                      className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}
+                    >
                       {c.label}
                     </span>
                   </CommandItem>

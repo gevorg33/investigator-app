@@ -75,7 +75,7 @@ export default async function InvestigatorProfilePage({
     confirmed ? serverApi<{ items: BlockView[] }>('/blocks') : null,
   ]);
   const block = blocks?.items.find((b) => b.investigatorProfileId === profile.id);
-  const specialties = new Map(categoryOptions(taxonomy ?? []).map((c) => [c.id, c.label]));
+  const specialties = new Map(categoryOptions(taxonomy ?? []).map((c) => [c.id, c]));
   return (
     <Page
       title={investigatorName(profile, (code) => t('investigator.public_name.unnamed', { code }))}
