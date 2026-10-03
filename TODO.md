@@ -2943,7 +2943,7 @@ eligibility after the taxonomy seed).
 ---
 
 ### T-055 — Mission tagging
-- **Status:** IN_PROGRESS — code, tests, docs and validation complete; browser verification pending
+- **Status:** DONE — 2026-10-03; curated `tags` with en/ru/hy labels, customer suggestions on drafts, confirmation on a PUBLISHED decision, browse filter over the merge closure; browser-verified after merge (#105)
 - **Priority:** P2
 - **Depends on:** T-053, T-051
 - **Risk:** LOW
@@ -2999,6 +2999,49 @@ stay draft).
 
 *Validated.* `pnpm --filter api test mission-tags` 15/15; lint, typecheck, format, build; coverage
 100% in every package (api 3311 tests, app-web 853, admin-web 131).
+
+*Verified.* In the browser against the built stack and the real API, as a customer, a moderator
+(MODERATION + TAXONOMY) and a verified investigator, at 375 (all three surfaces), 768 and 1280
+(browse). Intake: chips on the kind-of-help question, `aria-pressed`, 44px, saved as `tagIds`, shown
+on the brief and the submitted mission; after submission a tag change is 403, an unknown id 422,
+free text 400. Console: brief marks suggested/confirmed; the checklist appears only on Publish,
+suggestions pre-ticked; unticking one and adding another publishes exactly the ticked set; a
+suggestion retired while under review is left out of the checklist, so publishing does not 422.
+Browse: the filter narrows to confirmed tags only (a suggestion-only tag is the empty state), all-of
+across two tags, `?tag=` in the URL and as an active-filter chip, Russian labels with English
+fallback; after merging a tag, filtering by the target finds the old tag's missions and an old
+`?tag=` link still matches as "A tag no longer offered"; retired tags leave every picker. Staff
+writes 403 for a customer, a second merge 409, every write in `audit_logs`. axe (WCAG 2.1 AA):
+no violations on the intake step, the filter sheet or the decision drawer. No horizontal scroll.
+
+---
+
+### T-194 — Show the customer the tags their mission was published with
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-055
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/missions/**, apps/app-web/src/components/missions/**
+
+**Description**
+Found verifying T-055. After publication the customer's mission page still lists their own
+suggestions under "Tags" — `tagIds` on `GET /missions/me/:id` is the suggested set. A moderator who
+drops a suggestion and adds another leaves the customer reading tags the mission does not carry,
+and never seeing the one it does (seen: "Corporate records, Supplier vetting" while investigators
+browse it as Corporate records + Court records). Behaviour matches `taxonomy.md`; the page wording
+does not.
+
+**Acceptance criteria**
+- [ ] Once published, the customer sees the confirmed tags, labelled as what investigators see
+- [ ] Before publication, the line says the tags are suggestions
+- [ ] KB `kb-customer-creating-a-mission` says which the customer sees when, en/ru/hy
+
+**Validation**
+```bash
+pnpm --filter api test missions && pnpm --filter app-web test
+```
 
 ---
 
