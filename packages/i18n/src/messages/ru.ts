@@ -213,7 +213,8 @@ export const ru: Catalog = {
       },
     },
     brief: {
-      tags: 'Теги: {list}',
+      tags_suggested: 'Предложенные вами теги: <list></list>',
+      tags_published: 'Детективы находят его по тегам: <list></list>',
       section: {
         need: 'Что нужно',
         kind: 'Вид помощи',
@@ -404,7 +405,7 @@ export const ru: Catalog = {
       show: 'Показать задания',
       reset: 'Сбросить',
       chip: {
-        remove: 'Убрать фильтр: {name}',
+        remove: 'Убрать фильтр: <name></name>',
         budget_from: 'От {amount}',
         budget_to: 'До {amount}',
         due: 'Срок до {date}',

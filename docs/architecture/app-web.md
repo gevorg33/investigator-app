@@ -206,12 +206,22 @@ a `<details>`; it worked and looked like a form, not a product.
   and distance are chips (`ToggleGroup`); currency and area are native selects. Choices are held in
   the sheet until "Show missions", then pushed as the address; "Reset" clears what narrows and keeps
   the words and the order.
-- **Tags** (T-055) are chips in the sheet too, from `GET /tags` in the reader's language; with
-  several, a mission must carry all of them. At most eight; past that the rest are disabled. Each
+- **Tags** (T-055) are chips in the sheet too, from `GET /tags` in the reader's language (English
+  where it has no label yet — the chip carries `lang` from `labelLocale`, so a screen reader
+  pronounces it as English); with several, a mission must carry all of them. At most eight; past that the rest are disabled. Each
   is a `tag` URL parameter (UUIDs only, deduplicated). Tags only narrow — they never widen what an
   investigator may see (`taxonomy.md`, "Tags"). No vocabulary yet, no section.
 - **Active filters** are chips under the toolbar, each named in words ("AMD 1,500–2,000", "Due by
   Oct 31", "Inside the area") and each a link to the same browse without it.
+- **A label in another language** (T-197). Category and tag labels fall back to English where the
+  reader's language has none; the API says which (`labelLocale`), and `categoryOptions` / `tagNames`
+  carry it as `Named.lang`. Wherever such a label is shown it is in an element with `lang` — the
+  sheet's and the intake's options and chips, the active-filter chip, the brief's category and tag
+  lines. Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
+  `<list></list>`) filled with `t.rich`, so the label keeps its own `lang` inside the sentence. The
+  active-filter chip is therefore named by its content — a visually hidden "Remove filter: …" — not
+  an `aria-label`, which is a plain string and cannot mark a part. A slug shown for a node with no
+  label at all has no language.
 - **Cards** (`MissionCard` on `Card`): category badge and freshness; title; two lines of
   description; place, distance and languages; then the budget, prominent, and the deadline — a
   deadline within 7 days is a `warning` badge that says "Due in 3 days". Budgets drop ".00" when both
@@ -257,8 +267,12 @@ in the customer's words) → the brief. Progress is `Progress` plus "Question 3 
   answer for a personal relationship), asked one screen at a time: Continue with one missing flags
   it beside the field and moves focus to it. Optional ones are labelled so.
 - **Tags** (T-055) are offered on the kind-of-help question, under the category, as optional chips
-  from `GET /tags` in the reader's language — "suggest up to 8; a moderator confirms them". They
-  are saved with the draft like any answer (`tagIds`), shown on the brief, and frozen once sent.
+  from `GET /tags` in the reader's language, each marked with `lang` like the browse chips —
+  "suggest up to 8; a moderator confirms them". They
+  are saved with the draft like any answer (`tagIds`), shown on the brief as "Tags you suggested",
+  and frozen once sent. Once the mission is published, its page shows the tags it was published
+  with instead (`confirmedTagIds`, "Investigators find it under") — a status from QUOTED on, or a
+  cancelled mission carrying confirmed tags (`shownTags`, `lib/tags.ts`, T-194).
   The customer never types a tag. "Start a new mission from this one" carries no tags: a
   moderator decided on those.
 - **Languages start with the reader's own**, saved and removable — a default, not an assumption.
@@ -790,7 +804,16 @@ set up through the API, since the account screens are the first journey's subjec
 register four accounts a run against the API's five per IP per hour — a third journey that
 registers, or a retry of both, meets that limit; the API process is new each run, so a new run
 starts from zero. Traces, screenshots and both servers' logs land in
-`e2e/.output/` (gitignored), which CI uploads when the step fails.
+`e2e/.output/` (gitignored), which CI uploads when the step fails. Setup empties it at the start of
+every run, so copy out a failure's artifacts before running again.
+
+**A journey's addresses and names are its own, never the clock's** (T-196). Journeys started
+together — parallel workers, or `--repeat-each` to hunt a flake — often share a millisecond, so an
+email or slug built from `Date.now()` can be the same in two of them. Two journeys on one address
+are one account: each sees the other's agency, roles and investigator profiles, and both sign in
+against one account's limit (seen: three journeys on one account, the third refused "Too many
+attempts"; and T-195's 500s). `agency.e2e.ts` draws one random tag per journey in `beforeAll` and
+builds every email, pseudonym and slug from it.
 
 ## Sign in with Google (T-062)
 

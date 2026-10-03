@@ -214,7 +214,8 @@ export const hy: Catalog = {
       },
     },
     brief: {
-      tags: 'Պիտակներ՝ {list}',
+      tags_suggested: 'Ձեր առաջարկած պիտակները՝ <list></list>',
+      tags_published: 'Դետեկտիվները այն գտնում են այս պիտակներով՝ <list></list>',
       section: {
         need: 'Ինչ է պետք',
         kind: 'Օգնության տեսակը',
@@ -405,7 +406,7 @@ export const hy: Catalog = {
       show: 'Ցույց տալ առաջադրանքները',
       reset: 'Վերակայել',
       chip: {
-        remove: 'Հեռացնել զտիչը՝ {name}',
+        remove: 'Հեռացնել զտիչը՝ <name></name>',
         budget_from: '{amount} և ավելի',
         budget_to: 'Մինչև {amount}',
         due: 'Ժամկետը՝ մինչև {date}',

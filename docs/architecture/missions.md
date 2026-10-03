@@ -241,7 +241,9 @@ it for a staff move — `mission-moderation.invariant.spec.ts` holds all three.
   with, which become *confirmed* (`confirmed_at`, `confirmed_by`) in the same transaction. Any other
   outcome with `tagIds` is 422 `error.validation.moderation.tags_on_publish`; an unknown or retired
   tag is 422 and the mission stays under review. A suggestion left out stays a suggestion, which
-  nobody but the customer and staff ever reads. Tags never touch screening or eligibility
+  nobody but the customer and staff ever reads. The customer's own view carries both sets —
+  `tagIds` (suggested) and `confirmedTagIds` (published with, merges followed, T-194) — read under the `reads` policy
+  of `mission_tags`, which already admits the customer's own tenant. Tags never touch screening or eligibility
   (`taxonomy.md`, "Tags").
 - **AI classification** is shown in the console as labelled input. Nothing in the view suggests an
   outcome, and the decision names one every time.

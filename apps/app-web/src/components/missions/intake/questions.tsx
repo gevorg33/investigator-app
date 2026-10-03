@@ -161,7 +161,9 @@ export function KindQuestion({
                 aria-hidden
                 className={cn('size-4', chosen === c.id ? 'opacity-100' : 'opacity-0')}
               />
-              <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>{c.label}</span>
+              <span lang={c.lang} className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                {c.label}
+              </span>
             </CommandItem>
           ))}
         </CommandList>
@@ -204,7 +206,13 @@ function TagPicker({
         aria-labelledby={titleId}
       >
         {tags.map((tag) => (
-          <ToggleGroupItem key={tag.id} value={tag.id} disabled={full && !chosen.includes(tag.id)}>
+          <ToggleGroupItem
+            key={tag.id}
+            value={tag.id}
+            disabled={full && !chosen.includes(tag.id)}
+            // English where the reader's language has no label yet: pronounced as English.
+            lang={tag.labelLocale}
+          >
             {tag.label}
           </ToggleGroupItem>
         ))}

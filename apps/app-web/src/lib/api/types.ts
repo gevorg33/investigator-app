@@ -110,6 +110,8 @@ export interface OwnMission extends MissionFields {
   createdAt: string;
   updatedAt: string;
   review: MissionReview | null;
+  /** The tags it was published with — what investigators browse it by (T-194). Empty until then. */
+  confirmedTagIds: string[];
 }
 
 /**
@@ -151,6 +153,8 @@ export interface SavedMissionSearch {
 export interface TaxonomyNode {
   id: string;
   label: string | null;
+  /** Which locale the label came from: English where the reader's has none (T-197). */
+  labelLocale: string | null;
   slug: string;
   children: TaxonomyNode[];
 }

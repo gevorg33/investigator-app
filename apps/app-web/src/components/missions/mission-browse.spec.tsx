@@ -35,18 +35,23 @@ const context = (
   locale: Locale = 'en',
   opts: { areas?: unknown[]; languages?: string[]; saved?: unknown[]; tags?: unknown[] } = {},
 ) => {
+  // Labelled in English whatever the locale asked for, as the API does where nothing is translated.
   api.on(`GET /taxonomy?locale=${locale}`, 200, [
     {
       id: NODE,
       label: 'Corporate',
+      labelLocale: 'en',
       slug: 'corporate',
       children: [
-        { id: DD, label: 'Due diligence', slug: 'due-diligence', children: [] },
+        { id: DD, label: 'Due diligence', labelLocale: 'en', slug: 'due-diligence', children: [] },
         {
           id: 'node-x',
           label: null,
+          labelLocale: null,
           slug: 'unlabelled',
-          children: [{ id: 'node-y', label: 'Deep', slug: 'deep', children: [] }],
+          children: [
+            { id: 'node-y', label: 'Deep', labelLocale: 'en', slug: 'deep', children: [] },
+          ],
         },
       ],
     },
@@ -260,6 +265,24 @@ describe('open missions', () => {
       expect(router.push).toHaveBeenCalledWith(`/missions?tag=${URGENT}&tag=${REMOTE}`);
     });
 
+    it('marks each tag chip with the language its label is in, for screen readers', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      context('en', {
+        tags: [
+          { id: REMOTE, slug: 'remote', label: 'Удалённо', labelLocale: 'ru' },
+          { id: URGENT, slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+        ],
+      });
+      await show();
+      const sheet = await open(user());
+      const group = within(sheet).getByRole('group', { name: en.tags });
+      expect(within(group).getByRole('button', { name: 'Удалённо' })).toHaveAttribute('lang', 'ru');
+      expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute('lang', 'en');
+      // Categories too (T-197); one known only by its slug is in no language in particular.
+      expect(within(sheet).getByText('Due diligence')).toHaveAttribute('lang', 'en');
+      expect(within(sheet).getByText('unlabelled')).not.toHaveAttribute('lang');
+    });
+
     it('offers no tag chips when there is no vocabulary', async () => {
       api.on('POST /search/missions', 200, PAGE());
       context('en', { tags: [] });
@@ -352,13 +375,33 @@ describe('open missions', () => {
       const RETIRED = '5b8d2e14-9f3a-4c7b-a2e6-1d4f8b0c3e97';
       await show({ tag: [REMOTE, RETIRED] });
       const links = within(screen.getByRole('list', { name: en.filters })).getAllByRole('link');
-      expect(links.map((a) => a.getAttribute('aria-label') ?? a.textContent)).toEqual([
-        'Remove filter: Remote work',
-        `Remove filter: ${en.tag}`,
-        en.clear,
-      ]);
+      const names = ['Remove filter: Remote work', `Remove filter: ${en.tag}`, en.clear];
+      expect(links).toHaveLength(names.length);
+      links.forEach((a, i) => expect(a).toHaveAccessibleName(names[i]));
       expect(links[0]).toHaveAttribute('href', `/missions?tag=${RETIRED}`);
       expect(links[1]).toHaveAttribute('href', `/missions?tag=${REMOTE}`);
+    });
+
+    it('marks a category or tag shown in English on a Russian page, in the chip and its name (T-197)', async () => {
+      api.on('POST /search/missions', 200, PAGE());
+      request.cookies.set('locale', 'ru');
+      context('ru');
+      await show({ category: DD, tag: REMOTE, language: 'en' }, 'ru');
+      const remove = catalogs.ru.missions.browse.chip.remove;
+      for (const label of ['Due diligence', 'Remote work']) {
+        const chip = screen.getByRole('link', { name: remove.replace('<name></name>', label) });
+        // Once where it is seen, once inside the name a screen reader reads out.
+        const marked = [...chip.querySelectorAll('[lang]')];
+        expect(marked.map((e) => [e.getAttribute('lang'), e.textContent])).toEqual([
+          ['en', label],
+          ['en', label],
+        ]);
+      }
+      // A chip named in the page's own language is not marked.
+      const language = screen.getByRole('link', {
+        name: remove.replace('<name></name>', 'английский'),
+      });
+      expect(language.querySelector('[lang]')).toBeNull();
     });
 
     it('are chips that each remove themselves, and one that removes them all', async () => {
@@ -379,19 +422,19 @@ describe('open missions', () => {
       const chips = screen.getByRole('list', { name: en.filters });
       const links = within(chips).getAllByRole('link');
       // Intl puts a non-breaking space between a currency code and its amount.
-      expect(
-        links.map((a) => [(a.getAttribute('aria-label') ?? a.textContent!).replace(/\s/g, ' ')]),
-      ).toEqual([
-        ['Remove filter: Due diligence'],
-        ['Remove filter: Armenian'],
-        ['Remove filter: English'],
-        ['Remove filter: AMD 1,500–2,000'],
-        ['Remove filter: Due by Oct 31, 2026'],
-        ['Remove filter: In the last 7 days'],
-        ['Remove filter: Yerevan'],
-        ['Remove filter: Inside the area'],
-        [en.clear],
-      ]);
+      const names = [
+        'Remove filter: Due diligence',
+        'Remove filter: Armenian',
+        'Remove filter: English',
+        /^Remove filter: AMD\s1,500–2,000$/,
+        'Remove filter: Due by Oct 31, 2026',
+        'Remove filter: In the last 7 days',
+        'Remove filter: Yerevan',
+        'Remove filter: Inside the area',
+        en.clear,
+      ];
+      expect(links).toHaveLength(names.length);
+      links.forEach((a, i) => expect(a).toHaveAccessibleName(names[i]));
       expect(links[1]).toHaveAttribute('href', expect.stringContaining('language=en&currency=AMD'));
       expect(links[2]).toHaveAttribute('href', expect.stringContaining('language=hy&currency'));
       expect(links.at(-1)).toHaveAttribute('href', '/missions?q=court');

@@ -2943,7 +2943,7 @@ eligibility after the taxonomy seed).
 ---
 
 ### T-055 — Mission tagging
-- **Status:** IN_PROGRESS — code, tests, docs and validation complete; browser verification pending
+- **Status:** DONE — 2026-10-03; curated `tags` with en/ru/hy labels, customer suggestions on drafts, confirmation on a PUBLISHED decision, browse filter over the merge closure; browser-verified after merge (#105); re-verified 2026-10-04, fallback-language tag chips now carry `lang`
 - **Priority:** P2
 - **Depends on:** T-053, T-051
 - **Risk:** LOW
@@ -3000,6 +3000,73 @@ stay draft).
 *Validated.* `pnpm --filter api test mission-tags` 15/15; lint, typecheck, format, build; coverage
 100% in every package (api 3311 tests, app-web 853, admin-web 131).
 
+*Verified.* In the browser against the built stack and the real API, as a customer, a moderator
+(MODERATION + TAXONOMY) and a verified investigator, at 375 (all three surfaces), 768 and 1280
+(browse). Intake: chips on the kind-of-help question, `aria-pressed`, 44px, saved as `tagIds`, shown
+on the brief and the submitted mission; after submission a tag change is 403, an unknown id 422,
+free text 400. Console: brief marks suggested/confirmed; the checklist appears only on Publish,
+suggestions pre-ticked; unticking one and adding another publishes exactly the ticked set; a
+suggestion retired while under review is left out of the checklist, so publishing does not 422.
+Browse: the filter narrows to confirmed tags only (a suggestion-only tag is the empty state), all-of
+across two tags, `?tag=` in the URL and as an active-filter chip, Russian labels with English
+fallback; after merging a tag, filtering by the target finds the old tag's missions and an old
+`?tag=` link still matches as "A tag no longer offered"; retired tags leave every picker. Staff
+writes 403 for a customer, a second merge 409, every write in `audit_logs`. axe (WCAG 2.1 AA):
+no violations on the intake step, the filter sheet or the decision drawer. No horizontal scroll.
+
+*Re-verified 2026-10-04* after the close above sat unmerged: customer → moderator → investigator end
+to end at 375, then 768 and 1280, on the built stack. Found: a tag shown in English for want of a
+translation was unmarked on a Russian page, so a screen reader read it with Russian rules (WCAG
+3.1.2). Fixed: the intake and browse-sheet chips carry `lang` from `labelLocale` — regression tests
+in `intake.spec.tsx` and `mission-browse.spec.tsx`, seen to fail first; `app-web.md`. Composed text
+(the active-filter chip's name, the brief line) is T-197.
+
+---
+
+### T-194 — Show the customer the tags their mission was published with
+- **Status:** DONE — 2026-10-04; `confirmedTagIds` (merges followed) beside `tagIds` on the customer's own mission; the brief says "Tags you suggested" until publication, then "Investigators find it under"
+- **Priority:** P3
+- **Depends on:** T-055
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain + frontend
+- **Affected:** apps/api/src/modules/missions/**, apps/app-web/src/components/missions/**
+
+**Description**
+Found verifying T-055. After publication the customer's mission page still lists their own
+suggestions under "Tags" — `tagIds` on `GET /missions/me/:id` is the suggested set. A moderator who
+drops a suggestion and adds another leaves the customer reading tags the mission does not carry,
+and never seeing the one it does (seen: "Corporate records, Supplier vetting" while investigators
+browse it as Corporate records + Court records). Behaviour matches `taxonomy.md`; the page wording
+does not.
+
+**Acceptance criteria**
+- [x] Once published, the customer sees the confirmed tags, labelled as what investigators see
+      — a tag merged since is shown as the tag it became, once; published with none, no line
+- [x] Before publication, the line says the tags are suggestions
+- [x] KB `kb-customer-creating-a-mission` says which the customer sees when, en/ru/hy (v5; ru/hy stay draft)
+
+**Validation**
+```bash
+pnpm --filter api test missions && pnpm --filter app-web test
+```
+
+
+*Built.* API: `OwnMissionRepository.tagsOf` reads both sets in one query and walks merges to the tag
+each confirmed one became (recursive over `merged_into_id`); `OwnMission.confirmedTagIds`. No policy
+change — `mission_tags` `reads` already admits the customer's tenant. app-web: `shownTags`
+(`lib/tags.ts`, an exhaustive map of which statuses come only after publication; a cancelled
+mission counts if it carries confirmed tags), brief messages `tags_suggested` / `tags_published` in
+en/ru/hy. Docs: `taxonomy.md`, `missions.md`, `app-web.md`, KB v5.
+
+*Validated.* `pnpm --filter api test missions` 204/204 (tag suite 17/17, repeated); app-web 861;
+coverage 100% in every package (api 3314); lint, typecheck, format, build, KB validator.
+
+*Verified.* In the browser as the customer at 375, 768 and 1280 against the local API: under review
+"Tags you suggested: Supplier vetting"; published with one suggestion dropped "Investigators find
+it under: Litigation"; a mission whose confirmed tag was merged since shows the merge target, as
+investigators' Litigation filter finds it. No horizontal scroll. Found and fixed while verifying:
+merged confirmed tags first showed no line at all.
 ---
 
 ### T-056 — Assistant shell and conversation UI
@@ -8550,7 +8617,7 @@ already said this ("Always 202", OpenAPI; "check your email", `app-web.md`) — 
 ---
 
 ### T-196 — Navigation flakes in the agency journey on desktop under repeat
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; journeys that shared an account, not the app: `agency.e2e.ts` builds every address and name from a per-journey random tag; 360/360 on both projects
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
@@ -8569,12 +8636,135 @@ find for each whether a person could meet it (a router refresh left uncommitted,
 only the test races, and fix the cause rather than adding waits.
 
 **Acceptance criteria**
-- [ ] Each failure's cause identified
-- [ ] `agency.e2e.ts --repeat-each=20` passes on both projects
+- [x] Each failure's cause identified — as far as the evidence allows: the run's artifacts were gone
+      (setup empties `e2e/.output` every run), so the class is proven and the five are not each pinned.
+      **Shared accounts.** Those runs built the owner's email from `Date.now()` without the repeat
+      index; journeys started together share a millisecond, and so an account — the same runs gave
+      T-195's 500s. Reproduced with that email restored: three journeys on one account, the third's
+      sign-in refused "Too many attempts" (five per account per five minutes). Sharing an account
+      shares its agencies, roles and investigator profiles, which fits "Make a profile" refused in
+      place and the Customer toggle; not a defect a person meets. Four more identifiers in the spec
+      were clock-built (colleague and invitee emails, pseudonym, taxonomy slug — the invitee's had
+      neither project nor repeat). **Contention.** At 8 workers the first wave stalled the whole
+      stack ~10 s (API reads 10–15 s, `/agencies/new` rendered in 26.5 s), and `:117` failed on the
+      test's own 30 s budget with the `/agency` payload delivered 200 ms before the page closed — a
+      laptop overloaded by the suite, not a lost navigation
+- [x] `agency.e2e.ts --repeat-each=20` passes on both projects — 360/360 (180 mobile, 180 desktop), twice: before the change 360/360, after it 360/360
 
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web exec playwright test agency.e2e.ts --repeat-each=20
+```
+
+
+*Built.* `agency.e2e.ts`: one random tag per journey (`beforeAll`), every generated email, pseudonym
+and slug built from it. `app-web.md` "Browser flows": a journey's identifiers are its own, never the
+clock's; `e2e/.output` is emptied each run. No app change: no failure traced to app code. Filed T-199
+(the same in the other four specs).
+
+*Validated.* `playwright test agency.e2e.ts --repeat-each=20` 360 passed (4.4 m); prettier, ESLint
+and the e2e typecheck on the spec. No browser surface beyond the suite itself: verified by the
+runs above — the 8-worker run and the experiment with the old email were diagnostic, not shipped.
+
+---
+
+### T-199 — Give every e2e spec's generated accounts and names a per-journey tag
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-196
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/e2e/{account,blocks,missions,notifications}.e2e.ts, apps/app-web/e2e/support/**
+
+**Description**
+From T-196. `agency.e2e.ts` now builds every email and slug from a per-journey random tag, because
+journeys started together share a millisecond and two on one address share an account. The other
+four specs still build emails (and `blocks`, `notifications` their taxonomy slugs) from
+`${info.project.name}-${Date.now()}`: safe for one run of each, but `--repeat-each` — how a flake is
+hunted — starts copies together and gives them one account. Move the tag into `e2e/support` and use
+it everywhere.
+
+**Acceptance criteria**
+- [ ] No spec builds an email, slug or name from the clock
+- [ ] Each spec passes `--repeat-each=5` on both projects
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web exec playwright test --repeat-each=5
+```
+
+---
+
+### T-197 — Mark the language of fallback labels inside composed text
+- **Status:** DONE — 2026-10-04; `Named.lang` from `labelLocale` (`lib/taxonomy.ts`); `t.rich` with `<name></name>` / `<list></list>` for the active-filter chip and the brief; category options marked too
+- **Priority:** P3
+- **Depends on:** T-055
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend + localization
+- **Affected:** apps/app-web/src/components/missions/**, packages/i18n (catalogs), apps/api/src/modules/taxonomy/** (category label locale)
+
+**Description**
+Found re-verifying T-055. A label the reader's language lacks is shown in English; where it is a
+control's whole name, the chip carries `lang` (T-055). Where it sits inside a composed string it
+cannot: the active-filter chip's accessible name is `aria-label` "Убрать фильтр: Litigation", and
+the brief line is one message, "Теги: Litigation, …". `use-intl`'s `t.rich` takes tag functions,
+not elements as values, so marking the part means a tag in the message across en/ru/hy. Category
+labels have the same gap one step earlier: `TaxonomyNode` carries no label locale at all, so
+nothing can mark them (WCAG 3.1.2, language of parts).
+
+**Acceptance criteria**
+- [x] The active-filter chip's name marks a fallback tag or category label with its language
+      — named by its content (visually hidden "Remove filter: …"), not `aria-label`
+- [x] The brief's tag and category lines mark a fallback label with its language
+- [x] Category options (`GET /taxonomy`) report the locale their label came from, as `GET /tags` does
+      — already did (T-053, `taxonomy.service.spec.ts`); app-web's `TaxonomyNode` now types and uses it
+- [x] Catalog parity holds across en/ru/hy for any message that gains a tag
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test && pnpm --filter api test taxonomy
+```
+
+
+*Validated.* `pnpm --filter @investigator/app-web test` 863 (coverage 100%); `pnpm --filter api test
+taxonomy` 67/67; i18n 29 (parity); lint, typecheck, format, app-web build. Specs seen failing
+first: the chip (category and tag, on a Russian page), the brief, the sheet's and intake's options.
+
+*Verified.* In the browser against the local API, on a Russian page: the chips read "Убрать фильтр:
+Проверка контрагента" (`lang="ru"`) and "Убрать фильтр: Litigation" (`lang="en"`), names checked in
+Chromium's accessibility tree (Playwright snapshot); the language chip carries no `lang`; chips look
+as before, 44px, no horizontal scroll at 375, 768 and 1280. The customer's brief: the category in
+`lang="ru"`, "Детективы находят его по тегам: Litigation" with Litigation in `lang="en"`. Docs:
+`app-web.md`. Filed T-198 for the category labels outside missions.
+
+---
+
+### T-198 — Mark fallback category labels outside the missions screens
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-197
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/{discovery,investigator}/**, apps/app-web/src/components/missions/mission-card.tsx, apps/app-web/src/app/(workspace)/**/investigators/**
+
+**Description**
+From T-197. Category labels now carry their language (`Named.lang`, from `labelLocale`) and the
+missions screens mark them. Elsewhere a category shown in English on a Russian or Armenian page is
+still unmarked: the mission card's category badge, the discovery sheet's category options and
+active filters, the specialties picker, and the specialties on an investigator's profile (WCAG
+3.1.2). Same fix — `lang={c.lang}` where a label stands alone, `t.rich` where it sits in a sentence.
+
+**Acceptance criteria**
+- [ ] Every place app-web shows a category label marks it with `lang` from `labelLocale`
+- [ ] A label inside a composed string keeps its `lang` (message tag + `t.rich`), names checked by content
+- [ ] Specs seen failing first for each surface
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test
 ```
 
 ---

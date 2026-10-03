@@ -10,7 +10,7 @@ import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
 import type { OwnMission } from '@/lib/api/types';
-import { tagNames } from '@/lib/tags';
+import { shownTags, tagNames } from '@/lib/tags';
 
 type Params = Promise<{ id: string }>;
 
@@ -66,6 +66,7 @@ export default async function MissionPage({
 
   const name = (list: { code: string; name: string }[], code: string) =>
     list.find((o) => o.code === code)?.name ?? code;
+  const tags = shownTags(mission);
   return (
     <Page title={title}>
       <MissionView
@@ -73,11 +74,12 @@ export default async function MissionPage({
         locale={locale}
         timeZone={account!.timezone}
         names={{
-          category: options.categories.find((c) => c.id === mission.taxonomyNodeId)?.label ?? null,
+          category: options.categories.find((c) => c.id === mission.taxonomyNodeId) ?? null,
           country:
             mission.countryCode === null ? null : name(options.countries, mission.countryCode),
           languages: mission.languages.map((code) => name(options.languages, code)),
-          tags: tagNames(mission.tagIds, options.tags),
+          tags: tagNames(tags.ids, options.tags),
+          tagsPublished: tags.published,
         }}
       />
     </Page>

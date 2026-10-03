@@ -193,7 +193,10 @@ export function FilterSheet({
                       aria-hidden
                       className={cn('size-4', category === c.id ? 'opacity-100' : 'opacity-0')}
                     />
-                    <span className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}>
+                    <span
+                      lang={c.lang}
+                      className={cn(c.depth === 1 && 'pl-4', c.depth >= 2 && 'pl-8')}
+                    >
                       {c.label}
                     </span>
                   </CommandItem>
@@ -234,6 +237,9 @@ export function FilterSheet({
                     key={tag.id}
                     value={tag.id}
                     disabled={tagsFull && !chosenTags.includes(tag.id)}
+                    // English where the reader's language has no label yet; a screen reader
+                    // should pronounce it as English.
+                    lang={tag.labelLocale}
                   >
                     {tag.label}
                   </ToggleGroupItem>

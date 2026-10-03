@@ -82,6 +82,7 @@ export const ownMission = (over: Partial<OwnMission> = {}): OwnMission => ({
   updatedAt: '2026-09-25T08:00:00.000Z',
   review: null,
   tagIds: [],
+  confirmedTagIds: [],
   ...over,
 });
 
