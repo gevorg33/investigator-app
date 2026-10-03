@@ -64,3 +64,69 @@ export interface TaxonomyNode {
   slug: string;
   children: TaxonomyNode[];
 }
+
+export type RiskBand = 'STANDARD' | 'ELEVATED' | 'HIGH' | 'RESTRICTED';
+export type ScreeningOutcome = 'ROUTINE_REVIEW' | 'PRIORITY_REVIEW';
+export type ModerationOutcome = 'PUBLISHED' | 'REJECTED' | 'CHANGES_REQUESTED';
+
+/** One mission waiting for a moderator, as `GET /moderation/missions` lists it (T-051). */
+export interface ModerationQueueItem {
+  id: string;
+  title: string | null;
+  taxonomyNodeId: string | null;
+  riskBand: RiskBand;
+  screeningOutcome: ScreeningOutcome;
+  flagCount: number;
+  queuedAt: string;
+  deadline: string | null;
+}
+
+export interface ModerationQueuePage {
+  items: ModerationQueueItem[];
+  pageInfo: { nextCursor: string | null; hasNextPage: boolean };
+}
+
+/** A decision as staff read it, with the note the customer never sees. */
+export interface ModerationDecision {
+  outcome: ModerationOutcome;
+  reason: string;
+  internalNote: string | null;
+  decidedBy: string;
+  decidedAt: string;
+  missionVersion: number;
+}
+
+/** One submitted mission, as `GET /moderation/missions/:id` gives it to a moderator (T-051). */
+export interface ModerationReviewView {
+  id: string;
+  status: string;
+  version: number;
+  title: string | null;
+  description: string | null;
+  purpose: string | null;
+  subjectRelationship: string | null;
+  protectiveOrderDeclared: boolean | null;
+  taxonomyNodeId: string | null;
+  countryCode: string | null;
+  locationLabel: string | null;
+  languages: string[];
+  startBy: string | null;
+  deadline: string | null;
+  budgetMinMinor: number | null;
+  budgetMaxMinor: number | null;
+  currency: string | null;
+  submittedAt: string | null;
+  queuedAt: string | null;
+  screening: {
+    outcome: ScreeningOutcome;
+    riskBand: RiskBand;
+    flags: string[];
+    rulesetVersion: string;
+    screenedAt: string;
+    /** A model's reading, when one exists: input to the moderator, never the decision. */
+    aiClassification: unknown;
+  } | null;
+  decisions: ModerationDecision[];
+  /** The moderator is the mission's customer, and cannot decide it. */
+  party: boolean;
+}

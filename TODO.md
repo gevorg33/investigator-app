@@ -2645,7 +2645,7 @@ added (work done before a customer-caused halt). Docs: the architecture section,
 ---
 
 ### T-051 — Mission moderation queue (admin console)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-03; `mission_moderation_decisions` (migration 0038), `/moderation/missions` routes in `MissionModerationService` through `PlatformContext`, admin-web `/moderation` queue, mission page and decision drawer; staff KB `kb-staff-mission-policy-review` en/ru/hy; `missions.md`, `admin-web.md`, `tenancy.md`
 - **Priority:** P1
 - **Depends on:** T-010, T-013, T-079
 - **Risk:** HIGH
@@ -2667,22 +2667,22 @@ and prioritises the queue; it never publishes. Per plan.md §10 and
 > attachment-access criterion below is about what the moderator then opens.
 
 **Acceptance criteria**
-- [ ] **Every queue read and decision enters through `PlatformContext`** (deferred from T-079), with its purpose added to `RoutePurpose` — not written cross-workspace and retrofitted
-- [ ] Queue of `UNDER_REVIEW` missions, ordered by risk band then age
-- [ ] Three outcomes: **publish** (`→ QUOTED`), **reject** (`→ REJECTED`), **request changes**
+- [x] **Every queue read and decision enters through `PlatformContext`** (deferred from T-079), with its purpose added to `RoutePurpose` — not written cross-workspace and retrofitted
+- [x] Queue of `UNDER_REVIEW` missions, ordered by risk band then age
+- [x] Three outcomes: **publish** (`→ QUOTED`), **reject** (`→ REJECTED`), **request changes**
       (`→ DRAFT`) — each requiring a typed reason before the control enables
-- [ ] **A mission cannot reach `QUOTED` by any path except a moderator publishing it** — tested
-- [ ] Moderator can open mission attachments; **every attachment access is audited**
-- [ ] AI classification shown as an input, clearly labelled, never pre-selecting the outcome
-- [ ] Rejection and change-request reasons are shown to the customer and are actionable
+- [x] **A mission cannot reach `QUOTED` by any path except a moderator publishing it** — tested
+- [ ] Moderator can open mission attachments; **every attachment access is audited** — **moved to T-066** (owner decision 2026-10-03): attachments do not exist yet, so there is nothing to open
+- [x] AI classification shown as an input, clearly labelled, never pre-selecting the outcome
+- [x] Rejection and change-request reasons are shown to the customer and are actionable
       — **the customer side exists (T-119)**: `review.reason` on the customer's mission is
       `mission_status_history.reason` of the moderator's move, shown **as written**. Label the field as
       customer-facing in the console, and keep any internal note elsewhere (`missions.md`)
-- [ ] Requires the `mission_moderation` staff scope — not `isStaff` (`authorization`)
-- [ ] A moderator cannot decide a mission they are party to
-- [ ] Gate configurable per category and risk band, defaulting to **closed** (everything reviewed)
-- [ ] Decision, reasoning, moderator identity and timestamp recorded and append-only
-- [ ] Queue age surfaced — an unreviewed mission is a customer waiting, and missions expire
+- [x] Requires the `mission_moderation` staff scope (the `MODERATION` scope) — not `isStaff` (`authorization`)
+- [x] A moderator cannot decide a mission they are party to
+- [ ] Gate configurable per category and risk band, defaulting to **closed** (everything reviewed) — closed, with review latency per category and band recorded from day one; the configuration itself is **T-191** (owner decision 2026-10-03), since any open setting would be a second path to QUOTED
+- [x] Decision, reasoning, moderator identity and timestamp recorded and append-only
+- [x] Queue age surfaced — an unreviewed mission is a customer waiting, and missions expire
 
 **Note on throughput:** at launch volume one moderator can gate everything. If review latency
 becomes the constraint, the per-category configuration is the lever — not removing the gate.
@@ -3582,7 +3582,7 @@ lands.
 - [ ] A `MISSION_ATTACHMENT` media category with its own size, formats, visibility and retention
 - [ ] Attachments belong to a mission and are authorised through the existing media flow
 - [ ] **A mission with an unscanned or infected attachment cannot be published** — fails closed
-- [ ] A moderator may open a mission's attachments; **every access is audited** (T-051 surfaces it)
+- [ ] A moderator may open a mission's attachments; **every access is audited** — and the console's moderation page (`/moderation/[id]`, T-051) gains the section that opens them: moved here from T-051, which shipped before attachments existed
 - [ ] Attachments are editable while the mission is a draft, frozen once submitted
 - [ ] The "lawful but excessive" path is request-changes, not rejection — the more common case
 - [ ] Retention rule recorded in `docs/compliance/retention.md`
@@ -8407,6 +8407,66 @@ customer (redirect to Account, where the role choice is), rather than throw.
 **Validation**
 ```bash
 pnpm --filter @investigator/app-web test && pnpm --filter @investigator/app-web test:e2e
+```
+
+---
+
+### T-191 — Per-category moderation gate: open a low-risk category, deliberately
+- **Status:** TODO — waits for review-latency data and counsel's confirmation (plan §10)
+- **Priority:** P3
+- **Depends on:** T-051
+- **Risk:** HIGH
+- **Human approval required:** Yes — it would publish missions no moderator read; lawful-use policy and counsel
+- **Owner agent:** backend-domain + admin-web
+- **Affected:** apps/api/src/modules/mission-policy/**, apps/api/src/modules/missions/mission-transitions.ts, apps/admin-web/**, migrations
+
+**Description**
+From T-051. The gate is closed: every mission is reviewed, and each decision records its category,
+risk band and queue time (`mission_moderation_decisions`), so review latency per category and band
+exists from the first day. Plan §10 makes this the lever if review latency ever becomes the
+constraint: a configuration per category and band that could let a low-risk category — records
+checks, say — publish without a moderator. That is a second path to QUOTED, which T-051's invariant
+spec forbids today; this task is where that changes on purpose, or is decided against.
+
+**Acceptance criteria**
+- [ ] The latency data and counsel's confirmation are recorded before anything opens (ACTIONS-FOR-ME)
+- [ ] Configuration per category and risk band, defaulting to closed, changed only by staff with an audited reason
+- [ ] Partner and relationship investigation, and any mission with a flag or a HIGH or RESTRICTED band, are never auto-published (ADR-0009) — enforced, not configured
+- [ ] An auto-published mission is recorded as such, and the invariant spec names the one new path
+- [ ] Customer and staff knowledge base say which categories, if any, publish without review
+
+**Validation**
+```bash
+pnpm --filter api test mission-moderation && pnpm --filter admin-web test
+```
+
+---
+
+### T-192 — Flaky focus check in the agency teams journey on mobile
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/agency/console/teams.tsx, apps/app-web/e2e/agency.e2e.ts
+
+**Description**
+Seen during T-051's full e2e run: `agency.e2e.ts` › "makes a team, puts the owner in and takes them
+out, renames it, and deletes it once asked" failed once on the mobile project with
+`expect(locator).toBeFocused() failed`, then passed 3 of 3 on rerun (1 failure in 4). The journey
+asserts focus twice — the name field when editing opens, and the Edit button after saving a rename
+(T-093's focus return) — and the artifacts were overwritten before the failing one was identified.
+Find which, and whether a user can lose focus there too (a real defect) or only the test races a
+re-render, and fix the cause rather than adding a wait.
+
+**Acceptance criteria**
+- [ ] The failing assertion identified, with the cause
+- [ ] The journey passes 20 of 20 on both projects (`--repeat-each=20`)
+
+**Validation**
+```bash
+pnpm --filter @investigator/app-web test:e2e
 ```
 
 ---

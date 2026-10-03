@@ -1,9 +1,12 @@
-import { formatDateTime } from '@investigator/i18n';
+import { formatDateTime, formatRelativeTime } from '@investigator/i18n';
 import { LOCALE } from '@/i18n/messages';
 
 /** A moment in the reviewer's own time zone — never the server's (localization). */
 export const when = (value: string, timeZone: string): string =>
   formatDateTime(value, { locale: LOCALE, timeZone });
+
+/** "3 hours ago": how long something has waited, against `now`, which the caller supplies. */
+export const ago = (value: string, now: Date): string => formatRelativeTime(value, now, LOCALE);
 
 /** A short, stable handle for an id: enough to tell rows apart, not a thing to type. */
 export const shortId = (id: string): string => id.slice(0, 8);

@@ -66,6 +66,8 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the mission transition that produced it — inserting one directly would record a move that never happened',
   assignment_status_history: 'the assignment transition that produced it',
   mission_screenings: 'the policy screening at submission (T-010)',
+  mission_moderation_decisions:
+    'a moderator`s decision, with the move it records (T-051) — a direct insert would claim a decision nobody made',
   verification_request_documents:
     'the verification submission; the rows are append-only by trigger (T-013)',
   verification_decisions: 'the reviewer`s decision; append-only by trigger',

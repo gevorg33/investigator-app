@@ -1,6 +1,11 @@
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
-import { missions, missionScreenings, missionStatusHistory } from './missions';
+import {
+  missionModerationDecisions,
+  missions,
+  missionScreenings,
+  missionStatusHistory,
+} from './missions';
 import { outboxEvents } from './outbox';
 import { taxonomyNodes } from './taxonomy';
 import { users } from './users';
@@ -41,6 +46,7 @@ describe('what a mission is attached to', () => {
   it.each([
     ['mission_status_history', missionStatusHistory],
     ['mission_screenings', missionScreenings],
+    ['mission_moderation_decisions', missionModerationDecisions],
   ] as const)('holds %s against the mission being removed', (_name, table) => {
     // Append-only records of what happened. A cascade here would let deleting a mission erase
     // the evidence that it was screened and moved.
@@ -49,6 +55,20 @@ describe('what a mission is attached to', () => {
       target: missions,
       onDelete: 'restrict',
     });
+  });
+
+  it('keeps a moderation decision when its screening or its category would go (T-051)', () => {
+    // The decision names the screening its moderator read and the category it was filed under —
+    // the record review latency per category is measured by. Neither may vanish under it.
+    expect(fks(missionModerationDecisions)).toEqual(
+      expect.arrayContaining([
+        { column: 'screening_id', target: missionScreenings, onDelete: 'restrict' },
+        { column: 'taxonomy_node_id', target: taxonomyNodes, onDelete: 'restrict' },
+      ]),
+    );
+    expect(getTableConfig(missionModerationDecisions).indexes.map((i) => i.config.name)).toEqual([
+      'mission_moderation_decisions_mission_idx',
+    ]);
   });
 
   it('gives outbox events no foreign key at all', () => {

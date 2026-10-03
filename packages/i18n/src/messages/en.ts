@@ -1461,6 +1461,11 @@ export const en = {
         expiry_range: 'Choose an expiry between an hour and 90 days from now.',
         blocked: 'You blocked this investigator. Unblock them to accept this quote.',
       },
+      moderation: {
+        reason_required:
+          'Write a reason for the decision. On a rejection or a return, the customer reads it as written.',
+        note_empty: 'Leave the internal note empty, or write something in it.',
+      },
       review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
       taxonomy: {
         locale: 'Choose English, Russian or Armenian.',

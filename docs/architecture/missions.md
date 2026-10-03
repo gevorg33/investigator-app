@@ -203,12 +203,42 @@ than derived from it afterwards.
   kind of resource an investigator can hold (a conversation) also needs its id added to the
   spec's `ids`, or its view is walked with nothing in it.
 
+## Moderation: the publication gate (T-051)
+
+Every mission under review waits for a moderator in the staff console (`admin-web.md`). Nothing else
+publishes: the transition map lets only `STAFF:MODERATION` move a mission into QUOTED, only the
+transition service writes the status, and `MissionModerationService` is the only caller that asks
+it for a staff move — `mission-moderation.invariant.spec.ts` holds all three.
+
+- **Routes** (`/moderation/missions`, MODERATION staff scope, acting as staff): the queue, one
+  mission, and `POST …/:id/decision` with `{ outcome, reason, internalNote?, version }`. Each enters
+  `PlatformContext` with its own `RoutePurpose` (`mission_moderation.queue|review|decide`), audited
+  as a crossing before it runs.
+- **The queue** orders by the latest screening's risk band (RESTRICTED first), then by when the
+  mission last entered UNDER_REVIEW, keyset-paged. A draft nobody submitted is not found.
+- **Three outcomes:** `PUBLISHED` → QUOTED, `REJECTED` → REJECTED, `CHANGES_REQUESTED` → DRAFT, which
+  also clears the lawful-purpose confirmation so the next submission is confirmed afresh. A reason is
+  required for all three; the console keeps the control disabled until one is typed.
+- **What the customer reads** is the reason, as written, on the history row the transition writes
+  (`review`, above). The **internal note** lives only in `mission_moderation_decisions`, which
+  staff alone can read (row-level security: platform access only) — the customer's workspace cannot
+  see the table at all.
+- **Refused:** the mission's own customer (403, audited — under review nobody has quoted, and
+  agencies are supplier-only in v1, so the customer is the only party); a mission that moved since it
+  was read — another moderator decided, or the customer cancelled — is 409, and two moderators
+  deciding at once leave exactly one decision.
+- **The record** (`mission_moderation_decisions`, append-only): outcome, reason, note, moderator,
+  the mission version and the screening they read, the category and band at the time, and
+  `queued_at` → `decided_at`. That is review latency per category and band from the first day, the
+  data any later opening of the gate rests on.
+- **AI classification** is shown in the console as labelled input. Nothing in the view suggests an
+  outcome, and the decision names one every time.
+- **Attachments** do not exist yet; opening them, audited per access, is T-066's.
+
 ## What T-010 deliberately did not build
 
-- **The moderation queue and the three decision outcomes** — publish, reject, request changes.
-  The map already declares them as moderator-only moves; T-051 builds the surface and the
-  decision service.
 - **Mission attachments** (T-066). Screening reads text and structured answers only, and the
   staff article's instruction to open the attachments has nothing to open yet.
-- **Per-category gate configuration.** The gate is closed: every mission is reviewed. T-051
-  owns the configuration that could ever open it.
+- **Per-category gate configuration.** The gate is closed: every mission is reviewed (plan §10).
+  T-051 records review latency per category and band instead; the switch that could ever open it
+  is T-191, gated on that data and on counsel.

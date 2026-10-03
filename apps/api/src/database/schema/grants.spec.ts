@@ -133,11 +133,14 @@ describe('the mission tables hold only the privileges they were meant to', () =>
     return rows.map((r) => r.privilege_type);
   };
 
-  it.each(['mission_status_history', 'mission_screenings'])('%s is append-only', async (table) => {
-    // A status history that can be edited settles no dispute, and a screening result that can
-    // be rewritten explains nothing.
-    expect(await granted(table)).toEqual(['INSERT', 'SELECT']);
-  });
+  it.each(['mission_status_history', 'mission_screenings', 'mission_moderation_decisions'])(
+    '%s is append-only',
+    async (table) => {
+      // A status history that can be edited settles no dispute, and a screening result that can
+      // be rewritten explains nothing.
+      expect(await granted(table)).toEqual(['INSERT', 'SELECT']);
+    },
+  );
 
   it.each(['missions', 'outbox_events'])(
     '%s cannot be deleted from by the application',

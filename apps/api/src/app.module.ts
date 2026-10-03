@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { LegalModule } from './modules/legal/legal.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
+import { MissionModerationModule } from './modules/mission-policy/mission-moderation.module';
 import { MissionPolicyModule } from './modules/mission-policy/mission-policy.module';
 import { MissionsModule } from './modules/missions/missions.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
@@ -61,6 +62,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     ServiceAreasModule,
     SearchModule,
     MissionPolicyModule,
+    MissionModerationModule,
     MissionsModule,
     QuotesModule,
     AssignmentsModule,
