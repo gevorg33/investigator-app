@@ -2,7 +2,7 @@
 
 import { Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { EmptyState } from '@/components/empty-state';
 import { Field } from '@/components/form/field';
@@ -137,11 +137,19 @@ function TeamCard({ team, members }: { team: TeamView; members: EmployeeView[] }
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const editButton = useRef<HTMLButtonElement>(null);
+  const closed = useRef(false);
   /** Closes the form and puts focus back on the button that opened it. */
   const stopEditing = () => {
+    closed.current = true;
     setEditing(false);
-    requestAnimationFrame(() => editButton.current?.focus());
   };
+  // After the commit that brings the Edit button back, not on a timer: a save resolves outside any
+  // event, so that commit has no fixed moment, and a frame that beat it found no button (T-192).
+  useEffect(() => {
+    if (editing || !closed.current) return;
+    closed.current = false;
+    editButton.current?.focus();
+  }, [editing]);
   const [deleting, setDeleting] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
