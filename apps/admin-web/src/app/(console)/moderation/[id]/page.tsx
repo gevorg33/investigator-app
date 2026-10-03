@@ -12,7 +12,7 @@ import { Notice } from '@/components/verification/notice';
 import { LOCALE, t, type MessageKey } from '@/i18n/messages';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
-import type { ModerationReviewView } from '@/lib/api/types';
+import type { ModerationReviewView, TagOption } from '@/lib/api/types';
 import { ago, shortId, when } from '@/lib/format';
 import { taxonomyLabels } from '@/lib/taxonomy';
 
@@ -47,7 +47,8 @@ const STATUSES = new Set(['UNDER_REVIEW', 'QUOTED', 'REJECTED', 'DRAFT']);
  * which is not what is decided — the screening that sorted it, any AI classification set apart and
  * labelled as input, every decision on its earlier submissions, and the decision itself. A
  * moderator does not decide their own mission; the page says so rather than offering a form the
- * API would refuse. Attachments arrive with T-066.
+ * API would refuse. The customer's suggested tags are part of the brief; publishing confirms the ones
+ * the moderator keeps (T-055). Attachments arrive with T-066.
  */
 export default async function MissionReviewPage({ params }: { params: Params }) {
   const { id } = await params;
@@ -61,7 +62,11 @@ export default async function MissionReviewPage({ params }: { params: Params }) 
       />
     );
   }
-  const names = await taxonomyLabels();
+  const [names, vocabulary] = await Promise.all([
+    taxonomyLabels(),
+    // The list is always a body; only a 204 reads as null.
+    serverApi<TagOption[]>('/tags?locale=en').then((tags) => tags!),
+  ]);
   const tz = account!.timezone;
   const now = new Date();
   const regions = new Intl.DisplayNames([LOCALE], { type: 'region' });
@@ -108,6 +113,23 @@ export default async function MissionReviewPage({ params }: { params: Params }) 
       view.subjectRelationship === null
         ? none
         : t(`mission.relationship.${view.subjectRelationship}` as MessageKey),
+    ],
+    [
+      'mission.brief.tags',
+      view.tags.length === 0 ? (
+        none
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {view.tags.map((tag) => (
+            <li key={tag.id}>
+              <Badge variant={tag.confirmed ? 'secondary' : 'outline'}>
+                {tag.label ?? shortId(tag.id)} ·{' '}
+                {t(tag.confirmed ? 'mission.tags.confirmed' : 'mission.tags.suggested')}
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      ),
     ],
     [
       'mission.brief.protective_order',
@@ -260,7 +282,12 @@ export default async function MissionReviewPage({ params }: { params: Params }) 
             </AlertContent>
           </Alert>
         ) : view.status === 'UNDER_REVIEW' && screening !== null ? (
-          <ModerationForm missionId={view.id} version={view.version} />
+          <ModerationForm
+            missionId={view.id}
+            version={view.version}
+            tags={vocabulary}
+            suggested={view.tags.filter((tag) => tag.suggested).map((tag) => tag.id)}
+          />
         ) : view.status === 'UNDER_REVIEW' ? null : (
           <p className="text-text-muted">{t('mission.decided')}</p>
         )}

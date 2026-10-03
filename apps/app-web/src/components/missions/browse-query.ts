@@ -1,3 +1,4 @@
+import { MAX_MISSION_TAGS } from '@/lib/tags';
 import type { BrowseFilters, MissionSort } from '@/lib/api/types';
 
 /**
@@ -74,6 +75,11 @@ export function parseBrowse(params: SearchParams): { filters: BrowseFilters; cur
     .filter((l) => /^[a-z]{2}$/.test(l))
     .slice(0, 20);
   if (languages.length > 0) filters.languages = languages;
+  const tags = [...new Set(all(params['tag']).filter((t) => UUID.test(t)))].slice(
+    0,
+    MAX_MISSION_TAGS,
+  );
+  if (tags.length > 0) filters.tagIds = tags;
   if (currency !== undefined) filters.currency = currency;
   const min = toMinorAmount(first(params['min']), currency);
   if (min !== undefined) filters.budgetMinMinor = min;
@@ -105,6 +111,7 @@ export function browseHref(filters: BrowseFilters, cursor?: string): string {
   if (filters.q !== undefined) p.set('q', filters.q);
   if (filters.taxonomyNodeIds?.[0] !== undefined) p.set('category', filters.taxonomyNodeIds[0]);
   for (const l of filters.languages ?? []) p.append('language', l);
+  for (const tag of filters.tagIds ?? []) p.append('tag', tag);
   if (filters.currency !== undefined) p.set('currency', filters.currency);
   if (filters.budgetMinMinor !== undefined)
     p.set('min', toWhole(filters.budgetMinMinor, filters.currency));

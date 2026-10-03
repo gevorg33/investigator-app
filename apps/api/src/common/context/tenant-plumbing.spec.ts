@@ -147,6 +147,8 @@ describe('tenant isolation is not business-domain plumbing', () => {
       'modules/reviews/reviews.service.ts',
       // Staff maintaining the taxonomy, which is platform data that only a write under platform
       // access may change (T-053, approved 2026-09-23). It reads no workspace's rows.
+      // The tag vocabulary, maintained as the taxonomy is (T-055): platform data, no workspace's rows.
+      'modules/taxonomy/tags.service.ts',
       'modules/taxonomy/taxonomy.service.ts',
       'modules/verification/verification.service.ts',
     ]);

@@ -211,7 +211,7 @@ transition service writes the status, and `MissionModerationService` is the only
 it for a staff move — `mission-moderation.invariant.spec.ts` holds all three.
 
 - **Routes** (`/moderation/missions`, MODERATION staff scope, acting as staff): the queue, one
-  mission, and `POST …/:id/decision` with `{ outcome, reason, internalNote?, version }`. Each enters
+  mission, and `POST …/:id/decision` with `{ outcome, reason, internalNote?, tagIds?, version }`. Each enters
   `PlatformContext` with its own `RoutePurpose` (`mission_moderation.queue|review|decide`), audited
   as a crossing before it runs.
 - **The queue** orders by the latest screening's risk band (RESTRICTED first), then by when the
@@ -236,6 +236,13 @@ it for a staff move — `mission-moderation.invariant.spec.ts` holds all three.
   wait, and how many were published, returned and rejected. Aggregates only: no mission, customer or
   moderator is named. It enters `PlatformContext` as `mission_moderation.latency`. It is what T-191
   would be decided on, and it opens nothing.
+- **Tags** (T-055): the review view carries the mission's tags, each marked suggested and/or
+  confirmed. A PUBLISHED decision may carry `tagIds` — the ACTIVE tags the mission is published
+  with, which become *confirmed* (`confirmed_at`, `confirmed_by`) in the same transaction. Any other
+  outcome with `tagIds` is 422 `error.validation.moderation.tags_on_publish`; an unknown or retired
+  tag is 422 and the mission stays under review. A suggestion left out stays a suggestion, which
+  nobody but the customer and staff ever reads. Tags never touch screening or eligibility
+  (`taxonomy.md`, "Tags").
 - **AI classification** is shown in the console as labelled input. Nothing in the view suggests an
   outcome, and the decision names one every time.
 - **Attachments** do not exist yet; opening them, audited per access, is T-066's.

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MissionsModule } from '../missions/missions.module';
+import { TaxonomyModule } from '../taxonomy/taxonomy.module';
 import { MissionModerationController } from './mission-moderation.controller';
 import { MissionModerationService } from './mission-moderation.service';
 
@@ -10,7 +11,8 @@ import { MissionModerationService } from './mission-moderation.service';
  * import itself.
  */
 @Module({
-  imports: [MissionsModule],
+  // TaxonomyModule for the tag vocabulary's names (T-055).
+  imports: [MissionsModule, TaxonomyModule],
   controllers: [MissionModerationController],
   providers: [MissionModerationService],
 })

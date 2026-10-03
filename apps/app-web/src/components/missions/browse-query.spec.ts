@@ -103,6 +103,17 @@ describe('a browse in the address bar', () => {
     expect(browseHref({})).toBe('/missions');
   });
 
+  it('reads tags from the address: ids only, each once, at most eight, and writes them back (T-055)', () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `00000000-0000-4000-8000-0000000000a${i}`);
+    const { filters } = parseBrowse({ tag: [ids[0]!, 'remote', ids[0]!, ...ids.slice(1)] });
+    expect(filters.tagIds).toEqual(ids.slice(0, 8));
+    expect(parseBrowse({ tag: 'remote' }).filters).toEqual({});
+    expect(browseHref({ tagIds: [ids[0]!, ids[1]!] })).toBe(
+      `/missions?tag=${ids[0]}&tag=${ids[1]}`,
+    );
+    expect(narrowingCount({ tagIds: [ids[0]!] })).toBe(1);
+  });
+
   it('never uses `lang`, which the middleware takes as the whole app’s language (ADR-0013)', () => {
     expect(browseHref({ languages: ['hy', 'en'] })).toBe('/missions?language=hy&language=en');
     expect(parseBrowse({ lang: 'hy' }).filters).toEqual({});

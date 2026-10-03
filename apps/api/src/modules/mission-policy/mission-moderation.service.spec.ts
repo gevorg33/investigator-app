@@ -26,6 +26,7 @@ import { OwnMissionRepository } from '../missions/missions.repository';
 import { MissionsService } from '../missions/missions.service';
 import type { DecideModerationDto } from './mission-moderation.dto';
 import { MissionModerationService } from './mission-moderation.service';
+import { TagsService } from '../taxonomy/tags.service';
 import { MissionPolicyService } from './mission-policy.service';
 import type { RiskBandValue } from './mission-screening';
 
@@ -70,7 +71,13 @@ describe('the moderation queue (T-051)', () => {
       owner,
     );
     service = asRequests(
-      new MissionModerationService(db, authz, transitions, new PlatformContext(audit)),
+      new MissionModerationService(
+        db,
+        authz,
+        transitions,
+        new PlatformContext(audit),
+        new TagsService(db, authz, audit, new PlatformContext(audit)),
+      ),
       owner,
     );
   });
@@ -462,8 +469,10 @@ describe('the moderation queue (T-051)', () => {
       expect(theirs.review).toMatchObject({ outcome: 'REJECTED', reason: REASON });
       expect(JSON.stringify(theirs)).not.toContain(NOTE);
       // Nor can their workspace read the decision record that holds the note.
-      const seen = await inWorkspaceOf(owner, m.customer.userId, () =>
-        scopedDb(sql).select().from(missionModerationDecisions),
+      const seen = await inWorkspaceOf(
+        owner,
+        m.customer.userId,
+        async () => await scopedDb(sql).select().from(missionModerationDecisions),
       );
       expect(seen).toEqual([]);
     });
@@ -596,13 +605,16 @@ describe('the moderation queue (T-051)', () => {
           tx`DELETE FROM mission_moderation_decisions WHERE id = ${row!.id}`,
       ]) {
         await expect(
-          inWorkspaceOf(owner, moderator.userId, () =>
-            platform.asStaff(
-              moderator,
-              { scope: 'MODERATION', purpose: 'mission_moderation.decide' },
-              req(),
-              () => sql.begin(attempt),
-            ),
+          inWorkspaceOf(
+            owner,
+            moderator.userId,
+            async () =>
+              await platform.asStaff(
+                moderator,
+                { scope: 'MODERATION', purpose: 'mission_moderation.decide' },
+                req(),
+                () => sql.begin(attempt),
+              ),
           ),
         ).rejects.toThrow(/permission denied/);
       }

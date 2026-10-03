@@ -10,6 +10,7 @@ import { getLocale, getT } from '@/i18n/server';
 import { ApiError } from '@/lib/api/errors';
 import { getAccount, serverApi } from '@/lib/api/server';
 import type { OwnMission } from '@/lib/api/types';
+import { tagNames } from '@/lib/tags';
 
 type Params = Promise<{ id: string }>;
 
@@ -76,6 +77,7 @@ export default async function MissionPage({
           country:
             mission.countryCode === null ? null : name(options.countries, mission.countryCode),
           languages: mission.languages.map((code) => name(options.languages, code)),
+          tags: tagNames(mission.tagIds, options.tags),
         }}
       />
     </Page>

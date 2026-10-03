@@ -4,7 +4,7 @@ title: Reviewing missions held for policy review
 audience: staff
 visibility: staff
 locale: en
-version: 6
+version: 7
 status: current
 updated: 2026-10-03
 source_of_truth: docs
@@ -13,7 +13,7 @@ related_code:
   - apps/api/src/modules/mission-policy
   - apps/api/src/modules/ai/discovery
   - apps/api/src/modules/missions
-tags: [staff, policy, missions, review, lawful-use]
+tags: [staff, policy, missions, review, lawful-use, tags]
 ---
 
 # Mission policy review
@@ -64,6 +64,12 @@ be recorded until both are there.
 - On a **publication**, the reason is for staff only.
 - The **internal note** is optional and never shown to the customer. Put there what the reason must
   not say.
+
+**Tags.** The brief shows the tags the customer suggested. When you choose **Publish**, a list of the
+tags in use appears with their suggestions ticked: keep the ones that describe the mission, untick
+the ones that do not, and add any that are missing — at most eight. Only the tags you publish with
+are confirmed, and only confirmed tags narrow and order investigators' browsing. Tags are never a
+reason to publish or refuse, and they change nothing about who may see the mission.
 
 **Review times**, linked from the queue, shows how long customers waited for a decision and what was
 decided, per category and risk band. It names no mission, customer or moderator. Publishing a

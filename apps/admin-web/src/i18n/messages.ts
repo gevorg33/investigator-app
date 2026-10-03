@@ -154,6 +154,7 @@ const en = {
   'mission.brief.deadline_value': 'Needed by {deadline}',
   'mission.brief.budget': 'Budget',
   'mission.brief.relationship': 'Their relationship to the subject',
+  'mission.brief.tags': 'Tags',
   'mission.brief.protective_order': 'A protective order involving the subject',
   'mission.brief.protective_order.yes': 'Declared',
   'mission.brief.protective_order.no': 'None declared',
@@ -176,6 +177,8 @@ const en = {
   'mission.screening.no_flags': 'None',
   'mission.screening.ruleset': 'Ruleset {version}, screened {date}',
   'mission.screening.missing': 'This mission has no screening record. Do not decide it; report it.',
+  'mission.tags.suggested': 'suggested',
+  'mission.tags.confirmed': 'confirmed',
   'mission.ai.title': 'AI classification — input only',
   'mission.ai.note':
     'A model’s reading of the mission. It never decides, and it chooses nothing for you below.',
@@ -208,6 +211,10 @@ const en = {
     'Shown to the customer exactly as you write it. Say what to change and why — never which rule matched.',
   'moderate.reason.staff': 'Reason — staff only',
   'moderate.reason.staff_hint': 'Recorded with the decision. The customer does not see it.',
+  'moderate.tags': 'Tags to publish with',
+  'moderate.tags_hint':
+    'The customer’s suggestions are ticked. Keep the ones that fit, add any that are missing; only these narrow and order investigators’ browsing.',
+  'moderate.tags_suggested': '{label} (suggested)',
   'moderate.note': 'Internal note (optional)',
   'moderate.note_hint': 'Staff only, never shown to the customer: what the reason should not say.',
   'moderate.submit': 'Record the decision',
@@ -228,6 +235,11 @@ const en = {
   'error.validation.verification.reason_required': 'Write a reason for the decision.',
   'error.validation.moderation.reason_required':
     'Write a reason for the decision. On a rejection or a return, the customer reads it as written.',
+  'error.validation.moderation.tags_on_publish':
+    'Tags are confirmed only when a mission is published.',
+  'error.validation.tags.unknown': 'One of these tags does not exist. Choose from the list.',
+  'error.validation.tags.deprecated':
+    'One of these tags is no longer in use. Choose a current one.',
   'error.validation.moderation.note_empty':
     'Leave the internal note empty, or write something in it.',
 } as const;

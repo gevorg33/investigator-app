@@ -24,6 +24,7 @@ export const EMPTY: MissionFields = {
   purpose: null,
   subjectRelationship: null,
   protectiveOrderDeclared: null,
+  tagIds: [],
 };
 
 const fieldsOf = (m: OwnMission | null): MissionFields =>

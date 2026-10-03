@@ -4,16 +4,16 @@ title: Creating and submitting a mission
 audience: customer
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-26
+updated: 2026-10-03
 source_of_truth: docs
 implementation_status: implemented
 related_code:
   - apps/api/src/modules/missions
   - apps/api/src/modules/mission-policy
   - apps/app-web/src/components/missions
-tags: [missions, drafts, submission, review, categories]
+tags: [missions, drafts, submission, review, categories, tags]
 ---
 
 # Creating a mission
@@ -48,6 +48,19 @@ The last screen shows your answers together as a brief — what the reviewer rea
 investigators quote on once it is published — with a **Change** link for each answer. There you
 confirm that your request is for a lawful purpose. This confirmation is always yours to tick,
 and a mission cannot be sent without it.
+
+## What are tags, and do I need them?
+
+Tags are short labels that describe a mission beyond its kind of help — for example that the work
+can be done remotely, or that the result is for court. They are optional. On the question about the
+kind of help, you can suggest up to eight from a fixed list; you cannot write your own.
+
+Your tags are suggestions. When the mission is published, the reviewer confirms the ones that fit
+and may add others. Investigators see and filter by confirmed tags only. Tags help the right
+investigators find your mission sooner; they never decide who may see it or quote on it.
+
+You can change your suggestions while the mission is a draft. Once you submit it they are fixed
+with the rest of your answers. A new mission started from a rejected one starts without tags.
 
 ## Can I save a mission and finish it later?
 

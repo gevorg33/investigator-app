@@ -11,8 +11,11 @@ import {
   missions,
   missionScreenings,
   missionStatusHistory,
+  missionTags,
 } from '../../database/schema';
 import { MissionTransitionService } from '../missions/mission-transition.service';
+import { requireActiveTags } from '../taxonomy/tag-rules';
+import { TagsService } from '../taxonomy/tags.service';
 import type { MissionStatus } from '../missions/mission-transitions';
 import type {
   DecideModerationDto,
@@ -96,6 +99,11 @@ export interface ModerationReviewView {
     aiClassification: unknown;
   } | null;
   decisions: ModerationDecisionView[];
+  /**
+   * The mission's tags (T-055): those the customer suggested, and those confirmed when it was
+   * published, named in English. Deciding to publish confirms a set of them.
+   */
+  tags: Array<{ id: string; label: string | null; suggested: boolean; confirmed: boolean }>;
   /** The moderator is the mission's customer: they cannot decide it. */
   party: boolean;
 }
@@ -145,6 +153,7 @@ export class MissionModerationService {
     private readonly authz: AuthzService,
     private readonly transitions: MissionTransitionService,
     private readonly platform: PlatformContext,
+    private readonly tags: TagsService,
   ) {}
 
   /** Missions under review: the most sensitive band first, then whoever has waited longest. */
@@ -312,6 +321,7 @@ export class MissionModerationService {
                   aiClassification: screening.aiClassification ?? null,
                 },
           decisions: decisions.map(decisionView),
+          tags: await this.tagsOf(m.id),
           party: this.isParty(actor, m),
         };
       },
@@ -366,6 +376,18 @@ export class MissionModerationService {
             throw new Error(`mission ${m.id} is under review with no screening or queue entry`);
           }
 
+          // Tags are confirmed by publishing, and only by publishing (T-055).
+          if (dto.tagIds !== undefined && dto.outcome !== 'PUBLISHED') {
+            throw AppError.validation([
+              {
+                field: 'tagIds',
+                code: 'NOT_PUBLISHING',
+                messageKey: 'error.validation.moderation.tags_on_publish',
+              },
+            ]);
+          }
+          await requireActiveTags(tx, dto.tagIds ?? [], 'tagIds');
+
           const reason = dto.reason.trim();
           await this.transitions.apply(
             tx,
@@ -402,6 +424,8 @@ export class MissionModerationService {
               riskBand: screening.riskBand,
             })
             .returning();
+          if (dto.outcome === 'PUBLISHED')
+            await this.confirmTags(tx, actor, m.id, dto.tagIds ?? []);
           return decisionView(decision!);
         }),
     );
@@ -513,6 +537,50 @@ export class MissionModerationService {
       .orderBy(desc(missionStatusHistory.seq))
       .limit(1);
     return entry?.occurredAt ?? null;
+  }
+
+  /** A mission's tags, suggested or confirmed, with their English names. */
+  private async tagsOf(missionId: string): Promise<ModerationReviewView['tags']> {
+    const rows = await this.db
+      .select()
+      .from(missionTags)
+      .where(eq(missionTags.missionId, missionId))
+      .orderBy(asc(missionTags.suggestedAt), asc(missionTags.tagId));
+    const names = await this.tags.labels(rows.map((r) => r.tagId));
+    return rows.map((r) => ({
+      id: r.tagId,
+      label: names.get(r.tagId) ?? null,
+      suggested: r.suggestedAt !== null,
+      confirmed: r.confirmedAt !== null,
+    }));
+  }
+
+  /**
+   * Confirms the tags a mission is published with: the suggestions the moderator kept, and any they
+   * added. Suggestions they left out stay on record as suggested, and are never seen by anyone else.
+   */
+  private async confirmTags(
+    tx: Tx,
+    actor: Actor,
+    missionId: string,
+    tagIds: string[],
+  ): Promise<void> {
+    const chosen = [...new Set(tagIds)];
+    if (chosen.length === 0) return;
+    await tx
+      .insert(missionTags)
+      .values(
+        chosen.map((tagId) => ({
+          missionId,
+          tagId,
+          confirmedAt: new Date(),
+          confirmedBy: actor.userId,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [missionTags.missionId, missionTags.tagId],
+        set: { confirmedAt: sql`now()`, confirmedBy: actor.userId },
+      });
   }
 
   /**

@@ -105,7 +105,13 @@ describe('row-level security', () => {
          AND table_name = ANY(${platformTables(true)})`;
     // Sorted in JS, not SQL: collation differs between the CI image and a laptop (T-077).
     const shape = [...new Set(granted.map((g) => g.privilege))].sort();
-    expect(platformTables(true)).toEqual(['taxonomy_nodes', 'taxonomy_node_labels']);
+    // T-055 added the tag vocabulary, maintained exactly as the taxonomy is.
+    expect(platformTables(true)).toEqual([
+      'taxonomy_nodes',
+      'taxonomy_node_labels',
+      'tags',
+      'tag_labels',
+    ]);
     expect(shape).toEqual(['INSERT', 'SELECT', 'UPDATE']);
     for (const table of platformTables(true)) {
       expect(granted.filter((g) => g.table === table)).toHaveLength(3);
@@ -130,7 +136,8 @@ describe('row-level security', () => {
         if (p.cmd === 'UPDATE') expect(p.qual, p.table).toBe('app_platform_access()');
       }
     }
-    expect(policies).toHaveLength(6);
+    // Three per table: everyone reads, staff insert, staff update.
+    expect(policies).toHaveLength(12);
   });
 
   it('reads the context through NULLIF, so no context matches nothing', async () => {

@@ -4,9 +4,9 @@ title: Finding missions you can quote on
 audience: investigator
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
-updated: 2026-10-01
+updated: 2026-10-03
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -14,7 +14,7 @@ related_code:
   - apps/app-web
   - apps/api/src/modules/missions
   - apps/api/src/modules/search
-tags: [missions, discovery, eligibility, work]
+tags: [missions, discovery, eligibility, work, tags]
 ---
 
 # Finding work
@@ -113,6 +113,11 @@ inside the area.
 The languages filter keeps missions whose **every** required language you tick: a mission needing
 Armenian and English is not shown if you tick only English. The number next to **Filters** says how
 many are on; **Clear filters** removes them all.
+
+**Tags** narrow the list further: tick one or more, and only missions carrying **every** tag you
+ticked are shown — up to eight at a time. A tag counts only once a moderator has confirmed it when
+publishing the mission; what a customer merely suggested is never used. Tags only ever narrow what
+you could already see: they never show you a mission outside your categories, areas or languages.
 
 ## How do I sort the list?
 

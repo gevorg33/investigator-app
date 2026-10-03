@@ -206,6 +206,10 @@ a `<details>`; it worked and looked like a form, not a product.
   and distance are chips (`ToggleGroup`); currency and area are native selects. Choices are held in
   the sheet until "Show missions", then pushed as the address; "Reset" clears what narrows and keeps
   the words and the order.
+- **Tags** (T-055) are chips in the sheet too, from `GET /tags` in the reader's language; with
+  several, a mission must carry all of them. At most eight; past that the rest are disabled. Each
+  is a `tag` URL parameter (UUIDs only, deduplicated). Tags only narrow — they never widen what an
+  investigator may see (`taxonomy.md`, "Tags"). No vocabulary yet, no section.
 - **Active filters** are chips under the toolbar, each named in words ("AMD 1,500–2,000", "Due by
   Oct 31", "Inside the area") and each a link to the same browse without it.
 - **Cards** (`MissionCard` on `Card`): category badge and freshness; title; two lines of
@@ -252,6 +256,11 @@ in the customer's words) → the brief. Progress is `Progress` plus "Question 3 
 - **Required answers are the API's list** (`REQUIRED_AT_SUBMISSION`, plus the protective-order
   answer for a personal relationship), asked one screen at a time: Continue with one missing flags
   it beside the field and moves focus to it. Optional ones are labelled so.
+- **Tags** (T-055) are offered on the kind-of-help question, under the category, as optional chips
+  from `GET /tags` in the reader's language — "suggest up to 8; a moderator confirms them". They
+  are saved with the draft like any answer (`tagIds`), shown on the brief, and frozen once sent.
+  The customer never types a tag. "Start a new mission from this one" carries no tags: a
+  moderator decided on those.
 - **Languages start with the reader's own**, saved and removable — a default, not an assumption.
 - **The brief** (`Brief`) is each answer under a plain heading with "Change", then the
   lawful-purpose confirmation — a `Checkbox` only the customer ticks, never pre-ticked or copied —

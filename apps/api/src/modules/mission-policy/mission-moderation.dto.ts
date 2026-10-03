@@ -1,13 +1,18 @@
+import { MAX_MISSION_TAGS } from '../taxonomy/tag-rules';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { NOTE_MAX, REASON_MAX } from './mission-moderation.policy';
 
@@ -43,6 +48,18 @@ export class DecideModerationDto {
   @IsInt()
   @Min(1)
   version!: number;
+
+  /**
+   * The tags the mission is published with (T-055): the moderator confirms the customer's
+   * suggestions they agree with and may add others, all from the curated vocabulary. Publication
+   * only — a rejected or returned mission carries no confirmed tag. Omitted, none is confirmed.
+   */
+  // Present means validated: `@IsOptional` would let `null` through.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(MAX_MISSION_TAGS)
+  @IsUUID(undefined, { each: true })
+  tagIds?: string[];
 }
 
 /** The queue, most sensitive band first, then longest waiting. The limit is clamped by the service. */

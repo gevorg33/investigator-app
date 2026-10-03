@@ -33,6 +33,10 @@ const OPTIONS = {
     { code: 'ru', name: 'Russian' },
   ],
   currencies: ['AMD', 'JPY', 'USD'],
+  tags: [
+    { id: 'tag-remote', slug: 'remote', label: 'Remote work', labelLocale: 'en' },
+    { id: 'tag-urgent', slug: 'urgent', label: 'Urgent', labelLocale: 'en' },
+  ],
 };
 
 const saved = (over: Partial<OwnMission> = {}) =>
@@ -305,6 +309,50 @@ describe('mission intake', () => {
       await u.click(screen.getByRole('option', { name: 'Due diligence' }));
       await pause();
       expect(writes()[0]!.body).toEqual({ taxonomyNodeId: DD, version: 1 });
+    });
+
+    it('kind: suggests tags from the vocabulary, optional, saved as the whole set (T-055)', async () => {
+      api.on(`PATCH /missions/me/${ID}`, 200, saved({ version: 2 }));
+      open(saved(), 'kind');
+      const u = user();
+      const group = screen.getByRole('group', { name: en.intake.kind.tags_title });
+      expect(group).toHaveAccessibleDescription(
+        `${en.intake.kind.tags_hint} ${en.intake.kind.tags_limit.replace('{max}', '8')}`,
+      );
+      const chips = within(group).getAllByRole('button');
+      expect(chips.map((c) => c.textContent)).toEqual(['Remote work', 'Urgent']);
+      await u.click(within(group).getByRole('button', { name: 'Urgent' }));
+      await u.click(within(group).getByRole('button', { name: 'Remote work' }));
+      expect(within(group).getByRole('button', { name: 'Urgent' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await pause();
+      expect(writes().at(-1)!.body).toEqual({ tagIds: ['tag-urgent', 'tag-remote'], version: 1 });
+    });
+
+    it('kind: at eight tags, offers no ninth — the rest are disabled, a chosen one can still go', async () => {
+      const many = Array.from({ length: 9 }, (_, i) => ({
+        id: `tag-${i}`,
+        slug: `t${i}`,
+        label: `Tag ${i}`,
+        labelLocale: 'en',
+      }));
+      open(saved({ tagIds: many.slice(0, 8).map((t) => t.id) }), 'kind', { tags: many });
+      const group = screen.getByRole('group', { name: en.intake.kind.tags_title });
+      expect(within(group).getByRole('button', { name: 'Tag 8' })).toBeDisabled();
+      expect(within(group).getByRole('button', { name: 'Tag 0' })).toBeEnabled();
+    });
+
+    it('the brief names the suggested tags under the kind of help, leaving out one retired since', () => {
+      open(saved({ taxonomyNodeId: DD, tagIds: ['tag-remote', 'tag-retired'] }), 'review');
+      expect(screen.getByText('Tags: Remote work')).toBeInTheDocument();
+      expect(screen.queryByText(/tag-retired/)).toBeNull();
+    });
+
+    it('kind: shows no tag picker when there is no vocabulary', () => {
+      open(saved(), 'kind', { tags: [] });
+      expect(screen.queryByRole('group', { name: en.intake.kind.tags_title })).toBeNull();
     });
 
     it('kind: says a mission cannot be sent yet when there is nothing to choose from', () => {

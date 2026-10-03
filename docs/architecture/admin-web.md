@@ -99,12 +99,15 @@ for every member of staff; whether they may work it is the API's answer, which e
   how many rules matched, and its category. Paged by cursor like verification.
 - **Mission** `/moderation/[id]` — the brief as submitted, never the customer's identity; the
   screening (band, queue, the rule ids matched, ruleset and when); the **AI classification in its own
-  dashed, labelled box**, input only; every decision on the mission across its submissions, the
+  dashed, labelled box**, input only; the tags, each marked "suggested" or "confirmed" (T-055); every decision on the mission across its submissions, the
   reason the customer read set apart from the internal note.
 - **Decision** — a `Drawer` like verification's: Publish, Return for changes, Reject, none selected;
   the reason's label and hint follow the outcome ("the customer reads this" on a rejection or a
   return, "staff only" on a publication); an optional internal note. The control is disabled until an
-  outcome is chosen and the reason says something. A 409 says someone else decided first. The
+  outcome is chosen and the reason says something. On **Publish** a checklist of the ACTIVE tags
+  appears (T-055): the customer's suggestions ticked and first, the rest of the vocabulary after,
+  at most eight; the ticked ones are sent as `tagIds` and confirmed. Nothing about tags is sent on
+  any other outcome, and a suggestion since retired is not offered. A 409 says someone else decided first. The
   moderator's own mission shows a notice instead of the form; one with no screening record says not
   to decide it.
 

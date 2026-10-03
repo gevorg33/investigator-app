@@ -21,11 +21,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { t, type MessageKey } from '@/i18n/messages';
 import { callApi } from '@/lib/api/browser';
-import type { ModerationOutcome } from '@/lib/api/types';
+import type { ModerationOutcome, TagOption } from '@/lib/api/types';
 
 /** The API's longest reason and note (`REASON_MAX`, `NOTE_MAX`, mission-moderation.policy.ts). */
 export const REASON_MAX = 2000;
 export const NOTE_MAX = 4000;
+/** The most tags a mission carries (`MAX_MISSION_TAGS`, tag-rules.ts). */
+export const MAX_MISSION_TAGS = 8;
 
 const OUTCOMES: ReadonlyArray<[ModerationOutcome, MessageKey]> = [
   ['PUBLISHED', 'moderate.publish'],
@@ -50,8 +52,25 @@ const REASON_LABEL = (outcome: ModerationOutcome | null): [MessageKey, MessageKe
  * (`review`, T-119), so its label says so; on a publication it is staff only. What the reason must
  * not say goes in the internal note, which the customer never sees. A sheet from the bottom on a
  * phone, from the side from `md` (responsive-design). Decided, the page is read again.
+ *
+ * Publishing also confirms the mission's tags (T-055). The customer's suggestions come ticked and
+ * first; the moderator keeps what fits and adds what is missing. Only confirmed tags reach browsing,
+ * so nothing is sent for them on any other outcome — the API would refuse it. A suggestion since
+ * retired is not offered: it cannot be confirmed.
  */
-export function ModerationForm({ missionId, version }: { missionId: string; version: number }) {
+export function ModerationForm({
+  missionId,
+  version,
+  tags,
+  suggested,
+}: {
+  missionId: string;
+  version: number;
+  /** The ACTIVE vocabulary, in label order. */
+  tags: readonly TagOption[];
+  /** The ids the customer suggested. */
+  suggested: readonly string[];
+}) {
   const router = useRouter();
   const side = useMediaQuery(`(min-width: ${breakpoints.md})`) ? 'right' : 'bottom';
   const [open, setOpen] = useState(false);
@@ -61,6 +80,16 @@ export function ModerationForm({ missionId, version }: { missionId: string; vers
   const noteId = useId();
   const [reasonLabel, reasonHint] = REASON_LABEL(outcome);
   const ready = outcome !== null && reason.trim() !== '';
+  const offered = [
+    ...tags.filter((tag) => suggested.includes(tag.id)),
+    ...tags.filter((tag) => !suggested.includes(tag.id)),
+  ];
+  const [chosen, setChosen] = useState<string[]>(() =>
+    offered.filter((tag) => suggested.includes(tag.id)).map((tag) => tag.id),
+  );
+  const tagsFull = chosen.length >= MAX_MISSION_TAGS;
+  const toggle = (id: string, on: boolean) =>
+    setChosen((c) => (on ? [...c, id] : c.filter((x) => x !== id)));
 
   const { pending, error, onSubmit } = useSubmit(
     (form) => {
@@ -70,6 +99,7 @@ export function ModerationForm({ missionId, version }: { missionId: string; vers
           outcome,
           reason: reason.trim(),
           ...(note === '' ? {} : { internalNote: note }),
+          ...(outcome === 'PUBLISHED' && chosen.length > 0 ? { tagIds: chosen } : {}),
           version,
         },
       });
@@ -115,6 +145,34 @@ export function ModerationForm({ missionId, version }: { missionId: string; vers
                 </label>
               ))}
             </fieldset>
+            {outcome === 'PUBLISHED' && offered.length > 0 && (
+              <fieldset className="grid gap-2" aria-describedby={`${reasonId}-tags`}>
+                <legend className="mb-1 text-sm font-medium">{t('moderate.tags')}</legend>
+                <p id={`${reasonId}-tags`} className="text-sm text-text-muted">
+                  {t('moderate.tags_hint')}
+                </p>
+                {offered.map((tag) => {
+                  const on = chosen.includes(tag.id);
+                  return (
+                    <label
+                      key={tag.id}
+                      className="flex min-h-11 items-center gap-3 rounded-md border border-border-control px-3"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        disabled={tagsFull && !on}
+                        onChange={(e) => toggle(tag.id, e.target.checked)}
+                        className="size-4"
+                      />
+                      {suggested.includes(tag.id)
+                        ? t('moderate.tags_suggested', { label: tag.label })
+                        : tag.label}
+                    </label>
+                  );
+                })}
+              </fieldset>
+            )}
             <div className="grid gap-1.5">
               <label htmlFor={reasonId} className="text-sm font-medium">
                 {t(reasonLabel)}

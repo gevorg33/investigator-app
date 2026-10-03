@@ -127,6 +127,8 @@ export interface ModerationReviewView {
     aiClassification: unknown;
   } | null;
   decisions: ModerationDecision[];
+  /** The mission's tags (T-055): suggested by the customer, confirmed when it was published. */
+  tags: Array<{ id: string; label: string | null; suggested: boolean; confirmed: boolean }>;
   /** The moderator is the mission's customer, and cannot decide it. */
   party: boolean;
 }
@@ -145,4 +147,12 @@ export interface LatencyRow {
 export interface LatencyReport {
   days: 30 | 90 | 365;
   rows: LatencyRow[];
+}
+
+/** A tag in the curated vocabulary, as `GET /tags` offers it (T-055). */
+export interface TagOption {
+  id: string;
+  slug: string;
+  label: string;
+  labelLocale: string;
 }

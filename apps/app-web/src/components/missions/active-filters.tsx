@@ -22,10 +22,13 @@ export async function ActiveFilters({
   filters,
   categories,
   areas,
+  tags,
   locale,
 }: {
   filters: BrowseFilters;
   categories: ReadonlyMap<string, string>;
+  /** Tag names by id (T-055). */
+  tags: ReadonlyMap<string, string>;
   areas: readonly OwnServiceArea[];
   locale: Locale;
 }) {
@@ -48,6 +51,16 @@ export async function ActiveFilters({
       key: `language-${code}`,
       label: names.of(code)!,
       without: rest.length === 0 ? without(filters, 'languages') : { ...filters, languages: rest },
+    });
+  }
+  const tagIds = filters.tagIds ?? [];
+  for (const id of tagIds) {
+    const rest = tagIds.filter((other) => other !== id);
+    chips.push({
+      key: `tag-${id}`,
+      // A tag retired since the address was made is still a filter; it is named as one.
+      label: tags.get(id) ?? t('missions.browse.tag'),
+      without: rest.length === 0 ? without(filters, 'tagIds') : { ...filters, tagIds: rest },
     });
   }
   const { currency, budgetMinMinor: min, budgetMaxMinor: max } = filters;

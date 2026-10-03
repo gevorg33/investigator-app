@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
@@ -7,10 +7,11 @@ import { AppError } from '../../common/errors/app-error';
 import type { FieldIssue } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../database/database.module';
-import { missions, missionStatusHistory, taxonomyNodes } from '../../database/schema';
+import { missions, missionStatusHistory, missionTags, taxonomyNodes } from '../../database/schema';
 import type { LonLat } from '../../database/schema/types';
 import { RateLimitService } from '../auth/rate-limit.service';
 import { MissionPolicyService } from '../mission-policy/mission-policy.service';
+import { requireActiveTags } from '../taxonomy/tag-rules';
 import {
   PERSONAL_RELATIONSHIPS,
   type SubjectRelationshipValue,
@@ -56,6 +57,11 @@ export interface OwnMission {
    * otherwise null. The reason is written for the customer to act on (T-051).
    */
   review: MissionReview | null;
+  /**
+   * The tags the customer suggested from the curated vocabulary (T-055). A moderator confirms the
+   * tags when publishing; only confirmed ones narrow browse or order it.
+   */
+  tagIds: string[];
 }
 
 /** Required before a mission may be submitted. The database enforces the same list. */
@@ -87,8 +93,11 @@ export class MissionsService {
   async listMine(actor: Actor, req: RequestContext): Promise<OwnMission[]> {
     await this.requireCustomer(actor, this.ctx('mission.list', req));
     const rows = await this.repository.listMine(actor);
-    const reviews = await this.repository.reviewsOf(rows);
-    return rows.map((m) => view(m, reviews.get(m.id)));
+    const [reviews, tagged] = await Promise.all([
+      this.repository.reviewsOf(rows),
+      this.repository.suggestedTagsOf(rows),
+    ]);
+    return rows.map((m) => view(m, tagged.get(m.id)!, reviews.get(m.id)));
   }
 
   async getMine(actor: Actor, id: string, req: RequestContext): Promise<OwnMission> {
@@ -99,7 +108,11 @@ export class MissionsService {
       await this.repository.findOneForActor(actor, id),
       c,
     );
-    return view(mission, (await this.repository.reviewsOf([mission])).get(mission.id));
+    const [reviews, tagged] = await Promise.all([
+      this.repository.reviewsOf([mission]),
+      this.repository.suggestedTagsOf([mission]),
+    ]);
+    return view(mission, tagged.get(mission.id)!, reviews.get(mission.id));
   }
 
   async createDraft(
@@ -129,8 +142,9 @@ export class MissionsService {
         actorKind: 'CUSTOMER',
         actorId: actor.userId,
       });
+      const tagIds = await this.suggestTags(tx, created.id, dto.tagIds ?? []);
       await this.record(actor, req, 'mission.created', created.id, tx);
-      return view(created);
+      return view(created, tagIds);
     });
   }
 
@@ -163,11 +177,16 @@ export class MissionsService {
         .returning();
       if (!row) throw AppError.stateConflict();
 
+      if (dto.tagIds !== undefined) await this.suggestTags(tx, mission.id, dto.tagIds);
       await this.record(actor, req, 'mission.draft_updated', mission.id, tx);
       return row;
     });
     // An edit is not a move, so a returned draft's request for changes still stands.
-    return view(updated, (await this.repository.reviewsOf([updated])).get(updated.id));
+    const [reviews, tagged] = await Promise.all([
+      this.repository.reviewsOf([updated]),
+      this.repository.suggestedTagsOf([updated]),
+    ]);
+    return view(updated, tagged.get(updated.id)!, reviews.get(updated.id));
   }
 
   /**
@@ -230,12 +249,15 @@ export class MissionsService {
       );
 
       await this.record(actor, req, 'mission.submitted', mission.id, tx);
-      return view({
-        ...mission,
-        ...screeningFreeFields(reviewed),
-        lawfulPurposeConfirmedAt: now,
-        submittedAt: now,
-      });
+      return view(
+        {
+          ...mission,
+          ...screeningFreeFields(reviewed),
+          lawfulPurposeConfirmedAt: now,
+          submittedAt: now,
+        },
+        (await this.repository.suggestedTagsOf([mission], tx)).get(mission.id)!,
+      );
     });
   }
 
@@ -265,7 +287,10 @@ export class MissionsService {
         },
       );
       await this.record(actor, req, 'mission.cancelled', mission.id, tx);
-      return view({ ...mission, ...screeningFreeFields(cancelled) });
+      return view(
+        { ...mission, ...screeningFreeFields(cancelled) },
+        (await this.repository.suggestedTagsOf([mission], tx)).get(mission.id)!,
+      );
     });
   }
 
@@ -330,6 +355,36 @@ export class MissionsService {
   }
 
   /** Only the fields the client sent. An absent field is unchanged; an explicit null clears it. */
+  /**
+   * Replaces a draft's tag suggestions with `tagIds` (T-055): every one an ACTIVE tag in the
+   * curated vocabulary, or the save is refused. Kept where they still stand, so a suggestion keeps
+   * the time it was first made. Returns the set, in the order suggested.
+   */
+  private async suggestTags(tx: Tx, missionId: string, tagIds: string[]): Promise<string[]> {
+    const wanted = [...new Set(tagIds)];
+    await requireActiveTags(tx, wanted, 'tagIds');
+    await tx
+      .delete(missionTags)
+      .where(
+        and(
+          eq(missionTags.missionId, missionId),
+          wanted.length === 0 ? undefined : notInArray(missionTags.tagId, wanted),
+        ),
+      );
+    if (wanted.length > 0) {
+      await tx
+        .insert(missionTags)
+        .values(wanted.map((tagId) => ({ missionId, tagId, suggestedAt: new Date() })))
+        .onConflictDoNothing();
+    }
+    const kept = await tx
+      .select({ tagId: missionTags.tagId })
+      .from(missionTags)
+      .where(eq(missionTags.missionId, missionId))
+      .orderBy(missionTags.suggestedAt, missionTags.tagId);
+    return kept.map((r) => r.tagId);
+  }
+
   private patch(dto: SaveMissionDraftDto): Partial<typeof missions.$inferInsert> {
     const p: Partial<typeof missions.$inferInsert> = {};
     if (dto.taxonomyNodeId !== undefined) p.taxonomyNodeId = dto.taxonomyNodeId;
@@ -433,7 +488,7 @@ const screeningFreeFields = (moved: { status: MissionStatus; version: number }) 
  * `review` is looked up by the reads and by a draft edit. Every other write is itself the
  * mission's latest move — created, submitted, cancelled — so no moderator's outcome stands.
  */
-const view = (m: MissionRow, review?: MissionReview): OwnMission => ({
+const view = (m: MissionRow, tagIds: string[], review?: MissionReview): OwnMission => ({
   id: m.id,
   status: m.status,
   version: m.version,
@@ -457,4 +512,5 @@ const view = (m: MissionRow, review?: MissionReview): OwnMission => ({
   createdAt: m.createdAt,
   updatedAt: m.updatedAt,
   review: review ?? null,
+  tagIds,
 });

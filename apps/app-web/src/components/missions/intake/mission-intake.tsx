@@ -14,8 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { ApiError, callApi } from '@/lib/api/browser';
 import type { FieldIssue } from '@/lib/api/errors';
-import type { MissionFields, OwnMission } from '@/lib/api/types';
+import type { MissionFields, OwnMission, TagOption } from '@/lib/api/types';
 import type { CodeOption } from '@/lib/codes';
+import { tagNames } from '@/lib/tags';
 import { CancelMission } from '../cancel-mission';
 import { Brief } from './brief';
 import {
@@ -56,6 +57,7 @@ export function MissionIntake({
   countries,
   languages,
   currencies,
+  tags,
   step: requested,
 }: {
   mission: OwnMission | null;
@@ -63,6 +65,7 @@ export function MissionIntake({
   countries: readonly CodeOption[];
   languages: readonly CodeOption[];
   currencies: readonly string[];
+  tags: readonly TagOption[];
   step?: Step | undefined;
 }) {
   const t = useTranslations('missions.intake');
@@ -171,7 +174,7 @@ export function MissionIntake({
   const common: QuestionProps = { fields, edit, flagged };
   const question: Record<Exclude<Step, 'review'>, ReactNode> = {
     need: <NeedQuestion {...common} />,
-    kind: <KindQuestion {...common} categories={categories} />,
+    kind: <KindQuestion {...common} categories={categories} tags={tags} />,
     where: <WhereQuestion {...common} countries={countries} />,
     when: <WhenQuestion {...common} />,
     budget: <BudgetQuestion {...common} currencies={currencies} />,
@@ -186,6 +189,7 @@ export function MissionIntake({
     category: categories.find((c) => c.id === fields.taxonomyNodeId)?.label ?? null,
     country: fields.countryCode === null ? null : byCode(countries, fields.countryCode),
     languages: fields.languages.map((code) => byCode(languages, code)),
+    tags: tagNames(fields.tagIds, tags),
   };
 
   /** Field issues the API found on sending, each with the question that fixes it. */

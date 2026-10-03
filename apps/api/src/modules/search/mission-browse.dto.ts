@@ -1,3 +1,4 @@
+import { MAX_MISSION_TAGS } from '../taxonomy/tag-rules';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -13,6 +14,7 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { MAX_FILTER_VALUES } from './search.policy';
 
@@ -36,8 +38,6 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * (docs/api/pagination.md), like discovery's filters. Every field narrows the set eligibility has
  * already decided; none can widen it, and none names eligibility itself — there is no status, no
  * "include drafts", nothing that could be set to see what an investigator may not.
- *
- * Tags are not here: they do not exist until T-055, which specifies where search consumes them.
  */
 export class MissionBrowseFiltersDto {
   /**
@@ -49,6 +49,17 @@ export class MissionBrowseFiltersDto {
   @ArrayMaxSize(MAX_FILTER_VALUES)
   @IsUUID(undefined, { each: true })
   taxonomyNodeIds?: string[];
+
+  /**
+   * Curated tag ids (T-055). A mission matches when it carries every one, confirmed when it was
+   * published — or a tag since merged into one of them. Each added tag narrows; none widens.
+   */
+  // Present means validated: `@IsOptional` would let `null` through.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(MAX_MISSION_TAGS)
+  @IsUUID(undefined, { each: true })
+  tagIds?: string[];
 
   /** ISO 4217. Required with a budget filter or the budget sort: budgets in different currencies do not compare. */
   @IsOptional()

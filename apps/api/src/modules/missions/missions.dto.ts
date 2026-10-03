@@ -1,3 +1,4 @@
+import { MAX_MISSION_TAGS } from '../taxonomy/tag-rules';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
   Max,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { subjectRelationship } from '../../database/schema';
@@ -104,6 +106,18 @@ export class SaveMissionDraftDto {
   @IsOptional()
   @IsBoolean()
   protectiveOrderDeclared?: boolean | null;
+
+  /**
+   * Tags the customer suggests from the curated vocabulary (T-055) — never free text. The whole
+   * set: it replaces the draft's suggestions, and `[]` withdraws them all. A moderator confirms
+   * the tags when publishing; until then nobody else sees them.
+   */
+  // Present means validated: `@IsOptional` would let `null` through, and `[]` is how to withdraw.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(MAX_MISSION_TAGS)
+  @IsUUID(undefined, { each: true })
+  tagIds?: string[];
 }
 
 /**

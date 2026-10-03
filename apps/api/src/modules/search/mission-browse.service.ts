@@ -17,6 +17,7 @@ import type {
   SaveMissionSearchDto,
 } from './mission-browse.dto';
 import { clampLimit, decodeKeyset, encodeKeyset, type Keyset } from './search.policy';
+import { tagClosure } from './tag-closure';
 import { taxonomyClosure } from './taxonomy-closure';
 
 /**
@@ -110,12 +111,17 @@ export class MissionBrowseService {
     const closure = [...new Set([...reach.values()].flat())];
     // Every requested node unknown: nothing can match, and saying so costs no scan.
     if ((filters.taxonomyNodeIds?.length ?? 0) > 0 && closure.length === 0) return empty();
+    // Every tag must be carried, so one that does not exist leaves nothing to find.
+    const tagReach = await tagClosure(this.db, filters.tagIds);
+    const tagClosures = [...new Set(filters.tagIds ?? [])].map((id) => tagReach.get(id) ?? []);
+    if (tagClosures.some((c) => c.length === 0)) return empty();
 
     const rows = (await this.db.execute(
       missionBrowseQuery({
         filters,
         sort,
         closure,
+        tagClosures,
         actorUserId: actor.userId,
         profileId: profile.id,
         cursor,
@@ -346,12 +352,15 @@ export function missionBrowseQuery(input: {
   filters: MissionBrowseFiltersDto;
   sort: MissionSort;
   closure: string[];
+  /** Per requested tag: it and every tag merged into it. A mission carries one of each (T-055). */
+  tagClosures?: string[][];
   actorUserId: string;
   profileId: string;
   cursor: Keyset | null;
   limit: number;
 }): SQL {
   const { filters: f, sort, closure, actorUserId, profileId, cursor, limit } = input;
+  const tagClosures = input.tagClosures ?? [];
 
   const where: SQL[] = [
     // Eligibility. Not a filter anyone sets, and nothing below can loosen it.
@@ -366,6 +375,18 @@ export function missionBrowseQuery(input: {
         closure.map((id) => sql`${id}::uuid`),
         sql`, `,
       )})`,
+    );
+  }
+
+  // Every requested tag, confirmed at publication — never a suggestion nobody reviewed (T-055).
+  // A filter like every other: it narrows what eligibility has already decided.
+  for (const reach of tagClosures) {
+    where.push(
+      sql`EXISTS (SELECT 1 FROM mission_tags mt WHERE mt.mission_id = m.id
+            AND mt.confirmed_at IS NOT NULL AND mt.tag_id IN (${sql.join(
+              reach.map((id) => sql`${id}::uuid`),
+              sql`, `,
+            )}))`,
     );
   }
 
@@ -418,8 +439,16 @@ export function missionBrowseQuery(input: {
       case 'deadline':
         return sql`extract(epoch FROM m.deadline::timestamp)::double precision`;
       // `check` has made sure relevance always comes with words to look for.
+      // A confirmed tag's label, in any locale, counts most (weight A): the moderator agreed the
+      // mission is about it, which the free text only claims (T-055).
       case 'relevance':
-        return sql`(-ts_rank(to_tsvector('simple', m.title || ' ' || m.description), plainto_tsquery('simple', ${f.q!})))::double precision`;
+        return sql`(-ts_rank(
+          to_tsvector('simple', m.title || ' ' || m.description)
+            || setweight(to_tsvector('simple', COALESCE((
+                 SELECT string_agg(tl.label, ' ')
+                   FROM mission_tags mt JOIN tag_labels tl ON tl.tag_id = mt.tag_id
+                  WHERE mt.mission_id = m.id AND mt.confirmed_at IS NOT NULL), '')), 'A'),
+          plainto_tsquery('simple', ${f.q!})))::double precision`;
       default:
         return newest;
     }

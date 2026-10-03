@@ -137,6 +137,13 @@ describe('missions controller', () => {
     it.each([
       ['a status', { ...draft, status: 'QUOTED' }],
       ['a chosen customer', { ...draft, customerId: ID }],
+      ['a free-text tag (T-055)', { ...draft, tagIds: ['remote work'] }],
+      ['tags as null', { ...draft, tagIds: null }],
+      [
+        'more than eight tags',
+        { ...draft, tagIds: Array.from({ length: 9 }, () => crypto.randomUUID()) },
+      ],
+      ['a confirmed tag', { ...draft, confirmedTagIds: [ID] }],
       ['a version on creation', { ...draft, version: 5 }],
       ['screening flags', { ...draft, flags: ['none'] }],
       [

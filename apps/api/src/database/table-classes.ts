@@ -69,6 +69,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     staffMaintained: true,
     note: 'as taxonomy_nodes: read by everyone, written only under platform access (T-053)',
   },
+  tags: {
+    class: 'platform',
+    staffMaintained: true,
+    note: 'the curated tag vocabulary: read by everyone; written only by TAXONOMY staff inside PlatformContext (T-055)',
+  },
+  tag_labels: {
+    class: 'platform',
+    staffMaintained: true,
+    note: 'as tags: read by everyone, written only under platform access (T-055)',
+  },
   legal_documents: {
     class: 'platform',
     note: 'published text, the same for everyone; the application reads and never writes (T-021)',
@@ -136,6 +146,11 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
   },
   mission_status_history: { class: 'two_party', columns: ['customer_tenant_id'] },
   mission_screenings: { class: 'two_party', columns: ['customer_tenant_id'] },
+  mission_tags: {
+    class: 'two_party',
+    columns: ['customer_tenant_id'],
+    note: 'the customer suggests on a draft, staff confirm under platform access; others read a confirmed tag only on a mission their own policies show them (T-055)',
+  },
   mission_moderation_decisions: {
     class: 'two_party',
     columns: ['customer_tenant_id'],

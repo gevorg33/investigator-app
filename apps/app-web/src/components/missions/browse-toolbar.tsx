@@ -6,7 +6,7 @@ import type { FormEvent } from 'react';
 import { useTranslations } from 'use-intl';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { NativeSelect } from '@/components/ui/native-select';
-import type { BrowseFilters, MissionSort, OwnServiceArea } from '@/lib/api/types';
+import type { BrowseFilters, MissionSort, OwnServiceArea, TagOption } from '@/lib/api/types';
 import { browseHref, SORTS } from './browse-query';
 import type { CategoryOption } from '@/lib/taxonomy';
 import { FilterSheet } from './filter-sheet';
@@ -21,11 +21,14 @@ export function BrowseToolbar({
   categories,
   areas,
   languages,
+  tags,
 }: {
   filters: BrowseFilters;
   categories: readonly CategoryOption[];
   areas: readonly OwnServiceArea[];
   languages: readonly string[];
+  /** The curated tag vocabulary (T-055). */
+  tags: readonly TagOption[];
 }) {
   const t = useTranslations('missions.browse');
   const router = useRouter();
@@ -70,6 +73,7 @@ export function BrowseToolbar({
           categories={categories}
           areas={areas}
           languages={languages}
+          tags={tags}
         />
         {filters.q === undefined ? (
           <label className="relative block md:w-56">
