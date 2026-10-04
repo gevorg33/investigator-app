@@ -223,18 +223,24 @@ export const investigatorMatch = (over: Partial<InvestigatorMatch> = {}): Invest
     { code: 'en', proficiency: 'FLUENT' },
   ],
   specialties: [
-    { id: 'n-fraud', label: 'Fraud investigation' },
-    { id: 'n-dd', label: 'Due diligence' },
+    { id: 'n-fraud', label: 'Fraud investigation', labelLocale: 'en' },
+    { id: 'n-dd', label: 'Due diligence', labelLocale: 'en' },
   ],
   availability: [{ dayOfWeek: 0, startMinute: 540, endMinute: 1020 }],
   distanceKm: 4,
   explanation: [
-    { code: 'matched.specialty', specialties: [{ id: 'n-dd', label: 'Due diligence' }] },
+    {
+      code: 'matched.specialty',
+      specialties: [{ id: 'n-dd', label: 'Due diligence', labelLocale: 'en' }],
+    },
     { code: 'matched.languages', languages: ['hy'] },
     { code: 'matched.place', place: { city: 'Yerevan', countryCode: 'AM' } },
     { code: 'matched.distance', km: 4 },
     { code: 'matched.availability', window: { dayOfWeek: 0, startMinute: 540, endMinute: 1020 } },
-    { code: 'not_matched.specialty', specialties: [{ id: 'n-surv', label: 'Surveillance' }] },
+    {
+      code: 'not_matched.specialty',
+      specialties: [{ id: 'n-surv', label: 'Surveillance', labelLocale: 'en' }],
+    },
   ],
   ...over,
 });
@@ -246,7 +252,7 @@ export const discoveryAnswer = (over: Partial<DiscoveryAnswer> = {}): DiscoveryA
     place: { city: 'Yerevan', countryCode: 'AM' },
     near: false,
     radiusKm: null,
-    specialties: [{ id: 'n-dd', label: 'Due diligence' }],
+    specialties: [{ id: 'n-dd', label: 'Due diligence', labelLocale: 'en' }],
     languages: ['hy'],
     availability: null,
   },

@@ -9,8 +9,8 @@ const nothing = {
 
 describe('match explanation (T-018)', () => {
   it('renders every reason the data holds, and the gap, in a stable order', () => {
-    const due = { id: 'n1', label: 'Due diligence' };
-    const surveillance = { id: 'n2', label: 'Surveillance' };
+    const due = { id: 'n1', label: 'Due diligence', labelLocale: 'en' as const };
+    const surveillance = { id: 'n2', label: 'Surveillance', labelLocale: 'en' as const };
     const window = { dayOfWeek: 1, startMinute: 540, endMinute: 600 };
     expect(
       explainMatch({

@@ -221,8 +221,9 @@ a `<details>`; it worked and looked like a form, not a product.
   chips, the discovery card's "Matches …" / "Does not offer …", the specialties picker, and the
   specialties on a public profile and its preview. `NamedText` renders one; `namedList` joins
   several as the locale joins a list (`Intl.ListFormat.formatToParts`), each part keeping its own
-  `lang` (`components/named-text.tsx`). The assistant's investigator card is the one place left —
-  its labels come from the discovery tool without a locale (T-200). Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
+  `lang` (`components/named-text.tsx`). The assistant does the same (T-200): its investigator card's
+  reasons and specialties, the "Searched for" line and the specialty clarification's buttons, from
+  the `labelLocale` the discovery tools now return. Where it sits inside a sentence, the message has a tag for it (`<name></name>`,
   `<list></list>`) filled with `t.rich`, so the label keeps its own `lang` inside the sentence. The
   active-filter chip is therefore named by its content — a visually hidden "Remove filter: …" — not
   an `aria-label`, which is a plain string and cannot mark a part. A slug shown for a node with no

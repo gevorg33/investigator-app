@@ -47,11 +47,15 @@ describe('saying discovery’s data in the reader’s language (T-059)', () => {
   it('joins lists the reader’s way, and leaves out a specialty with no name in this language', () => {
     expect(list(['fraud', 'audit', 'tracing'], 'en')).toBe('fraud, audit, and tracing');
     expect(list(['мошенничество', 'аудит'], 'ru')).toBe('мошенничество и аудит');
+    // Each with the language it is in, where known (T-200).
     expect(
       labels([
-        { id: 'a', label: 'Fraud' },
-        { id: 'b', label: null },
+        { id: 'a', label: 'Fraud', labelLocale: 'en' },
+        { id: 'b', label: null, labelLocale: null },
+        { id: 'c', label: 'Аудит', labelLocale: null },
+        // A reply stored before T-200 says nothing about it.
+        { id: 'd', label: 'Tracing' },
       ]),
-    ).toEqual(['Fraud']);
+    ).toEqual([{ label: 'Fraud', lang: 'en' }, { label: 'Аудит' }, { label: 'Tracing' }]);
   });
 });

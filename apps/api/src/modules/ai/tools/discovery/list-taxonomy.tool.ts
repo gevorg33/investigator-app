@@ -43,7 +43,14 @@ export class ListTaxonomyTool implements AssistantTool<ListTaxonomyInput, ListTa
       parentId: string | null,
     ): ListTaxonomyOutput['nodes'] =>
       nodes.flatMap((n) => [
-        { id: n.id, slug: n.slug, parentId, label: n.label, description: n.description },
+        {
+          id: n.id,
+          slug: n.slug,
+          parentId,
+          label: n.label,
+          labelLocale: n.labelLocale,
+          description: n.description,
+        },
         ...flat(n.children, n.id),
       ]);
     return { nodes: flat(await this.taxonomy.tree(input.locale), null) };

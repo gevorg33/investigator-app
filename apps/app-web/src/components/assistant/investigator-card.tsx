@@ -2,7 +2,7 @@
 
 import type { Locale } from '@investigator/i18n';
 import { Check, Minus, ShieldCheck } from 'lucide-react';
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import type { InvestigatorMatch, MatchReason } from '@/lib/api/assistant';
 import { labels, languageName, list, placeName, windowParts } from './discovery-format';
 import { investigatorName } from '@/lib/investigator-name';
 import { AgencyLine } from '@/components/investigator/agency-line';
+import { namedList } from '@/components/named-text';
 
 /**
  * One investigator a search found (T-059), as a card: who they are in their own words (name,
@@ -23,10 +24,11 @@ export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
   const locale = useLocale() as Locale;
   const title = useId();
 
-  const reason = (r: MatchReason): string => {
+  const reason = (r: MatchReason): ReactNode => {
     switch (r.code) {
+      // Each specialty keeps the language its label is in, inside the sentence (T-200).
       case 'matched.specialty':
-        return t('reason.specialty', { list: list(labels(r.specialties), locale) });
+        return t.rich('reason.specialty', { list: () => namedList(labels(r.specialties), locale) });
       case 'matched.languages':
         return t('reason.languages', {
           list: list(
@@ -41,7 +43,9 @@ export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
       case 'matched.availability':
         return t('reason.availability', windowParts(r.window, locale));
       case 'not_matched.specialty':
-        return t('reason.not_specialty', { list: list(labels(r.specialties), locale) });
+        return t.rich('reason.not_specialty', {
+          list: () => namedList(labels(r.specialties), locale),
+        });
     }
   };
 
@@ -99,7 +103,7 @@ export function InvestigatorCard({ match }: { match: InvestigatorMatch }) {
           {specialties.length > 0 && (
             <div className="flex flex-wrap gap-x-2">
               <dt className="text-text-muted">{t('specialties')}</dt>
-              <dd>{list(specialties, locale)}</dd>
+              <dd>{namedList(specialties, locale)}</dd>
             </div>
           )}
           {match.availability.length > 0 && (

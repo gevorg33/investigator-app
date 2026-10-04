@@ -122,9 +122,12 @@ export class SearchInvestigatorsTool implements AssistantTool<
 function toMatch(
   i: InvestigatorSearchResult,
   input: SearchInvestigatorsInput,
-  labels: ReadonlyMap<string, string>,
+  labels: Awaited<ReturnType<TaxonomyService['labels']>>,
 ): InvestigatorMatch {
-  const label = (id: string) => ({ id, label: labels.get(id) ?? null });
+  const label = (id: string) => {
+    const named = labels.get(id);
+    return { id, label: named?.label ?? null, labelLocale: named?.locale ?? null };
+  };
   return {
     investigatorId: i.id,
     name: i.name,

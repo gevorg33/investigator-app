@@ -182,7 +182,8 @@ describe('the assistant finding investigators (T-018)', () => {
         .insert(taxonomyNodeLabels)
         .values({ nodeId: id, locale: 'ru', label: extra.ru });
     }
-    return { id, label };
+    // As a result names it, in English (T-200).
+    return { id, label, labelLocale: 'en' as const };
   };
 
   it('finds investigators from live data, explains each from what matched, and records the outcome — never the request', async () => {
@@ -642,7 +643,7 @@ describe('the assistant finding investigators (T-018)', () => {
       const answer = await ask(model, {}, req(), actor);
       expect(answer.locale).toBe('ru');
       expect(answer.results[0]!.matchedOn.taxonomy).toEqual([
-        { id: dd.id, label: `Проверка ${tag}` },
+        { id: dd.id, label: `Проверка ${tag}`, labelLocale: 'ru' },
       ]);
 
       const english = await ask(

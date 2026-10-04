@@ -64,7 +64,9 @@ ACTIVE and not deleted) is in the SQL `WHERE`; `ST_DWithin` filters and `ST_Dist
 | `locale`, `limit` | Label language; how many to show (default 5, maximum 10) |
 
 Output, per investigator: id, display name, headline, years of experience, languages, declared
-specialties (labelled), declared weekly hours, `verificationStatus: VERIFIED`, a distance rounded
+specialties (labelled — each node as `{ id, label, labelLocale }`, the locale the label is in, English
+where the one asked for has none, so the app can mark it for a screen reader, T-200), declared weekly
+hours, `verificationStatus: VERIFIED`, a distance rounded
 up to whole kilometres, `matchedOn` and `notMatched`. Plus `hasMore` and `orderedBy`
 (`distance` · `relevance` · `experience`).
 
@@ -82,7 +84,7 @@ a point was given, distance decides and the hint is not applied.
 ### `listTaxonomy`
 
 The ACTIVE taxonomy, flattened with parents and labelled in the locale asked for (English where a
-label is missing). Read from the database every call: the categories a request can be matched to
+label is missing, and `labelLocale` says which, T-200). Read from the database every call: the categories a request can be matched to
 are curated data, never a list written into a prompt.
 
 ## `matchedOn` and `notMatched`

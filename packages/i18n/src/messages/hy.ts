@@ -992,12 +992,12 @@ export const hy: Catalog = {
       hours: 'Հայտարարված ժամեր',
       why: 'Ինչու այս դետեկտիվը',
       reason: {
-        specialty: 'Առաջարկում է՝ {list}',
+        specialty: 'Առաջարկում է՝ <list></list>',
         languages: 'Խոսում է՝ {list}',
         place: 'Աշխատում է՝ {place}',
         distance: '{km} կմ ձեզնից',
         availability: 'Հասանելի է՝ {day}, {from}–{to}',
-        not_specialty: 'Չի առաջարկում՝ {list}',
+        not_specialty: 'Չի առաջարկում՝ <list></list>',
       },
       clarify: {
         specialty: 'Սրանցից ո՞րն նկատի ունեք։ Պատասխանից կախված է, թե ով կհայտնվի ցուցակում։',

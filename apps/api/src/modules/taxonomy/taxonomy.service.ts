@@ -111,15 +111,19 @@ export class TaxonomyService {
   /**
    * What each node is called in `locale`, falling back to English, ACTIVE or not — a specialty an
    * investigator declared before its node was retired still has a name. A node with no label, or
-   * no row, is absent from the map rather than given a slug nobody should read.
+   * no row, is absent from the map rather than given a slug nobody should read. Each name comes with
+   * the locale it is in, so a reader shown English for want of their own can be told (T-200).
    */
   async labels(
     ids: readonly string[],
     locale: TaxonomyLocale = 'en',
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, { label: string; locale: TaxonomyLocale }>> {
     const found = await this.labelsFor([...new Set(ids)], [locale, 'en']);
-    const named = new Map<string, string>();
-    for (const [id, rows] of found) named.set(id, resolve(rows, locale).label!);
+    const named = new Map<string, { label: string; locale: TaxonomyLocale }>();
+    for (const [id, rows] of found) {
+      const { label, labelLocale } = resolve(rows, locale);
+      named.set(id, { label: label!, locale: labelLocale! });
+    }
     return named;
   }
 

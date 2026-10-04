@@ -29,6 +29,8 @@ const showing = async (...messages: ReturnType<typeof aiMessage>[]) => {
   await openAssistant();
   return screen.findByRole('log');
 };
+/** Each reply's "Searched for: …" line. */
+const searchedLines = () => screen.getAllByText(new RegExp(`^${d.searched}:`));
 const turnBody = () => api.calls.find((c) => c.path === `/ai/sessions/${S.id}/turns`)?.body;
 
 describe('structured results in the assistant (T-059)', () => {
@@ -83,6 +85,44 @@ describe('structured results in the assistant (T-059)', () => {
       expect(unnamed).not.toHaveTextContent('years of experience');
     });
 
+    it('marks each specialty with the language its label is in — on the card and in what it searched for (T-200)', async () => {
+      await showing(
+        QUESTION,
+        aiDiscoveryReply(
+          discoveryAnswer({
+            results: [
+              investigatorMatch({
+                specialties: [{ id: 'n-dd', label: 'Проверка', labelLocale: 'ru' }],
+                explanation: [
+                  {
+                    code: 'matched.specialty',
+                    specialties: [{ id: 'n-dd', label: 'Проверка', labelLocale: 'ru' }],
+                  },
+                  {
+                    code: 'not_matched.specialty',
+                    specialties: [{ id: 'n-surv', label: 'Surveillance', labelLocale: 'en' }],
+                  },
+                ],
+              }),
+            ],
+          }),
+        ),
+      );
+      const card = screen.getByRole('article');
+      const marked = (el: Element) =>
+        [...el.querySelectorAll('[lang]')].map((e) => [e.getAttribute('lang'), e.textContent]);
+      // The reasons, then the facts: each name in its own language, the sentence in the page's.
+      expect(marked(card)).toEqual([
+        ['ru', 'Проверка'],
+        ['en', 'Surveillance'],
+        ['ru', 'Проверка'],
+      ]);
+      expect(within(card).getByText(/^Offers/)).toHaveTextContent('Offers Проверка');
+      expect(marked(screen.getByText(new RegExp(`^${d.searched}`)))).toEqual([
+        ['en', 'Due diligence'],
+      ]);
+    });
+
     it('names the agency an investigator works for, and nothing for an independent one or an older reply (T-185)', async () => {
       const { agency: _, ...stored } = investigatorMatch({
         investigatorId: 'inv-3',
@@ -124,8 +164,8 @@ describe('structured results in the assistant (T-059)', () => {
               near: false,
               radiusKm: null,
               specialties: [
-                { id: 'n-dd', label: 'Due diligence' },
-                { id: 'n-x', label: null },
+                { id: 'n-dd', label: 'Due diligence', labelLocale: 'en' },
+                { id: 'n-x', label: null, labelLocale: null },
               ],
               languages: ['ru'],
               availability: { dayOfWeek: 5, startMinute: 600, endMinute: 1440 },
@@ -136,9 +176,10 @@ describe('structured results in the assistant (T-059)', () => {
           }),
         ),
       );
-      expect(
-        screen.getByText(/^Searched for: Due diligence, Russian, and Saturday/),
-      ).toBeInTheDocument();
+      // Split by the language marks on its parts (T-200): found as a line, then read whole.
+      expect(searchedLines()[0]).toHaveTextContent(
+        /^Searched for: Due diligence, Russian, and Saturday/,
+      );
       expect(screen.getByText(d.anywhere)).toBeInTheDocument();
       expect(screen.getByText(d.ordered.experience)).toBeInTheDocument();
       // Never ten thousand rows: a few, and the way to narrow.
@@ -163,8 +204,10 @@ describe('structured results in the assistant (T-059)', () => {
           { id: `d-${radiusKm}`, sequence: radiusKm === null ? 2 : 4 },
         );
       await showing(QUESTION, near(25), aiMessage({ id: 'q3', sequence: 3 }), near(null));
-      expect(screen.getByText('Searched for: within 25 km')).toBeInTheDocument();
-      expect(screen.getByText(`Searched for: ${d.near_you}`)).toBeInTheDocument();
+      expect(searchedLines().map((p) => p.textContent)).toEqual([
+        'Searched for: within 25 km',
+        `Searched for: ${d.near_you}`,
+      ]);
       // One result has no order to speak of.
       expect(screen.queryByText(d.ordered.distance)).toBeNull();
     });
@@ -200,15 +243,19 @@ describe('structured results in the assistant (T-059)', () => {
         asked({
           code: 'specialty',
           options: [
-            { id: 'n-corp', label: 'Corporate' },
+            { id: 'n-corp', label: 'Corporate', labelLocale: 'en' },
+            // Stored before replies said which language a label is in (T-200).
             { id: 'n-asset', label: 'Asset tracing' },
-            { id: 'n-none', label: null },
+            { id: 'n-none', label: null, labelLocale: null },
           ],
         }),
       );
       expect(screen.getByText(d.clarify.specialty)).toBeInTheDocument();
       // An option with no name in this language cannot be chosen by name.
       expect(screen.getAllByRole('button', { name: /Corporate|Asset tracing/ })).toHaveLength(2);
+      // Each in the language its label is in (T-200).
+      expect(screen.getByRole('button', { name: 'Corporate' })).toHaveAttribute('lang', 'en');
+      expect(screen.getByRole('button', { name: 'Asset tracing' })).not.toHaveAttribute('lang');
       await userEvent.click(screen.getByRole('button', { name: 'Asset tracing' }));
       await waitFor(() =>
         expect(turnBody()).toEqual({
@@ -222,7 +269,10 @@ describe('structured results in the assistant (T-059)', () => {
     it('offers nothing to press once the conversation has moved on', async () => {
       await showing(
         QUESTION,
-        asked({ code: 'specialty', options: [{ id: 'n-corp', label: 'Corporate' }] }),
+        asked({
+          code: 'specialty',
+          options: [{ id: 'n-corp', label: 'Corporate', labelLocale: 'en' }],
+        }),
         aiMessage({ id: 'q3', sequence: 3, content: 'Corporate' }),
       );
       expect(screen.getByText(d.clarify.specialty)).toBeInTheDocument();

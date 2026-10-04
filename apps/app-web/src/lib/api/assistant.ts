@@ -83,6 +83,11 @@ export const knowledgeReply = (m: AiMessage): KnowledgeReply | null =>
 export interface NodeLabel {
   id: string;
   label: string | null;
+  /**
+   * The locale the label is in: English where the reader's has none yet (T-200). Absent on a reply
+   * stored before discovery carried it: the reply is kept whole, as it was given.
+   */
+  labelLocale?: string | null;
 }
 
 export interface Place {

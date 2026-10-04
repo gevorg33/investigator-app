@@ -216,14 +216,15 @@ describe('assistant discovery tools (T-018)', () => {
       expect(ids(out)).toEqual([one.profileId, both.profileId]);
       expect(out.results[0]).toMatchObject({
         matchedOn: {
-          taxonomy: [{ id: dueDiligence, label: 'Проверка контрагентов' }],
+          taxonomy: [{ id: dueDiligence, label: 'Проверка контрагентов', labelLocale: 'ru' }],
           // Only the language asked for, though they also work in English.
           languages: ['hy'],
           place: { countryCode: 'AM', city: tag },
           availability: window,
         },
-        // In Russian where it has a Russian label, in English where it does not.
-        notMatched: { taxonomy: [{ id: surveillance, label: 'Surveillance' }] },
+        // In Russian where it has a Russian label, in English where it does not — and says which,
+        // so the card can tell a screen reader (T-200).
+        notMatched: { taxonomy: [{ id: surveillance, label: 'Surveillance', labelLocale: 'en' }] },
       });
       expect(out.results[1]!.notMatched).toEqual({ taxonomy: [] });
       expect(out.results[1]!.matchedOn.taxonomy.map((t) => t.id).sort()).toEqual(
@@ -239,12 +240,12 @@ describe('assistant discovery tools (T-018)', () => {
       const out = await find({ taxonomyNodeIds: [parent] });
       expect(out.results[0]!.matchedOn).toEqual({
         // A node nobody has labelled yet has no name to give, and does not borrow one.
-        taxonomy: [{ id: child, label: null }],
+        taxonomy: [{ id: child, label: null, labelLocale: null }],
         languages: [],
         place: { city: tag },
         availability: null,
       });
-      expect(out.results[0]!.specialties).toEqual([{ id: child, label: null }]);
+      expect(out.results[0]!.specialties).toEqual([{ id: child, label: null, labelLocale: null }]);
     });
   });
 
@@ -391,8 +392,14 @@ describe('assistant discovery tools (T-018)', () => {
     const out = await asRequests(runner, owner).invoke(customer, listTool, { locale: 'ru' }, req());
     expect(out.nodes).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: parent, parentId: null, label: 'Семья' }),
-        expect.objectContaining({ id: child, parentId: parent, label: 'Missing persons' }),
+        expect.objectContaining({ id: parent, parentId: null, label: 'Семья', labelLocale: 'ru' }),
+        // English for want of Russian, and saying so (T-200).
+        expect.objectContaining({
+          id: child,
+          parentId: parent,
+          label: 'Missing persons',
+          labelLocale: 'en',
+        }),
       ]),
     );
     expect(listTool.auditArguments({})).toBe('locale=en');
