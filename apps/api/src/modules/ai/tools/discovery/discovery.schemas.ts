@@ -59,7 +59,12 @@ export const searchInvestigatorsInput = z.strictObject({
 });
 export type SearchInvestigatorsInput = z.infer<typeof searchInvestigatorsInput>;
 
-const labelSchema = z.object({ id: z.string(), label: z.string().nullable() });
+/** A node as a result names it, and the locale its label is in — English where the asked-for one has none (T-200). */
+const labelSchema = z.object({
+  id: z.string(),
+  label: z.string().nullable(),
+  labelLocale: localeSchema.nullable(),
+});
 export type NodeLabel = z.infer<typeof labelSchema>;
 
 const windowOutSchema = z.object({
@@ -144,6 +149,7 @@ export const listTaxonomyOutput = z.object({
       slug: z.string(),
       parentId: z.string().nullable(),
       label: z.string().nullable(),
+      labelLocale: localeSchema.nullable(),
       description: z.string().nullable(),
     }),
   ),

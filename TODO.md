@@ -8796,7 +8796,7 @@ horizontal scroll. The specialty added to verify was removed through the API aft
 ---
 
 ### T-200 — The assistant's investigator card: say which language a specialty is in
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04; `labelLocale` on the discovery tools' `NodeLabel` (`searchInvestigators`) and nodes (`listTaxonomy`); the assistant card, "Searched for" and the specialty clarification mark it
 - **Priority:** P3
 - **Depends on:** T-198
 - **Risk:** LOW
@@ -8812,14 +8812,30 @@ be marked (WCAG 3.1.2). Give `NodeLabel` the `labelLocale` the taxonomy already 
 the card's specialties and reasons with `NamedText` / `namedList`.
 
 **Acceptance criteria**
-- [ ] The discovery tool's `NodeLabel` carries `labelLocale`; the tool's schema and its registry entry say so (`ai-tool-registry`)
-- [ ] The card's specialties and its "matched / not matched" reasons mark each label's language
-- [ ] Specs seen failing first, API and app-web
+- [x] The discovery tool's `NodeLabel` carries `labelLocale`; the tool's schema and its registry entry say so (`ai-tool-registry`)
+      — `TaxonomyService.labels` returns each label with its locale; `listTaxonomy` too;
+      `assistant-tools.md`. Read-only output only: scope, authorization, audit and limits unchanged
+- [x] The card's specialties and its "matched / not matched" reasons mark each label's language
+      — and the "Searched for" line and the clarification's buttons; a reply stored before has no
+      `labelLocale` and is shown unmarked, as it was given
+- [x] Specs seen failing first, API and app-web
 
 **Validation**
 ```bash
 pnpm --filter api test discovery && pnpm --filter @investigator/app-web test
 ```
+
+
+*Validated.* `pnpm --filter api test discovery` 107/107; API coverage 100% (3314); app-web 865,
+coverage 100%; i18n 29; lint, typecheck, format; builds.
+
+*Verified.* No model is configured locally (ACTIONS-FOR-ME #6), so the reply was not generated: a
+conversation was created through the API and a discovery reply stored in it, then opened in the
+assistant on a Russian page, docked at 1280 and as the sheet at 375 — "Предлагает: Проверка
+контрагента" (`lang="ru"`), "Не предлагает: Demo: Background checks" (`lang="en"`), the
+specialties fact and the "Искали: …" line marked the same, language and place unmarked; no
+overflow. The tools' half is the integration specs against PostgreSQL. The conversation was
+deleted through the API afterwards.
 
 ---
 

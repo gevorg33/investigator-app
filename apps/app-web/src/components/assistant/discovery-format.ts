@@ -1,5 +1,6 @@
 import type { Locale } from '@investigator/i18n';
 import type { NodeLabel, Place, Window } from '@/lib/api/assistant';
+import type { Named } from '@/lib/taxonomy';
 
 // `Intl.DisplayNames` falls back to the code itself for one it has no name for (its default
 // `fallback: 'code'`), so a name is always there — never `undefined`, whatever its type says.
@@ -59,7 +60,14 @@ export function list(items: readonly string[], locale: Locale): string {
   return new Intl.ListFormat(locale, { type: 'conjunction' }).format(items);
 }
 
-/** Taxonomy labels, with a node that has no label in this language shown by nothing rather than an id. */
-export function labels(nodes: readonly NodeLabel[]): string[] {
-  return nodes.map((n) => n.label).filter((l): l is string => l !== null);
+/**
+ * Taxonomy labels, with a node that has no label in this language shown by nothing rather than an id
+ * — each with the language it is in, for `NamedText` / `namedList` (T-200).
+ */
+export function labels(nodes: readonly NodeLabel[]): Named[] {
+  return nodes.flatMap((n) =>
+    n.label === null
+      ? []
+      : [{ label: n.label, ...(typeof n.labelLocale === 'string' && { lang: n.labelLocale }) }],
+  );
 }

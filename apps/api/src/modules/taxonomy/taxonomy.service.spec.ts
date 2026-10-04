@@ -136,14 +136,18 @@ describe('the shared taxonomy (ADR-0007, T-053)', () => {
       await owner`DELETE FROM taxonomy_node_labels WHERE node_id = ${unlabelled.id}`;
 
       const names = await service.labels([both.id, english.id, unlabelled.id, both.id], 'ru');
+      // With the locale each came from: English stands in where Russian is missing (T-200).
       expect([...names]).toEqual(
         expect.arrayContaining([
-          [both.id, 'Проверка'],
-          [english.id, 'Surveillance'],
+          [both.id, { label: 'Проверка', locale: 'ru' }],
+          [english.id, { label: 'Surveillance', locale: 'en' }],
         ]),
       );
       expect(names.size).toBe(2);
-      expect((await service.labels([both.id])).get(both.id)).toBe('Due diligence');
+      expect((await service.labels([both.id])).get(both.id)).toEqual({
+        label: 'Due diligence',
+        locale: 'en',
+      });
     });
 
     it('still resolves a retired node by id — rule 1: never deleted, only deprecated', async () => {

@@ -2,15 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { discoveryPrompt, parseProposal } from './discovery-proposal';
 
 const NODES = [
-  { id: 'id-corporate', slug: 'corporate', parentId: null, label: 'Corporate', description: null },
+  {
+    id: 'id-corporate',
+    slug: 'corporate',
+    parentId: null,
+    label: 'Corporate',
+    labelLocale: 'en' as const,
+    description: null,
+  },
   {
     id: 'id-dd',
     slug: 'corporate/due-diligence',
     parentId: 'id-corporate',
     label: 'Due diligence',
+    labelLocale: 'en' as const,
     description: 'Checks <before> a deal',
   },
-  { id: 'id-unlabelled', slug: 'unlabelled-node', parentId: null, label: null, description: null },
+  {
+    id: 'id-unlabelled',
+    slug: 'unlabelled-node',
+    parentId: null,
+    label: null,
+    labelLocale: null,
+    description: null,
+  },
 ];
 
 const reply = (over: Record<string, unknown> = {}) =>

@@ -11,7 +11,9 @@ import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import type { Ask, DiscoveryAnswer } from '@/lib/api/assistant';
 import { useAssistant } from './assistant-provider';
 import { MIN_QUESTION } from './composer';
-import { labels, languageName, list, placeName, windowParts } from './discovery-format';
+import { namedList } from '@/components/named-text';
+import type { Named } from '@/lib/taxonomy';
+import { labels, languageName, placeName, windowParts } from './discovery-format';
 import { InvestigatorCard } from './investigator-card';
 
 /** Coordinates to two decimals (≈1 km): enough to search from, no closer than a service area's. */
@@ -59,14 +61,17 @@ export function DiscoveryReply({
   }
 
   const s = answer.searchedFor!;
-  const searched = [
+  // Specialties keep the language their label is in (T-200); the rest is the page's own.
+  const searched: Named[] = [
     ...labels(s.specialties),
-    ...s.languages.map((c) => languageName(c, locale)),
-    ...(s.place === null ? [] : [placeName(s.place, locale)]),
-    ...(s.near ? [s.radiusKm ? t('within', { km: s.radiusKm }) : t('near_you')] : []),
-    ...(s.availability === null
-      ? []
-      : [(({ day, from, to }) => `${day} ${from}–${to}`)(windowParts(s.availability, locale))]),
+    ...[
+      ...s.languages.map((c) => languageName(c, locale)),
+      ...(s.place === null ? [] : [placeName(s.place, locale)]),
+      ...(s.near ? [s.radiusKm ? t('within', { km: s.radiusKm }) : t('near_you')] : []),
+      ...(s.availability === null
+        ? []
+        : [(({ day, from, to }) => `${day} ${from}–${to}`)(windowParts(s.availability, locale))]),
+    ].map((label) => ({ label })),
   ];
 
   return (
@@ -74,7 +79,7 @@ export function DiscoveryReply({
       <div className="grid gap-1 text-sm text-text-muted">
         {searched.length > 0 && (
           <p>
-            {t('searched')}: {list(searched, locale)}
+            {t('searched')}: {namedList(searched, locale)}
           </p>
         )}
         {answer.assumptions.includes('location.anywhere') && <p>{t('anywhere')}</p>}
@@ -127,6 +132,7 @@ function ClarificationReply({
               <Button
                 key={o.id}
                 variant="outline"
+                lang={o.labelLocale ?? undefined}
                 onClick={() => answer(o.label!, { taxonomyNodeIds: [o.id] })}
               >
                 {o.label}

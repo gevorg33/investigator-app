@@ -178,8 +178,12 @@ export class DiscoveryAnswerService {
 
       signal?.throwIfAborted();
       onStep?.({ step: 'finding' });
-      const labels = new Map(taxonomy.nodes.map((n) => [n.id, n.label]));
-      const label = (id: string): NodeLabel => ({ id, label: labels.get(id) ?? null });
+      const nodes = new Map(taxonomy.nodes.map((n) => [n.id, n]));
+      const label = (id: string): NodeLabel => ({
+        id,
+        label: nodes.get(id)?.label ?? null,
+        labelLocale: nodes.get(id)?.labelLocale ?? null,
+      });
       return await this.search(actor, input, proposal, locale, label, req);
     } catch (e) {
       // A provider that is down is a 503 the client can retry, not our 500.

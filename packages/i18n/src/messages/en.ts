@@ -982,12 +982,12 @@ export const en = {
       hours: 'Declared hours',
       why: 'Why this investigator',
       reason: {
-        specialty: 'Offers {list}',
+        specialty: 'Offers <list></list>',
         languages: 'Speaks {list}',
         place: 'Works in {place}',
         distance: '{km} km away',
         availability: 'Available {day}, {from}–{to}',
-        not_specialty: 'Does not offer {list}',
+        not_specialty: 'Does not offer <list></list>',
       },
       clarify: {
         specialty: 'Which of these do you mean? The answer changes who is listed.',

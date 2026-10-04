@@ -991,12 +991,12 @@ export const ru: Catalog = {
       hours: 'Указанные часы',
       why: 'Почему этот детектив',
       reason: {
-        specialty: 'Предлагает: {list}',
+        specialty: 'Предлагает: <list></list>',
         languages: 'Говорит на: {list}',
         place: 'Работает: {place}',
         distance: '{km} км от вас',
         availability: 'Доступен: {day}, {from}–{to}',
-        not_specialty: 'Не предлагает: {list}',
+        not_specialty: 'Не предлагает: <list></list>',
       },
       clarify: {
         specialty: 'Что из этого вы имеете в виду? От ответа зависит, кто попадёт в список.',
