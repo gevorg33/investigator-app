@@ -268,6 +268,13 @@ server from #9; `www` as CNAME to apex. Caddy obtains certificates automatically
 **Verify:** All five resolve; `curl -I https://app.<domain>/` shows
 `X-Robots-Tag: noindex, nofollow` once deployed.
 
+**Then tell me the name.** Everything after registration is automated (T-023): the Caddyfile and
+the API both read `DOMAIN` (`app.`, `admin.`, `news.` follow from it), `infrastructure/compose/
+server.yml` wires them together, and the routing, certificates, redirects and network isolation
+were verified end to end against a stand-in name. The deploy sets `DOMAIN` and `ACME_EMAIL` in the
+server's environment. Add AAAA records too: the stack is dual-stack (T-201), so IPv6 readers reach
+the API as themselves. The deploy confirms it on the host (`docs/operations/client-address.md`).
+
 **Status:** ⬜ Pending
 
 ---
@@ -681,6 +688,23 @@ reserves for you.
 unpublished rows older than a few seconds; `job_dead_letters` stays empty.
 
 **Status:** ⬜ Pending — with the first staging deploy that includes T-082
+---
+
+### 26. What the marketing site says — for T-203, then T-024
+
+**Why:** the apex domain has no site. `apps/marketing-web` is an empty scaffold, and building it
+needs three things only you can decide; inventing them would put claims about the product on a
+public page in three languages.
+
+**What I need:**
+1. **The product's name** — it appears nowhere yet; the site, page titles and structured data need it.
+2. **The home page's message** — who it is for and what it promises, a few sentences in English is
+   enough; I write the page and the ru/hy drafts (which then join #23's native-speaker review).
+3. **Whether pricing is shown publicly**, and if so what — tied to #17.
+
+**Verify:** T-203 moves from BLOCKED to TODO.
+
+**Status:** ⬜ Pending
 ---
 
 ## Already handled — do not do these

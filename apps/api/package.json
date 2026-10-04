@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@investigator/auth": "workspace:*",
+    "@investigator/config": "workspace:*",
     "@investigator/i18n": "workspace:*",
     "@nestjs/common": "11.2.3",
     "@nestjs/config": "4.0.4",

@@ -1,12 +1,11 @@
 import { localeName } from '@investigator/i18n';
 import {
-  expect,
-  test,
   type Browser,
   type BrowserContext,
   type BrowserContextOptions,
   type Page,
 } from '@playwright/test';
+import { expect, test } from './support/test';
 import { expectAccessible } from './support/accessibility';
 import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';
@@ -21,7 +20,7 @@ import { text } from './support/text';
  */
 test.describe.configure({ mode: 'serial' });
 
-const SESSION_COOKIE = 'investigator_session';
+const SESSION_COOKIE = '__Host-investigator_session';
 const REGISTRATION = PUBLISHED.filter(
   (d) => d.type === 'PRIVACY_POLICY' || d.type === 'TERMS_OF_SERVICE',
 );

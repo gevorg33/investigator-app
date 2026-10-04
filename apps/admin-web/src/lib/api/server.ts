@@ -1,9 +1,10 @@
 import { cookies, headers as incoming } from 'next/headers';
+import { SESSION_COOKIE } from '@investigator/config';
 import { cache } from 'react';
 import { ApiError, bodyOf, toApiError } from './errors';
 
 /** The API's session cookie — set by the API on this origin, host-only (ADR-0002, T-025). */
-export const SESSION_COOKIE = 'investigator_session';
+export { SESSION_COOKIE };
 
 /** Where the server reaches the API. In production, the internal address; in development, local. */
 const apiOrigin = (): string => process.env['API_INTERNAL_URL'] ?? 'http://localhost:3001';

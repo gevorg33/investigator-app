@@ -57,7 +57,7 @@ describe('the invitation page (T-158)', () => {
   });
 
   it('asks an account whose address is not confirmed to confirm it first', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('GET /me', 200, account({ emailVerified: false }));
     await show(InvitationPage(search({ token: 'tok 9' })));
     expect(screen.getByText(inv.unconfirmed.replace('{email}', 'ana@example.test'))).toBeVisible();
@@ -69,7 +69,7 @@ describe('the invitation page (T-158)', () => {
   });
 
   it('offers the invited, confirmed account the button that joins, in its language', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     request.cookies.set('locale', 'hy');
     api.on('GET /me', 200, account());
     await show(InvitationPage(search({ token: 'tok 9' })), 'hy');

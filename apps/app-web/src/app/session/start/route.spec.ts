@@ -14,7 +14,7 @@ describe('landing after signing in', () => {
   beforeEach(() => {
     request.reset();
     api.install();
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
   });
 
   it('restores the language saved on the account, and goes on to the page asked for', async () => {

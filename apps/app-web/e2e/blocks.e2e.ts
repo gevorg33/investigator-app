@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
+import { type Browser, type Page, type TestInfo } from '@playwright/test';
+import { expect, test } from './support/test';
 import { expectAccessible } from './support/accessibility';
 import { journeyAddress, journeyTag } from './support/journey';
 import { owner } from './support/database';

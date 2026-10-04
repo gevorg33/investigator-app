@@ -5,15 +5,18 @@
 # Hostnames come from environment, so the same file serves every environment:
 #   DOMAIN=mydomain.com  APP_HOST=app.mydomain.com
 #   ADMIN_HOST=admin.mydomain.com  NEWS_HOST=news.mydomain.com
+# The API builds its links from the same variables (the domain map in packages/config), so the
+# edge and the code cannot disagree about a name. No hostname is written here (T-023).
 #
 # mail.{$DOMAIN} is intentionally absent. It is a sending domain (SPF/DKIM/DMARC),
 # not an HTTP service. See infrastructure/caddy/dns-and-email.md.
-
 {
 	email {$ACME_EMAIL}
-	servers {
-		trusted_proxies static private_ranges
-	}
+	# No trusted_proxies: Caddy is the first hop, so every X-Forwarded-For a request arrives with
+	# was written by the client, and is replaced by the address Caddy saw. Trusting private ranges
+	# kept a client's own entry whenever Docker relayed its connection from the bridge gateway —
+	# seen in T-023's verification — so Caddy's access log recorded an address the client chose.
+	# Set this only if a load balancer is ever put in front (docs/operations/client-address.md).
 }
 
 # ---------------------------------------------------------------------------
@@ -37,6 +40,14 @@
 	encode zstd gzip
 }
 
+# The apex and news. issue no cookie, whatever the application behind them sends (T-025). Both
+# are the third-party-heavy origins ADR-0002 keeps away from sessions; a cookie they set for the
+# parent domain would reach app. too. If news. ever needs a session of its own, that is a
+# deliberate design (ADR-0002, "a deliberate token exchange"), and it removes this line on purpose.
+(no_cookies) {
+	header -Set-Cookie
+}
+
 # ---------------------------------------------------------------------------
 # Marketing — the only indexable origin
 # ---------------------------------------------------------------------------
@@ -44,6 +55,7 @@
 {$DOMAIN} {
 	import security_headers
 	import compression
+	import no_cookies
 
 	# Long-lived immutable build assets.
 	@static path /_next/static/* /fonts/* /images/*
@@ -53,11 +65,15 @@
 	@html not path /_next/static/* /fonts/* /images/*
 	header @html Cache-Control "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"
 
-	# Anything authenticated belongs on the app origin. These must never 200 here.
-	redir /login https://{$APP_HOST}/login permanent
-	redir /register https://{$APP_HOST}/register permanent
-	redir /dashboard https://{$APP_HOST}/dashboard permanent
-	redir /app /  permanent
+	# Anything authenticated belongs on the app origin. These must never 200 here. Each goes to the
+	# app's own route — /login and /register are the names people type, /sign-in and /sign-up the
+	# ones the app serves.
+	redir /login https://{$APP_HOST}/sign-in permanent
+	redir /sign-in https://{$APP_HOST}/sign-in permanent
+	redir /register https://{$APP_HOST}/sign-up permanent
+	redir /sign-up https://{$APP_HOST}/sign-up permanent
+	redir /dashboard https://{$APP_HOST}/ permanent
+	redir /app / permanent
 
 	reverse_proxy marketing-web:3000
 
@@ -85,11 +101,13 @@ www.{$DOMAIN} {
 	# this header, and an externally linked URL could still be indexed.
 	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
 
-	# Authenticated responses must never be cached by a shared cache.
-	header Cache-Control "no-store, private"
-
+	# Authenticated responses must never be cached by a shared cache; content-hashed build assets
+	# may be, forever. The two matchers exclude each other, as marketing's do: an unmatched
+	# `header` beside a matched one let no-store win on the assets too (T-023's verification).
 	@static path /_next/static/* /fonts/*
 	header @static Cache-Control "public, max-age=31536000, immutable"
+	@dynamic not path /_next/static/* /fonts/*
+	header @dynamic Cache-Control "no-store, private"
 
 	# Same-origin API. This is what makes SameSite=Strict cookies viable. The client's address
 	# travels in X-Forwarded-For, which Caddy sets and the API reads from its TRUSTED_PROXIES
@@ -124,15 +142,17 @@ www.{$DOMAIN} {
 	import compression
 
 	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
-	header Cache-Control "no-store, private"
 
 	# Optional hardening the customer app could never have. Uncomment with a real
 	# allowlist once the office/VPN ranges are known — see T-023.
 	# @not_allowed not remote_ip 10.0.0.0/8 192.168.0.0/16
 	# respond @not_allowed 403
 
+	# As on app.: no shared cache for anything but the content-hashed assets.
 	@static path /_next/static/* /fonts/*
 	header @static Cache-Control "public, max-age=31536000, immutable"
+	@dynamic not path /_next/static/* /fonts/*
+	header @dynamic Cache-Control "no-store, private"
 
 	# Same-origin API, same reasoning as app. Staff scope is enforced in the API.
 	handle /api/* {
@@ -158,6 +178,7 @@ www.{$DOMAIN} {
 {$NEWS_HOST} {
 	import security_headers
 	import compression
+	import no_cookies
 
 	# Subscriber management is authenticated; keep it out of search.
 	@private path /manage* /preferences* /unsubscribe* /admin*

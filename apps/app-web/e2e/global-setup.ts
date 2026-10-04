@@ -52,7 +52,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     DATABASE_URL: runtimeUrl(),
     REDIS_URL,
     SESSION_SECRET: randomBytes(32).toString('hex'),
-    APP_BASE_URL: WEB_URL,
+    // Links in mail point at this run's app-web, not the dev server's port (T-023's domain map).
+    APP_HOST: `localhost:${WEB_PORT}`,
     LOG_LEVEL: 'info',
     // The app's rewrite stands in for Caddy, and is trusted as Caddy is (T-138): a spec whose
     // browsers are different people can say so with X-Forwarded-For, as their own addresses would.

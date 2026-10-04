@@ -17,6 +17,7 @@
     "budget": "node ../../scripts/check-bundle-budget.mjs"
   },
   "dependencies": {
+    "@investigator/config": "workspace:*",
     "@investigator/i18n": "workspace:*",
     "@investigator/ui-tokens": "workspace:*",
     "@radix-ui/react-alert-dialog": "1.1.23",

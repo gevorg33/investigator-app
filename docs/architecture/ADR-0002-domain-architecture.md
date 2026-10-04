@@ -90,6 +90,14 @@ It follows that a future subdomain cannot silently inherit the session. That is 
 new origin needing authentication goes through a deliberate token exchange, not ambient
 cookie sharing. Adding a subdomain must never widen session scope as a side effect.
 
+**As built (T-025).** The cookie is named `__Host-investigator_session`, so the browser itself
+refuses it a `Domain` attribute and requires `Secure` and `Path=/` — no later change to the code can
+widen it, and no sibling can plant a cookie of that name. One thing `SameSite=Strict` does **not**
+do: sibling subdomains are the *same site*, so a page on `news.` or the apex posting to `app./api`
+would carry the cookie. The API refuses any write whose `Sec-Fetch-Site` is not `same-origin`
+(falling back to `Origin` against the domain map), and the edge strips `Set-Cookie` on the apex and
+`news.` — see `docs/api/README.md` and `infrastructure/caddy/README.md`.
+
 ## Search-engine exclusion
 
 `robots.txt` `Disallow` prevents **crawling**, not **indexing**. A disallowed URL linked from

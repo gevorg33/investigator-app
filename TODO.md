@@ -1401,11 +1401,11 @@ pnpm --filter api test auth-consent
 ---
 
 ### T-023 — Domain routing, TLS and DNS
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04, everything a repository can hold; public certificate issuance and the live `curl` wait for a registered domain (ACTIONS-FOR-ME #8, checked by T-040's smoke test). `packages/config` exports the domain map (`domains()`, `appUrl()`) from the Caddyfile's own variables; the API builds every emailed link from it and refuses a malformed host, or two sites on one host, at boot; `APP_BASE_URL` is gone. `infrastructure/compose/server.yml` is the server stack. Verification found and fixed: dynamic containers taking the proxies' fixed addresses (`ip_range`), `app.`/`admin.` assets never cached (`no-store` beat `@static`), marketing redirecting to `/login` and `/register`, which app-web does not serve, and Caddy trusting a client's `X-Forwarded-For` when Docker relayed it (Caddy's log only; the API was not fooled). Filed T-201, T-202
 - **Priority:** P1
 - **Depends on:** T-003
 - **Risk:** MEDIUM
-- **Human approval required:** Yes — infrastructure and DNS
+- **Human approval required:** Yes — infrastructure and DNS (given in conversation, 2026-10-04)
 - **Owner agent:** infra-devops
 - **Affected:** infrastructure/caddy/**, infrastructure/compose/**, packages/config/**
 
@@ -1414,26 +1414,56 @@ Bring up the four-name architecture from ADR-0002. The Caddyfile exists but has 
 validated by Caddy itself.
 
 **Acceptance criteria**
-- [ ] `caddy validate` passes (command in `infrastructure/caddy/README.md`)
+- [x] `caddy validate` passes (command in `infrastructure/caddy/README.md`)
+      — `caddy:2.11.4-alpine` pinned by digest (2.11.6 and 2.11.7 were days old), and `caddy fmt --diff` clean
 - [ ] Certificates issue for apex, `app.` and `news.`; `www` redirects `301` to apex
+      — needs the domain. Verified with Caddy's own CA on `investigator.localhost`: a certificate
+      verified for all five names, `www.` → apex `301` keeping path and query, `http` → `https` `308`
 - [ ] `curl -I https://app.<domain>/` shows `X-Robots-Tag: noindex, nofollow`
-- [ ] `app./api/health` reaches the API same-origin; no CORS preflight on app→api calls
-- [ ] Marketing `/login` returns `301` to `app.`, never `200`
-- [ ] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
-- [ ] PostgreSQL, Redis and metrics are not reachable from the public internet
-- [ ] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
+      — needs the domain. Seen on `app.` and `admin.` of the stand-in, and held by `edge.spec.ts`
+- [x] `app./api/health` reaches the API same-origin; no CORS preflight on app→api calls
+      — `/api/*` reached the API from `app.` and `admin.`, with a client-written `X-Forwarded-For` replaced
+- [x] Marketing `/login` returns `301` to `app.`, never `200`
+      — to `/sign-in`, which app-web serves; `/register`, `/sign-in`, `/sign-up`, `/dashboard` too
+- [x] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
+      — the four `APP_BASE_URL ?? 'http://localhost:3000'` call sites in the API now `appUrl()`;
+      `edge.spec.ts` fails a public dev port or the example apex in any app's source.
+      `API_INTERNAL_URL`'s `localhost:3001` fallback is the API's internal address, not a public name
+- [x] PostgreSQL, Redis and metrics are not reachable from the public internet
+      — on a network with no route out, unpublished; unreachable from the edge network, probed.
+      No metrics service exists yet
+- [x] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
+      — `10.20.0.2/.3/.4`, others allocated from `10.20.0.128/25` only
 
 **Validation**
 ```bash
-docker run --rm -v "$PWD/infrastructure/caddy":/etc/caddy:ro -e DOMAIN=... caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+cd infrastructure/caddy && docker run --rm -v "$PWD":/etc/caddy:ro \
+  -e DOMAIN=example.test -e APP_HOST=app.example.test -e ADMIN_HOST=admin.example.test \
+  -e NEWS_HOST=news.example.test -e ACME_EMAIL=ops@example.test \
+  caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b \
+  caddy validate --config /etc/caddy/Caddyfile
+pnpm --filter @investigator/config test && pnpm --filter api test edge supply-chain env.schema
 ```
+The command first written here passed only `DOMAIN`; the Caddyfile has always needed every name.
 
+*Validated.* `caddy validate`: Valid configuration; `caddy fmt --diff` clean. Format, lint,
+typecheck, build. `pnpm test:coverage`: every package at 100% — config 15, API 3336 (100% of
+6177 statements), app-web 865, and the rest; app-web browser flows 54/54.
+
+*Verified.* `server.yml` run on this machine with request-echoing stand-ins for the platform's
+images and `DOMAIN=investigator.localhost` (the README has the recipe): every probe above, plus
+egress — none from the web apps, PostgreSQL or Redis, the API's through `egress` only. The old
+Caddyfile against the same probe kept a client's `X-Forwarded-For: 6.6.6.6` ahead of the gateway;
+the new one replaced it. `edge.spec.ts` was mutated back to each defect (old Caddyfile, no
+`ip_range`, the subnet trusted, the API published, a web app on `egress`) and failed the matching
+test each time. The browser flows read the mailed links: verification, reset and invitation
+links all went to the run's app-web through the domain map. No hostname-facing UI changed.
 ---
 
 ### T-024 — Marketing site SEO
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-023
+- **Depends on:** T-023, T-203 — there is no site to optimise yet (found 2026-10-04)
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** admin-web
@@ -1466,32 +1496,61 @@ pnpm --filter marketing-web test && pnpm --filter marketing-web build
 ---
 
 ### T-025 — Session cookie scoping and CSP
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04. The session cookie is `__Host-investigator_session` (named once in `@investigator/config`), `Secure` in every environment, so the browser refuses it a `Domain` and no sibling can plant one. A global `OriginGuard` refuses writes whose `Sec-Fetch-Site` is not `same-origin` (else `Origin` against the domain map) — `SameSite=Strict` does not separate sibling subdomains, which are one site. No CORS. app-web and admin-web set a per-request nonce CSP in middleware from `contentSecurityPolicy()`; admin's root layout renders per request. Caddy strips `Set-Cookie` on the apex and `news.`. The browser flows fail on any CSP violation (`e2e/support/test.ts`)
 - **Priority:** P0
 - **Depends on:** T-005, T-023
 - **Risk:** HIGH
-- **Human approval required:** Yes — authentication and security headers
+- **Human approval required:** Yes — authentication and security headers (given in conversation, 2026-10-04)
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/auth/**, packages/config/**
+      — also `apps/api/src/common/http/origin.guard.ts` and `bootstrap.ts` (the guard), both web apps'
+      middleware and `lib/csp.ts`, admin's root layout, the Caddyfile, and the session cookie's name in
+      specs: each one a criterion needed
 
 **Description**
 Enforce host-only session cookies and per-application CSP. ADR-0002 makes cookie scoping the
 security-critical constraint of the domain split.
 
 **Acceptance criteria**
-- [ ] Session cookies set **host-only** on `app.` — no `Domain` attribute, ever
-- [ ] `HttpOnly`, `Secure`, `SameSite=Strict` (viable because the API is same-origin)
-- [ ] A test asserts no `Set-Cookie` response carries a `Domain` attribute
-- [ ] A test asserts no cookie is issued on the apex or `news.`
-- [ ] CSP set per application, derived from the domain map — not hand-maintained, not at the edge
-- [ ] CORS allowlist derived from the domain map
-- [ ] Adding a subdomain to the map does not widen session scope — covered by a test
+- [x] Session cookies set **host-only** on `app.` — no `Domain` attribute, ever
+      — `__Host-` makes the browser hold it; `auth-cookies.spec.ts` drives every route that sets or clears one
+- [x] `HttpOnly`, `Secure`, `SameSite=Strict` (viable because the API is same-origin)
+      — and `Path=/`, in development, test and production; clears carry them too, or a `__Host-` clear is refused
+- [x] A test asserts no `Set-Cookie` response carries a `Domain` attribute
+      — every cookie from nine routes, three environments; plus a source scan of all three apps
+- [x] A test asserts no cookie is issued on the apex or `news.`
+      — `edge.spec.ts` (`no_cookies` on both, the API reached only from `app.`/`admin.`); seen live:
+      upstreams setting `Domain=` cookies, stripped on both, kept on `app.` and `admin.`
+- [x] CSP set per application, derived from the domain map — not hand-maintained, not at the edge
+      — keyed by the map's site; names no other site of it (each is `'self'` to itself), so the map
+      cannot widen it. The two outside origins are providers (Cloudinary, Google's `form-action`)
+- [x] CORS allowlist derived from the domain map
+      — no CORS at all (no response carries `Access-Control-Allow-*`); the allowlist the map does
+      drive is the origin guard's: a write must be same-origin, else from `app.`/`admin.` *to itself*
+- [x] Adding a subdomain to the map does not widen session scope — covered by a test
+      — the session's attributes are identical under three different maps; the CSP spec checks no
+      site of a map appears in either policy
 
 **Validation**
 ```bash
 pnpm --filter api test auth-cookies
 ```
 
+*Validated.* `pnpm test:coverage`: every package at 100% — API 3368 (6194 statements), app-web 868,
+admin-web 136, config 23; format, lint, typecheck, build; browser flows 54/54 with the CSP guard on.
+
+*Verified.* In the browser pane against the built apps and the real API: `/sign-in` on app-web
+and admin-web hydrate with every script carrying the response's nonce (22/22, 13/13), admin's 404
+carries the policy, no violation logged; "Continue with Google" reached accounts.google.com through
+`form-action`. A real same-site, cross-origin `POST` from `localhost:3001` to the app's `/api` got
+403; the app's own `POST /auth/logout`, 204. The app's CSP alone already refused a fetch to the
+console's origin. Mutations, each failing its test: `Secure` back to development-off (caught only
+after the spec re-imported the modules per environment — module-level options had been evaluated
+once, under the runner's `test`), a `Domain` added, the guard unregistered, `style-src` without
+`'unsafe-inline'` (the e2e guard named every refusal). The first e2e guard listened to the console
+and passed with scripts refused: Playwright hears only the page's own logs; it now listens to
+`securitypolicyviolation`. Security checklist: no findings; WebSocket handshakes are outside
+Nest's guards — `docs/api/README.md` says the first gateway checks `Origin` the same way.
 ---
 
 ### T-026 — Knowledge base translation into ru and hy
@@ -8836,6 +8895,110 @@ assistant on a Russian page, docked at 1280 and as the sheet at 375 — "Пре�
 specialties fact and the "Искали: …" line marked the same, language and place unmarked; no
 overflow. The tools' half is the integration specs against PostgreSQL. The conversation was
 deleted through the API afterwards.
+
+---
+
+### T-201 — Real client addresses for connections Docker relays (IPv6 on the server)
+- **Status:** BLOCKED — 2026-10-04, the repository half is done; the proof waits for the provisioned host (T-040). `server.yml`'s edge network is dual-stack (`enable_ipv6`, `fd20:0:0:1::/64`), so Docker publishes Caddy's ports to IPv6 clients by NAT rather than through `docker-proxy`. Seen on a Linux Docker daemon (29.5, Colima's VM): before, IPv6 had no NAT rule and a relay to Caddy's IPv4 address; after, `DNAT --to-destination [fd20:0:0:1::2]:443`, as IPv4 has. `edge.spec.ts` holds it; `client-address.md` says what the host check is
+- **Priority:** P2 — every relayed client shares one sign-in rate limit and one audit address
+- **Depends on:** T-023; a provisioned host (T-040)
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — infrastructure, on the real host (repository half approved in conversation, 2026-10-04)
+- **Owner agent:** infra-devops
+- **Affected:** infrastructure/compose/server.yml, docs/operations/client-address.md
+
+**Description**
+From T-023. Caddy sees the client only when Docker forwards a published port by NAT. When Docker's
+userland proxy relays the connection instead, Caddy's peer is the edge network's gateway, so every
+such client shares that address. That is IPv6 clients on an IPv4-only Docker network — Hetzner
+hosts have IPv6 — and everything under Colima or Docker Desktop (seen as `172.20.0.1`). Not
+spoofable: the gateway is not in `TRUSTED_PROXIES`. Candidate fixes, to be chosen on the host:
+`enable_ipv6` on the edge network with ip6tables NAT, or `userland-proxy: false` in the daemon.
+
+**Acceptance criteria**
+- [ ] On the provisioned host, an IPv4 and an IPv6 client each reach the API as their own address (a failed sign-in's audit row)
+      — waits for the host. The mechanism is shown locally (NAT rules above); a client from outside
+      the Docker host cannot be: Colima's forwarder carries every macOS connection, and a container
+      client is either masqueraded or dropped by Docker's bridge isolation (both tried)
+- [x] `docs/operations/client-address.md`'s known-gap section records the fix, or is removed
+      — rewritten: the cause, the before/after rules, and the three checks only the host can make
+
+**Validation**
+Two failed sign-ins from the host's public IPv4 and IPv6 paths, and the audit rows' `ip_address`.
+
+---
+
+### T-202 — Validate the Caddyfile in CI
+- **Status:** DONE — 2026-10-04. `scripts/check-caddyfile.sh` runs `caddy validate` and `caddy fmt --diff` with the Caddy image it reads from `server.yml` — one digest, which Dependabot's compose updates move — and `pr.yml` runs it before Format, needing no database. `supply-chain.spec.ts` drives the script with a stand-in `docker` on the PATH. `ci-cd` skill, `infrastructure/caddy/README.md`
+- **Priority:** P3
+- **Depends on:** T-023
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .github/workflows/pr.yml, apps/api/test/supply-chain.spec.ts
+
+**Description**
+From T-023. `edge.spec.ts` holds the Caddyfile's rules as text, but only Caddy can say the file
+parses: `caddy validate` and `caddy fmt --diff` run by hand (`infrastructure/caddy/README.md`).
+Run both in `pr.yml` with the image `server.yml` pins, and have the supply-chain spec hold that
+the two digests match.
+
+**Acceptance criteria**
+- [x] A PR whose Caddyfile does not parse, or is not `caddy fmt`-clean, fails CI — seen failing first
+      — the script against a copy with an unknown directive (line 118) and one unindented line (62): exit 1, Caddy naming the line
+- [x] The CI step's Caddy digest is `server.yml`'s, held by a spec
+      — read from `server.yml` rather than repeated, so there is no second digest to drift; the spec
+      holds that the image run is `server.yml`'s pinned one
+
+**Validation**
+```bash
+pnpm --filter api test supply-chain
+```
+
+*Validated.* `supply-chain`, `edge`, `workspace-scripts`, `fixtures` specs 56/56; spec typecheck;
+lint; format; `validate-knowledge-base.py` 0 errors. The script on the real Caddyfile: exit 0.
+
+*Verified.* No browser surface — a CI step. The script was run against the real file, an invalid
+copy and an unformatted copy (above). The spec was mutated three ways — the CI step removed, a
+floating `caddy:2-alpine` in the script, docker's failure swallowed with `|| true` — and failed
+the matching test each time. The step's first run in GitHub Actions is the PR's.
+
+---
+
+### T-203 — The marketing site itself: pages, and what they say
+- **Status:** BLOCKED — needs the owner: the product's name, the home page's message, and pricing (ACTIONS-FOR-ME #26, #17)
+- **Priority:** P1 — T-024 and the apex domain wait on it
+- **Depends on:** T-023; owner input
+- **Risk:** LOW
+- **Human approval required:** Yes — what the public site says about the product is the owner's
+- **Owner agent:** frontend
+- **Affected:** apps/marketing-web/**
+
+**Description**
+Found selecting T-024 (2026-10-04). `apps/marketing-web` is the T-001 stub — no Next.js app, no
+route — and no task builds it, while T-024's criteria (sitemap, canonical, hreflang, JSON-LD for
+home, nested pages, posts and FAQ) all presume pages. Nor is there content to put on them: the
+product has no name, no marketing copy, no blog, and pricing is undecided. The only public content
+that exists is the three policy articles in `docs/knowledge-base/policies/` (en/ru/hy).
+Writing a name and a pitch in three languages to fill the pages would be inventing what the
+product claims to be (CLAUDE.md §8: no UI against data that does not exist).
+
+Build the Next.js app on the apex per ADR-0002 and the `domain-and-seo` skill: locale in the URL,
+no authenticated UI, links into the app through the domain map (`packages/config`) carrying
+`?lang=` (ADR-0013); the public policy articles rendered from the knowledge base; the pages the
+owner's content calls for. Its Dockerfile and a `marketing-web` service in `server.yml` at the
+fixed-address-free part of the internal network (Caddy already proxies `marketing-web:3000`).
+
+**Acceptance criteria**
+- [ ] The owner has supplied the name, the home page's message and the pricing position — recorded where the copy lives
+- [ ] `/`, `/ru`, `/hy` and the public policy pages render, mobile first; no session check anywhere
+- [ ] Every link into the app is built by `appUrl()` and carries `?lang=`
+- [ ] `marketing-web` runs in `server.yml`; the apex returns 200, not 502
+
+**Validation**
+```bash
+pnpm --filter @investigator/marketing-web test && pnpm --filter @investigator/marketing-web build
+```
 
 ---
 

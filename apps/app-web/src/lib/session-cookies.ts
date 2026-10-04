@@ -1,5 +1,8 @@
-/** The API's session cookie (T-005, T-025). Set and cleared by the API only; read here to forward. */
-export const SESSION_COOKIE = 'investigator_session';
+/**
+ * The API's session cookie (T-005, T-025): one name, shared with the API that sets and clears it.
+ * Read here only to forward it.
+ */
+export { SESSION_COOKIE } from '@investigator/config';
 
 /**
  * The role the reader chose to act as, when they hold both. A UI choice, not authority: the API

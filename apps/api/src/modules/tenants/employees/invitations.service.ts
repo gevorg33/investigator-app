@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { appUrl } from '@investigator/config';
 import { AuditService } from '../../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../../common/authz/authz.service';
 import type { Actor } from '../../../common/authz/contract';
@@ -322,7 +323,7 @@ export class InvitationsService {
       template: 'workspace_invitation',
       variables: {
         workspace: agency!.name!,
-        url: `${process.env['APP_BASE_URL'] ?? 'http://localhost:3000'}/invitations/accept?token=${token}`,
+        url: appUrl(`/invitations/accept?token=${token}`),
       },
     });
   }

@@ -62,7 +62,16 @@ queue the reader lacks the scope for answers 403, which the screen shows as "you
 scope" rather than an empty list. `/` redirects to `/verification`.
 
 **In development**, `localhost` cookies ignore the port, so the console (3002) and the app (3000)
-share one session; deployed, the hosts differ and they never do.
+share one session; deployed, the hosts differ and they never do. The session cookie is
+`__Host-investigator_session` (T-025): the browser refuses it a `Domain`, so a console session can
+never be widened to the parent domain, and the app — the same site — cannot write to the console's
+API: the API refuses any write whose `Sec-Fetch-Site` is not `same-origin` (`docs/api/README.md`).
+
+**Content-Security-Policy** (T-025): `middleware.ts` sets the console's own, nonce per request,
+from `contentSecurityPolicy('admin', …)` — the app's policy without its two providers: no outside
+origin at all. The root layout calls `connection()`, so every page renders per request and carries
+its nonce; `/` and the not-found page were built ahead of time before, and would have shipped scripts
+the browser refused.
 
 ## The shell
 

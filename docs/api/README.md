@@ -52,8 +52,24 @@ finding.
 ## Authentication
 
 Session cookies, host-only, `SameSite=Strict`, on `app.` and `admin.` separately — see
-ADR-0002 and ADR-0004. The API is same-origin with each front-end, so there is no CORS
-preflight on normal traffic.
+ADR-0002 and ADR-0004. The cookie is `__Host-investigator_session`: the prefix makes the browser
+refuse it a `Domain`, and requires `Secure` and `Path=/` (T-025). The API is same-origin with each
+front-end, so there is no CORS preflight on normal traffic — and no CORS at all: no response carries
+`Access-Control-Allow-*`, so no other origin can read one.
+
+**A write from another origin is refused, `403 FORBIDDEN`** (`common/http/origin.guard.ts`, T-025).
+`SameSite=Strict` does not separate sibling subdomains — `news.`, the apex, `app.` and `admin.` are
+one site, so a form on `news.` posting to `app./api` would carry the cookie. Every request other than
+`GET`, `HEAD` or `OPTIONS` is checked before its handler: the browser's `Sec-Fetch-Site` must be
+`same-origin` (or `none`); a browser without it must send an `Origin` that the domain map names as
+`app.` or `admin.` *and* that is the host the request arrived on. A request with neither header was
+not sent by a browser page — app-web's server, a mail provider's one-click unsubscribe — and passes.
+
+**A WebSocket is not covered by that guard.** Nest's guards run on HTTP routes; a socket's handshake
+is a `GET` the browser sends with the session cookie from any same-site page (cross-site WebSocket
+hijacking). No gateway exists yet (Caddy already routes `/ws*` to the API): the first one checks the
+handshake's `Origin` with the same `crossOrigin` rule — treating the upgrade as a write — before it
+reads the cookie.
 
 ## Rate limiting
 

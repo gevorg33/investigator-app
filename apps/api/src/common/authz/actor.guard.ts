@@ -1,11 +1,10 @@
 import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
+import { SESSION_COOKIE } from '@investigator/config';
 import { CONTEXT_KEY, type RequestWithContext } from '../context/request-context-key';
 import { WorkspaceResolver } from '../context/workspace.resolver';
 import { requestContext } from '../http/request-context';
 import { ActorService } from './actor.service';
 import { ACTOR_KEY, type RequestWithActor } from './actor.decorator';
-
-const COOKIE = 'investigator_session';
 
 /**
  * Checks 1 and 2: resolve the caller, or reject.
@@ -26,7 +25,7 @@ export class ActorGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<RequestWithActor>();
-    const token = String(req.cookies?.[COOKIE] ?? '');
+    const token = String(req.cookies?.[SESSION_COOKIE] ?? '');
 
     // The role the client wishes to act as. A header, not a stored preference: switching
     // workspaces must not need a new sign-in, and must not outlive the request either.

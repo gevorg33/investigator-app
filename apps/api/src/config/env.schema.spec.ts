@@ -78,6 +78,7 @@ describe('env validation', () => {
           NODE_ENV: 'production',
           CLOUDINARY_FOLDER: 'investigator/production',
           TRUSTED_PROXIES: '10.20.0.2,10.20.0.3',
+          DOMAIN: 'mydomain.com',
         }),
       ).not.toThrow();
     });
@@ -100,6 +101,7 @@ describe('env validation', () => {
       CLOUDINARY_API_KEY: 'key',
       CLOUDINARY_API_SECRET: 'secret',
       CLOUDINARY_FOLDER: 'investigator/production',
+      DOMAIN: 'mydomain.com',
     };
 
     it('trusts nobody locally unless told, and reads a list of addresses, ranges and loopback', () => {
@@ -147,6 +149,52 @@ describe('env validation', () => {
   });
 });
 
+describe('the public names (T-023)', () => {
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    CLOUDINARY_CLOUD_NAME: 'cloud',
+    CLOUDINARY_API_KEY: 'key',
+    CLOUDINARY_API_SECRET: 'secret',
+    CLOUDINARY_FOLDER: 'investigator/production',
+    TRUSTED_PROXIES: '10.20.0.2',
+  };
+
+  it('boots locally without them, and keeps what it is given', () => {
+    expect(validateEnv(valid).DOMAIN).toBeUndefined();
+    expect(validateEnv({ ...valid, DOMAIN: '' }).DOMAIN).toBeUndefined();
+    expect(
+      validateEnv({ ...valid, DOMAIN: 'mydomain.com', ADMIN_HOST: 'staff.mydomain.com' }),
+    ).toMatchObject({ DOMAIN: 'mydomain.com', ADMIN_HOST: 'staff.mydomain.com' });
+  });
+
+  it.each(['staging', 'production'])(
+    'requires DOMAIN in %s, so no emailed link points at localhost',
+    (NODE_ENV) => {
+      expect(() =>
+        validateEnv({ ...production, NODE_ENV, CLOUDINARY_FOLDER: `investigator/${NODE_ENV}` }),
+      ).toThrow(new RegExp(`DOMAIN: DOMAIN is required in ${NODE_ENV}`));
+    },
+  );
+
+  it('refuses a malformed host at boot, under its own name and without its value', () => {
+    const host = 'https://app.mydomain.com/';
+    try {
+      validateEnv({ ...valid, DOMAIN: 'mydomain.com', APP_HOST: host });
+      expect.unreachable('should have thrown');
+    } catch (e) {
+      expect((e as Error).message).toMatch(/APP_HOST: APP_HOST must be a bare lowercase hostname/);
+      expect((e as Error).message).not.toContain(host);
+    }
+  });
+
+  it('refuses admin. on app.’s origin', () => {
+    expect(() =>
+      validateEnv({ ...production, DOMAIN: 'mydomain.com', ADMIN_HOST: 'app.mydomain.com' }),
+    ).toThrow(/ADMIN_HOST: ADMIN_HOST names a host another site already serves from/);
+  });
+});
+
 describe('Google sign-in settings (T-062)', () => {
   const google = {
     GOOGLE_OAUTH_CLIENT_ID: 'id.apps.googleusercontent.com',
@@ -188,6 +236,7 @@ describe('Google sign-in settings (T-062)', () => {
       CLOUDINARY_FOLDER: 'investigator/staging',
       TRUSTED_PROXIES: 'loopback',
       NODE_ENV: 'staging',
+      DOMAIN: 'example.test',
     };
     expect(() => validateEnv({ ...valid, ...cloud, ...google })).toThrow(/over https/);
     expect(

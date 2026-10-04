@@ -1,6 +1,8 @@
+import { contentSecurityPolicy } from '@investigator/config';
 import { isLocale } from '@investigator/i18n';
 import { NextResponse, type NextRequest } from 'next/server';
 import { LOCALE_COOKIE, LOCALE_COOKIE_OPTIONS } from '@/i18n/cookie';
+import { withPolicy } from '@/lib/csp';
 
 /** The query parameter a link into the app may carry to say which language its reader chose. */
 export const LANG_PARAM = 'lang';
@@ -28,7 +30,9 @@ export function middleware(request: NextRequest): NextResponse {
   if (lang === null) {
     const headers = new Headers(request.headers);
     headers.set(PATHNAME_HEADER, request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.next({ request: { headers } });
+    return withPolicy(headers, (nonce, development) =>
+      contentSecurityPolicy('app', { nonce, development }),
+    );
   }
   const clean = request.nextUrl.clone();
   clean.searchParams.delete(LANG_PARAM);

@@ -128,7 +128,10 @@ Never mark up content not visible on the page. That is cloaking, and it is penal
 2. Add a Caddy block. Set `X-Robots-Tag` explicitly — decide indexable or not, do not default.
 3. Confirm it receives **no** session cookie. Adding a name must never widen session scope.
 4. If it sends email, give it its own sending domain and DKIM key.
-5. Add it to CSP and CORS allowlists **from the config**, not by hand.
+5. Leave CSP and CORS alone: no policy names another site of the map (each is `'self'` to itself),
+   and the API has no CORS. A new site gets its own policy in `contentSecurityPolicy()` when it
+   serves pages, and is refused as a writer by the API's origin guard until the map says it serves
+   the API (T-025).
 
 ## Checklist for a new public page
 

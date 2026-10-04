@@ -19,7 +19,7 @@ import { GoogleAuthService, type CallbackOutcome } from './google-auth.service';
  * body the browser can read.
  */
 const ACTOR = testActor({ userId: 'u1', sessionId: 'sess-1' });
-const APP = 'http://app.test';
+const APP = 'https://app.test';
 const GOOGLE_URL = 'https://accounts.google.com/o/oauth2/v2/auth?state=s';
 
 const stub = () => ({
@@ -35,10 +35,10 @@ const stub = () => ({
 describe('Google sign-in routes', () => {
   let app: INestApplication;
   let google: ReturnType<typeof stub>;
-  const saved = process.env['APP_BASE_URL'];
+  const saved = process.env['APP_HOST'];
 
   beforeEach(async () => {
-    process.env['APP_BASE_URL'] = APP;
+    process.env['APP_HOST'] = 'app.test';
     google = stub();
     const moduleRef = await Test.createTestingModule({
       controllers: [GoogleAuthController],
@@ -65,7 +65,8 @@ describe('Google sign-in routes', () => {
   });
 
   afterEach(async () => {
-    process.env['APP_BASE_URL'] = saved;
+    if (saved === undefined) delete process.env['APP_HOST'];
+    else process.env['APP_HOST'] = saved;
     await closeApp(app);
   });
 
@@ -98,7 +99,7 @@ describe('Google sign-in routes', () => {
       expect(google.start).not.toHaveBeenCalled();
       const res = await http()
         .get('/api/v1/auth/google/link?next=%2Faccount')
-        .set('Cookie', 'investigator_session=tok');
+        .set('Cookie', '__Host-investigator_session=tok');
       expect(res.status).toBe(303);
       expect(google.start).toHaveBeenCalledWith(
         { returnTo: '/account', actor: ACTOR },
@@ -136,8 +137,8 @@ describe('Google sign-in routes', () => {
         returnTo: '/missions',
       });
       expect(res.status).toBe(200);
-      const session = cookie(res, 'investigator_session')!;
-      expect(session).toMatch(/^investigator_session=platform-refresh-token;/);
+      const session = cookie(res, '__Host-investigator_session')!;
+      expect(session).toMatch(/^__Host-investigator_session=platform-refresh-token;/);
       expect(session).toContain('SameSite=Strict');
       expect(session).toContain('HttpOnly');
       expect(session).not.toContain('Domain=');
@@ -161,7 +162,7 @@ describe('Google sign-in routes', () => {
       expect(set).toContain('Path=/api/v1/auth/google');
       expect(refreshesTo(res)).toBe(`${APP}/sign-up/google?next=%2F`);
       expect(res.text).not.toContain('signup-secret');
-      expect(cookie(res, 'investigator_session')).toBeUndefined();
+      expect(cookie(res, '__Host-investigator_session')).toBeUndefined();
     });
 
     it.each([
@@ -176,14 +177,18 @@ describe('Google sign-in routes', () => {
     });
 
     it('escapes what it writes into the page', async () => {
-      process.env['APP_BASE_URL'] = 'http://app.test/"&<x>';
-      const res = await back({ kind: 'linked', returnTo: '/' });
-      expect(res.text).toContain('http://app.test/&#34;&#38;&#60;x&#62;/account');
+      // The domain map refuses markup in a host (T-023), so it is the path that carries it here.
+      const res = await back({
+        kind: 'failed',
+        reason: '"&<x>' as never,
+        intent: 'SIGN_IN',
+      });
+      expect(res.text).toContain(`${APP}/sign-in?google=&#34;&#38;&#60;x&#62;`);
       expect(res.text).not.toContain('"&<x>');
     });
 
     it('falls back to the local app, and to a plain cookie over http in development', async () => {
-      delete process.env['APP_BASE_URL'];
+      delete process.env['APP_HOST'];
       const node = process.env['NODE_ENV'];
       process.env['NODE_ENV'] = 'development';
       try {
@@ -227,8 +232,8 @@ describe('Google sign-in routes', () => {
         { locale: 'ru', timezone: 'Europe/Moscow' },
         expect.anything(),
       );
-      expect(cookie(res, 'investigator_session')).toMatch(
-        /^investigator_session=platform-refresh-token;/,
+      expect(cookie(res, '__Host-investigator_session')).toMatch(
+        /^__Host-investigator_session=platform-refresh-token;/,
       );
       expect(cookie(res, 'investigator_signup')).toMatch(/^investigator_signup=;/);
     });
@@ -259,7 +264,7 @@ describe('Google sign-in routes', () => {
       expect((await http().get('/api/v1/auth/identities')).status).toBe(401);
       const res = await http()
         .get('/api/v1/auth/identities')
-        .set('Cookie', 'investigator_session=tok');
+        .set('Cookie', '__Host-investigator_session=tok');
       expect(res.body).toEqual({ password: true, identities: [] });
       expect(res.headers['cache-control']).toBe('no-store');
       expect(google.methods).toHaveBeenCalledWith(ACTOR);
@@ -270,14 +275,14 @@ describe('Google sign-in routes', () => {
       expect((await http().delete(`/api/v1/auth/identities/${id}`)).status).toBe(401);
       const res = await http()
         .delete(`/api/v1/auth/identities/${id}`)
-        .set('Cookie', 'investigator_session=tok');
+        .set('Cookie', '__Host-investigator_session=tok');
       expect(res.status).toBe(204);
       expect(google.unlink).toHaveBeenCalledWith(ACTOR, id, expect.anything());
       expect(
         (
           await http()
             .delete('/api/v1/auth/identities/not-an-id')
-            .set('Cookie', 'investigator_session=tok')
+            .set('Cookie', '__Host-investigator_session=tok')
         ).status,
       ).toBe(400);
     });

@@ -20,7 +20,7 @@ export async function employeesApp() {
   process.env['REDIS_URL'] ??= 'redis://localhost:6380';
   process.env['SESSION_SECRET'] ??= 'x'.repeat(48);
   process.env['NODE_ENV'] = 'test';
-  process.env['APP_BASE_URL'] = 'http://app.test';
+  process.env['APP_HOST'] = 'app.test';
   const owner = testPool({ role: 'owner' });
   const mails: MailMessage[] = [];
   // Imported only now: AppModule validates the environment the moment it is loaded.
@@ -44,7 +44,7 @@ export async function employeesApp() {
     const [row] = await owner<
       { email: string }[]
     >`SELECT email FROM users WHERE id = ${who.actor.userId}`;
-    return { ...who, email: row!.email, cookie: `investigator_session=${token}` };
+    return { ...who, email: row!.email, cookie: `__Host-investigator_session=${token}` };
   };
   type Person = Awaited<ReturnType<typeof signedIn>>;
 

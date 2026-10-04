@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -14,6 +22,7 @@ const workflows = globSync('.github/workflows/*.yml', { cwd: ROOT }).map((p) => 
 }));
 const pr = read('.github/workflows/pr.yml');
 const compose = read('infrastructure/compose/local.yml');
+const server = read('infrastructure/compose/server.yml');
 const dockerfile = read('infrastructure/docker/postgres/Dockerfile');
 
 /** `name:tag@sha256:…` → the digest, or undefined when the reference is a floating tag. */
@@ -45,13 +54,17 @@ describe('the supply chain', () => {
     expect(loose).toEqual([]);
   });
 
-  it('pins every image by digest, in CI, local development and the Dockerfile', () => {
+  it('pins every image by digest, in CI, local development, the server stack and the Dockerfile', () => {
     const images = [
       ...[...pr.matchAll(/^\s*image:\s*(\S+)/gm)].map((m) => ['pr.yml', m[1]!]),
       ...[...compose.matchAll(/^\s*image:\s*(\S+)/gm)]
         // An image this file builds itself is named, not pulled; its base is the Dockerfile's.
         .filter((m) => !m[1]!.startsWith('investigator/'))
         .map((m) => ['local.yml', m[1]!]),
+      ...[...server.matchAll(/^\s*image:\s*(\S+)/gm)]
+        // The platform's own images are tagged per deploy by the pipeline that builds them (T-040).
+        .filter((m) => !m[1]!.startsWith('investigator/') && !m[1]!.startsWith('${IMAGE_REGISTRY'))
+        .map((m) => ['server.yml', m[1]!]),
       ...[...dockerfile.matchAll(/^FROM\s+(\S+)/gm)].map((m) => ['Dockerfile', m[1]!]),
     ];
     expect(images.length).toBeGreaterThan(3);
@@ -175,5 +188,63 @@ describe('the public source-map check', () => {
   it('holds for this repository as it is built', () => {
     // CI runs the script after the build; locally there may be no build output, which passes.
     expect(check(ROOT).code).toBe(0);
+  });
+});
+
+/**
+ * Only Caddy can say the Caddyfile loads (T-202). The script runs it in Docker, so these put a
+ * stand-in `docker` first on the PATH and read what it was asked to run.
+ */
+describe('the Caddyfile check', () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+
+  const check = (exitCode: number, caddyDir?: string) => {
+    const bin = mkdtempSync(join(tmpdir(), 'caddy-check-'));
+    dirs.push(bin);
+    const calls = join(bin, 'calls');
+    writeFileSync(
+      join(bin, 'docker'),
+      `#!/usr/bin/env bash\nprintf '%s\\n' "$@" > "${calls}"\nexit ${exitCode}\n`,
+      { mode: 0o755 },
+    );
+    const run = spawnSync(
+      join(ROOT, 'scripts/check-caddyfile.sh'),
+      caddyDir === undefined ? [] : [caddyDir],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env['PATH']}` } },
+    );
+    return { code: run.status, args: readFileSync(calls, 'utf8').split('\n') };
+  };
+
+  it('runs in CI', () => {
+    expect(uncommented(pr)).toMatch(/run: \.\/scripts\/check-caddyfile\.sh$/m);
+  });
+
+  it('validates and format-checks with the Caddy image the server stack runs', () => {
+    const { code, args } = check(0);
+    expect(code).toBe(0);
+    const pinned = /^\s*image:\s*(caddy:\S+)/m.exec(server)?.[1];
+    expect(digestOf(pinned)).toBeDefined();
+    expect(args).toContain(pinned);
+    expect(args).toContain(`${join(ROOT, 'infrastructure/caddy')}:/etc/caddy:ro`);
+    expect(args.at(-2)).toBe(
+      'caddy validate --config /etc/caddy/Caddyfile && caddy fmt --diff /etc/caddy/Caddyfile',
+    );
+    // Every name the file reads is given, and none is a domain anyone could own.
+    for (const name of ['DOMAIN', 'APP_HOST', 'ADMIN_HOST', 'NEWS_HOST', 'ACME_EMAIL']) {
+      expect(args.find((a) => a.startsWith(`${name}=`))).toMatch(/example\.test$/);
+    }
+  });
+
+  it('checks the directory it is given', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'caddyfile-'));
+    dirs.push(dir);
+    expect(check(0, dir).args).toContain(`${realpathSync(dir)}:/etc/caddy:ro`);
+  });
+
+  it('fails when Caddy does', () => {
+    expect(check(1).code).toBe(1);
   });
 });

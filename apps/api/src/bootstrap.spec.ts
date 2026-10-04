@@ -147,6 +147,38 @@ describe('global application configuration', () => {
     await request(a.getHttpServer()).get('/api/docs').expect(404);
   });
 
+  describe('writes from another origin (T-025)', () => {
+    const patch = (headers: Record<string, string>) =>
+      request(app!.getHttpServer()).patch('/api/v1/probe').set(headers).send({});
+
+    it('lets the app’s own pages write, and anything no browser sent', async () => {
+      await make('test');
+      await patch({ 'Sec-Fetch-Site': 'same-origin' }).expect(200);
+      await patch({}).expect(200);
+    });
+
+    it('refuses a write from a sibling subdomain, though the session cookie would ride along', async () => {
+      await make('test');
+      const res = await patch({ 'Sec-Fetch-Site': 'same-site' }).expect(403);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      await patch({ 'Sec-Fetch-Site': 'cross-site' }).expect(403);
+    });
+
+    it('lets another origin read, and answers none of them with CORS', async () => {
+      await make('test');
+      const read = await request(app!.getHttpServer())
+        .get('/api/v1/health')
+        .set({ 'Sec-Fetch-Site': 'cross-site', Origin: 'https://evil.example.test' })
+        .expect(200);
+      expect(read.headers['access-control-allow-origin']).toBeUndefined();
+      const preflight = await request(app!.getHttpServer())
+        .options('/api/v1/probe')
+        .set({ Origin: 'https://example.test', 'Access-Control-Request-Method': 'PATCH' });
+      expect(preflight.headers['access-control-allow-origin']).toBeUndefined();
+      expect(preflight.headers['access-control-allow-credentials']).toBeUndefined();
+    });
+  });
+
   describe('the client’s address behind the proxies (T-138)', () => {
     const ipWith = async (forwardedFor?: string) => {
       const call = request(app!.getHttpServer()).get('/api/v1/probe/ip');

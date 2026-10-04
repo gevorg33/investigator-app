@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
+import { appUrl } from '@investigator/config';
 import { currentContext } from '../../common/context/execution-context';
 import {
   envelopeAs,
@@ -41,7 +42,6 @@ export const SEND_EMAIL = 'notifications.email';
 export const NOTIFYING_EVENTS = ['mission.status_changed', 'assignment.status_changed'] as const;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const appUrl = (path: string) => `${process.env['APP_BASE_URL'] ?? 'http://localhost:3000'}${path}`;
 
 /** One notification for one person, as it travels between the jobs: references only. */
 export interface Notice {

@@ -124,7 +124,7 @@ describe('the guard', () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(actor) };
     const resolver = workspaces();
     const req: Record<string, unknown> = {
-      cookies: { investigator_session: 'tok' },
+      cookies: { '__Host-investigator_session': 'tok' },
       get: (h: string) => (h === 'x-workspace' ? 'ws-1' : undefined),
       ip: '198.51.100.9',
     };
@@ -139,7 +139,7 @@ describe('the guard', () => {
   it('passes the cookie to actor resolution', async () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(testActor({ userId: 'u1' })) };
     const req: Record<string, unknown> = {
-      cookies: { investigator_session: 'tok' },
+      cookies: { '__Host-investigator_session': 'tok' },
       get: () => undefined,
     };
     await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));
@@ -157,7 +157,7 @@ describe('the guard', () => {
   it('forwards the requested role so a workspace switch needs no new sign-in', async () => {
     const actors = { fromRefreshToken: vi.fn().mockResolvedValue(testActor({ userId: 'u1' })) };
     const req: Record<string, unknown> = {
-      cookies: { investigator_session: 'tok' },
+      cookies: { '__Host-investigator_session': 'tok' },
       get: (h: string) => (h === 'x-active-role' ? 'INVESTIGATOR' : undefined),
     };
     await new ActorGuard(actors as never, workspaces() as never).canActivate(contextFor(req));

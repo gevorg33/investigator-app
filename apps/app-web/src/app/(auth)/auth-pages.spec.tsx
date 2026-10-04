@@ -68,7 +68,7 @@ describe('the sign-in page', () => {
   });
 
   it('sends someone already signed in straight on, never off-site', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('GET /me', 200, account());
     await expect(SignInPage(search({ next: '/missions' }))).rejects.toEqual(
       new Redirected('/missions'),
@@ -111,7 +111,7 @@ describe('the sign-up page', () => {
   });
 
   it('sends someone already signed in home', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('GET /me', 200, account());
     await expect(SignUpPage(search({}))).rejects.toEqual(new Redirected('/'));
   });
@@ -214,7 +214,7 @@ describe('the way back through signing in and up (T-158)', () => {
       `/sign-in?next=${encoded}`,
     );
 
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('GET /me', 200, account());
     await expect(SignUpPage(search({ next: back }))).rejects.toEqual(new Redirected(back));
     await expect(SignUpPage(search({ next: '//evil.test' }))).rejects.toEqual(new Redirected('/'));

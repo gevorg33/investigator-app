@@ -34,7 +34,7 @@ describe('recording a language choice', () => {
   });
 
   it('saves it to the account when signed in, so the next sign-in restores it', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('PATCH /me/preferences', 200, { locale: 'ru' });
     await chooseLocale(form('ru'));
     expect(request.set).toHaveBeenCalledWith('locale', 'ru', expect.anything());
@@ -43,14 +43,14 @@ describe('recording a language choice', () => {
         method: 'PATCH',
         path: '/me/preferences',
         body: { locale: 'ru' },
-        headers: { cookie: 'investigator_session=tok' },
+        headers: { cookie: '__Host-investigator_session=tok' },
       },
     ]);
   });
 
   it('still changes the page’s language when the session has ended, and says nothing of it', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    request.cookies.set('investigator_session', 'expired');
+    request.cookies.set('__Host-investigator_session', 'expired');
     api.on('PATCH /me/preferences', 401, apiError('UNAUTHENTICATED', 'error.auth.unauthenticated'));
     await chooseLocale(form('hy'));
     expect(request.set).toHaveBeenCalledWith('locale', 'hy', expect.anything());
@@ -59,7 +59,7 @@ describe('recording a language choice', () => {
 
   it('reports a failure to save, without undoing the choice', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('PATCH /me/preferences', 500, apiError('INTERNAL_ERROR', 'error.common.internal'));
     await chooseLocale(form('ru'));
     expect(request.set).toHaveBeenCalledWith('locale', 'ru', expect.anything());
@@ -72,7 +72,7 @@ describe('recording a language choice', () => {
   it.each([['de'], ['<script>'], [null]])(
     'changes nothing for %s — a form can be edited',
     async (value) => {
-      request.cookies.set('investigator_session', 'tok');
+      request.cookies.set('__Host-investigator_session', 'tok');
       await chooseLocale(form(value));
       expect(request.set).not.toHaveBeenCalled();
       expect(api.calls).toEqual([]);
