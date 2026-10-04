@@ -8899,11 +8899,11 @@ deleted through the API afterwards.
 ---
 
 ### T-201 — Real client addresses for connections Docker relays (IPv6 on the server)
-- **Status:** TODO
+- **Status:** BLOCKED — 2026-10-04, the repository half is done; the proof waits for the provisioned host (T-040). `server.yml`'s edge network is dual-stack (`enable_ipv6`, `fd20:0:0:1::/64`), so Docker publishes Caddy's ports to IPv6 clients by NAT rather than through `docker-proxy`. Seen on a Linux Docker daemon (29.5, Colima's VM): before, IPv6 had no NAT rule and a relay to Caddy's IPv4 address; after, `DNAT --to-destination [fd20:0:0:1::2]:443`, as IPv4 has. `edge.spec.ts` holds it; `client-address.md` says what the host check is
 - **Priority:** P2 — every relayed client shares one sign-in rate limit and one audit address
 - **Depends on:** T-023; a provisioned host (T-040)
 - **Risk:** MEDIUM
-- **Human approval required:** Yes — infrastructure, on the real host
+- **Human approval required:** Yes — infrastructure, on the real host (repository half approved in conversation, 2026-10-04)
 - **Owner agent:** infra-devops
 - **Affected:** infrastructure/compose/server.yml, docs/operations/client-address.md
 
@@ -8917,7 +8917,11 @@ spoofable: the gateway is not in `TRUSTED_PROXIES`. Candidate fixes, to be chose
 
 **Acceptance criteria**
 - [ ] On the provisioned host, an IPv4 and an IPv6 client each reach the API as their own address (a failed sign-in's audit row)
-- [ ] `docs/operations/client-address.md`'s known-gap section records the fix, or is removed
+      — waits for the host. The mechanism is shown locally (NAT rules above); a client from outside
+      the Docker host cannot be: Colima's forwarder carries every macOS connection, and a container
+      client is either masqueraded or dropped by Docker's bridge isolation (both tried)
+- [x] `docs/operations/client-address.md`'s known-gap section records the fix, or is removed
+      — rewritten: the cause, the before/after rules, and the three checks only the host can make
 
 **Validation**
 Two failed sign-ins from the host's public IPv4 and IPv6 paths, and the audit rows' `ip_address`.

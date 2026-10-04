@@ -8,7 +8,8 @@
 #
 # Two networks, and the line between them is the security boundary:
 #
-#   edge      Caddy's way out — the internet, and ACME. Caddy alone publishes ports.
+#   edge      Caddy's way out — the internet, and ACME. Caddy alone publishes ports. Dual-stack,
+#             so an IPv6 client reaches Caddy as itself, not as Docker's relay (T-201).
 #   internal  No route out (`internal: true`). Everything else lives here, unreachable from the
 #             internet: PostgreSQL, Redis, the API, the web apps' servers.
 #   egress    The API's way out, for the providers it calls (mail, media, OAuth, the model).
@@ -135,7 +136,16 @@ services:
       internal: {}
 
 networks:
-  edge: {}
+  # IPv6 here, so Docker publishes Caddy's ports to IPv6 clients by NAT, as it does IPv4 ones, and
+  # Caddy sees each client's own address (T-201). On an IPv4-only network Docker's userland relay
+  # takes IPv6 connections instead and opens its own to Caddy, so every IPv6 client arrived as this
+  # network's gateway — one sign-in rate limit and one audit address for all of them. A unique-local
+  # prefix: Caddy's address on it is never routed; only the published ports are reachable.
+  edge:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd20:0:0:1::/64
   internal:
     internal: true
     ipam:

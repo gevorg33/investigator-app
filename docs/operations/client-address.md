@@ -42,15 +42,35 @@ whose `X-Forwarded-For` the API believes. The API's port is never published: a c
 reach it directly, from a trusted address, could write its own `X-Forwarded-For`.
 `apps/api/test/edge.spec.ts` holds all of this against what Compose resolves.
 
-## A known gap: connections Docker relays
+## IPv6 clients, and connections Docker relays (T-201)
 
-Caddy sees the real client only when Docker forwards a published port by NAT. When Docker relays the
-connection through its userland proxy instead, Caddy's peer is the edge network's gateway, and every
-such client shares that one address — one sign-in rate limit, one audit address. That happens to
-IPv6 clients on a host whose Docker networks are IPv4-only, and to everything under Docker Desktop
-or Colima on a laptop (seen in T-023's verification as `172.20.0.1`). It is not spoofable — the
-gateway is not in `TRUSTED_PROXIES`, so the API stops there — but it is wrong. Settling it on the
-real host is T-201.
+Caddy sees the real client only when Docker forwards a published port by NAT. When Docker's
+userland relay (`docker-proxy`) takes the connection instead, it opens its own to Caddy, and Caddy's
+peer is the edge network's gateway — every such client shares that one address: one sign-in rate
+limit, one audit address. Not spoofable (the gateway is not in `TRUSTED_PROXIES`, so the API stops
+there), but wrong.
+
+**IPv6 was exactly that case.** On an IPv4-only edge network Docker has no IPv6 address to NAT to,
+so it publishes IPv6 only through the relay — Hetzner hosts have IPv6, and a reader on a phone often
+arrives over it. The edge network is now dual-stack (`enable_ipv6`, a unique-local `/64`), and
+Docker publishes Caddy's ports by NAT for both families. Seen on a real Linux Docker daemon (29.5,
+the VM under Colima), reading its rules for the published port:
+
+| | IPv4 | IPv6 |
+|---|---|---|
+| IPv4-only edge (before) | `DNAT --to-destination 172.x.0.2:443` | **no NAT rule** — `docker-proxy -host-ip ::` relaying to Caddy's IPv4 address |
+| Dual-stack edge (now) | `DNAT --to-destination 172.x.0.2:443` | `DNAT --to-destination [fd20:0:0:1::2]:443` |
+
+The relay still runs for both families, as Docker always runs it, but only for connections the host
+makes to itself (loopback, hairpin) — never for traffic arriving from outside.
+
+**What only the real host shows**, and is checked there (T-201's open criterion, with T-040): the
+daemon has `ip6tables` on (the default since Docker 27 — `docker info` shows no warning, and `sudo
+ip6tables -t nat -S | grep 443` lists the rule), the host has a public IPv6 address with AAAA
+records for the names, and a failed sign-in over each family records its own client in
+`audit_logs.ip_address`. A laptop cannot show the last part: Docker Desktop and Colima carry every
+connection from macOS through their own forwarder, so locally every client is still the gateway
+(seen as `172.20.0.1` in T-023's verification), whatever the network.
 
 ## Checking it
 

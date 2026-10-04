@@ -272,8 +272,8 @@ server from #9; `www` as CNAME to apex. Caddy obtains certificates automatically
 the API both read `DOMAIN` (`app.`, `admin.`, `news.` follow from it), `infrastructure/compose/
 server.yml` wires them together, and the routing, certificates, redirects and network isolation
 were verified end to end against a stand-in name. The deploy sets `DOMAIN` and `ACME_EMAIL` in the
-server's environment. If you add AAAA records, IPv6 clients currently all share one address at the
-API until T-201 is done on the server — not a security hole, but wrong rate limits for them.
+server's environment. Add AAAA records too: the stack is dual-stack (T-201), so IPv6 readers reach
+the API as themselves. The deploy confirms it on the host (`docs/operations/client-address.md`).
 
 **Status:** ⬜ Pending
 

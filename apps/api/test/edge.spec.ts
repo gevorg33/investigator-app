@@ -19,7 +19,11 @@ interface Stack {
   services: Record<string, Service>;
   networks: Record<
     string,
-    { internal?: boolean; ipam?: { config?: { subnet: string; ip_range?: string }[] } }
+    {
+      internal?: boolean;
+      enable_ipv6?: boolean;
+      ipam?: { config?: { subnet: string; ip_range?: string }[] };
+    }
   >;
 }
 
@@ -88,6 +92,17 @@ describe('the server stack', () => {
     expect(on('egress')).toEqual(['api']);
     expect(networks['edge']!.internal).toBeFalsy();
     expect(networks['egress']!.internal).toBeFalsy();
+  });
+
+  it('takes IPv6 clients on the edge by NAT, so Caddy sees each one, not Docker’s relay (T-201)', () => {
+    // IPv4-only, Docker's userland relay answered IPv6 and every IPv6 client was the gateway.
+    expect(networks['edge']!.enable_ipv6).toBe(true);
+    const v6 = networks['edge']!.ipam!.config!.map((c) => c.subnet).filter((s) => s.includes(':'));
+    // Unique-local: Caddy's own address is never routed; only the published ports are reachable.
+    expect(v6).toHaveLength(1);
+    expect(v6[0]).toMatch(/^fd[0-9a-f]{2}:[0-9a-f:]*\/64$/);
+    // The network the API trusts is untouched: IPv4, fixed addresses, no IPv6 to widen it.
+    expect(networks['internal']!.enable_ipv6).toBeFalsy();
   });
 
   it('trusts X-Forwarded-For from exactly the proxies’ fixed addresses', () => {
