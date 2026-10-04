@@ -174,6 +174,8 @@ describe('the staff verification console (T-070)', () => {
         [t('shell.verification'), '/verification'],
         // T-051: missions under review. Every queue is listed; the API says who may work it.
         [t('shell.moderation'), '/moderation'],
+        // T-205: legal holds, listed for all staff like the queues; the API refuses all but COMPLIANCE.
+        [t('shell.legal_holds'), '/legal-holds'],
       ]);
       expect(screen.getByText('Signed in as reviewer@example.test')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: t('shell.skip_to_content') })).toHaveAttribute(

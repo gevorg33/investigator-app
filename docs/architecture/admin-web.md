@@ -75,10 +75,13 @@ the browser refused.
 
 ## The shell
 
-One bar — the console's name, its queues (Verification, Missions), who is signed in, sign-out. On a
-phone the name and sign-out share the first row and the queues take the second, full width; from
-`md` it is one row. Two queues, so still no sidebar and no menu hiding them. Every queue is listed
-for every member of staff; whether they may work it is the API's answer, which each page says.
+One bar — the console's name, its destinations (Verification, Missions, Legal holds), who is signed
+in, sign-out. On a phone the name and sign-out share the first row and the destinations wrap below
+it, full width; from `md` it is one row, where the destinations keep their width and the email gives
+way and truncates. Three destinations, so still no sidebar and no menu hiding them. Every one is
+listed for every member of staff; whether they may work it is the API's answer, which each page says.
+**Not** hidden by scope: `/me` does not list scopes (above), and adding them is an authorization-
+visibility change of its own (T-205 kept the console's pattern; see T-187 for the app's equivalent).
 
 ## Verification (T-070)
 
@@ -126,6 +129,36 @@ for every member of staff; whether they may work it is the API's answer, which e
   ("45 min", "2.5 hr", "3.2 days"). The page says it is what a decision to open a category would be
   made on, and that nothing opens from it.
 
+## Legal holds (T-205)
+
+`/legal-holds` — COMPLIANCE scope, on T-035's API (`GET|POST /legal-holds`, `POST …/:id/release`).
+
+- **The list**: holds in force by default, newest first; **Released** and **All** as links, the
+  current one marked; paged by cursor like the queues, a cursor that no longer fits starting again
+  from the newest in the same view. A card per hold on every width: in force or released, the kind of
+  record and its full id, why it is held, who placed it and when (in the reader's time zone, the
+  person by a short handle); once released, who released it, when and why. There is no page per
+  hold — the API reads holds only as a list, and a card already says everything a hold does.
+- **Holds on one record**: a lookup (kind and id, a plain `GET` form) narrows the list to one
+  record — "is this account held?". An id in capitals or with spaces is still the id; one that is
+  not an id, or half a lookup, is said so under the field and the list is not narrowed.
+- **Placing** — a `Drawer`: the kind (native radios, none chosen), the id, the reason (at least the
+  API's 12 characters, said in the hint: which request, case or instruction, with its reference).
+  From a lookup it starts with that record filled in; after placing it starts afresh. A record that
+  does not exist is said in words beside the buttons.
+- **Releasing** — its own `Drawer` from the card ("Release — Account e18bbb58", so a list of them
+  says which is which), saying it cannot be undone, with a reason and a destructive submit. Someone
+  having released it first is said beside the buttons, and the sheet stays open.
+- Errors in both sheets sit beside the buttons, outside the scrolling body: at the top of a long
+  sheet the message was out of view once the reader had scrolled down to submit.
+- 403 is the no-scope notice, as for the queues. Shared values (the kinds, the reason bounds) live
+  in `src/lib/legal-holds.ts`, not in a sheet: a server component that imports a value from a
+  `'use client'` module gets a reference, not the value (`client-boundary.spec.ts` holds that).
+
+Verified in the browser at 1440, 768 and 375, light and dark, with reduced motion (sheet and scrim
+not animated, closed in milliseconds): place, not found, lookup, release, a release that lost a race,
+no scope, and the keyboard path into, around and out of each sheet.
+
 **Granting staff access** has no screen or command yet (T-152, which needs approval: it is
 authorization). For local development only, as the database owner:
 
@@ -136,6 +169,9 @@ INSERT INTO user_staff_scopes (user_id, scope, granted_by)
 -- The moderation queue (T-051) needs its own scope:
 INSERT INTO user_staff_scopes (user_id, scope, granted_by)
   SELECT id, 'MODERATION', id FROM users WHERE email = 'you@example.test';
+-- Legal holds (T-035, T-205) need COMPLIANCE:
+INSERT INTO user_staff_scopes (user_id, scope, granted_by)
+  SELECT id, 'COMPLIANCE', id FROM users WHERE email = 'you@example.test';
 ```
 
 ## Running it

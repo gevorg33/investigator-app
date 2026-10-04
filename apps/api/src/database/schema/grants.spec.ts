@@ -150,6 +150,12 @@ describe('the mission tables hold only the privileges they were meant to', () =>
     },
   );
 
+  it('legal_holds is never deleted from by the application, and changes only by release', async () => {
+    // A hold the application could delete would be released by a bug; the trigger narrows UPDATE
+    // to the one release (T-035, legal-hold.service.spec.ts).
+    expect(await granted('legal_holds')).toEqual(['INSERT', 'SELECT', 'UPDATE']);
+  });
+
   it('refuses UPDATE on mission_status_history from the application role', async () => {
     await expect(
       sql.begin(async (tx) => {

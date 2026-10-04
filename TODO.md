@@ -1965,11 +1965,11 @@ pnpm --filter api test common
 ---
 
 ### T-035 — Legal hold
-- **Status:** TODO
+- **Status:** DONE — 2026-10-05; `legal_holds` (migrations 0040–0041), `modules/legal-hold` (service, routes, `RetentionGuard`), the oauth purge through the guard; retention.md, authorization.md, law-enforcement runbook, staff KB `kb-staff-legal-holds`, customer KB `kb-customer-privacy-data@5`
 - **Priority:** P1
 - **Depends on:** T-004
 - **Risk:** HIGH
-- **Human approval required:** Yes — data retention
+- **Human approval required:** Yes — data retention; approved 2026-10-05, scoped to the primitive (below), with a new `COMPLIANCE` staff scope rather than `DISPUTES`
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/legal-hold/**, retention jobs, migrations
 
@@ -1978,20 +1978,41 @@ Nothing currently stops a retention job from deleting evidence that is under dis
 a legal obligation to retain. That is data loss during litigation. The counsel brief flags the
 conflict; nothing enforces it.
 
+**What shipped**
+
+Found at selection: three of the seven criteria need what does not exist — disputes (T-118),
+evidence items (T-116) and any erasure workflow — and the only retention deletion in the API was the
+Google sign-in's purge of lapsed `oauth_attempts`. Scoped (2026-10-05) to the primitive, with those
+three criteria moved to the tasks that bring their producers, as T-081's gate was handled.
+
+- **`legal_holds`** (migration 0041): resource type and id, reason, placed by and at, released at,
+  by and why. A trigger allows one change — the release, once, complete — and refuses DELETE even to
+  the owner. No foreign keys to the resource or the people, so it survives both accounts. `system`
+  class; platform access only, so no workspace learns its data is held.
+- **`COMPLIANCE` staff scope** (migration 0040; `packages/auth`, `scopes.ts`, the enum).
+- **`/api/v1/legal-holds`**: list (in force by default, by resource, cursor-paged), place (refused
+  for a resource that does not exist), release (409 the second time). Each its own audited crossing.
+  Audit rows carry the reference, never the reason.
+- **`RetentionGuard.sweep()`** — the one way retention deletes. Enters `asSystem` itself (holds are
+  invisible outside platform access, so a caller-side check would fail open), deletes only what no
+  hold in force covers, audits `retention.kept` per hold and `retention.deleted`, one transaction.
+  `retention.static.spec.ts` lists every other delete in the API with why it is not retention.
+- **The oauth purge** goes through it: a LINK attempt whose account is held is kept. It is asked
+  for only when something has lapsed, so a start with nothing to purge writes no crossing.
+
 **Acceptance criteria**
-- [ ] `legal_holds`: resource type and ID, reason, placed by, placed at, released at
-- [ ] **Every retention deletion path checks for an active hold first** — tested per path
-- [ ] Opening a dispute places a hold automatically; resolving it does not auto-release
-- [ ] Release is a deliberate, audited action with a reason
-- [ ] An erasure request against held data is **surfaced to compliance, never auto-resolved**
-- [ ] Holds are append-only and survive account deletion
-- [ ] A test proves a retention job skips held evidence and reports why
+- [x] `legal_holds`: resource type and ID, reason, placed by, placed at, released at
+- [x] **Every retention deletion path checks for an active hold first** — tested per path: the one path that exists (oauth attempts), and a static spec that fails on any new delete outside the guard
+- [ ] Opening a dispute places a hold automatically; resolving it does not auto-release — **moved to T-118**, which brings disputes
+- [x] Release is a deliberate, audited action with a reason
+- [ ] An erasure request against held data is **surfaced to compliance, never auto-resolved** — **moved to T-206**, which brings the erasure workflow
+- [x] Holds are append-only and survive account deletion — by trigger and by test, deleting both the held and the placing account
+- [x] A test proves a retention job skips held data and reports why (`retention-guard.spec.ts`, `auth-oauth.service.spec.ts`); for held **evidence**, T-116
 
 **Validation**
 ```bash
 pnpm --filter api test legal-hold retention
 ```
-
 ---
 
 ### T-036 — Notifications
@@ -6046,7 +6067,7 @@ staff access requires a dispute-linked grant in `PlatformContext`.
       evidence must never be blocked on a source (plan.md §8)
 - [ ] Evidence cannot be edited or deleted by the application; a correction is a new item referencing the old
 - [ ] Every access writes a custody entry and an audit row; the customer can see the access history
-- [ ] Legal hold (T-035) blocks retention deletion
+- [ ] Legal hold (T-035) blocks retention deletion: evidence's retention job deletes through `RetentionGuard.sweep()` with every resource an item belongs to (the item, its assignment), adds `EVIDENCE_ITEM` to `legal_hold_resource`, and a test proves it skips held evidence and reports why — moved here from T-035
 
 **Validation**
 ```bash
@@ -6107,6 +6128,7 @@ through T-112 and T-113. The flow follows the existing KB articles on disputes.
 - [ ] Release is impossible while a dispute is open (tested against T-112)
 - [ ] The decision, its reasons and every staff access are audited; the parties see the outcome and the reasons
 - [ ] Staff console screen, with T-070's patterns
+- [ ] Opening a dispute places a legal hold (T-035) on the assignment automatically, as the system; resolving the dispute does not release it — release stays a COMPLIANCE decision. `legal_holds.placed_by` is NOT NULL today; recording a system placement needs a migration that says what placed it (the dispute). Moved here from T-035
 
 **Validation**
 ```bash
@@ -9026,6 +9048,195 @@ the decision to open, or not, would be made on. It adds no path to QUOTED.
 **Validation**
 ```bash
 pnpm --filter api test mission-moderation && pnpm --filter admin-web test
+```
+
+---
+
+### T-204 — Retention on a schedule
+- **Status:** DONE — 2026-10-05; retention sweeps as BullMQ schedulers in the worker (`maintenance` queue), rules in `legal-hold/retention-rules.ts`, the sign-in purge removed; retention.md "How retention runs", jobs.md, google-sign-in.md, ACTIONS #25
+- **Priority:** P2
+- **Depends on:** T-035
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — it deletes data on a timer; approved 2026-10-05 (chosen over T-206, which waits on counsel)
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/common/jobs/**, apps/api/src/modules/legal-hold/**, apps/api/src/modules/auth/google-auth.service.ts
+
+**Description**
+From T-035. The only retention deletion runs on a request — the Google sign-in start purges lapsed
+`oauth_attempts` when it finds one — and `retention.md` names others with no job at all
+(`job_runs`, `notifications`, `idempotency_keys`, `outbox_events`). Each sweep crosses into platform
+access and is audited, so on a busy sign-in path the crossing trail fills with housekeeping. Add a
+repeatable BullMQ job per retention rule, each a `RetentionGuard.sweep()` with its own
+`retention.*` purpose, and move the oauth purge onto it.
+
+**What shipped**
+
+- **Rules as code, one place**: `retention-rules.ts` — table, period, interval, and the resources a row
+  belongs to. `retention-rules.spec.ts` holds each period equal to the register's row.
+- **Scheduled in the worker**: `RetentionSchedule` installs a BullMQ scheduler per rule on a new
+  `maintenance` queue at start, and removes any for a rule the code no longer has (only `retention.*`
+  ones). `RetentionSweepHandler` is a system job: the runner's one crossing, the sweep in its
+  transaction. A scheduler queues the same envelope each time, so each run is keyed by its queue id
+  (`scheduledRun`) — otherwise every run after the first was a duplicate.
+- **The guard** now sweeps in the transaction it is given and **refuses outside platform access**.
+- **Only `oauth_attempts` is swept.** The register says not to build an irreversible deletion
+  against its provisional periods; `job_runs`, `notifications`, `idempotency_keys` and `outbox_events`
+  each join as one entry when counsel fixes theirs.
+- Verified with the real worker against local PostgreSQL and Redis: it scheduled the rule, the first
+  run removed a lapsed attempt within seconds, one `job_runs` row keyed `repeat:retention.oauth_attempts:<t>`,
+  one `platform.access` and one `retention.deleted` under that id; SIGTERM stopped it cleanly.
+
+**Found:** the worker is not in `infrastructure/compose/server.yml` (ACTIONS #25). Before this task
+the purge ran inside the API; now an environment without the worker deletes nothing — filed T-208.
+
+**Acceptance criteria**
+- [x] Each rule runs on a schedule, through the guard, as the system; one crossing per run
+- [x] The sign-in start no longer deletes anything
+- [x] A rule's period comes from one place `retention.md` names; a shortened period is not applied retroactively without a recorded decision (retention.md rule 4) — the period and the register are held equal by a spec, so a change shows in one diff with both
+
+**Validation**
+```bash
+pnpm --filter api test retention jobs
+```
+
+---
+
+### T-205 — Legal holds in the staff console
+- **Status:** DONE — 2026-10-05; admin-web `/legal-holds` (list, lookup, place and release sheets), the console's nav; shared `Drawer` now focuses into the sheet and honours reduced motion; `admin-web.md`, component inventory, staff KB `kb-staff-legal-holds@2`, runbook
+- **Priority:** P2
+- **Depends on:** T-035
+- **Risk:** MEDIUM
+- **Human approval required:** No — the API and its authorization exist; this is their screen
+- **Owner agent:** admin-web
+- **Affected:** apps/admin-web/**
+
+**Description**
+From T-035. COMPLIANCE staff place, read and release holds through `/api/v1/legal-holds` with no
+screen — the law-enforcement runbook says to call the API. A list (in force by default), a place
+form and a release action, each asking for the reason the API requires. *(A page per hold was
+dropped: the API reads holds only as a list, and a card already shows all a hold says.)*
+
+**What shipped**
+
+`/legal-holds`: in force / released / all, newest first, paged; a lookup by kind and id ("is this
+account held?"); a card per hold with the record, the reason, who placed and released it and when;
+**Place a hold** and **Release** as sheets, disabled until the API's 12-character reason, the release
+saying it cannot be undone. The page follows the console's pattern for scope: listed for all staff,
+the API refuses all but COMPLIANCE, and the page says so.
+
+**What the browser found, after every spec had passed** — each fixed, re-verified, and held by a test
+where jsdom can see it:
+- `RESOURCES.find is not a function`: the server page imported an array from a `'use client'`
+  module, which arrives as a reference. Values moved to `lib/legal-holds.ts`; `client-boundary.spec.ts`
+  now fails on any non-component import from a client module into a server one (seen failing first).
+- The shared `Drawer` left focus on the trigger and let Tab walk behind the open sheet (vaul 1.1's
+  `autoFocus` defaults off; app-web had already set it). On by default now — `drawer.spec.ts`, seen
+  failing first. Moderation's and verification's sheets get the fix too.
+- vaul's own 0.5s animation ran under reduced motion; `motion-reduce:` turns it off (app-web: T-207).
+- A third nav link wrapped under the others at 1440; the email now gives way instead.
+- A sheet's error rendered at the top of its scrolling body, out of view once the reader had scrolled
+  to submit; it now sits beside the buttons. The place sheet kept the last record after placing; it
+  starts afresh.
+
+Verified at 1440, 768 and 375, light and dark, reduced motion, keyboard, accessibility tree.
+
+**Acceptance criteria**
+- [x] List, place and release, readable at 375 and 1280; release confirms, since it cannot be undone
+- [x] Nobody without COMPLIANCE reaches anything — the page says the scope is needed and shows no hold (seen in the browser with the scope revoked)
+- [ ] Nobody without COMPLIANCE **sees the navigation entry** — not done. The console lists every destination for every member of staff (T-070); hiding one needs `/me` to return the reader's scopes, which exposes the authorization model to the client — the change T-187 is approval-gated for. Owner's decision whether to do it
+- [x] Staff KB and the runbook no longer send staff to the API
+
+**Validation**
+```bash
+pnpm --filter admin-web test
+```
+---
+
+### T-206 — Erasure requests, and what a legal hold does to them
+- **Status:** TODO
+- **Priority:** P1
+- **Depends on:** T-035, counsel (retention periods, ACTIONS-FOR-ME #0)
+- **Risk:** HIGH
+- **Human approval required:** Yes — account deletion, erasure and retention
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/account/**, apps/api/src/modules/ai-sessions/**, apps/api/src/modules/legal-hold/**
+
+**Description**
+From T-035. There is no web account-deletion or erasure workflow: `retention.md` describes one
+("Erasure request … blocked by a legal hold") and the customer KB promises one, but no code
+receives a request. The one erasure that exists — a person deleting their assistant session, which
+erases its messages at once (owner decision 2026-09-23) — consults no hold. Decide with the owner
+whether a hold on the person stops that erasure, and build the request workflow: a request against
+held data goes to COMPLIANCE as an item to resolve, and is never resolved automatically.
+
+**Acceptance criteria**
+- [ ] An erasure request against held data is surfaced to compliance, never auto-resolved — moved here from T-035
+- [ ] The assistant-session erasure either consults holds or `retention.static.spec.ts` records why not, as decided
+- [ ] Customer KB `kb-customer-privacy-data` says what happens to a request while data is held
+
+**Validation**
+```bash
+pnpm --filter api test erasure legal-hold
+```
+
+---
+
+### T-207 — app-web's sheets ignore reduced motion
+- **Status:** DONE — 2026-10-05; app-web `Drawer` opts the sheet and scrim out of vaul's animation under reduced motion; `drawer.spec.tsx` (new: focus and the opt-out); `app-web.md`, component inventory
+- **Priority:** P2
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/ui/drawer.tsx
+
+**Description**
+Found in T-205. vaul injects its own CSS — `animation-duration: .5s` on the sheet and its scrim — so
+the duration tokens, which go to zero under `prefers-reduced-motion`, never reach it. Every app-web
+sheet built on its `Drawer` still slides for half a second with motion reduced. admin-web's `Drawer` fixed it with `motion-reduce:animate-none!
+motion-reduce:transition-none!` on the content and the overlay; do the same, and check a sheet that
+is dragged still closes.
+
+**Acceptance criteria**
+- [x] With reduced motion: no animation on the sheet or the scrim, and closing does not wait for one — seen in the browser (notification sheet at 375: none, closed in 8 ms, focus inside; normal motion unchanged)
+- [x] The opt-out held by the drawer spec, as admin-web's is — seen failing first
+
+*Checked:* drag-to-close still closes with motion reduced. vaul ignores any drag for its first 500 ms
+after opening, with or without motion (`shouldDrag`, "allow scrolling when animating") — a first
+measurement that seemed to differ was a press below the viewport while the sheet was still sliding in.
+
+**Validation**
+```bash
+pnpm --filter app-web test
+```
+
+---
+
+### T-208 — Run the worker in the server stack
+- **Status:** TODO
+- **Priority:** P1 — before the first deploy: without it nothing is swept and no event is delivered
+- **Depends on:** T-204
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — production deployment configuration
+- **Owner agent:** infra-devops
+- **Affected:** infrastructure/compose/server.yml, apps/api Dockerfile if the image needs a second command
+
+**Description**
+From T-204. ACTIONS-FOR-ME #25 describes the worker service the owner was to add by hand, written
+before `server.yml` was in the repository (T-023). Since T-204 retention runs only in the worker —
+the API no longer purges lapsed sign-in attempts — so a stack without it never deletes them, and the
+"thirty minutes plus a day" for a waiting sign-up's provider address stops being true. Add the
+service: the API's image and environment, `node dist/worker.main.js`, no port, a 30s stop grace,
+`JOB_QUEUE_PREFIX` per environment; then retire the manual half of #25.
+
+**Acceptance criteria**
+- [ ] `server.yml` runs the worker beside the API, from the same image, with no published port
+- [ ] Its log on start says the retention schedule and the queues it works
+- [ ] ACTIONS #25 says what is left for the owner, if anything
+
+**Validation**
+```bash
+docker compose -f infrastructure/compose/server.yml config --quiet
 ```
 
 ---

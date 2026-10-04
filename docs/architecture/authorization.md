@@ -113,7 +113,13 @@ days is not an enforcement action. That is closed, with regression tests.
 A moderator is not a payments reviewer. Scopes come from the staff capabilities in
 `plan.md` §7, one per capability:
 
-`VERIFICATION` · `MODERATION` · `DISPUTES` · `PAYMENTS` · `TAXONOMY` · `ENFORCEMENT`
+`VERIFICATION` · `MODERATION` · `DISPUTES` · `PAYMENTS` · `TAXONOMY` · `ENFORCEMENT` · `COMPLIANCE`
+
+`COMPLIANCE` (T-035, 2026-10-05) places and releases legal holds and nothing else. It is not
+folded into `DISPUTES`: a hold also answers preservation requests and counsel's instructions,
+it outlives the dispute that may have caused it, and releasing one is a legal decision rather
+than a dispute outcome. Until T-152 gives staff a way to grant scopes, it is granted the way
+the first administrator's scopes are — by a row written by someone with database access.
 
 They live in `user_staff_scopes`, granted and revoked one at a time, each grant recording
 who made it. Revoked rows are kept: who could see payments last March is a question a

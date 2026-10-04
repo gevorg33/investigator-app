@@ -6,6 +6,7 @@ import {
   JOB_HANDLERS,
   PermanentJobError,
   QUEUES,
+  scheduledRun,
   type JobEnvelope,
   type JobHandler,
   type QueueName,
@@ -64,6 +65,42 @@ export class JobQueue {
     await this.queue(queue).add(envelope.command, envelope, { ...DELIVERY, jobId: envelope.jobId });
   }
 
+  /**
+   * Runs `envelope` every `everyMs` (T-204), as a BullMQ job scheduler named `id`. The schedule
+   * lives in Redis, so however many workers install it, each interval queues one job. Installing it
+   * again with another interval replaces it.
+   */
+  async schedule(
+    queue: QueueName,
+    id: string,
+    everyMs: number,
+    envelope: JobEnvelope,
+  ): Promise<void> {
+    // No `jobId`: the scheduler names each run itself (`repeat:<id>:<time>`).
+    await this.queue(queue).upsertJobScheduler(
+      id,
+      { every: everyMs },
+      { name: envelope.command, data: envelope, opts: DELIVERY },
+    );
+  }
+
+  /**
+   * Removes every scheduler on `queue` whose name starts with `prefix` and is not in `keep`: a
+   * schedule taken out of the code stops. The prefix keeps one owner's sweep off another's schedules.
+   */
+  async unscheduleExcept(
+    queue: QueueName,
+    prefix: string,
+    keep: readonly string[],
+  ): Promise<string[]> {
+    const q = this.queue(queue);
+    const stale = (await q.getJobSchedulers())
+      .map((s) => s.key)
+      .filter((key) => key.startsWith(prefix) && !keep.includes(key));
+    for (const key of stale) await q.removeJobScheduler(key);
+    return stale;
+  }
+
   private queue(name: QueueName): Queue {
     let queue = this.queues.get(name);
     if (queue === undefined) {
@@ -89,13 +126,15 @@ export class JobQueue {
  */
 export function processorFor(runner: JobRunner, deadLetters: DeadLetters, queue: QueueName) {
   return async (job: Job<unknown>): Promise<void> => {
+    // A scheduler's run carries the scheduler's envelope; it is keyed by this run (T-204).
+    const data = job.repeatJobKey === undefined ? job.data : scheduledRun(job.data, job.id!);
     try {
-      await runner.run(job.data);
+      await runner.run(data);
     } catch (error) {
       const attempts = job.attemptsMade + 1;
       const last = attempts >= (job.opts.attempts ?? 1);
       if (!(error instanceof PermanentJobError) && !last) throw error;
-      await deadLetters.record(job.data, queue, error, attempts);
+      await deadLetters.record(data, queue, error, attempts);
       throw new UnrecoverableError(error instanceof Error ? error.message : String(error));
     }
   };

@@ -626,18 +626,27 @@ describe('Google sign-in (T-062)', () => {
   });
 
   describe('housekeeping', () => {
-    it('deletes attempts that lapsed more than a day ago when the next one starts', async () => {
-      await ownerDb.insert(oauthAttempts).values({
-        provider: 'GOOGLE',
-        intent: 'SIGN_IN',
-        stateHash: `old-${randomUUID()}`,
-        nonceHash: 'n',
-        expiresAt: new Date(Date.now() - 2 * 86_400_000),
-      });
-      await google.start({ returnTo: '/' }, ctx());
-      const left =
-        await ownerSql`SELECT 1 FROM oauth_attempts WHERE expires_at < now() - interval '1 day'`;
-      expect(left).toHaveLength(0);
+    it('deletes nothing when one starts: lapsed attempts are the retention sweep’s (T-204)', async () => {
+      const [lapsed] = await ownerDb
+        .insert(oauthAttempts)
+        .values({
+          provider: 'GOOGLE',
+          intent: 'SIGN_IN',
+          stateHash: `old-${randomUUID()}`,
+          nonceHash: 'n',
+          expiresAt: new Date(Date.now() - 2 * 86_400_000),
+        })
+        .returning();
+      const c = ctx();
+      await google.start({ returnTo: '/' }, c);
+      expect(
+        await ownerDb.select().from(oauthAttempts).where(eq(oauthAttempts.id, lapsed!.id)),
+      ).toHaveLength(1);
+      // Nor does starting one cross into platform access any more.
+      expect((await audited(c.correlationId)).map((e) => e.action)).not.toContain(
+        'platform.access',
+      );
+      await ownerDb.delete(oauthAttempts).where(eq(oauthAttempts.id, lapsed!.id));
     });
 
     it('offers nothing without Google configured', async () => {

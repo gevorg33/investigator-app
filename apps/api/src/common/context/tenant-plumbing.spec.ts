@@ -138,6 +138,9 @@ describe('tenant isolation is not business-domain plumbing', () => {
       'modules/blocks/blocks.service.ts',
       // The knowledge-base sync, a system operation with no user (T-016, approved 2026-09-23).
       'modules/knowledge/knowledge-sync.service.ts',
+      // Legal holds (T-035, approved 2026-10-05): COMPLIANCE staff placing, releasing and reading
+      // holds on resources in any workspace. Retention sweeps (T-204) cross as the jobs runner does.
+      'modules/legal-hold/legal-hold.service.ts',
       'modules/media/media.service.ts',
       // Moderation staff deciding missions under review — the publication gate (T-051, approved
       // 2026-10-03). The queue, one mission, and the decision each enter on their own.

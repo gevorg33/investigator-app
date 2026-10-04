@@ -281,6 +281,20 @@
       "when": 1791027533621,
       "tag": "0039_add_mission_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791144514661,
+      "tag": "0040_add_compliance_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791144543668,
+      "tag": "0041_add_legal_holds",
+      "breakpoints": true
     }
   ]
 }

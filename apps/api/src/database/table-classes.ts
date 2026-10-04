@@ -271,6 +271,10 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     nullable: { tenant_id: 'a system job has no workspace' },
     note: 'written and read in the system context only (T-082)',
   },
+  legal_holds: {
+    class: 'system',
+    note: 'platform access only (T-035): COMPLIANCE staff place and release holds, retention jobs read them as the system. Names a resource in any workspace, or none (a person), so it carries no tenant column — and no workspace may learn its data is held',
+  },
   audit_logs: {
     class: 'platform_record',
     note: 'tenant_id, membership_id and session_id are filled by DEFAULT from the context (T-080); nullable, because plenty of audited things happen outside a workspace',

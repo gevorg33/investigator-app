@@ -4,9 +4,9 @@ title: Your privacy — who can see what, and what happens to your data
 audience: customer
 visibility: authenticated
 locale: en
-version: 4
+version: 5
 status: current
-updated: 2026-10-01
+updated: 2026-10-05
 source_of_truth: docs
 implementation_status: specified
 related_code:
@@ -16,6 +16,7 @@ related_code:
   - apps/api/src/modules/auth
   - apps/api/src/modules/evidence
   - apps/api/src/common/audit
+  - apps/api/src/modules/legal-hold
 tags: [privacy, data, deletion, export, retention, security]
 ---
 
@@ -85,6 +86,18 @@ Some records survive deletion because the law requires it — financial records 
 purposes are the usual example. Evidence within a completed assignment may also be retained
 under its own retention rule, since the investigator is a party to it too. The retention
 policy sets out what applies.
+
+## Can my data be kept longer than its retention period?
+
+Yes, but only while the law requires the platform to preserve it — during a dispute, during legal
+proceedings, or when an authority lawfully asks for it to be preserved. This is called a legal
+hold.
+
+While a legal hold is in force, the record it covers is not deleted when its retention period
+ends. When the obligation ends, the hold is released and the usual retention rule applies again.
+A legal hold keeps data; it does not give anyone new access to it.
+
+The published privacy policy sets out the legal position and governs where this summary differs.
 
 ## How long is my data kept?
 

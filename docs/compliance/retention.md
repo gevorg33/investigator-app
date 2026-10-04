@@ -29,7 +29,7 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `user_sessions` | **90 days** after expiry | Security | Revoked sessions kept for abuse investigation |
 | `user_staff_scopes` | With the user; revoked rows kept **7 years** | Dispute defence, incident review | Not deleted on revocation — who could see payments last March is a question an investigation will ask |
 | `user_identities` | With the user | — | Cascades. Holds no credential — only the provider's opaque account id |
-| `oauth_attempts` | **1 day** after the attempt, or its waiting sign-up, lapses | Security | A sign-in with Google (T-062). Only hashes of state, nonce and sign-up token. The provider address is held only while a first sign-in waits for the documents (thirty minutes). Deleted at the next start |
+| `oauth_attempts` | **1 day** after the attempt, or its waiting sign-up, lapses | Security | A sign-in with Google (T-062). Only hashes of state, nonce and sign-up token. The provider address is held only while a first sign-in waits for the documents (thirty minutes). Deleted by the hourly retention sweep (`retention.oauth_attempts`, T-204), through the retention guard: a LINK attempt whose account is under a legal hold is kept until the hold is released (T-035) |
 | `user_tokens` | **30 days** after `expires_at` | Security | Verification and password-reset tokens. Only the hash is stored. Kept past expiry so a redemption attempt on a dead token is still explainable during an abuse investigation |
 | `media_assets` | **Per category, provisional:** profile images — with the profile; agency logos and covers — with the agency, and one no longer named by its profile is removed by the retention job **30 days** after it was replaced (T-084); verification documents — until the verification lapses **+ 12 months** (counsel sets the real period; still listed below) | Contract; verification record | Soft-deleted by the application, which holds no `DELETE`. Removal is one audited retention job that destroys the Cloudinary asset **and** marks the row. The owner key restricts, so no file disappears as a side effect of deleting an account. Upload authorizations that expire are kept **30 days** for abuse investigation |
 | `service_areas` | With the profile; removed when the investigator deletes the area | Contract | Cascades from the profile. Holds no home location, and no centre more precise than about a kilometre (migration 0006 constraints). The declared country, region and city (migration 0008) describe where the investigator **works**, not where they live, and are what the country and city filters in discovery match on |
@@ -39,9 +39,9 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `mission_moderation_decisions` | With the mission | Lawful-use accountability, dispute defence | Append-only — the application holds no `UPDATE` or `DELETE` (T-051). Each moderator decision: the outcome, the reason the customer reads, an internal note the customer never does, the moderator, and the category, band and queue time review latency is measured by. Read by staff only |
 | `mission_tags` | With the mission | Contract | A mission's tags (T-055): suggested by the customer, confirmed by a moderator. Ids and times only — the vocabulary (`tags`, `tag_labels`) is platform data, never deleted, only deprecated or merged. A customer may withdraw an unconfirmed suggestion from their own draft; nothing else deletes a row |
 | `outbox_events` | Published rows pruned **30 days** after delivery; unpublished rows never pruned | Operational | Holds references only — ids, statuses, versions — never content. An unpublished row is undelivered work, so a prune that removed one would lose an event |
-| `job_runs` | **90 days** after the run *(provisional)* | Operational | The idempotency record (T-082): what a job did, and in which workspace. Past the longest a queue could redeliver a job, it has nothing left to guard. No content — a job's key, its command and when. No pruning job exists yet; it arrives with the first scheduled retention sweep |
+| `job_runs` | **90 days** after the run *(provisional)* | Operational | The idempotency record (T-082): what a job did, and in which workspace. Past the longest a queue could redeliver a job, it has nothing left to guard. No content — a job's key, its command and when. Not swept yet: the scheduled sweep exists (T-204), and this rule joins it when its period stops being provisional |
 | `job_dead_letters` | **90 days** after failure *(provisional)* | Operational | A job that failed for good (T-082), kept whole — its context and payload, which hold ids, never content — so it can be read and replayed. Replay and pruning arrive with T-168 |
-| `notifications` | **12 months** after it was created *(provisional)*, and with the recipient | Contract | A kind, a subject id and a relative link — never content (T-036). Cascades with the user. No pruning job exists yet; it arrives with the first scheduled retention sweep |
+| `notifications` | **12 months** after it was created *(provisional)*, and with the recipient | Contract | A kind, a subject id and a relative link — never content (T-036). Cascades with the user. Not swept yet: the scheduled sweep exists (T-204), and this rule joins it when its period stops being provisional |
 | `notification_preferences` | With the user | Consent record | A choice about email, kept while the person is — deleting one would switch their email back on. Cascades with the user. The change itself is in `audit_logs` |
 | `user_blocks` | Until the blocker removes it; with either person *(provisional)* | Safety, the blocker's choice | Deleted on unblock; cascades with either account. Who blocked whom, and when, stays in `audit_logs` (`user.blocked`, `user.unblocked`) for staff's pattern review. The label is a name the blocker could already see |
 | `quotes` | With the mission it was offered on (**7 years** after it closes, provisional) | Contract, dispute defence | The application holds no `DELETE`. A quote is the offer as it stood — "what is not in it was not agreed" — so it outlives the decision whether or not it was accepted. Withdrawn and expired quotes are kept too: they are the record of what was available when the customer chose |
@@ -60,6 +60,7 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `membership_roles` | With the membership | Audit | Assignments are added and removed, never edited in place. The last OWNER cannot be removed (trigger) |
 | `permissions`, `roles`, `role_permissions` | Indefinitely — reference data | Contract | Seeded by migration. Read-only to the application. Contain no personal data |
 | `verification_decisions` | With the request | Verification record, dispute defence | Append-only. The reviewer is recorded by id without a foreign key, as in `audit_logs`, so attribution survives the reviewer's account. The reason is free text written for the applicant |
+| `legal_holds` | **Indefinitely** — released holds included | Legal obligation, dispute defence | Never deleted by anyone: a trigger refuses DELETE even to the owner, and the application holds no `DELETE` (migration 0041). Released once, with its own reason, and otherwise never changed. The resource and the people are not foreign keys, so a hold survives the account it names and the account that placed it (T-035). If released holds are ever given a period, the migration that sets it lifts the trigger |
 | `audit_logs` | **7 years** | Legal obligation, dispute defence | **Never deleted by the application.** A privileged job only, itself audited |
 | `ai_sessions` | **Until the user deletes it**; a deleted session is kept as a tombstone — owner, workspace and deletion time, no title, no content — for the life of the account (provisional) | Contract; audit | Deleting erases every message in the same transaction (owner decision, 2026-09-23). The application holds no `DELETE` on sessions, so the tombstone cannot be removed by it. Readable only by its own user in its own workspace — not an agency's owner (T-045) |
 | `reviews` | **With the assignment** (**7 years** after it closes, provisional). A removed review is kept, hidden, with who removed it and why | Contract, dispute defence | The application holds no `DELETE`. Rating only; the review is never rewritten (trigger), and staff removal is the one change. When the customer's account is deleted the review stays, attributed to "a customer of that assignment" — it carries no customer name, and the assignment it points to is readable only by its parties (T-037) |
@@ -89,9 +90,66 @@ Two that need particular care:
 ## Rules that do not depend on the periods
 
 1. **Legal hold overrides retention.** An open dispute or preservation request blocks deletion
-   (T-035). Every deletion path checks first.
+   (T-035). Every deletion path checks first — see "How a legal hold works" below.
 2. **Evidence and audit rows are never cascade-deleted.** Retention is policy enforced by a
    job, not a foreign-key side effect.
 3. **Deletion is audited**, including retention deletion.
 4. **A shortened period is not applied retroactively** without a recorded decision — it may
    destroy something a dispute needs.
+
+## How a legal hold works
+
+Built in T-035. A **legal hold** names one resource — a person's account, a workspace, a mission,
+an assignment or a stored file — and says why it must be preserved: a preservation request, a
+dispute, litigation, counsel's instruction. While it is in force, retention deletes nothing that
+belongs to that resource.
+
+- **Who:** staff holding the `COMPLIANCE` scope place, list and release holds — in the staff
+  console under **Legal holds** (T-205), on `/api/v1/legal-holds` — each call its own audited crossing into `PlatformContext`. Nobody else
+  reads a hold — including the person whose data it is, since telling them can tip off the subject
+  of a law-enforcement request (`docs/operations/law-enforcement-requests.md`).
+- **Placing** is refused only for a resource that does not exist. Several holds on one resource
+  stand independently; each is released on its own.
+- **Releasing** is deliberate: its own reason, its own audit row, once. Retention applies again
+  from the rule's next run. The audit rows name the hold and what it holds, never the reasons —
+  those stay on the hold, which only platform access can read.
+- **How retention respects it:** every retention deletion goes through `RetentionGuard.sweep()`.
+  The guard refuses to run outside platform access (holds are invisible there, so a sweep that ran
+  anyway would see none), deletes only rows no hold in force covers, and audits each hold
+  that kept rows back (`retention.kept`, with the rule and the count) and the deletion itself
+  (`retention.deleted`) — one transaction, every run. A rule names every resource a row belongs to;
+  a hold on any of them keeps the row.
+- **Held in the source:** `retention.static.spec.ts` lists every other delete in the API with why it
+  is not retention — a person removing their own thing, a set being replaced, derived data rebuilt.
+  A new delete fails the build until it is moved into the guard or listed.
+
+**Not built yet, and where it lands:**
+
+| | Where |
+|---|---|
+| Opening a dispute places a hold automatically; resolving it does not release it | T-118, with disputes |
+| A retention job that skips held evidence and reports why | T-116, with evidence items |
+| An erasure request against held data is surfaced to compliance, never auto-resolved | T-206, the erasure workflow — which also decides whether a hold stops a person erasing an assistant session |
+
+## How retention runs
+
+Built in T-204. **Each rule is code, in one place**: `apps/api/src/modules/legal-hold/retention-rules.ts`
+— the table, the period, how often it runs, and every resource a row belongs to. A period there is
+held equal to this register's by `retention-rules.spec.ts`, so neither changes without the other,
+and the diff that shortens one is where rule 4's recorded decision shows.
+
+- **On a schedule, in the worker.** When the worker starts it installs a BullMQ scheduler per rule
+  on the `maintenance` queue, and removes any for a rule no longer in the code. The schedule lives in
+  Redis: however many workers run, each interval queues one sweep. Each run is a system job — one
+  audited crossing (`jobs.run_system`), the sweep in the run's transaction, recorded in `job_runs`
+  under the run's own key — so a redelivered run does nothing and the next run is its own.
+- **Nothing deletes on a request.** The Google sign-in used to purge lapsed attempts when the next
+  one started; it no longer deletes anything.
+- **The worker must run wherever the API does.** Without it no rule runs, and a waiting sign-up's
+  provider address would outlive its day (`ACTIONS-FOR-ME.md` #25, T-208).
+- **Only rules whose period is settled.** `oauth_attempts` runs (hourly; a day past lapse, a
+  security period rather than a legal one). The provisional periods above — `job_runs`,
+  `notifications`, `idempotency_keys`, `outbox_events` — are not swept: this register says not to
+  build an irreversible deletion against them. Each joins as one entry in `retention-rules.ts` when
+  its period is decided.
+

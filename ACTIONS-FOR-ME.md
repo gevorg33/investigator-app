@@ -571,8 +571,8 @@ your name. If one pair disagrees, delete its entry and say which document is rig
 flag it until the other document is corrected.
 
 **Status:** ⬜ Pending — not blocking. CI passes on the agent's review, re-recorded at
-`kb-customer-privacy-data@3` when T-054 changed who can see a published mission (none of the three
-reviewed answers changed).
+`kb-customer-privacy-data@3` when T-054 changed who can see a published mission, and at `@5` when
+T-035 added a section on legal holds (none of the three reviewed answers changed).
 
 ---
 
@@ -665,6 +665,10 @@ can be discarded.
 **Why:** background work — delivering outbox events now, notifications and payments later — runs in
 a separate process, `node dist/worker.main.js` (`pnpm --filter api worker`), not inside the API.
 Without it running, events wait in the outbox (nothing is lost; they are delivered once it starts).
+**Since T-204 retention runs in it too**: with no worker, lapsed Google sign-in attempts — which can
+hold a provider email address for a waiting sign-up — are never deleted, and the "thirty minutes plus
+a day" in `retention.md` stops being true. Run it wherever the API runs. The repository half — the
+service in `infrastructure/compose/server.yml` — is T-208.
 The compose files for staging and production are deployment configuration, which the harness
 reserves for you.
 
@@ -684,7 +688,8 @@ reserves for you.
 
 `JOB_QUEUE_PREFIX` must differ between environments if they ever share a Redis.
 
-**Verify:** its log says `worker: working events; dispatching the outbox`; the outbox has no
+**Verify:** its log says `worker: retention scheduled — retention.oauth_attempts` and then
+`worker: working events, notifications, maintenance; dispatching the outbox`; the outbox has no
 unpublished rows older than a few seconds; `job_dead_letters` stays empty.
 
 **Status:** ⬜ Pending — with the first staging deploy that includes T-082
@@ -705,6 +710,24 @@ public page in three languages.
 **Verify:** T-203 moves from BLOCKED to TODO.
 
 **Status:** ⬜ Pending
+---
+
+### 27. Decide who holds the COMPLIANCE scope — for T-035's legal holds
+
+**Why:** T-035 added legal holds — preserving data that retention would otherwise delete, for a
+preservation request, a dispute or litigation — and a new staff scope, `COMPLIANCE`, that alone
+may place and release them. Nobody holds it yet, so nobody can place a hold. Who may is an
+authority decision, not an engineering one: releasing a hold lets retention delete what it kept.
+
+**What is needed:** name the person (or people) who act on legal and preservation instructions —
+usually whoever is the legal escalation owner in `docs/operations/law-enforcement-requests.md`.
+Until T-152 builds granting in the console, the grant is a `user_staff_scopes` row; on a shared
+environment that needs someone with database access, which an agent does not have.
+
+**Verify:** that person opens **Legal holds** in the staff console and sees the list, not "You do not
+have the compliance scope".
+
+**Status:** ⬜ Pending — not blocking development; needed before the first real preservation request.
 ---
 
 ## Already handled — do not do these

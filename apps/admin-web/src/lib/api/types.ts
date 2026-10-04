@@ -156,3 +156,24 @@ export interface TagOption {
   label: string;
   labelLocale: string;
 }
+
+/** What a legal hold can name (T-035). */
+export type LegalHoldResource = 'USER' | 'TENANT' | 'MISSION' | 'ASSIGNMENT' | 'MEDIA_ASSET';
+export type LegalHoldStatus = 'ACTIVE' | 'RELEASED' | 'ALL';
+
+/** A legal hold as `GET /legal-holds` returns it — COMPLIANCE staff only (T-035). */
+export interface LegalHold {
+  id: string;
+  resourceType: LegalHoldResource;
+  resourceId: string;
+  reason: string;
+  placedBy: string;
+  placedAt: string;
+  /** Null while the hold is in force. */
+  release: { at: string; by: string; reason: string } | null;
+}
+
+export interface LegalHoldPage {
+  items: LegalHold[];
+  pageInfo: { nextCursor: string | null; hasNextPage: boolean };
+}

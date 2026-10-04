@@ -334,6 +334,12 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     VALUES (${randomUUID()}, 'probe', 'probe', ${customer.tenantId}, ${customer.userId},
             ${customer.membershipId}, '{}', 'probe', 1) RETURNING id`);
 
+  // A legal hold on the customer's account (T-035): platform access only, so no workspace — the
+  // customer's own included — reads, writes or removes it.
+  const hold = await id(owner`
+    INSERT INTO legal_holds (resource_type, resource_id, reason, placed_by)
+    VALUES ('USER', ${customer.userId}, 'Isolation probe hold.', ${randomUUID()}) RETURNING id`);
+
   // An entry in the customer's workspace, so the matrix has one to fail to reach (T-080).
   const entry = await id(owner`
     INSERT INTO audit_logs (action, resource_type, resource_id, tenant_id)
@@ -351,6 +357,7 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       job_runs: jobRun,
       user_blocks: block,
       job_dead_letters: deadLetter,
+      legal_holds: hold,
       tenants: customer.tenantId,
       tenant_memberships: customer.membershipId,
       // membership_roles is keyed by its membership and role, not by an id (see KEY_COLUMN).

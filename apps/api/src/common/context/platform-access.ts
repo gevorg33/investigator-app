@@ -43,7 +43,11 @@ export type RoutePurpose =
   | 'review.remove'
   // T-052: the blocks staff act on — those during an assignment under way, and the pattern of many.
   | 'block.live_assignments'
-  | 'block.signals';
+  | 'block.signals'
+  // T-035: legal holds — placed on, and released from, a resource in any workspace, or a person.
+  | 'legal_hold.list'
+  | 'legal_hold.place'
+  | 'legal_hold.release';
 
 /** A purpose with no fixed route behind it. These must say why, in words, every time. */
 export type AdHocPurpose = 'support.lookup';
