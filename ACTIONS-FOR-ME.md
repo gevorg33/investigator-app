@@ -660,39 +660,23 @@ can be discarded.
 
 ---
 
-### 25. Run the job worker in staging and production — for the T-082 deploy
+### 25. Run the job worker in staging and production — **No longer required**
 
-**Why:** background work — delivering outbox events now, notifications and payments later — runs in
-a separate process, `node dist/worker.main.js` (`pnpm --filter api worker`), not inside the API.
-Without it running, events wait in the outbox (nothing is lost; they are delivered once it starts).
-**Since T-204 retention runs in it too**: with no worker, lapsed Google sign-in attempts — which can
-hold a provider email address for a waiting sign-up — are never deleted, and the "thirty minutes plus
-a day" in `retention.md` stops being true. Run it wherever the API runs. The repository half — the
-service in `infrastructure/compose/server.yml` — is T-208.
-The compose files for staging and production are deployment configuration, which the harness
-reserves for you.
+**Why it was here:** background work — the outbox, notifications and, since T-204, retention — runs in
+a separate process, `node dist/worker.main.js`, which the server stack did not run. Without it events
+wait in the outbox and nothing is deleted on schedule.
 
-**What to add:** a service beside `api`, from the same image, same environment, no port:
+**Automated by T-208:** `infrastructure/compose/server.yml` now has a `worker` service — the API's
+image and environment file, the package's `worker` script, no port, a 30s stop grace — so deploying
+the stack runs it. Nothing to add by hand. Run from that file, it was seen to start, schedule
+retention, sweep a lapsed sign-in attempt, and stop cleanly on SIGTERM.
 
-```yaml
-  worker:
-    image: <the api image>
-    command: ["node", "dist/worker.main.js"]
-    env_file: <the api's env file>
-    environment:
-      JOB_QUEUE_PREFIX: investigator-production   # investigator-staging on staging
-    depends_on: [postgres, redis]
-    restart: unless-stopped
-    stop_grace_period: 30s   # SIGTERM lets jobs in progress finish
-```
-
-`JOB_QUEUE_PREFIX` must differ between environments if they ever share a Redis.
-
-**Verify:** its log says `worker: retention scheduled — retention.oauth_attempts` and then
+**Checked at the first deploy (T-040), not by you:** its log says
+`worker: retention scheduled — retention.oauth_attempts` and then
 `worker: working events, notifications, maintenance; dispatching the outbox`; the outbox has no
 unpublished rows older than a few seconds; `job_dead_letters` stays empty.
 
-**Status:** ⬜ Pending — with the first staging deploy that includes T-082
+**Status:** ✅ No longer required — T-208, 2026-10-05
 ---
 
 ### 26. What the marketing site says — for T-203, then T-024

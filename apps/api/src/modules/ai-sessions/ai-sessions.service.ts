@@ -7,7 +7,7 @@ import type { Actor } from '../../common/authz/contract';
 import { currentContext } from '../../common/context/execution-context';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../database/database.module';
-import { aiMessages, aiSessions } from '../../database/schema';
+import { aiMessages, aiPlanSteps, aiPlans, aiSessions, aiToolResults } from '../../database/schema';
 import {
   clampLimit,
   decodeMessageCursor,
@@ -79,10 +79,13 @@ export type NewMessage =
  *
  * Summaries (T-046), memory (T-047) and embeddings will join this list. They cannot be forgotten:
  * `ai-sessions.service.spec.ts` compares it with every foreign key the database has into
- * `ai_sessions`, and fails until a new one is here.
+ * `ai_sessions`, and fails until a new one is here. In order: a plan's steps before the plan.
  */
 export const SESSION_CONTENT: ReadonlyArray<{ table: PgTable; sessionId: PgColumn }> = [
   { table: aiMessages, sessionId: aiMessages.sessionId },
+  { table: aiPlanSteps, sessionId: aiPlanSteps.sessionId },
+  { table: aiPlans, sessionId: aiPlans.sessionId },
+  { table: aiToolResults, sessionId: aiToolResults.sessionId },
 ];
 
 /**

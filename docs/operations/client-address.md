@@ -35,7 +35,8 @@ browser ──► Caddy ──► app-web / admin-web ──► API  (their serv
 The addresses must be the proxies' own. `infrastructure/compose/server.yml` (T-023) gives Caddy,
 app-web and admin-web fixed addresses on the internal network — `10.20.0.2`, `.3`, `.4` — and sets
 the API's `TRUSTED_PROXIES` to exactly those, in the compose file rather than the environment file,
-so the two cannot drift. Not the network's range, which also holds PostgreSQL and Redis. Docker
+so the two cannot drift. Not the network's range, which also holds PostgreSQL, Redis and the job
+worker. Docker
 hands out other containers' addresses from `10.20.0.128/25` only (`ip_range`): without it,
 PostgreSQL took `10.20.0.2` before Caddy started, and a container holding a proxy's address is one
 whose `X-Forwarded-For` the API believes. The API's port is never published: a client that could

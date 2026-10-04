@@ -66,6 +66,8 @@ grant (migration 0000, proven by `grants.spec.ts`).
 | `reviews` | **With the assignment** (**7 years** after it closes, provisional). A removed review is kept, hidden, with who removed it and why | Contract, dispute defence | The application holds no `DELETE`. Rating only; the review is never rewritten (trigger), and staff removal is the one change. When the customer's account is deleted the review stays, attributed to "a customer of that assignment" — it carries no customer name, and the assignment it points to is readable only by its parties (T-037) |
 | `review_texts` | **With the review** | Contract, dispute defence | The application holds no `DELETE`. The words of a review and of the investigator's response, never rewritten (trigger); moderation and reports change only the status and say who and why. Can name people, which is why nothing unmoderated is readable outside the two parties and staff |
 | `ai_messages` | **With the session**: erased the moment it is deleted | Contract | Append-only by trigger. The application holds `DELETE` here and nowhere near it, used only by session deletion, which walks every table that references a session. Messages can name people who are not users, which is why deletion erases rather than hides (T-045). From T-056 they hold the questions people ask the assistant and its answers, with the sources' titles — which T-017 kept nowhere; the audit row still records only which documents were used. From T-059 an assistant reply can be a discovery answer — investigators' public projections (name, headline, languages, specialties, declared hours, distance rounded up to whole km) as they were when found; a location the person shared is used for that search and stored nowhere |
+| `ai_plans`, `ai_plan_steps` | **With the session**: erased the moment it is deleted (provisional) | Contract; the confirmation record is the audit trail | What the assistant proposed to do, the person's confirmation and how far it ran (T-048). A step holds the tool's arguments as proposed — they can be the person's own words — and the tool's output projection. The application holds `DELETE` only for session deletion. The **fact** of a proposal, a confirmation, a decline and an outcome is in `audit_logs` (7 years) with the tools' names and reason codes, never the arguments, so it outlives the plan without its content |
+| `ai_tool_results` | **With the session**: erased the moment it is deleted (provisional) | Contract | A tool's result too large for a prompt, kept whole and read a page at a time (T-048). Holds what the tool returned to its caller — for discovery, investigators' public projections. Written once (trigger); nothing stores one until the orchestrator does (T-095) |
 
 ## Still to decide — blocked on counsel
 
@@ -146,7 +148,8 @@ and the diff that shortens one is where rule 4's recorded decision shows.
 - **Nothing deletes on a request.** The Google sign-in used to purge lapsed attempts when the next
   one started; it no longer deletes anything.
 - **The worker must run wherever the API does.** Without it no rule runs, and a waiting sign-up's
-  provider address would outlive its day (`ACTIONS-FOR-ME.md` #25, T-208).
+  provider address would outlive its day. The server stack runs it beside the API — the `worker`
+  service in `infrastructure/compose/server.yml` (T-208).
 - **Only rules whose period is settled.** `oauth_attempts` runs (hourly; a day past lapse, a
   security period rather than a legal one). The provisional periods above — `job_runs`,
   `notifications`, `idempotency_keys`, `outbox_events` — are not swept: this register says not to

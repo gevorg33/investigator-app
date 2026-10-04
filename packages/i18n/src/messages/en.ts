@@ -1443,6 +1443,11 @@ export const en = {
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
       assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
+      ai_plan: {
+        not_pending: 'This plan has already been answered.',
+        expired: 'This plan waited too long to be confirmed. Ask the assistant again.',
+        changed: 'This plan is not the one you were shown. Ask the assistant again.',
+      },
       coverage: { range: 'Choose a distance and a number of results within the limits.' },
       idempotency_key: {
         required: 'This request could not be sent safely. Reload the page and try again.',

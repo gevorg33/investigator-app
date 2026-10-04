@@ -30,7 +30,9 @@ registerTool({
 In code (T-018): `apps/api/src/modules/ai/tools/assistant-tool.ts` declares the contract, plus
 `auditArguments` — what of the arguments the audit row may hold — and `execute`.
 `assertRegistrable` refuses a bad declaration at startup, and `ToolRunner.invoke` is the only way
-a tool runs. Write tools do not register until the confirmation flow exists (T-048). See
+a tool runs. A write tool registers only with `confirmation: 'required'` and an `observe`; `invoke`
+refuses it, and it runs only as a step of a plan its person confirmed (T-048,
+`docs/architecture/ai-plans.md`). See
 `docs/architecture/assistant-tools.md`.
 
 ## Rules

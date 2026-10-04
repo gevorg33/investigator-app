@@ -85,12 +85,20 @@ transaction. A task that needs one writes a class with `eventType` and `handle(e
 it to `EVENT_SUBSCRIBERS` in `worker.ts`. It runs in the producer's workspace and reaches the
 database only through `tx`. The first are the notification triggers (T-036, `notifications.md`):
 they only queue a job on the `notifications` queue, because who else an event concerns is not
-something the producer's context can read.
+something the producer's context can read. `PlanConfirmedTrigger` (T-048) queues a confirmed plan's
+`ai.plan.execute` job as the person who confirmed it (`ai-plans.md`).
 
 ### Adding a job type
 
 A `JobHandler` (`command`, `queue`, `parse`, `run(payload, tx, envelope)`) in `JOB_HANDLERS`. Its
 file ends `.handler.ts`, and `jobs.static.spec.ts` holds that it never injects the database.
+
+**One deliberate exception to "the effect commits with the claim"**: a confirmed plan
+(`ExecutePlanHandler`, T-048) runs steps whose tools call services with their own transactions, so
+the effects cannot share the job's. The plan's status commits with the claim; each step's progress is
+written by `PlanExecutor` as it happens, so a worker that dies is replaced by one that resumes from
+the steps rather than repeating them, and a step caught mid-way is run again under the same
+idempotency key (`ai-plans.md`).
 
 ## Redis is a trust boundary
 
@@ -121,8 +129,14 @@ cd apps/api && NODE_ENV=development DATABASE_URL=postgres://investigator_app:inv
   REDIS_URL=redis://localhost:6380 SESSION_SECRET=$(openssl rand -hex 32) node dist/worker.main.js
 ```
 
-The production and staging compose files do not run it yet — `ACTIONS-FOR-ME.md` #25, T-208. Since
-T-204 retention runs here too, so an environment without the worker deletes nothing on schedule.
+On a server it is the `worker` service in `infrastructure/compose/server.yml` (T-208): the API's
+image running the package's `worker` script, the API's environment file, and the same
+topology-decided environment as the API (`x-api-environment` — the hosts, Redis, `TRUSTED_PROXIES`,
+which the shared schema requires in staging and production). No port; `internal` for PostgreSQL and
+Redis, `egress` for the mail provider. It starts once both are healthy, and has 30 seconds after
+SIGTERM to let jobs in progress finish. Its queues use the default prefix: each environment's stack
+has its own Redis. `apps/api/test/edge.spec.ts` holds this wiring. Since T-204 retention runs here
+too, so an environment without the worker deletes nothing on schedule.
 
 ## Scheduled jobs (T-204)
 

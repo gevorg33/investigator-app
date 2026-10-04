@@ -213,6 +213,21 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['tenant_id'],
     note: 'as ai_sessions, with the owner copied from the session; append-only (T-045)',
   },
+  ai_plans: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_sessions, with the owner copied from the session; what it proposes is fixed once proposed, only its progress moves (T-048)',
+  },
+  ai_plan_steps: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_plans, with the owner and session copied from the plan (T-048)',
+  },
+  ai_tool_results: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_sessions, with the owner copied from the session; append-only (T-048)',
+  },
   investigation_sources: {
     class: 'two_party',
     columns: ['customer_tenant_id', 'supplier_tenant_id'],

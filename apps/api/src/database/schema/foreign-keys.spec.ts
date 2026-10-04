@@ -7,6 +7,7 @@ import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
 import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
 import { investigationNotes, investigationTasks } from './investigation-workspace';
+import { aiPlanSteps, aiPlans, aiToolResults } from './ai-plans';
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
 import { missions, savedMissionSearches } from './missions';
@@ -143,6 +144,23 @@ describe('assistant sessions (T-045)', () => {
     // Restrict, not cascade: deleting a session erases its messages explicitly, in the same
     // transaction, and a tombstone stays — the session row itself is never deleted.
     expect(fks(aiMessages)).toEqual([
+      { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
+    ]);
+  });
+
+  it('keep plans, their steps and stored results until the session is erased on purpose (T-048)', () => {
+    // Restrict, as messages: session deletion erases each explicitly — steps before their plan —
+    // and nothing a person confirmed disappears as the side effect of a cascade.
+    expect(fks(aiPlans)).toEqual([
+      { columns: ['tenant_id'], target: tenants, onDelete: 'restrict' },
+      { columns: ['user_id'], target: users, onDelete: 'restrict' },
+      { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
+    ]);
+    expect(fks(aiPlanSteps)).toEqual([
+      { columns: ['plan_id'], target: aiPlans, onDelete: 'restrict' },
+      { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
+    ]);
+    expect(fks(aiToolResults)).toEqual([
       { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
     ]);
   });

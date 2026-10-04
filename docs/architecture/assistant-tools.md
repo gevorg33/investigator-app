@@ -30,7 +30,8 @@ application rather than reaching a user. It refuses:
 | Declaration | Why |
 |---|---|
 | A missing or malformed field | The contract is the nine fields, all of them |
-| `operation: 'write'`, confirmed or not | Writes need a confirmation the model never sees, bound to exact arguments and used once. That flow is T-048; until it exists no write tool registers |
+| `operation: 'write'` without `confirmation: 'required'` | A write runs only once its person confirms it, bound to the exact arguments and used once (T-048, `ai-plans.md`). Lowering it is approval-gated |
+| `operation: 'write'` without `observe` | A confirmation is checked against the state it was given for; a tool that cannot say what it acts on cannot be re-checked |
 | An input that is not a **strict** object | An argument the tool does not name must be refused, not ignored |
 | An input field named `actor…`, `user…`, `tenant…`, `workspace…` or `membership…` | Who is acting, and where, come from the session and the execution context (ADR-0011). A model-supplied one is an impersonation vector |
 | An audit event outside `ai.tool.<snake_case>` | So every tool call is findable by one prefix |
@@ -46,6 +47,11 @@ registered (by identity, not just name) → account ACTIVE → inside a workspac
 
 The service a tool calls authorizes again. The assistant having decided to call something proves
 nothing.
+
+**A write is never invoked** (T-048). `invoke` refuses one; `prepare` checks it the same way and
+observes what it would act on without running it, for a plan; and only `runConfirmed`, for a plan
+its person confirmed, runs it — every check again but the rate limit, with the step's idempotency
+key. See `ai-plans.md`.
 
 ### `searchInvestigators`
 
@@ -196,8 +202,10 @@ of the results on the next search (T-087).
 ## Not built here
 
 - `getInvestigatorProfile` and `checkAvailability`, listed in the discovery skill, have no caller
-  yet. They arrive with the first flow that needs them — the conversational orchestrator (T-048,
-  T-095) — rather than as tools nothing calls.
+  yet. They arrive with the first flow that needs them — the conversational orchestrator (T-095)
+  — rather than as tools nothing calls.
+- Write tools. The confirmation flow they pass through exists (T-048, `ai-plans.md`); the first
+  commands are T-095's, each approval-gated.
 - A classifier ahead of both. Conversations route **discovery first** (T-059): each turn asks
   discovery, and `not_discovery` / `not_understood` fall back to the knowledge answer
   (`ai-sessions.md`). `respond` is `answer` without its own admission, for a turn that already
