@@ -690,6 +690,23 @@ unpublished rows older than a few seconds; `job_dead_letters` stays empty.
 **Status:** ⬜ Pending — with the first staging deploy that includes T-082
 ---
 
+### 26. What the marketing site says — for T-203, then T-024
+
+**Why:** the apex domain has no site. `apps/marketing-web` is an empty scaffold, and building it
+needs three things only you can decide; inventing them would put claims about the product on a
+public page in three languages.
+
+**What I need:**
+1. **The product's name** — it appears nowhere yet; the site, page titles and structured data need it.
+2. **The home page's message** — who it is for and what it promises, a few sentences in English is
+   enough; I write the page and the ru/hy drafts (which then join #23's native-speaker review).
+3. **Whether pricing is shown publicly**, and if so what — tied to #17.
+
+**Verify:** T-203 moves from BLOCKED to TODO.
+
+**Status:** ⬜ Pending
+---
+
 ## Already handled — do not do these
 
 | | |

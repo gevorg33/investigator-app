@@ -36,7 +36,7 @@ never a force-push, never from an arbitrary branch.
 ## Pipeline — every PR, every push to an open PR
 
 ```
-fresh environment → install → knowledge base → lint → typecheck
+fresh environment → install → knowledge base → Caddyfile → format → lint → typecheck
   → provision clean database → migrate → fixtures → tests + coverage gate
   → build → bundle budgets → browser flows → knowledge sync → no public source maps
   → dependency audit → image scan → secret scan
@@ -87,6 +87,9 @@ Rules:
   itself; `supply-chain.spec.ts` refuses a workflow that auto-merges.
 - **No source maps in public bundles**, checked on the build output by
   `scripts/check-no-public-sourcemaps.sh`. The API keeps its maps.
+- **The Caddyfile loads**, checked by Caddy itself: `scripts/check-caddyfile.sh` runs
+  `caddy validate` and `caddy fmt --diff` with the image `infrastructure/compose/server.yml` pins,
+  reading it from there so Dependabot's bump moves both (T-202).
 
 ## Secrets and forks
 

@@ -73,6 +73,11 @@ jobs:
       - name: Knowledge base
         run: python3 scripts/validate-knowledge-base.py
 
+      # Only Caddy can say the Caddyfile loads; edge.spec.ts holds its rules as text. Run with the
+      # image server.yml pins, which the script reads from there (T-202). Seconds, no database.
+      - name: Caddyfile
+        run: ./scripts/check-caddyfile.sh
+
       # Was red and unnoticed until T-130 because nothing ran it.
       - name: Format
         run: pnpm format:check

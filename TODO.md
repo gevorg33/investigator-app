@@ -1463,7 +1463,7 @@ links all went to the run's app-web through the domain map. No hostname-facing U
 ### T-024 — Marketing site SEO
 - **Status:** TODO
 - **Priority:** P1
-- **Depends on:** T-023
+- **Depends on:** T-023, T-203 — there is no site to optimise yet (found 2026-10-04)
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** admin-web
@@ -8896,7 +8896,7 @@ Two failed sign-ins from the host's public IPv4 and IPv6 paths, and the audit ro
 ---
 
 ### T-202 — Validate the Caddyfile in CI
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04. `scripts/check-caddyfile.sh` runs `caddy validate` and `caddy fmt --diff` with the Caddy image it reads from `server.yml` — one digest, which Dependabot's compose updates move — and `pr.yml` runs it before Format, needing no database. `supply-chain.spec.ts` drives the script with a stand-in `docker` on the PATH. `ci-cd` skill, `infrastructure/caddy/README.md`
 - **Priority:** P3
 - **Depends on:** T-023
 - **Risk:** LOW
@@ -8911,12 +8911,60 @@ Run both in `pr.yml` with the image `server.yml` pins, and have the supply-chain
 the two digests match.
 
 **Acceptance criteria**
-- [ ] A PR whose Caddyfile does not parse, or is not `caddy fmt`-clean, fails CI — seen failing first
-- [ ] The CI step's Caddy digest is `server.yml`'s, held by a spec
+- [x] A PR whose Caddyfile does not parse, or is not `caddy fmt`-clean, fails CI — seen failing first
+      — the script against a copy with an unknown directive (line 118) and one unindented line (62): exit 1, Caddy naming the line
+- [x] The CI step's Caddy digest is `server.yml`'s, held by a spec
+      — read from `server.yml` rather than repeated, so there is no second digest to drift; the spec
+      holds that the image run is `server.yml`'s pinned one
 
 **Validation**
 ```bash
 pnpm --filter api test supply-chain
+```
+
+*Validated.* `supply-chain`, `edge`, `workspace-scripts`, `fixtures` specs 56/56; spec typecheck;
+lint; format; `validate-knowledge-base.py` 0 errors. The script on the real Caddyfile: exit 0.
+
+*Verified.* No browser surface — a CI step. The script was run against the real file, an invalid
+copy and an unformatted copy (above). The spec was mutated three ways — the CI step removed, a
+floating `caddy:2-alpine` in the script, docker's failure swallowed with `|| true` — and failed
+the matching test each time. The step's first run in GitHub Actions is the PR's.
+
+---
+
+### T-203 — The marketing site itself: pages, and what they say
+- **Status:** BLOCKED — needs the owner: the product's name, the home page's message, and pricing (ACTIONS-FOR-ME #26, #17)
+- **Priority:** P1 — T-024 and the apex domain wait on it
+- **Depends on:** T-023; owner input
+- **Risk:** LOW
+- **Human approval required:** Yes — what the public site says about the product is the owner's
+- **Owner agent:** frontend
+- **Affected:** apps/marketing-web/**
+
+**Description**
+Found selecting T-024 (2026-10-04). `apps/marketing-web` is the T-001 stub — no Next.js app, no
+route — and no task builds it, while T-024's criteria (sitemap, canonical, hreflang, JSON-LD for
+home, nested pages, posts and FAQ) all presume pages. Nor is there content to put on them: the
+product has no name, no marketing copy, no blog, and pricing is undecided. The only public content
+that exists is the three policy articles in `docs/knowledge-base/policies/` (en/ru/hy).
+Writing a name and a pitch in three languages to fill the pages would be inventing what the
+product claims to be (CLAUDE.md §8: no UI against data that does not exist).
+
+Build the Next.js app on the apex per ADR-0002 and the `domain-and-seo` skill: locale in the URL,
+no authenticated UI, links into the app through the domain map (`packages/config`) carrying
+`?lang=` (ADR-0013); the public policy articles rendered from the knowledge base; the pages the
+owner's content calls for. Its Dockerfile and a `marketing-web` service in `server.yml` at the
+fixed-address-free part of the internal network (Caddy already proxies `marketing-web:3000`).
+
+**Acceptance criteria**
+- [ ] The owner has supplied the name, the home page's message and the pricing position — recorded where the copy lives
+- [ ] `/`, `/ru`, `/hy` and the public policy pages render, mobile first; no session check anywhere
+- [ ] Every link into the app is built by `appUrl()` and carries `?lang=`
+- [ ] `marketing-web` runs in `server.yml`; the apex returns 200, not 502
+
+**Validation**
+```bash
+pnpm --filter @investigator/marketing-web test && pnpm --filter @investigator/marketing-web build
 ```
 
 ---

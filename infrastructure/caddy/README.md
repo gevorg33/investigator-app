@@ -7,16 +7,12 @@ Server stack: `../compose/server.yml` — what runs behind this file on staging 
 
 ## Validate before deploying
 
-Validated by Caddy itself, with the image the server stack pins (T-023, 2026-10-04): `Valid
-configuration`, and `caddy fmt` reports nothing to change. Run both again after every change:
+Caddy itself checks that the file loads and that `caddy fmt` would change nothing, with the image
+the server stack pins (read from `server.yml`). CI runs it on every pull request (T-202); run it
+from the repository root after every change:
 
 ```bash
-docker run --rm -v "$PWD":/etc/caddy:ro \
-  -e DOMAIN=mydomain.com -e APP_HOST=app.mydomain.com \
-  -e ADMIN_HOST=admin.mydomain.com -e NEWS_HOST=news.mydomain.com \
-  -e ACME_EMAIL=ops@mydomain.com \
-  caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b \
-  sh -c 'caddy validate --config /etc/caddy/Caddyfile && caddy fmt --diff /etc/caddy/Caddyfile'
+./scripts/check-caddyfile.sh
 ```
 
 `apps/api/test/edge.spec.ts` holds the rules below in CI: no hostname in this file, the marketing
