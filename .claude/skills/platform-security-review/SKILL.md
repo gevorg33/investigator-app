@@ -78,8 +78,10 @@ in the same conversation.
       `dangerouslySetInnerHTML` on user content; if rich text is needed, sanitize with an
       allowlist on the server, not the client
 - [ ] **CSRF**: state-changing requests are not reachable cross-site. `SameSite=Strict` plus
-      a same-origin API covers most of it (ADR-0002); any cookie-authenticated endpoint that
-      cannot use `SameSite=Strict` needs a token
+      a same-origin API covers other sites — but **not sibling subdomains**, which are the same
+      site; the global origin guard (`common/http/origin.guard.ts`, T-025) refuses a write whose
+      `Sec-Fetch-Site` is not `same-origin`. A route must not opt out of it; any cookie-authenticated
+      endpoint that cannot use `SameSite=Strict` needs a token
 - [ ] **Path traversal**: no user-supplied value reaches a filesystem path, an export
       filename, or an archive entry name without normalization and an allowlist. Applies to
       report exports and evidence bundle names

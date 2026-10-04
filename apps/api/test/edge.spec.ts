@@ -185,6 +185,18 @@ describe('the Caddyfile', () => {
     }
   });
 
+  it('issues no cookie on the apex or news., and reaches the API only from app. and admin. (T-025)', () => {
+    expect(caddyfile).toMatch(/^\(no_cookies\) \{\n\theader -Set-Cookie\n\}$/m);
+    for (const site of ['{$DOMAIN}', '{$NEWS_HOST}']) {
+      expect(block(site)).toMatch(/^\timport no_cookies$/m);
+      expect(block(site)).not.toContain('api:3001');
+    }
+    for (const site of ['{$APP_HOST}', '{$ADMIN_HOST}']) {
+      expect(block(site)).not.toContain('no_cookies');
+      expect(block(site)).toContain('reverse_proxy api:3001');
+    }
+  });
+
   it('believes no X-Forwarded-For a client sends: Caddy is the first hop', () => {
     expect(caddyfile).not.toMatch(/trusted_proxies/);
   });

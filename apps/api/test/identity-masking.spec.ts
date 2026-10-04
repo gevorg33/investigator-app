@@ -38,7 +38,7 @@ async function sessionFor(h: Harness, userId: string, role: 'CUSTOMER' | 'INVEST
     INSERT INTO user_sessions (user_id, refresh_token_hash, family_id, expires_at)
     VALUES (${userId}, ${new TokenService().fingerprint(token)}, ${randomUUID()},
             now() + interval '1 day')`;
-  return `investigator_session=${token}`;
+  return `__Host-investigator_session=${token}`;
 }
 
 /** Every route the application has registered, read from the router itself. */

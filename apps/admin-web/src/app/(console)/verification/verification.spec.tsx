@@ -107,7 +107,7 @@ const TAXONOMY = [
 ];
 
 const signedIn = () => {
-  request.cookies.set('investigator_session', 'tok');
+  request.cookies.set('__Host-investigator_session', 'tok');
   api.on('GET /me', 200, ME);
 };
 const showReview = async (view: ReviewView = review()) => {
@@ -140,13 +140,13 @@ describe('the staff verification console (T-070)', () => {
     });
 
     it('forwards only this origin’s session cookie to the API', async () => {
-      request.cookies.set('investigator_session', 'tok');
+      request.cookies.set('__Host-investigator_session', 'tok');
       request.cookies.set('active_role', 'CUSTOMER');
       api.on('GET /me', 200, ME);
       render(await resolveServer(await ConsoleLayout({ children: 'inside' })));
       expect(api.calls[0]).toMatchObject({
         origin: 'http://localhost:3001',
-        headers: { cookie: 'investigator_session=tok' },
+        headers: { cookie: '__Host-investigator_session=tok' },
       });
       expect(api.calls[0]!.init.cache).toBe('no-store');
     });

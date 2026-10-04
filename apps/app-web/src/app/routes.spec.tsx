@@ -108,7 +108,7 @@ describe('the application routes', () => {
   });
 
   it('frames every workspace route with the shell, and what the account still owes', async () => {
-    request.cookies.set('investigator_session', 'tok');
+    request.cookies.set('__Host-investigator_session', 'tok');
     api.on('GET /me', 200, account({ emailVerified: false }));
     api.on('GET /legal/outstanding', 200, [legalDocument()]);
     // Unconfirmed, so not yet active: the API refuses the list (T-164), and the layout must not
@@ -367,7 +367,7 @@ describe('the application routes', () => {
     });
 
     it('keeps the shell around it', async () => {
-      request.cookies.set('investigator_session', 'tok');
+      request.cookies.set('__Host-investigator_session', 'tok');
       api.on('GET /me', 200, account());
       api.on('GET /legal/outstanding', 200, []);
       api.on('GET /workspaces', 200, [workspace()]);

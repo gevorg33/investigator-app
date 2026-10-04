@@ -62,7 +62,7 @@ const report = (over: Partial<LatencyReport> = {}): LatencyReport => ({
 });
 
 const show = async (days?: string) => {
-  request.cookies.set('investigator_session', 'tok');
+  request.cookies.set('__Host-investigator_session', 'tok');
   api.on('GET /taxonomy?locale=en', 200, TAXONOMY);
   return render(
     await resolveServer(

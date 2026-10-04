@@ -194,6 +194,9 @@ importers:
 
   apps/admin-web:
     dependencies:
+      '@investigator/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@investigator/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -388,6 +391,9 @@ importers:
 
   apps/app-web:
     dependencies:
+      '@investigator/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@investigator/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n

@@ -92,7 +92,7 @@ describe('the execution context, end to end', () => {
     await owner`
       UPDATE user_sessions SET refresh_token_hash = ${new TokenService().fingerprint(token)}
        WHERE id = ${who.actor.sessionId}`;
-    return { ...who, cookie: `investigator_session=${token}` };
+    return { ...who, cookie: `__Host-investigator_session=${token}` };
   };
 
   const http = () => request(app.getHttpServer());

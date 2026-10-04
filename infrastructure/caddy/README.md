@@ -79,12 +79,15 @@ What only a real domain shows: public certificate issuance and DNS. That is the 
   customer app. It also carries a commented IP-allowlist block the customer app could never
   have.
 - **`mail.` has no HTTP block.** It is a sending domain.
+- **The apex and `news.` issue no cookie** (`no_cookies` strips `Set-Cookie`, T-025), whatever the
+  application behind them sends: a cookie either sets for the parent domain would reach `app.`.
+  Verified with upstreams that set `Domain=` cookies — stripped on both, kept on `app.` and `admin.`.
 
 ## What it does not do
 
 - **CSP is not set here.** The marketing site and the application need materially different
-  policies, and a wrong CSP breaks the page silently. Set it per-application from the domain
-  map in `packages/config` — see T-025.
+  policies, and a wrong CSP breaks the page silently. Each application sets its own, per request,
+  from `contentSecurityPolicy()` in `packages/config` (T-025; `docs/architecture/app-web.md`).
 - **Rate limiting** is in the API, not the edge.
 - **Cookie attributes** are set by the application. The edge cannot enforce host-only
   scoping; that rule lives in the auth module and is tested there.

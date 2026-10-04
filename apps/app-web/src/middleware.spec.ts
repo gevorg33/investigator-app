@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { config, middleware } from './middleware';
 
 const arrive = (url: string) =>
@@ -60,5 +60,33 @@ describe('a link that says which language its reader chose', () => {
       // The API owns its own requests; the dev rewrite passes them straight through.
       runs('/api/v1/auth/login'),
     ]).toEqual([false, false, false, false]);
+  });
+});
+
+describe('the page’s Content-Security-Policy (T-025)', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const nonceOf = (policy: string | null) => /'nonce-([^']+)'/.exec(policy ?? '')?.[1];
+
+  it('gives every page the app’s policy, with a nonce of its own, on request and response', () => {
+    const res = arrive('/missions');
+    const policy = res.headers.get('content-security-policy');
+    expect(policy).toContain("form-action 'self' https://accounts.google.com");
+    expect(policy).toContain("connect-src 'self' https://api.cloudinary.com");
+    expect(res.headers.get('x-middleware-request-content-security-policy')).toBe(policy);
+    expect(nonceOf(policy)).toMatch(/^[A-Za-z0-9+/=]{20,}$/);
+    expect(nonceOf(arrive('/missions').headers.get('content-security-policy'))).not.toBe(
+      nonceOf(policy),
+    );
+  });
+
+  it('lets only the dev server evaluate code', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(arrive('/').headers.get('content-security-policy')).toContain("'unsafe-eval'");
+    vi.stubEnv('NODE_ENV', 'production');
+    expect(arrive('/').headers.get('content-security-policy')).not.toContain("'unsafe-eval'");
+  });
+
+  it('adds nothing to the language redirect, which has no page', () => {
+    expect(arrive('/?lang=ru').headers.get('content-security-policy')).toBeNull();
   });
 });

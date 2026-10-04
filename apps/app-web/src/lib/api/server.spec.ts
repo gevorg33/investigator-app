@@ -13,7 +13,7 @@ describe('calling the API from the Next server', () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it('asks as the reader: their session and chosen role go with it, and nothing is cached', async () => {
-    request.cookies.set('investigator_session', 'refresh-token');
+    request.cookies.set('__Host-investigator_session', 'refresh-token');
     request.cookies.set('active_role', 'INVESTIGATOR');
     request.cookies.set('locale', 'hy');
     api.on('GET /me', 200, { id: 'u-1' });
@@ -22,7 +22,7 @@ describe('calling the API from the Next server', () => {
     expect(call!.origin).toBe('http://localhost:3001');
     // Only the session cookie is forwarded — nothing else the browser sent reaches the API.
     expect(call!.headers).toEqual({
-      cookie: 'investigator_session=refresh-token',
+      cookie: '__Host-investigator_session=refresh-token',
       'x-active-role': 'INVESTIGATOR',
     });
     expect(call!.init.cache).toBe('no-store');

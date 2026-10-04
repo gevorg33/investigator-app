@@ -44,7 +44,7 @@ export async function employeesApp() {
     const [row] = await owner<
       { email: string }[]
     >`SELECT email FROM users WHERE id = ${who.actor.userId}`;
-    return { ...who, email: row!.email, cookie: `investigator_session=${token}` };
+    return { ...who, email: row!.email, cookie: `__Host-investigator_session=${token}` };
   };
   type Person = Awaited<ReturnType<typeof signedIn>>;
 

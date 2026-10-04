@@ -13,7 +13,7 @@ import { workspaceResolverStub } from '../../../test/context';
 import { validationPipe } from '../../common/validation/pipe';
 
 const CREDENTIALS = { email: 'probe@example.test', password: 'a-sufficiently-long-password' };
-const COOKIE = 'investigator_session';
+const COOKIE = '__Host-investigator_session';
 const ACTOR = testActor({ userId: 'u1', sessionId: 'sess-1' });
 
 /** Records what the controller passed through, so context handling is observable. */

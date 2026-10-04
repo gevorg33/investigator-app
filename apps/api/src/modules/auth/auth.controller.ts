@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { SESSION_COOKIE } from '@investigator/config';
 import { AuthService } from './auth.service';
 import { requestContext } from '../../common/http/request-context';
 import { CredentialsDto, RegisterDto, EmailOnlyDto, ResetPasswordDto, TokenDto } from './auth.dto';
@@ -22,15 +23,20 @@ import { CurrentActor } from '../../common/authz/actor.decorator';
 import type { Actor } from '../../common/authz/contract';
 import { REFRESH_TTL_DAYS } from './session.service';
 
-export const COOKIE = 'investigator_session';
+/** `__Host-investigator_session`: the browser refuses it a Domain attribute (T-025). */
+export const COOKIE = SESSION_COOKIE;
 
 /**
- * Host-only cookie: no Domain attribute, so it is never sent to another subdomain
- * (ADR-0002). SameSite=Strict is viable because the API is same-origin with the app.
+ * Host-only cookie: no Domain attribute, so it is never sent to another subdomain (ADR-0002) —
+ * and its `__Host-` name makes the browser hold that, along with `Secure` and `Path=/`. Secure in
+ * development too: browsers treat http://localhost as secure for cookies, as the app's locale
+ * cookie already relies on. SameSite=Strict is viable because the API is same-origin with the app;
+ * it does not stop a sibling subdomain, which is the same site — the origin guard does (T-025).
+ * Nothing here takes `domain`, and `auth-cookies.spec.ts` holds that for every route that sets one.
  */
 export const cookieOptions = {
   httpOnly: true,
-  secure: process.env['NODE_ENV'] !== 'development',
+  secure: true,
   sameSite: 'strict' as const,
   path: '/',
   maxAge: REFRESH_TTL_DAYS * 24 * 60 * 60 * 1000,

@@ -1496,32 +1496,61 @@ pnpm --filter marketing-web test && pnpm --filter marketing-web build
 ---
 
 ### T-025 — Session cookie scoping and CSP
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04. The session cookie is `__Host-investigator_session` (named once in `@investigator/config`), `Secure` in every environment, so the browser refuses it a `Domain` and no sibling can plant one. A global `OriginGuard` refuses writes whose `Sec-Fetch-Site` is not `same-origin` (else `Origin` against the domain map) — `SameSite=Strict` does not separate sibling subdomains, which are one site. No CORS. app-web and admin-web set a per-request nonce CSP in middleware from `contentSecurityPolicy()`; admin's root layout renders per request. Caddy strips `Set-Cookie` on the apex and `news.`. The browser flows fail on any CSP violation (`e2e/support/test.ts`)
 - **Priority:** P0
 - **Depends on:** T-005, T-023
 - **Risk:** HIGH
-- **Human approval required:** Yes — authentication and security headers
+- **Human approval required:** Yes — authentication and security headers (given in conversation, 2026-10-04)
 - **Owner agent:** backend-domain
 - **Affected:** apps/api/src/modules/auth/**, packages/config/**
+      — also `apps/api/src/common/http/origin.guard.ts` and `bootstrap.ts` (the guard), both web apps'
+      middleware and `lib/csp.ts`, admin's root layout, the Caddyfile, and the session cookie's name in
+      specs: each one a criterion needed
 
 **Description**
 Enforce host-only session cookies and per-application CSP. ADR-0002 makes cookie scoping the
 security-critical constraint of the domain split.
 
 **Acceptance criteria**
-- [ ] Session cookies set **host-only** on `app.` — no `Domain` attribute, ever
-- [ ] `HttpOnly`, `Secure`, `SameSite=Strict` (viable because the API is same-origin)
-- [ ] A test asserts no `Set-Cookie` response carries a `Domain` attribute
-- [ ] A test asserts no cookie is issued on the apex or `news.`
-- [ ] CSP set per application, derived from the domain map — not hand-maintained, not at the edge
-- [ ] CORS allowlist derived from the domain map
-- [ ] Adding a subdomain to the map does not widen session scope — covered by a test
+- [x] Session cookies set **host-only** on `app.` — no `Domain` attribute, ever
+      — `__Host-` makes the browser hold it; `auth-cookies.spec.ts` drives every route that sets or clears one
+- [x] `HttpOnly`, `Secure`, `SameSite=Strict` (viable because the API is same-origin)
+      — and `Path=/`, in development, test and production; clears carry them too, or a `__Host-` clear is refused
+- [x] A test asserts no `Set-Cookie` response carries a `Domain` attribute
+      — every cookie from nine routes, three environments; plus a source scan of all three apps
+- [x] A test asserts no cookie is issued on the apex or `news.`
+      — `edge.spec.ts` (`no_cookies` on both, the API reached only from `app.`/`admin.`); seen live:
+      upstreams setting `Domain=` cookies, stripped on both, kept on `app.` and `admin.`
+- [x] CSP set per application, derived from the domain map — not hand-maintained, not at the edge
+      — keyed by the map's site; names no other site of it (each is `'self'` to itself), so the map
+      cannot widen it. The two outside origins are providers (Cloudinary, Google's `form-action`)
+- [x] CORS allowlist derived from the domain map
+      — no CORS at all (no response carries `Access-Control-Allow-*`); the allowlist the map does
+      drive is the origin guard's: a write must be same-origin, else from `app.`/`admin.` *to itself*
+- [x] Adding a subdomain to the map does not widen session scope — covered by a test
+      — the session's attributes are identical under three different maps; the CSP spec checks no
+      site of a map appears in either policy
 
 **Validation**
 ```bash
 pnpm --filter api test auth-cookies
 ```
 
+*Validated.* `pnpm test:coverage`: every package at 100% — API 3368 (6194 statements), app-web 868,
+admin-web 136, config 23; format, lint, typecheck, build; browser flows 54/54 with the CSP guard on.
+
+*Verified.* In the browser pane against the built apps and the real API: `/sign-in` on app-web
+and admin-web hydrate with every script carrying the response's nonce (22/22, 13/13), admin's 404
+carries the policy, no violation logged; "Continue with Google" reached accounts.google.com through
+`form-action`. A real same-site, cross-origin `POST` from `localhost:3001` to the app's `/api` got
+403; the app's own `POST /auth/logout`, 204. The app's CSP alone already refused a fetch to the
+console's origin. Mutations, each failing its test: `Secure` back to development-off (caught only
+after the spec re-imported the modules per environment — module-level options had been evaluated
+once, under the runner's `test`), a `Domain` added, the guard unregistered, `style-src` without
+`'unsafe-inline'` (the e2e guard named every refusal). The first e2e guard listened to the console
+and passed with scripts refused: Playwright hears only the page's own logs; it now listens to
+`securitypolicyviolation`. Security checklist: no findings; WebSocket handshakes are outside
+Nest's guards — `docs/api/README.md` says the first gateway checks `Origin` the same way.
 ---
 
 ### T-026 — Knowledge base translation into ru and hy

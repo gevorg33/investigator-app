@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { parseTrustedProxies } from './config/env.schema';
 import metadata from './metadata';
 import { AppExceptionFilter } from './common/errors/http-exception.filter';
+import { OriginGuard } from './common/http/origin.guard';
 import { addValidationBounds } from './common/openapi/validation-bounds';
 import { validationPipe } from './common/validation/pipe';
 
@@ -41,6 +42,11 @@ export async function configureApp(app: INestApplication): Promise<void> {
   app.useGlobalPipes(validationPipe());
 
   app.useGlobalFilters(new AppExceptionFilter());
+
+  // A write from a page of another origin is refused before any handler (T-025). SameSite=Strict
+  // does not cover sibling subdomains — they are one site. No CORS is configured either: the API
+  // is same-origin with each app (ADR-0002), so no other origin may read a response.
+  app.useGlobalGuards(new OriginGuard());
 
   // OpenAPI is a map of the attack surface. Non-production only.
   if (process.env['NODE_ENV'] !== 'production') {

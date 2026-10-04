@@ -19,6 +19,7 @@ const fakeApp = () => ({
   setGlobalPrefix: vi.fn(),
   useGlobalPipes: vi.fn(),
   useGlobalFilters: vi.fn(),
+  useGlobalGuards: vi.fn(),
   listen: vi.fn(async () => undefined),
 });
 

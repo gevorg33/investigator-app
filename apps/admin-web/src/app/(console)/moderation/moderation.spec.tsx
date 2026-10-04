@@ -111,7 +111,7 @@ const TAGS = [
 ];
 
 const signedIn = () => {
-  request.cookies.set('investigator_session', 'tok');
+  request.cookies.set('__Host-investigator_session', 'tok');
   api.on('GET /me', 200, ME);
 };
 

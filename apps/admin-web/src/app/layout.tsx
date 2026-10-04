@@ -1,5 +1,6 @@
 import { colors } from '@investigator/ui-tokens';
 import type { Metadata, Viewport } from 'next';
+import { connection } from 'next/server';
 import type { ReactNode } from 'react';
 import { LOCALE, t } from '@/i18n/messages';
 import './globals.css';
@@ -20,7 +21,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+/**
+ * Rendered per request, every page: the Content-Security-Policy carries a fresh nonce (T-025), and
+ * a page built ahead of time would ship scripts without it — the browser would refuse them. `/`
+ * and the not-found page were the two built ahead.
+ */
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  await connection();
   return (
     <html lang={LOCALE}>
       <body>{children}</body>

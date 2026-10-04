@@ -55,7 +55,7 @@ describe('quoting, end to end', () => {
       INSERT INTO user_sessions (user_id, refresh_token_hash, family_id, expires_at)
       VALUES (${inv.userId}, ${new TokenService().fingerprint(token)}, ${randomUUID()},
               now() + interval '1 day')`;
-    return { ...inv, cookie: `investigator_session=${token}` };
+    return { ...inv, cookie: `__Host-investigator_session=${token}` };
   };
 
   const offer = {

@@ -129,8 +129,9 @@ redirects to `/sign-in?next=<the page asked for>`. The middleware passes that pa
 components as `x-pathname`, always overwriting whatever a client sent.
 
 **Two ways to reach the API, one owner of the cookie.** The API sets and clears the session cookie
-(`investigator_session`: HTTP-only, `SameSite=Strict`, host-only, `Secure` outside development —
-T-025). So every mutation — sign in, up, out, verify, reset, add a role, accept documents, save a
+(`__Host-investigator_session`, named once in `@investigator/config`: HTTP-only, `SameSite=Strict`,
+`Secure` and `Path=/` always — the `__Host-` prefix makes the browser refuse it a `Domain`, so
+host-only is the browser's rule, and no sibling subdomain can plant a cookie of that name — T-025). So every mutation — sign in, up, out, verify, reset, add a role, accept documents, save a
 time zone — is a browser `fetch` to the same-origin `/api/v1` (`lib/api/browser.ts`): the API's own
 `Set-Cookie` lands in the browser and nothing here copies its attributes. Server components read
 through `lib/api/server.ts`, which forwards only the session cookie and the chosen role
@@ -544,6 +545,30 @@ screens, T-119/T-121); AI-drafted text marked unreviewed (drafting, T-117).
 `robots: noindex, nofollow` in the root metadata **and** an `X-Robots-Tag` header on every response
 from `next.config.ts`. Browser source maps are off (T-028's check runs on the build output).
 
+## Content-Security-Policy (T-025)
+
+Every page carries the app's own policy, set by `middleware.ts` (`lib/csp.ts`) — never at the edge,
+which would have to fit one policy to sites that need different ones. The policy is built by
+`contentSecurityPolicy('app', …)` in `@investigator/config`:
+
+- **Scripts** run only with this response's nonce, a fresh one per request, plus what they load
+  (`'strict-dynamic'`). Next reads the nonce from the policy and stamps it on every script it
+  renders, which needs every page rendered per request — they all are (`ƒ` in the build). The dev
+  server also gets `'unsafe-eval'` for fast refresh; production never does.
+- **Styles** may be inline: Next injects `<style>` elements and server-rendered markup carries style
+  attributes. Dropping `'unsafe-inline'` there was tried, and the browser flows' guard named every
+  refusal.
+- **Outside origins**, exactly two: Cloudinary's API host for uploads and signed image links
+  (`connect-src`, `img-src`), and Google's accounts host in `form-action`, because "Continue with
+  Google" is a form the API answers with a redirect to Google, and Chrome holds a form's redirects
+  to `form-action`. No other site of the domain map appears: each is `'self'` to itself and a
+  stranger to the rest, so adding a site cannot widen the policy.
+- `frame-ancestors 'none'`, `base-uri 'none'`, `object-src 'none'`.
+
+The browser flows fail on any violation (`e2e/support/test.ts`): each page reports its own
+`securitypolicyviolation` events to the test through a binding — not the console, which Playwright
+hears only from the page's scripts.
+
 ## Components
 
 `components.json` sets the registries in ADR-0003's order: `@shadcn`, `@cult-ui`, `@react-bits`.
@@ -586,8 +611,9 @@ pnpm --filter @investigator/app-web dev       # http://localhost:3000
 ```
 
 Every workspace route needs a session, so the API must be running too (port 3001; the `api` entry
-in `.claude/launch.json` starts it against the local database with `NODE_ENV=development`, where the
-session cookie is sent over plain HTTP and emailed links are written to the API's log).
+in `.claude/launch.json` starts it against the local database with `NODE_ENV=development`). The
+session cookie is `Secure` here too, as a `__Host-` cookie must be: Chromium and Firefox treat
+`http://localhost` as secure and accept it; Safari does not, so sign in locally in another browser.
 
 `pnpm build` at the root builds the tokens first. `next-env.d.ts` is generated and gitignored.
 The `build` script sets `NODE_ENV=production` itself: under an exported `development`, Next fails the
@@ -773,8 +799,8 @@ usually another tab; this one keeps the way back. `next` always passes `safeNext
 migrated from empty — no stand-ins. `account.e2e.ts` is one reader's first hour, in order, on one
 account per viewport (375 and 1280px): sign up accepting the published documents (and the consent
 rows recorded, read back as the owner), confirm the address from the emailed link, sign in and land
-on the page asked for, the session cookie's attributes as the browser holds them (HTTP-only,
-`SameSite=Strict`, `Secure`, host-only, unreadable from `document.cookie`), the device's time zone
+on the page asked for, the session cookie's attributes as the browser holds them (`__Host-`,
+HTTP-only, `SameSite=Strict`, `Secure`, host-only, unreadable from `document.cookie`), the device's time zone
 stored at sign-up and a new one saved, the customer role added with its document, the saved
 language restored on a fresh browser, another device's session ended, sign out, and a password
 reset. axe (WCAG 2.2 A/AA) runs on every signed-out screen and the account page.

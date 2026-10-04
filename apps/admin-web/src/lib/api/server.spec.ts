@@ -13,11 +13,11 @@ describe('calling the API from the console’s server', () => {
   });
 
   it('asks as the reviewer, passing on the client’s address the proxy gave it (T-138)', async () => {
-    request.cookies.set('investigator_session', 'refresh-token');
+    request.cookies.set('__Host-investigator_session', 'refresh-token');
     request.headers.set('x-forwarded-for', '203.0.113.7');
     expect(await serverApi('/me')).toEqual({ id: 'u-1' });
     expect(api.calls[0]!.headers).toEqual({
-      cookie: 'investigator_session=refresh-token',
+      cookie: '__Host-investigator_session=refresh-token',
       'x-forwarded-for': '203.0.113.7',
     });
   });
