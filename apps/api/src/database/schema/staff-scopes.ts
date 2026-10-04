@@ -13,6 +13,7 @@ export const staffScope = pgEnum('staff_scope', [
   'PAYMENTS',
   'TAXONOMY',
   'ENFORCEMENT',
+  'COMPLIANCE',
 ]);
 
 /**

@@ -55,6 +55,21 @@ A preservation request is not a disclosure request. It may require placing a **l
 Holds block retention deletion. Apply one only on instruction from the legal escalation owner,
 and record it.
 
+**How (T-035, T-205).** A staff member holding the `COMPLIANCE` scope places the hold in the staff
+console under **Legal holds** (or through `POST /api/v1/legal-holds`) — `resourceType` (`USER`, `TENANT`, `MISSION`, `ASSIGNMENT` or
+`MEDIA_ASSET`), `resourceId`, and a `reason` naming the request (its reference, the authority, the
+instruction), at least a sentence. Hold every record the request covers: the account, and each
+mission, assignment or file it names — a hold covers the resource it names and the rows that
+belong to it, not everything connected to it.
+
+- The reason is visible to `COMPLIANCE` staff only, never to the account holder. The audit trail
+  records that a hold was placed on what, by whom — not the reason.
+- **Holds on one record** on that page (or `GET /api/v1/legal-holds?resourceType=USER&resourceId=…`)
+  shows what is held on an account.
+- When the preservation period ends, choose **Release** on the hold's card (or
+  `POST /api/v1/legal-holds/{id}/release`) with a reason saying who confirmed it may end. A release
+  cannot be undone; place a new hold if needed.
+
 ## Emergency requests
 
 Some jurisdictions permit expedited disclosure where there is a risk to life. These are real

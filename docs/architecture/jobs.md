@@ -121,7 +121,19 @@ cd apps/api && NODE_ENV=development DATABASE_URL=postgres://investigator_app:inv
   REDIS_URL=redis://localhost:6380 SESSION_SECRET=$(openssl rand -hex 32) node dist/worker.main.js
 ```
 
-The production and staging compose files do not run it yet — `ACTIONS-FOR-ME.md` #25.
+The production and staging compose files do not run it yet — `ACTIONS-FOR-ME.md` #25, T-208. Since
+T-204 retention runs here too, so an environment without the worker deletes nothing on schedule.
+
+## Scheduled jobs (T-204)
+
+`JobQueue.schedule(queue, id, everyMs, envelope)` installs a BullMQ job scheduler; installing the same
+id again replaces it, and the schedule lives in Redis, so every worker may install it and each
+interval still queues one job. `unscheduleExcept(queue, prefix, keep)` removes an owner's schedulers
+that the code no longer has. A scheduler queues the same envelope every time, so the worker keys each
+run by the queue's id for it (`scheduledRun`: `repeat:<id>:<time>`) — otherwise the first run's claim
+in `job_runs` would make every later run a duplicate. The first user is retention, on the
+`maintenance` queue: `RetentionSchedule` installs a scheduler per rule when the worker starts, and
+`RetentionSweepHandler` runs one (`docs/compliance/retention.md`, "How retention runs").
 
 ## What holds it
 
@@ -136,10 +148,13 @@ The production and staging compose files do not run it yet — `ACTIONS-FOR-ME.m
 - `jobs.static.spec.ts` — every `this.db` under `common/jobs` inside `runInContext`/`asSystem` and
   awaited there; handlers never hold the database.
 - The isolation matrix covers `outbox_events`, `job_runs` and `job_dead_letters`.
+- `retention-sweep.spec.ts` — a sweep through the real runner, one crossing and its report; a
+  redelivered run a duplicate, the next run its own; schedules installed, a retired rule's removed,
+  another owner's left; through Redis, each scheduled run keyed by itself. `worker.spec.ts` — the
+  worker installs the schedule on start and says what it removed.
 
 ## Not built
 
 - Replaying dead letters, and alerting on their count — T-168.
-- Pruning `job_runs`, dead letters and published outbox rows — with the first scheduled retention
-  sweep (`retention.md`).
-- Scheduled (repeatable) jobs — with the first that needs one.
+- Pruning `job_runs`, dead letters and published outbox rows — a rule each in `retention-rules.ts`
+  once their periods stop being provisional (`retention.md`).

@@ -5,6 +5,8 @@
 // the spacing scale. Bottom on a phone, right from `md` — the direction is the caller's.
 // Top and left directions dropped: nothing opens that way. `handle={false}` (T-056) leaves the
 // handle out for a sheet that is not dragged, where a handle would promise what it cannot do.
+// Reduced motion (T-207): vaul animates the sheet and its scrim for 0.5s in CSS of its own, which the
+// duration tokens never reach; `motion-reduce:` turns both off, so the sheet is simply there.
 import type { ComponentProps } from 'react';
 import { Drawer as DrawerPrimitive } from 'vaul';
 import { cn } from '@/lib/utils';
@@ -36,12 +38,13 @@ function DrawerContent({
     <DrawerPrimitive.Portal>
       <DrawerPrimitive.Overlay
         data-slot="drawer-overlay"
-        className="fixed inset-0 z-(--z-modal) bg-scrim/50"
+        className="fixed inset-0 z-(--z-modal) bg-scrim/50 motion-reduce:animate-none! motion-reduce:transition-none!"
       />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(
           'group/drawer-content fixed z-(--z-modal) flex flex-col bg-surface-raised shadow-overlay',
+          'motion-reduce:animate-none! motion-reduce:transition-none!',
           'data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:max-h-sheet data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t data-[vaul-drawer-direction=bottom]:border-border data-[vaul-drawer-direction=bottom]:pb-safe',
           'data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:max-w-md data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=right]:border-border',
           className,

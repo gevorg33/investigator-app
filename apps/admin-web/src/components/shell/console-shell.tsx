@@ -1,4 +1,4 @@
-import { ScrollText, ShieldCheck } from 'lucide-react';
+import { Scale, ScrollText, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { t } from '@/i18n/messages';
@@ -6,10 +6,10 @@ import { SignOut } from './sign-out';
 
 /**
  * The console's frame (T-070): one bar — the console, its queues, who is signed in, sign out — and
- * the screen. Two queues (verification, and missions under review since T-051): a bar that wraps on
- * a phone, rather than a menu that hides two destinations behind a tap (responsive-design). Every
- * queue is listed for every member of staff; whether they may work it is the API's answer, which
- * each queue page says in words.
+ * the screen. Three destinations (verification, missions under review since T-051, legal holds
+ * since T-205): a bar that wraps on a phone, rather than a menu that hides three destinations behind
+ * a tap (responsive-design). Every one is listed for every member of staff; whether they may work it
+ * is the API's answer, which each page says in words.
  */
 export function ConsoleShell({ email, children }: { email: string; children: ReactNode }) {
   return (
@@ -26,7 +26,7 @@ export function ConsoleShell({ email, children }: { email: string; children: Rea
           <p className="mr-auto font-semibold md:mr-0">{t('app.name')}</p>
           <nav
             aria-label={t('shell.nav.label')}
-            className="order-last flex w-full flex-wrap gap-1 md:order-none md:w-auto md:flex-1"
+            className="order-last flex w-full flex-wrap gap-1 md:order-none md:w-auto md:flex-none"
           >
             <Link
               href="/verification"
@@ -42,8 +42,16 @@ export function ConsoleShell({ email, children }: { email: string; children: Rea
               <ScrollText aria-hidden className="size-4" />
               {t('shell.moderation')}
             </Link>
+            <Link
+              href="/legal-holds"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 hover:bg-surface-sunken"
+            >
+              <Scale aria-hidden className="size-4" />
+              {t('shell.legal_holds')}
+            </Link>
           </nav>
-          <p className="hidden truncate text-sm text-text-muted md:block">
+          {/* The email gives way, never a destination: it takes what the bar has left, and truncates. */}
+          <p className="hidden min-w-0 flex-1 truncate text-right text-sm text-text-muted md:block">
             {t('shell.signed_in_as', { email })}
           </p>
           <SignOut />

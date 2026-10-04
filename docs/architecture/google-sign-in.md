@@ -92,8 +92,9 @@ no Google button, and the Google routes answer 404. Locally the `api` launch ent
 
 ## Retention
 
-`oauth_attempts` rows are deleted a day after they lapse, at the next start
-(`docs/compliance/retention.md`). The provider address in a waiting sign-up is personal data held
+`oauth_attempts` rows are deleted a day after they lapse, by the hourly retention sweep in the
+worker (`retention.oauth_attempts`, T-204; `docs/compliance/retention.md`) — not at the next start
+any more. A LINK attempt whose account is under a legal hold is kept until the hold is released. The provider address in a waiting sign-up is personal data held
 at most thirty minutes plus that day.
 
 ## Not built

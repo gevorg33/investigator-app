@@ -10,6 +10,7 @@ import { AuthzModule } from './common/authz/authz.module';
 import { AccountModule } from './modules/account/account.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { LegalModule } from './modules/legal/legal.module';
+import { LegalHoldModule } from './modules/legal-hold/legal-hold.module';
 import { HealthModule } from './modules/health/health.module';
 import { MediaModule } from './modules/media/media.module';
 import { MissionModerationModule } from './modules/mission-policy/mission-moderation.module';
@@ -57,6 +58,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     AccountModule,
     LegalModule,
+    LegalHoldModule,
     ProfilesModule,
     MediaModule,
     ServiceAreasModule,

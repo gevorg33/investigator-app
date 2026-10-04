@@ -36,7 +36,13 @@ export type StaffScope =
   /** Manage categories, translations and policy text. */
   | 'TAXONOMY'
   /** Suspend accounts and assignments. The enforcement scope. */
-  | 'ENFORCEMENT';
+  | 'ENFORCEMENT'
+  /**
+   * Place and release legal holds (T-035): preservation requests, litigation, counsel's
+   * instructions. Separate from DISPUTES — a hold outlives the dispute that may have caused it,
+   * and releasing one is a legal decision, not a dispute outcome.
+   */
+  | 'COMPLIANCE';
 
 export const STAFF_SCOPES: readonly StaffScope[] = [
   'VERIFICATION',
@@ -45,6 +51,7 @@ export const STAFF_SCOPES: readonly StaffScope[] = [
   'PAYMENTS',
   'TAXONOMY',
   'ENFORCEMENT',
+  'COMPLIANCE',
 ] as const;
 
 /** Mirrors the `account_status` enum in the database. */

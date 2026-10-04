@@ -17,6 +17,7 @@ const EVERY_SCOPE: Record<StaffScope, true> = {
   PAYMENTS: true,
   TAXONOMY: true,
   ENFORCEMENT: true,
+  COMPLIANCE: true,
 };
 
 describe('STAFF_SCOPES', () => {

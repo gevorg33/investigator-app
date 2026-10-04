@@ -11,6 +11,7 @@ const en = {
   'shell.skip_to_content': 'Skip to content',
   'shell.verification': 'Verification',
   'shell.moderation': 'Missions',
+  'shell.legal_holds': 'Legal holds',
   'shell.sign_out': 'Sign out',
   'shell.signed_in_as': 'Signed in as {email}',
 
@@ -242,6 +243,68 @@ const en = {
     'One of these tags is no longer in use. Choose a current one.',
   'error.validation.moderation.note_empty':
     'Leave the internal note empty, or write something in it.',
+  'error.validation.legal_hold.reason_required':
+    'Write the reason: the request, case or instruction this hold answers, in a sentence.',
+
+  'holds.title': 'Legal holds',
+  'holds.intro':
+    'A hold keeps a record from being deleted by retention until it is released. Only compliance staff see holds — never the person whose data it is.',
+  'holds.no_scope.title': 'You do not have the compliance scope',
+  'holds.no_scope.body':
+    'Placing, reading and releasing legal holds needs the COMPLIANCE staff scope. Ask whoever manages staff access.',
+  'holds.status.label': 'Which holds',
+  'holds.status.ACTIVE': 'In force',
+  'holds.status.RELEASED': 'Released',
+  'holds.status.ALL': 'All',
+  'holds.find.title': 'Holds on one record',
+  'holds.find.type': 'Kind of record',
+  'holds.find.id': 'Record id',
+  'holds.find.submit': 'Find',
+  'holds.find.clear': 'Every record',
+  'holds.find.showing': 'Holds on {type} {id}',
+  'holds.find.invalid': 'That is not a record id. An id looks like 6f1c2a3b-…, 36 characters.',
+  'holds.empty.title': 'No holds here',
+  'holds.empty.body.ACTIVE': 'Nothing is held right now. A hold you place appears here.',
+  'holds.empty.body.RELEASED': 'No hold has been released.',
+  'holds.empty.body.ALL': 'No hold has been placed.',
+  'holds.empty.record': 'This record has no holds of this kind.',
+  'holds.resource.USER': 'Account',
+  'holds.resource.TENANT': 'Workspace',
+  'holds.resource.MISSION': 'Mission',
+  'holds.resource.ASSIGNMENT': 'Assignment',
+  'holds.resource.MEDIA_ASSET': 'File',
+  'holds.item.in_force': 'In force',
+  'holds.item.released': 'Released',
+  'holds.item.placed': 'Placed {date} by {by}',
+  'holds.item.reason': 'Why it is held',
+  'holds.item.released_on': 'Released {date} by {by}',
+  'holds.item.release_reason': 'Why it was released',
+  'holds.next': 'Next holds',
+  'holds.first': 'Back to the newest',
+
+  'hold.place.open': 'Place a hold',
+  'hold.place.title': 'Place a legal hold',
+  'hold.place.description':
+    'Only on instruction from the legal escalation owner. Hold every record the instruction covers.',
+  'hold.place.type': 'Kind of record',
+  'hold.place.id': 'Record id',
+  'hold.place.id_hint': 'The full id of the account, workspace, mission, assignment or file.',
+  'hold.place.reason': 'Reason',
+  'hold.place.reason_hint':
+    'Which request, case or instruction this answers, with its reference — at least a sentence. Only compliance staff read it.',
+  'hold.place.not_found': 'No record of that kind has that id. Check the kind and the id.',
+  'hold.place.submit': 'Place hold',
+  'hold.cancel': 'Cancel',
+
+  'hold.release.open': 'Release',
+  'hold.release.title': 'Release this hold',
+  'hold.release.description':
+    'Releasing cannot be undone. Retention applies to the record again from its next run; if preservation is needed again, place a new hold.',
+  'hold.release.reason': 'Reason for releasing',
+  'hold.release.reason_hint':
+    'Who confirmed the preservation may end — at least a sentence. Only compliance staff read it.',
+  'hold.release.conflict': 'This hold was already released. Reload the page to see by whom.',
+  'hold.release.submit': 'Release hold',
 } as const;
 
 export type MessageKey = keyof typeof en;

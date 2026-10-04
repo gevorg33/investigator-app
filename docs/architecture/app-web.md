@@ -25,7 +25,12 @@ committed; a test fails when the two disagree. The stylesheet:
 - declares each role at `:root` and swaps it under `prefers-color-scheme: dark`. **The device
   setting decides the theme**; nothing is stored and there is no toggle yet.
 - sets every duration to `0ms` under `prefers-reduced-motion`, so a transition becomes an instant
-  state change and nothing it communicated is lost.
+  state change and nothing it communicated is lost. **Except where a library brings its own CSS:**
+  vaul animates a sheet and its scrim for 0.5s in a stylesheet the tokens never reach, so `Drawer`
+  opts both out with `motion-reduce:animate-none! motion-reduce:transition-none!` (T-207). Seen in the
+  browser on the notification sheet at 375: with motion reduced, no animation and closed in 8 ms, focus
+  inside; drag-to-close still works. vaul ignores a drag for its first 500 ms after opening, with or
+  without motion — its own guard, unchanged.
 - **resets Tailwind's own palette and scales** (`--color-*`, `--text-*`, `--radius-*`,
   `--shadow-*`, `--ease-*`, `--breakpoint-*`). `bg-red-500` or `shadow-2xl` do not exist to be
   reached for.

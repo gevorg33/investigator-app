@@ -15,6 +15,7 @@ export const STAFF_SCOPES = [
   'PAYMENTS',
   'TAXONOMY',
   'ENFORCEMENT',
+  'COMPLIANCE',
 ] as const satisfies readonly StaffScope[];
 
 /** Compile-time proof that the list above covers the union. Never evaluated. */

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import { AuditService } from '../../common/audit/audit.service';
 import type { Actor } from '../../common/authz/contract';
 import { AppError } from '../../common/errors/app-error';
@@ -22,8 +22,6 @@ import { RateLimitService } from './rate-limit.service';
 /** How long the trip to Google may take, and how long a waiting sign-up stays open after it. */
 export const ATTEMPT_TTL_MS = 10 * 60 * 1000;
 export const SIGNUP_TTL_MS = 30 * 60 * 1000;
-/** Lapsed attempts are deleted at the next start, a day on (retention.md). */
-const PURGE_AFTER = sql`interval '1 day'`;
 
 /** Why a Google sign-in did not go through, as the app words it. No reason says more than this. */
 export type GoogleFailure =
@@ -115,17 +113,8 @@ export class GoogleAuthService {
     const state = randomToken();
     const nonce = randomToken();
     const codeVerifier = randomToken();
-    await this.db
-      .delete(oauthAttempts)
-      .where(
-        and(
-          lt(oauthAttempts.expiresAt, sql`now() - ${PURGE_AFTER}`),
-          or(
-            isNull(oauthAttempts.signupExpiresAt),
-            lt(oauthAttempts.signupExpiresAt, sql`now() - ${PURGE_AFTER}`),
-          ),
-        ),
-      );
+    // Lapsed attempts are removed by the retention sweep on its schedule, not here (T-204:
+    // `retention.oauth_attempts`, retention-rules.ts).
     await this.db.insert(oauthAttempts).values({
       provider: 'GOOGLE',
       intent: input.actor === undefined ? 'SIGN_IN' : 'LINK',

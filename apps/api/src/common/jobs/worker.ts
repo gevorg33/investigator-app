@@ -10,6 +10,8 @@ import {
   NotificationTrigger,
   SendEmailHandler,
 } from '../../modules/notifications/notification-jobs';
+import { RetentionSchedule, RetentionSweepHandler } from '../../modules/legal-hold/retention-sweep';
+import { RetentionGuard } from '../../modules/legal-hold/retention-guard';
 import { AuthzModule } from '../authz/authz.module';
 import { DeadLetters } from './dead-letters';
 import { JOB_HANDLERS } from './job';
@@ -37,9 +39,19 @@ import { EVENT_SUBSCRIBERS, OutboxDeliveryHandler } from './outbox-delivery.hand
     FanOutHandler,
     DeliverHandler,
     SendEmailHandler,
+    // Retention on a schedule (T-204): the guard, the sweep it runs, and the schedule it runs on.
+    RetentionGuard,
+    RetentionSweepHandler,
+    RetentionSchedule,
     {
       provide: JOB_HANDLERS,
-      inject: [OutboxDeliveryHandler, FanOutHandler, DeliverHandler, SendEmailHandler],
+      inject: [
+        OutboxDeliveryHandler,
+        FanOutHandler,
+        DeliverHandler,
+        SendEmailHandler,
+        RetentionSweepHandler,
+      ],
       useFactory: (...handlers: unknown[]) => handlers,
     },
     JobRunner,
@@ -89,6 +101,11 @@ export async function runWorker(opts: WorkerOptions): Promise<number> {
   const workers = app.get(JobWorkers);
   try {
     const queues = await workers.start(opts.out);
+    const retention = await app.get(RetentionSchedule).install();
+    opts.out(
+      `worker: retention scheduled — ${retention.scheduled.join(', ')}` +
+        (retention.removed.length === 0 ? '' : `; removed ${retention.removed.join(', ')}`),
+    );
     opts.out(`worker: working ${queues.join(', ')}; dispatching the outbox`);
     await app.get(OutboxDispatcher).run(opts.signal);
     opts.out('worker: stopping');

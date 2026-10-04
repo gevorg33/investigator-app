@@ -20,8 +20,12 @@ export interface JobEnvelope<P = unknown> {
   readonly payload: P;
 }
 
-/** Queues by latency class and blast radius (background-jobs): one per kind of work. */
-export const QUEUES = ['events', 'notifications'] as const;
+/**
+ * Queues by latency class and blast radius (background-jobs): one per kind of work. `maintenance`
+ * is the platform's own upkeep on a schedule — retention (T-204) — kept apart so a slow sweep never
+ * holds up an event or an email.
+ */
+export const QUEUES = ['events', 'notifications', 'maintenance'] as const;
 export type QueueName = (typeof QUEUES)[number];
 
 /**
@@ -110,6 +114,17 @@ export function systemEnvelope<P>(command: string, key: string, payload: P): Job
     membershipId: null,
     payload,
   };
+}
+
+/**
+ * One run of a scheduled job (T-204). A scheduler queues the same envelope every time, so its key
+ * would be claimed by the first run and every later one found a duplicate; each run is keyed by the
+ * queue's id for that run instead — `repeat:<scheduler>:<time>`, the same on a redelivery of that
+ * run, different for the next. Anything that is not an envelope is left for the runner to refuse.
+ */
+export function scheduledRun(data: unknown, runId: string): unknown {
+  if (!isEnvelope(data)) return data;
+  return { ...data, jobId: runId, key: runId };
 }
 
 /** An envelope for work in a named person's workspace — read from the database, re-read when it runs. */

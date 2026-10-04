@@ -1482,6 +1482,11 @@ export const en = {
         note_empty: 'Leave the internal note empty, or write something in it.',
         tags_on_publish: 'Tags are confirmed only when a mission is published.',
       },
+      legal_hold: {
+        reason_required:
+          'Write the reason: the request, case or instruction this hold answers, in a sentence.',
+        resource_pair: 'Name the kind of record and its id together, or neither.',
+      },
       review: { hide_reason_required: 'Say why these words are hidden. The author sees it.' },
       taxonomy: {
         locale: 'Choose English, Russian or Armenian.',
