@@ -268,6 +268,13 @@ server from #9; `www` as CNAME to apex. Caddy obtains certificates automatically
 **Verify:** All five resolve; `curl -I https://app.<domain>/` shows
 `X-Robots-Tag: noindex, nofollow` once deployed.
 
+**Then tell me the name.** Everything after registration is automated (T-023): the Caddyfile and
+the API both read `DOMAIN` (`app.`, `admin.`, `news.` follow from it), `infrastructure/compose/
+server.yml` wires them together, and the routing, certificates, redirects and network isolation
+were verified end to end against a stand-in name. The deploy sets `DOMAIN` and `ACME_EMAIL` in the
+server's environment. If you add AAAA records, IPv6 clients currently all share one address at the
+API until T-201 is done on the server — not a security hole, but wrong rate limits for them.
+
 **Status:** ⬜ Pending
 
 ---

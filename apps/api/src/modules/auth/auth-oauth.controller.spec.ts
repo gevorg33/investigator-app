@@ -19,7 +19,7 @@ import { GoogleAuthService, type CallbackOutcome } from './google-auth.service';
  * body the browser can read.
  */
 const ACTOR = testActor({ userId: 'u1', sessionId: 'sess-1' });
-const APP = 'http://app.test';
+const APP = 'https://app.test';
 const GOOGLE_URL = 'https://accounts.google.com/o/oauth2/v2/auth?state=s';
 
 const stub = () => ({
@@ -35,10 +35,10 @@ const stub = () => ({
 describe('Google sign-in routes', () => {
   let app: INestApplication;
   let google: ReturnType<typeof stub>;
-  const saved = process.env['APP_BASE_URL'];
+  const saved = process.env['APP_HOST'];
 
   beforeEach(async () => {
-    process.env['APP_BASE_URL'] = APP;
+    process.env['APP_HOST'] = 'app.test';
     google = stub();
     const moduleRef = await Test.createTestingModule({
       controllers: [GoogleAuthController],
@@ -65,7 +65,8 @@ describe('Google sign-in routes', () => {
   });
 
   afterEach(async () => {
-    process.env['APP_BASE_URL'] = saved;
+    if (saved === undefined) delete process.env['APP_HOST'];
+    else process.env['APP_HOST'] = saved;
     await closeApp(app);
   });
 
@@ -176,14 +177,18 @@ describe('Google sign-in routes', () => {
     });
 
     it('escapes what it writes into the page', async () => {
-      process.env['APP_BASE_URL'] = 'http://app.test/"&<x>';
-      const res = await back({ kind: 'linked', returnTo: '/' });
-      expect(res.text).toContain('http://app.test/&#34;&#38;&#60;x&#62;/account');
+      // The domain map refuses markup in a host (T-023), so it is the path that carries it here.
+      const res = await back({
+        kind: 'failed',
+        reason: '"&<x>' as never,
+        intent: 'SIGN_IN',
+      });
+      expect(res.text).toContain(`${APP}/sign-in?google=&#34;&#38;&#60;x&#62;`);
       expect(res.text).not.toContain('"&<x>');
     });
 
     it('falls back to the local app, and to a plain cookie over http in development', async () => {
-      delete process.env['APP_BASE_URL'];
+      delete process.env['APP_HOST'];
       const node = process.env['NODE_ENV'];
       process.env['NODE_ENV'] = 'development';
       try {

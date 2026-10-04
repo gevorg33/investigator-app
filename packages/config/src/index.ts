@@ -1,7 +1,4 @@
-// Shared build and tooling configuration
-// Scaffolded by T-001. Implementation follows in later tasks.
-
-// No runtime code yet, so nothing for the coverage gate to measure (T-042). The placeholder
-// constant that stood here named the package and was imported by nothing; a package must earn
-// its own coverage script the moment it exports something that runs.
-export {};
+// Shared configuration. The domain map is the one place a public hostname is derived (ADR-0002).
+// CommonJS, unlike the other packages: the API is CommonJS and needs it synchronously — at boot,
+// to validate the environment — and an ESM package can reach it there only by dynamic import.
+export * from './domains.js';

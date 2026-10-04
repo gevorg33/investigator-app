@@ -1401,11 +1401,11 @@ pnpm --filter api test auth-consent
 ---
 
 ### T-023 — Domain routing, TLS and DNS
-- **Status:** TODO
+- **Status:** DONE — 2026-10-04, everything a repository can hold; public certificate issuance and the live `curl` wait for a registered domain (ACTIONS-FOR-ME #8, checked by T-040's smoke test). `packages/config` exports the domain map (`domains()`, `appUrl()`) from the Caddyfile's own variables; the API builds every emailed link from it and refuses a malformed host, or two sites on one host, at boot; `APP_BASE_URL` is gone. `infrastructure/compose/server.yml` is the server stack. Verification found and fixed: dynamic containers taking the proxies' fixed addresses (`ip_range`), `app.`/`admin.` assets never cached (`no-store` beat `@static`), marketing redirecting to `/login` and `/register`, which app-web does not serve, and Caddy trusting a client's `X-Forwarded-For` when Docker relayed it (Caddy's log only; the API was not fooled). Filed T-201, T-202
 - **Priority:** P1
 - **Depends on:** T-003
 - **Risk:** MEDIUM
-- **Human approval required:** Yes — infrastructure and DNS
+- **Human approval required:** Yes — infrastructure and DNS (given in conversation, 2026-10-04)
 - **Owner agent:** infra-devops
 - **Affected:** infrastructure/caddy/**, infrastructure/compose/**, packages/config/**
 
@@ -1414,20 +1414,50 @@ Bring up the four-name architecture from ADR-0002. The Caddyfile exists but has 
 validated by Caddy itself.
 
 **Acceptance criteria**
-- [ ] `caddy validate` passes (command in `infrastructure/caddy/README.md`)
+- [x] `caddy validate` passes (command in `infrastructure/caddy/README.md`)
+      — `caddy:2.11.4-alpine` pinned by digest (2.11.6 and 2.11.7 were days old), and `caddy fmt --diff` clean
 - [ ] Certificates issue for apex, `app.` and `news.`; `www` redirects `301` to apex
+      — needs the domain. Verified with Caddy's own CA on `investigator.localhost`: a certificate
+      verified for all five names, `www.` → apex `301` keeping path and query, `http` → `https` `308`
 - [ ] `curl -I https://app.<domain>/` shows `X-Robots-Tag: noindex, nofollow`
-- [ ] `app./api/health` reaches the API same-origin; no CORS preflight on app→api calls
-- [ ] Marketing `/login` returns `301` to `app.`, never `200`
-- [ ] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
-- [ ] PostgreSQL, Redis and metrics are not reachable from the public internet
-- [ ] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
+      — needs the domain. Seen on `app.` and `admin.` of the stand-in, and held by `edge.spec.ts`
+- [x] `app./api/health` reaches the API same-origin; no CORS preflight on app→api calls
+      — `/api/*` reached the API from `app.` and `admin.`, with a client-written `X-Forwarded-For` replaced
+- [x] Marketing `/login` returns `301` to `app.`, never `200`
+      — to `/sign-in`, which app-web serves; `/register`, `/sign-in`, `/sign-up`, `/dashboard` too
+- [x] `packages/config` exports a typed domain map; no hostname is hardcoded anywhere
+      — the four `APP_BASE_URL ?? 'http://localhost:3000'` call sites in the API now `appUrl()`;
+      `edge.spec.ts` fails a public dev port or the example apex in any app's source.
+      `API_INTERNAL_URL`'s `localhost:3001` fallback is the API's internal address, not a public name
+- [x] PostgreSQL, Redis and metrics are not reachable from the public internet
+      — on a network with no route out, unpublished; unreachable from the edge network, probed.
+      No metrics service exists yet
+- [x] Caddy, app-web and admin-web have fixed addresses on the internal network, the API's `TRUSTED_PROXIES` lists exactly those, and the API's port is not published (T-138, `docs/operations/client-address.md`)
+      — `10.20.0.2/.3/.4`, others allocated from `10.20.0.128/25` only
 
 **Validation**
 ```bash
-docker run --rm -v "$PWD/infrastructure/caddy":/etc/caddy:ro -e DOMAIN=... caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+cd infrastructure/caddy && docker run --rm -v "$PWD":/etc/caddy:ro \
+  -e DOMAIN=example.test -e APP_HOST=app.example.test -e ADMIN_HOST=admin.example.test \
+  -e NEWS_HOST=news.example.test -e ACME_EMAIL=ops@example.test \
+  caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b \
+  caddy validate --config /etc/caddy/Caddyfile
+pnpm --filter @investigator/config test && pnpm --filter api test edge supply-chain env.schema
 ```
+The command first written here passed only `DOMAIN`; the Caddyfile has always needed every name.
 
+*Validated.* `caddy validate`: Valid configuration; `caddy fmt --diff` clean. Format, lint,
+typecheck, build. `pnpm test:coverage`: every package at 100% — config 15, API 3336 (100% of
+6177 statements), app-web 865, and the rest; app-web browser flows 54/54.
+
+*Verified.* `server.yml` run on this machine with request-echoing stand-ins for the platform's
+images and `DOMAIN=investigator.localhost` (the README has the recipe): every probe above, plus
+egress — none from the web apps, PostgreSQL or Redis, the API's through `egress` only. The old
+Caddyfile against the same probe kept a client's `X-Forwarded-For: 6.6.6.6` ahead of the gateway;
+the new one replaced it. `edge.spec.ts` was mutated back to each defect (old Caddyfile, no
+`ip_range`, the subnet trusted, the API published, a web app on `egress`) and failed the matching
+test each time. The browser flows read the mailed links: verification, reset and invitation
+links all went to the run's app-web through the domain map. No hostname-facing UI changed.
 ---
 
 ### T-024 — Marketing site SEO
@@ -8836,6 +8866,58 @@ assistant on a Russian page, docked at 1280 and as the sheet at 375 — "Пре�
 specialties fact and the "Искали: …" line marked the same, language and place unmarked; no
 overflow. The tools' half is the integration specs against PostgreSQL. The conversation was
 deleted through the API afterwards.
+
+---
+
+### T-201 — Real client addresses for connections Docker relays (IPv6 on the server)
+- **Status:** TODO
+- **Priority:** P2 — every relayed client shares one sign-in rate limit and one audit address
+- **Depends on:** T-023; a provisioned host (T-040)
+- **Risk:** MEDIUM
+- **Human approval required:** Yes — infrastructure, on the real host
+- **Owner agent:** infra-devops
+- **Affected:** infrastructure/compose/server.yml, docs/operations/client-address.md
+
+**Description**
+From T-023. Caddy sees the client only when Docker forwards a published port by NAT. When Docker's
+userland proxy relays the connection instead, Caddy's peer is the edge network's gateway, so every
+such client shares that address. That is IPv6 clients on an IPv4-only Docker network — Hetzner
+hosts have IPv6 — and everything under Colima or Docker Desktop (seen as `172.20.0.1`). Not
+spoofable: the gateway is not in `TRUSTED_PROXIES`. Candidate fixes, to be chosen on the host:
+`enable_ipv6` on the edge network with ip6tables NAT, or `userland-proxy: false` in the daemon.
+
+**Acceptance criteria**
+- [ ] On the provisioned host, an IPv4 and an IPv6 client each reach the API as their own address (a failed sign-in's audit row)
+- [ ] `docs/operations/client-address.md`'s known-gap section records the fix, or is removed
+
+**Validation**
+Two failed sign-ins from the host's public IPv4 and IPv6 paths, and the audit rows' `ip_address`.
+
+---
+
+### T-202 — Validate the Caddyfile in CI
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-023
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** infra-devops
+- **Affected:** .github/workflows/pr.yml, apps/api/test/supply-chain.spec.ts
+
+**Description**
+From T-023. `edge.spec.ts` holds the Caddyfile's rules as text, but only Caddy can say the file
+parses: `caddy validate` and `caddy fmt --diff` run by hand (`infrastructure/caddy/README.md`).
+Run both in `pr.yml` with the image `server.yml` pins, and have the supply-chain spec hold that
+the two digests match.
+
+**Acceptance criteria**
+- [ ] A PR whose Caddyfile does not parse, or is not `caddy fmt`-clean, fails CI — seen failing first
+- [ ] The CI step's Caddy digest is `server.yml`'s, held by a spec
+
+**Validation**
+```bash
+pnpm --filter api test supply-chain
+```
 
 ---
 

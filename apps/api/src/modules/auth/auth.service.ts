@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
+import { appUrl } from '@investigator/config';
 import { AuditService } from '../../common/audit/audit.service';
 import { runAsUser } from '../../common/context/execution-context';
 import { LegalService } from '../legal/legal.service';
@@ -406,7 +407,7 @@ export class AuthService {
       template: purpose === 'EMAIL_VERIFICATION' ? 'email_verification' : 'password_reset',
       // The token travels here and nowhere else. It is not audited and not logged.
       variables: {
-        url: `${process.env['APP_BASE_URL'] ?? 'http://localhost:3000'}/${path}?token=${issued.token}`,
+        url: appUrl(`/${path}?token=${issued.token}`),
       },
     });
 

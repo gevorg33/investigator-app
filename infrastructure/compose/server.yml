@@ -1,0 +1,155 @@
+# The stack as it runs on a server — staging and production alike (ADR-0002, T-023). Local
+# development is local.yml; this file is never run on a laptop except to verify it.
+#
+#   docker compose -f infrastructure/compose/server.yml config     # check it
+#
+# Deploying it is T-040 (staging) and T-041 (production): manual, approval-gated jobs. This file
+# says what runs and how it is wired; it holds no secret and builds no image.
+#
+# Two networks, and the line between them is the security boundary:
+#
+#   edge      Caddy's way out — the internet, and ACME. Caddy alone publishes ports.
+#   internal  No route out (`internal: true`). Everything else lives here, unreachable from the
+#             internet: PostgreSQL, Redis, the API, the web apps' servers.
+#   egress    The API's way out, for the providers it calls (mail, media, OAuth, the model).
+#             Nothing else joins it, so nothing reaches the API through it.
+#
+# The proxies have fixed addresses on `internal`, and the API trusts X-Forwarded-For from exactly
+# those (TRUSTED_PROXIES) — not the network's range, which also holds PostgreSQL and Redis. The API
+# publishes no port: a client that could reach it directly, from a trusted address, could write
+# its own X-Forwarded-For (docs/operations/client-address.md). apps/api/test/edge.spec.ts holds
+# these rules.
+
+name: investigator
+
+# The public names, shared by Caddy and the API so the edge and every emailed link agree. Each
+# *_HOST defaults to `<name>.<DOMAIN>` — the domain map in packages/config derives the same.
+x-domains: &domains
+  DOMAIN: ${DOMAIN:?DOMAIN is the apex, e.g. mydomain.com}
+  APP_HOST: ${APP_HOST:-app.${DOMAIN}}
+  ADMIN_HOST: ${ADMIN_HOST:-admin.${DOMAIN}}
+  NEWS_HOST: ${NEWS_HOST:-news.${DOMAIN}}
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    restart: unless-stopped
+    ports:
+      # The only published ports in the stack. 443/udp is HTTP/3.
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      <<: *domains
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL receives certificate notices}
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and the ACME account. Losing them means reissuing against rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    networks:
+      edge: {}
+      internal:
+        ipv4_address: 10.20.0.2
+
+  app-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY}/app-web:${IMAGE_TAG:?IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      # Its server-side reads go straight to the API, passing on the X-Forwarded-For Caddy set.
+      API_INTERNAL_URL: http://api:3001
+    networks:
+      internal:
+        ipv4_address: 10.20.0.3
+
+  admin-web:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY}/admin-web:${IMAGE_TAG:?IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:3001
+    networks:
+      internal:
+        ipv4_address: 10.20.0.4
+
+  api:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY}/api:${IMAGE_TAG:?IMAGE_TAG}
+    restart: unless-stopped
+    # Secrets and provider settings (DATABASE_URL, SESSION_SECRET, CLOUDINARY_*, …) come from a
+    # file on the server, never from this repository. Only the runtime role's credentials: the
+    # owner's belong to the migration job (T-041).
+    env_file:
+      - ${API_ENV_FILE:?API_ENV_FILE is the path to the API's environment file on the server}
+    # What the topology decides, set here so the environment file cannot drift from it.
+    environment:
+      <<: *domains
+      PORT: '3001'
+      REDIS_URL: redis://redis:6379
+      # Caddy, app-web, admin-web — exactly the addresses above.
+      TRUSTED_PROXIES: 10.20.0.2,10.20.0.3,10.20.0.4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      internal: {}
+      egress: {}
+
+  postgres:
+    build:
+      context: ../docker/postgres
+    image: investigator/postgres:17-3.5-pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is the owner's password}
+      POSTGRES_DB: investigator
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -q -U postgres -d investigator']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      internal: {}
+
+  redis:
+    # The digest local.yml and CI run (T-028).
+    image: redis:8-alpine@sha256:ba6e394f6acc2a695ef1b6944f161b9ca813711739be68319fa0db3470673f1d
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks:
+      internal: {}
+
+networks:
+  edge: {}
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.20.0.0/24
+          # Docker hands out addresses from here only, so a container with no fixed address can
+          # never take a proxy's — found when PostgreSQL took 10.20.0.2 before Caddy started, and
+          # a container holding a trusted address is one whose X-Forwarded-For the API believes.
+          ip_range: 10.20.0.128/25
+  egress: {}
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:
+  postgres_data:
+  redis_data:

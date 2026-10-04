@@ -18,7 +18,7 @@ browser ──► Caddy ──► app-web / admin-web ──► API  (their serv
 
 | Hop | Sets | Trusts |
 |---|---|---|
-| Caddy | `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` on every proxied request (Caddy's defaults) | An incoming `X-Forwarded-For` only from a peer in `trusted_proxies` (`private_ranges`, Caddyfile global options). A browser is not one, so whatever a client sends is replaced by the address Caddy saw |
+| Caddy | `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` on every proxied request (Caddy's defaults) | Nobody: no `trusted_proxies`, so whatever a client sends is replaced by the address Caddy saw (T-023). It trusted `private_ranges` until then, which kept a client's own entry whenever Docker relayed the connection from the bridge gateway |
 | app-web, admin-web | Pass the `X-Forwarded-For` Caddy gave them on to the API (`serverApi`), and nothing else | Caddy — they are reachable only through it |
 | API | — | `TRUSTED_PROXIES`: exactly Caddy's, app-web's and admin-web's addresses. Express walks `X-Forwarded-For` from the right over those, and the first address that is not one of them is the client |
 
@@ -32,10 +32,25 @@ browser ──► Caddy ──► app-web / admin-web ──► API  (their serv
   would let a client name its own address, and with it its own rate-limit key.
 - **Unset locally** trusts nobody, which is right with nothing in front.
 
-The addresses must be the proxies' own. In Docker Compose, give Caddy, app-web and admin-web fixed
-addresses on the internal network (`ipv4_address`) and list exactly those — not the network's range,
-which also holds PostgreSQL, Redis and the workers. The API's port is never published: a client that
-could reach it directly, from a trusted address, could write its own `X-Forwarded-For`.
+The addresses must be the proxies' own. `infrastructure/compose/server.yml` (T-023) gives Caddy,
+app-web and admin-web fixed addresses on the internal network — `10.20.0.2`, `.3`, `.4` — and sets
+the API's `TRUSTED_PROXIES` to exactly those, in the compose file rather than the environment file,
+so the two cannot drift. Not the network's range, which also holds PostgreSQL and Redis. Docker
+hands out other containers' addresses from `10.20.0.128/25` only (`ip_range`): without it,
+PostgreSQL took `10.20.0.2` before Caddy started, and a container holding a proxy's address is one
+whose `X-Forwarded-For` the API believes. The API's port is never published: a client that could
+reach it directly, from a trusted address, could write its own `X-Forwarded-For`.
+`apps/api/test/edge.spec.ts` holds all of this against what Compose resolves.
+
+## A known gap: connections Docker relays
+
+Caddy sees the real client only when Docker forwards a published port by NAT. When Docker relays the
+connection through its userland proxy instead, Caddy's peer is the edge network's gateway, and every
+such client shares that one address — one sign-in rate limit, one audit address. That happens to
+IPv6 clients on a host whose Docker networks are IPv4-only, and to everything under Docker Desktop
+or Colima on a laptop (seen in T-023's verification as `172.20.0.1`). It is not spoofable — the
+gateway is not in `TRUSTED_PROXIES`, so the API stops there — but it is wrong. Settling it on the
+real host is T-201.
 
 ## Checking it
 

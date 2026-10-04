@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { domains, type DomainConfigError } from '@investigator/config';
 import { z } from 'zod';
 
 /**
@@ -67,11 +68,14 @@ export const EnvSchema = z
 
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-    // Origin of the web application, used to build verification and password-reset links.
-    // Validated as a URL so a malformed value fails at boot rather than producing links
-    // that silently go nowhere. Host-only session cookies mean this is app., not the apex
-    // (ADR-0002).
-    APP_BASE_URL: z.url().default('http://localhost:3000'),
+    // The public names (ADR-0002, T-023): the same variables the Caddyfile reads, turned into
+    // origins by the domain map in @investigator/config — which builds every link an email carries.
+    // Unset locally, where the map falls back to the dev servers; DOMAIN is required in staging and
+    // production, checked below. Each *_HOST overrides its `<name>.<DOMAIN>` default.
+    DOMAIN: optionalText,
+    APP_HOST: optionalText,
+    ADMIN_HOST: optionalText,
+    NEWS_HOST: optionalText,
 
     // Media storage (T-008). Optional locally so the API boots before the account exists
     // (ACTIONS-FOR-ME #4); required in staging and production — checked below. An empty value
@@ -157,7 +161,29 @@ export const EnvSchema = z
       });
     }
 
+    try {
+      domains({
+        DOMAIN: env.DOMAIN,
+        APP_HOST: env.APP_HOST,
+        ADMIN_HOST: env.ADMIN_HOST,
+        NEWS_HOST: env.NEWS_HOST,
+      });
+    } catch (error) {
+      // The map's only failure; it names the variable, never the value.
+      const { variable, message } = error as DomainConfigError;
+      ctx.addIssue({ code: 'custom', path: [variable], message });
+    }
+
     if (env.NODE_ENV !== 'staging' && env.NODE_ENV !== 'production') return;
+
+    // Without it every emailed link would point at a developer's localhost.
+    if (env.DOMAIN === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DOMAIN'],
+        message: `DOMAIN is required in ${env.NODE_ENV}`,
+      });
+    }
 
     for (const name of [
       'CLOUDINARY_CLOUD_NAME',

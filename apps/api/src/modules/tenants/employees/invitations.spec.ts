@@ -58,7 +58,7 @@ describe('agency invitations', () => {
         { name: string }[]
       >`SELECT name FROM tenants WHERE id = ${a.tenantId}`;
       expect(mail.variables['workspace']).toBe(agency!.name);
-      expect(mail.variables['url']).toMatch(/^http:\/\/app\.test\/invitations\/accept\?token=/);
+      expect(mail.variables['url']).toMatch(/^https:\/\/app\.test\/invitations\/accept\?token=/);
 
       const token = h.tokenFor(invitee.email);
       const [row] = await h.owner<{ token_hash: string }[]>`
@@ -76,8 +76,8 @@ describe('agency invitations', () => {
 
     it('links to the local app when no base address is configured', async () => {
       const a = await agencyWith();
-      const saved = process.env['APP_BASE_URL'];
-      delete process.env['APP_BASE_URL'];
+      const saved = process.env['APP_HOST'];
+      delete process.env['APP_HOST'];
       try {
         const email = `local-${randomUUID()}@example.test`;
         expect((await invite(a.owner, a.tenantId, email)).status).toBe(201);
@@ -85,7 +85,7 @@ describe('agency invitations', () => {
           /^http:\/\/localhost:3000\/invitations\/accept\?token=/,
         );
       } finally {
-        process.env['APP_BASE_URL'] = saved;
+        process.env['APP_HOST'] = saved;
       }
     });
 

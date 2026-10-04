@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { appUrl } from '@investigator/config';
 import { CurrentActor } from '../../common/authz/actor.decorator';
 import { ActorGuard } from '../../common/authz/actor.guard';
 import type { Actor } from '../../common/authz/contract';
@@ -37,7 +38,6 @@ export const SIGNUP_COOKIE = 'investigator_signup';
 const GOOGLE_PATH = '/api/v1/auth/google';
 
 const secure = () => process.env['NODE_ENV'] !== 'development';
-const appUrl = (path: string) => `${process.env['APP_BASE_URL'] ?? 'http://localhost:3000'}${path}`;
 
 /**
  * Lax, not Strict: it must come back on Google's top-level redirect to the callback, which is a

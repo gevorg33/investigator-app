@@ -14,6 +14,7 @@ const workflows = globSync('.github/workflows/*.yml', { cwd: ROOT }).map((p) => 
 }));
 const pr = read('.github/workflows/pr.yml');
 const compose = read('infrastructure/compose/local.yml');
+const server = read('infrastructure/compose/server.yml');
 const dockerfile = read('infrastructure/docker/postgres/Dockerfile');
 
 /** `name:tag@sha256:…` → the digest, or undefined when the reference is a floating tag. */
@@ -45,13 +46,17 @@ describe('the supply chain', () => {
     expect(loose).toEqual([]);
   });
 
-  it('pins every image by digest, in CI, local development and the Dockerfile', () => {
+  it('pins every image by digest, in CI, local development, the server stack and the Dockerfile', () => {
     const images = [
       ...[...pr.matchAll(/^\s*image:\s*(\S+)/gm)].map((m) => ['pr.yml', m[1]!]),
       ...[...compose.matchAll(/^\s*image:\s*(\S+)/gm)]
         // An image this file builds itself is named, not pulled; its base is the Dockerfile's.
         .filter((m) => !m[1]!.startsWith('investigator/'))
         .map((m) => ['local.yml', m[1]!]),
+      ...[...server.matchAll(/^\s*image:\s*(\S+)/gm)]
+        // The platform's own images are tagged per deploy by the pipeline that builds them (T-040).
+        .filter((m) => !m[1]!.startsWith('investigator/') && !m[1]!.startsWith('${IMAGE_REGISTRY'))
+        .map((m) => ['server.yml', m[1]!]),
       ...[...dockerfile.matchAll(/^FROM\s+(\S+)/gm)].map((m) => ['Dockerfile', m[1]!]),
     ];
     expect(images.length).toBeGreaterThan(3);
