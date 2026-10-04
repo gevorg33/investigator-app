@@ -146,7 +146,8 @@ and the diff that shortens one is where rule 4's recorded decision shows.
 - **Nothing deletes on a request.** The Google sign-in used to purge lapsed attempts when the next
   one started; it no longer deletes anything.
 - **The worker must run wherever the API does.** Without it no rule runs, and a waiting sign-up's
-  provider address would outlive its day (`ACTIONS-FOR-ME.md` #25, T-208).
+  provider address would outlive its day. The server stack runs it beside the API — the `worker`
+  service in `infrastructure/compose/server.yml` (T-208).
 - **Only rules whose period is settled.** `oauth_attempts` runs (hourly; a day past lapse, a
   security period rather than a legal one). The provisional periods above — `job_runs`,
   `notifications`, `idempotency_keys`, `outbox_events` — are not swept: this register says not to

@@ -121,8 +121,14 @@ cd apps/api && NODE_ENV=development DATABASE_URL=postgres://investigator_app:inv
   REDIS_URL=redis://localhost:6380 SESSION_SECRET=$(openssl rand -hex 32) node dist/worker.main.js
 ```
 
-The production and staging compose files do not run it yet — `ACTIONS-FOR-ME.md` #25, T-208. Since
-T-204 retention runs here too, so an environment without the worker deletes nothing on schedule.
+On a server it is the `worker` service in `infrastructure/compose/server.yml` (T-208): the API's
+image running the package's `worker` script, the API's environment file, and the same
+topology-decided environment as the API (`x-api-environment` — the hosts, Redis, `TRUSTED_PROXIES`,
+which the shared schema requires in staging and production). No port; `internal` for PostgreSQL and
+Redis, `egress` for the mail provider. It starts once both are healthy, and has 30 seconds after
+SIGTERM to let jobs in progress finish. Its queues use the default prefix: each environment's stack
+has its own Redis. `apps/api/test/edge.spec.ts` holds this wiring. Since T-204 retention runs here
+too, so an environment without the worker deletes nothing on schedule.
 
 ## Scheduled jobs (T-204)
 

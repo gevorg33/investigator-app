@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { domains } from '@investigator/config';
 import { describe, expect, it } from 'vitest';
+import { validateEnv } from '../src/config/env.schema';
 
 const ROOT = join(__dirname, '../../..');
 const SERVER = join(ROOT, 'infrastructure/compose/server.yml');
@@ -11,9 +12,14 @@ const uncommented = (text: string): string => text.replace(/^\s*#.*$/gm, '');
 const caddyfile = uncommented(readFileSync(join(ROOT, 'infrastructure/caddy/Caddyfile'), 'utf8'));
 
 interface Service {
+  image: string;
+  command?: string[];
   ports?: { published?: string }[];
   networks: Record<string, { ipv4_address?: string } | null>;
   environment?: Record<string, string>;
+  depends_on?: Record<string, { condition: string }>;
+  restart?: string;
+  stop_grace_period?: string;
 }
 interface Stack {
   services: Record<string, Service>;
@@ -27,10 +33,13 @@ interface Stack {
   >;
 }
 
+/** A line in the API's environment file, so a test can see who reads the file. */
+const FROM_ENV_FILE = { ENV_FILE_PROBE: 'from-the-file' };
+
 /** What Compose itself makes of server.yml, with the values a deploy supplies. */
 function compose(vars: Record<string, string | undefined>) {
   const envFile = join(mkdtempSync(join(tmpdir(), 'edge-')), 'api-vars');
-  writeFileSync(envFile, '');
+  writeFileSync(envFile, 'ENV_FILE_PROBE=from-the-file\n');
   return spawnSync('docker', ['compose', '-f', SERVER, 'config', '--format', 'json'], {
     encoding: 'utf8',
     env: {
@@ -84,12 +93,21 @@ describe('the server stack', () => {
     expect(services['caddy']!.ports!.map((p) => p.published)).toEqual(['80', '443', '443']);
   });
 
-  it('keeps everything but Caddy and the API on a network with no route out', () => {
+  it('keeps everything but Caddy, the API and the worker on a network with no route out', () => {
     expect(networks['internal']!.internal).toBe(true);
-    expect(on('internal')).toEqual(['admin-web', 'api', 'app-web', 'caddy', 'postgres', 'redis']);
+    expect(on('internal')).toEqual([
+      'admin-web',
+      'api',
+      'app-web',
+      'caddy',
+      'postgres',
+      'redis',
+      'worker',
+    ]);
     expect(on('edge')).toEqual(['caddy']);
-    // The API's way out to its providers: nobody else on it, so nothing reaches the API through it.
-    expect(on('egress')).toEqual(['api']);
+    // The way out to the providers, for the API and the worker (which sends the mail) alone. No proxy
+    // is on it, so nothing on it holds an address whose X-Forwarded-For the API believes.
+    expect(on('egress')).toEqual(['api', 'worker']);
     expect(networks['edge']!.internal).toBeFalsy();
     expect(networks['egress']!.internal).toBeFalsy();
   });
@@ -123,7 +141,62 @@ describe('the server stack', () => {
     const unfixed = Object.entries(services).filter(
       ([, s]) => 'internal' in s.networks && !s.networks['internal']?.ipv4_address,
     );
-    expect(unfixed.map(([name]) => name).sort()).toEqual(['api', 'postgres', 'redis']);
+    expect(unfixed.map(([name]) => name).sort()).toEqual(['api', 'postgres', 'redis', 'worker']);
+  });
+
+  describe('the job worker (T-208)', () => {
+    // Since T-204 retention runs only here: a stack without it deletes nothing on schedule, and
+    // delivers no event (docs/architecture/jobs.md).
+    const worker = services['worker']!;
+    const api = services['api']!;
+
+    it('is the API’s image, running the package’s own worker script', () => {
+      expect(worker.image).toBe(api.image);
+      const pkg = JSON.parse(readFileSync(join(ROOT, 'apps/api/package.json'), 'utf8')) as {
+        scripts: Record<string, string>;
+      };
+      expect(worker.command).toEqual(pkg.scripts['worker']!.split(' '));
+      expect(worker.command).toEqual(['node', 'dist/worker.main.js']);
+      expect(existsSync(join(ROOT, 'apps/api/src/worker.main.ts'))).toBe(true);
+    });
+
+    it('reads the API’s environment file, names and Redis, so its mail and queues are the API’s', () => {
+      expect(worker.environment).toMatchObject(FROM_ENV_FILE);
+      expect(api.environment).toMatchObject(FROM_ENV_FILE);
+      for (const name of ['DOMAIN', 'APP_HOST', 'ADMIN_HOST', 'NEWS_HOST', 'REDIS_URL']) {
+        expect(worker.environment![name]).toBe(api.environment![name]);
+      }
+    });
+
+    it.each(['staging', 'production'])(
+      'resolves, with what an environment file holds, to an environment the schema accepts in %s',
+      (stage) => {
+        // The worker validates the API's whole environment (runWorker → validateEnv), so what this
+        // file sets for the API and the schema requires there, the worker needs too. Found when the
+        // worker, run from this file, refused to start without TRUSTED_PROXIES.
+        const file = {
+          NODE_ENV: stage,
+          DATABASE_URL: 'postgres://investigator_app:x@postgres:5432/investigator',
+          SESSION_SECRET: 'x'.repeat(32),
+          CLOUDINARY_CLOUD_NAME: 'cloud',
+          CLOUDINARY_API_KEY: 'key',
+          CLOUDINARY_API_SECRET: 'secret',
+          CLOUDINARY_FOLDER: `investigator/${stage}`,
+        };
+        for (const service of [api, worker]) {
+          expect(() => validateEnv({ ...file, ...service.environment })).not.toThrow();
+        }
+      },
+    );
+
+    it('starts once the database and Redis are healthy, and lets jobs in progress finish on stop', () => {
+      expect(worker.depends_on).toMatchObject({
+        postgres: { condition: 'service_healthy' },
+        redis: { condition: 'service_healthy' },
+      });
+      expect(worker.restart).toBe('unless-stopped');
+      expect(worker.stop_grace_period).toBe('30s');
+    });
   });
 
   it('gives Caddy and the API the same names, as the domain map derives them', () => {

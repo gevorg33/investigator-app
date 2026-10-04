@@ -2215,6 +2215,11 @@ run. Per `.claude/skills/ci-cd/SKILL.md`.
 - [ ] Smoke tests run against deployed staging
 - [ ] Deployment recorded: sha, actor, outcome
 - [ ] Staging contains **no production data and no production secrets**
+- [ ] The API image runs both `server.yml` commands from its working directory — its default (the
+  API) and `node dist/worker.main.js` (the `worker` service, T-208)
+- [ ] The worker runs beside the API: its log says `worker: retention scheduled — …` then
+  `worker: working …; dispatching the outbox`; no unpublished outbox row is older than a few seconds;
+  `job_dead_letters` stays empty (formerly `ACTIONS-FOR-ME.md` #25)
 
 **Validation**
 A green run on a merge to `dev`, with staging serving the new sha.
@@ -9213,11 +9218,11 @@ pnpm --filter app-web test
 ---
 
 ### T-208 — Run the worker in the server stack
-- **Status:** TODO
+- **Status:** DONE — 2026-10-05; `worker` service in `infrastructure/compose/server.yml` sharing the API's topology environment (`x-api-environment`), held by `apps/api/test/edge.spec.ts`; jobs.md, retention.md, client-address.md; ACTIONS #25 retired, its checks moved to T-040
 - **Priority:** P1 — before the first deploy: without it nothing is swept and no event is delivered
 - **Depends on:** T-204
 - **Risk:** MEDIUM
-- **Human approval required:** Yes — production deployment configuration
+- **Human approval required:** Yes — production deployment configuration; chosen 2026-10-05 over T-171, T-048 and T-046
 - **Owner agent:** infra-devops
 - **Affected:** infrastructure/compose/server.yml, apps/api Dockerfile if the image needs a second command
 
@@ -9229,10 +9234,28 @@ the API no longer purges lapsed sign-in attempts — so a stack without it never
 service: the API's image and environment, `node dist/worker.main.js`, no port, a 30s stop grace,
 `JOB_QUEUE_PREFIX` per environment; then retire the manual half of #25.
 
+**What shipped**
+
+- **The service**: the API's image, `node dist/worker.main.js` (held equal to the package's `worker`
+  script), the API's environment file, no port, `internal` + `egress` (it sends the mail), healthy
+  PostgreSQL and Redis first, 30s stop grace.
+- **Found in verification — the worker would never have started in staging or production.** It
+  validates the API's whole schema, which requires `TRUSTED_PROXIES` there, and only the `api`
+  service set it. The topology-decided values (hosts, `REDIS_URL`, `TRUSTED_PROXIES`) are now one
+  anchor both services take; a spec validates each service's resolved environment, with a complete
+  environment file, against the schema in staging and production — seen to fail first.
+- **`JOB_QUEUE_PREFIX` is not set per environment**, against the description: the prefix keeps apart
+  environments that share a Redis, and each stack runs its own. The environment file may still set it.
+- Verified by running `server.yml` itself (a stand-in for the API image T-040 builds, Node 24 with
+  the built repository): migrated, runtime role set; the worker started, logged the schedule and the
+  queues, swept a lapsed sign-in attempt and kept a live one — one `job_runs` row, one
+  `platform.access` and one `retention.deleted` under the run's key — outbox and dead letters empty;
+  `docker compose stop` → `worker: stopping`, exit 0 in 1s.
+
 **Acceptance criteria**
-- [ ] `server.yml` runs the worker beside the API, from the same image, with no published port
-- [ ] Its log on start says the retention schedule and the queues it works
-- [ ] ACTIONS #25 says what is left for the owner, if anything
+- [x] `server.yml` runs the worker beside the API, from the same image, with no published port
+- [x] Its log on start says the retention schedule and the queues it works
+- [x] ACTIONS #25 says what is left for the owner, if anything — nothing; the checks are T-040's
 
 **Validation**
 ```bash

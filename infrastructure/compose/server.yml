@@ -11,9 +11,10 @@
 #   edge      Caddy's way out — the internet, and ACME. Caddy alone publishes ports. Dual-stack,
 #             so an IPv6 client reaches Caddy as itself, not as Docker's relay (T-201).
 #   internal  No route out (`internal: true`). Everything else lives here, unreachable from the
-#             internet: PostgreSQL, Redis, the API, the web apps' servers.
-#   egress    The API's way out, for the providers it calls (mail, media, OAuth, the model).
-#             Nothing else joins it, so nothing reaches the API through it.
+#             internet: PostgreSQL, Redis, the API, the job worker, the web apps' servers.
+#   egress    The way out for the providers the API and the job worker call (mail, media, OAuth,
+#             the model). Nothing else joins it — no proxy, so nothing on it holds an address
+#             whose X-Forwarded-For the API believes.
 #
 # The proxies have fixed addresses on `internal`, and the API trusts X-Forwarded-For from exactly
 # those (TRUSTED_PROXIES) — not the network's range, which also holds PostgreSQL and Redis. The API
@@ -30,6 +31,14 @@ x-domains: &domains
   APP_HOST: ${APP_HOST:-app.${DOMAIN}}
   ADMIN_HOST: ${ADMIN_HOST:-admin.${DOMAIN}}
   NEWS_HOST: ${NEWS_HOST:-news.${DOMAIN}}
+
+# What the topology decides for the API's environment, set here so the environment file cannot
+# drift from it. The API and the job worker both validate it, against the same schema.
+x-api-environment: &api-environment
+  <<: *domains
+  REDIS_URL: redis://redis:6379
+  # Caddy, app-web, admin-web — exactly the addresses below.
+  TRUSTED_PROXIES: 10.20.0.2,10.20.0.3,10.20.0.4
 
 services:
   caddy:
@@ -81,18 +90,40 @@ services:
     # owner's belong to the migration job (T-041).
     env_file:
       - ${API_ENV_FILE:?API_ENV_FILE is the path to the API's environment file on the server}
-    # What the topology decides, set here so the environment file cannot drift from it.
     environment:
-      <<: *domains
+      <<: *api-environment
       PORT: '3001'
-      REDIS_URL: redis://redis:6379
-      # Caddy, app-web, admin-web — exactly the addresses above.
-      TRUSTED_PROXIES: 10.20.0.2,10.20.0.3,10.20.0.4
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      internal: {}
+      egress: {}
+
+  # The job worker (T-082, T-208): delivers the outbox, sends notifications, and runs retention on a
+  # schedule (T-204). Since T-204 the API deletes nothing itself, so a stack without this sweeps
+  # nothing and delivers no event (docs/architecture/jobs.md). The API's image and environment file,
+  # the package's `worker` script, no port. Its queues live in this stack's own Redis, so the
+  # default JOB_QUEUE_PREFIX cannot meet another environment's; the environment file may still set it.
+  worker:
+    image: ${IMAGE_REGISTRY:?IMAGE_REGISTRY}/api:${IMAGE_TAG:?IMAGE_TAG}
+    command: ['node', 'dist/worker.main.js']
+    restart: unless-stopped
+    # SIGTERM stops taking work and lets jobs in progress finish before Docker kills it.
+    stop_grace_period: 30s
+    env_file:
+      - ${API_ENV_FILE:?API_ENV_FILE is the path to the API's environment file on the server}
+    # The API's, whole: the worker validates the same schema, which in staging and production
+    # requires what only this file sets (TRUSTED_PROXIES) — and its emailed links name the same hosts.
+    environment: *api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Mail goes out through egress. It serves nothing, so it has no fixed address and is no proxy.
     networks:
       internal: {}
       egress: {}
