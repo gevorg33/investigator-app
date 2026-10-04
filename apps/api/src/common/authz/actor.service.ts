@@ -50,8 +50,23 @@ export class ActorService {
     });
     if (!session || !this.sessions.isUsable(session)) throw new AppError('UNAUTHENTICATED');
 
+    return this.build(session.userId, session.id, requestedRole);
+  }
+
+  /**
+   * The actor background work acts as (T-048): a confirmed plan running in the worker, as the person
+   * who confirmed it. Everything read now — the account, its roles, its staff scopes — exactly as a
+   * request reads them, never carried in the job; a job arrives on no session, so `sessionId` is
+   * empty, as the job's audit rows are (jobs.md). `role` narrows as a request's would, and a role no
+   * longer held does not narrow: the caller decides whether that is acceptable.
+   */
+  async forJob(userId: string, role?: string | null): Promise<Actor> {
+    return this.build(userId, '', role ?? undefined);
+  }
+
+  private async build(userId: string, sessionId: string, requestedRole?: string): Promise<Actor> {
     const user = await this.db.query.users.findFirst({
-      where: and(eq(users.id, session.userId), isNull(users.deletedAt)),
+      where: and(eq(users.id, userId), isNull(users.deletedAt)),
     });
     if (!user) throw new AppError('UNAUTHENTICATED');
     // Check 2, at the session level.
@@ -76,7 +91,7 @@ export class ActorService {
 
     return Object.freeze({
       userId: user.id,
-      sessionId: session.id,
+      sessionId,
       status: user.status,
       roles: Object.freeze(roles),
       staffScopes: Object.freeze(staffScopes),

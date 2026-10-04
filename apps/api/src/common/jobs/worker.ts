@@ -11,6 +11,19 @@ import {
   SendEmailHandler,
 } from '../../modules/notifications/notification-jobs';
 import { RetentionSchedule, RetentionSweepHandler } from '../../modules/legal-hold/retention-sweep';
+import {
+  ExecutePlanHandler,
+  PlanConfirmedTrigger,
+} from '../../modules/ai/plans/execute-plan.handler';
+import { PlanExecutor } from '../../modules/ai/plans/plan-executor';
+import { WRITE_TOOLS } from '../../modules/ai/plans/write-tools';
+import { ASSISTANT_TOOLS, type AssistantTool } from '../../modules/ai/tools/assistant-tool';
+import { ToolRunner } from '../../modules/ai/tools/tool-runner';
+import {
+  MemoryRateLimitStore,
+  RATE_LIMIT_STORE,
+  RateLimitService,
+} from '../../modules/auth/rate-limit.service';
 import { RetentionGuard } from '../../modules/legal-hold/retention-guard';
 import { AuthzModule } from '../authz/authz.module';
 import { DeadLetters } from './dead-letters';
@@ -32,8 +45,11 @@ import { EVENT_SUBSCRIBERS, OutboxDeliveryHandler } from './outbox-delivery.hand
     {
       provide: EVENT_SUBSCRIBERS,
       inject: [JobQueue],
-      useFactory: (queue: JobQueue) =>
-        NOTIFYING_EVENTS.map((e) => new NotificationTrigger(e, queue)),
+      useFactory: (queue: JobQueue) => [
+        ...NOTIFYING_EVENTS.map((e) => new NotificationTrigger(e, queue)),
+        // A confirmed plan, queued to run as its person (T-048).
+        new PlanConfirmedTrigger(queue),
+      ],
     },
     OutboxDeliveryHandler,
     FanOutHandler,
@@ -43,6 +59,20 @@ import { EVENT_SUBSCRIBERS, OutboxDeliveryHandler } from './outbox-delivery.hand
     RetentionGuard,
     RetentionSweepHandler,
     RetentionSchedule,
+    // Confirmed plans (T-048): the write tools a plan can hold — the same list the API proposes
+    // with — the runner that checks every step again, and the executor. The rate limiter is the
+    // runner's for proposals; running a confirmed step spends none.
+    ...WRITE_TOOLS,
+    {
+      provide: ASSISTANT_TOOLS,
+      useFactory: (...tools: AssistantTool[]) => tools,
+      inject: [...WRITE_TOOLS],
+    },
+    { provide: RATE_LIMIT_STORE, useClass: MemoryRateLimitStore },
+    RateLimitService,
+    ToolRunner,
+    PlanExecutor,
+    ExecutePlanHandler,
     {
       provide: JOB_HANDLERS,
       inject: [
@@ -51,6 +81,7 @@ import { EVENT_SUBSCRIBERS, OutboxDeliveryHandler } from './outbox-delivery.hand
         DeliverHandler,
         SendEmailHandler,
         RetentionSweepHandler,
+        ExecutePlanHandler,
       ],
       useFactory: (...handlers: unknown[]) => handlers,
     },

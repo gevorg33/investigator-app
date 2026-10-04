@@ -541,8 +541,9 @@ lists, tables (scrolling in their own box), quotes, bold, code — and nothing e
 is text React escapes.
 
 **Not here yet:** the attachment entry point (T-144 — nothing to attach to); the summary and
-structured state a resume should load (T-046 — they do not exist yet); confirmations (T-058);
-results paged by reference (T-048); links to missions, quotes, assignments and payments (their
+structured state a resume should load (T-046 — they do not exist yet); confirmations (T-058 — the
+API is T-048's, `ai-plans.md`, but nothing proposes a plan yet); results paged by reference (stored by
+T-048, rendered once the orchestrator records them, T-095); links to missions, quotes, assignments and payments (their
 screens, T-119/T-121); AI-drafted text marked unreviewed (drafting, T-117).
 
 ## Never indexed

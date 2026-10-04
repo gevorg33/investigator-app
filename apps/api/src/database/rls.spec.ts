@@ -181,7 +181,8 @@ describe('row-level security', () => {
     // A tenancy invariant must hold whoever is writing, so the two constraint triggers read with
     // platform access — a SET clause on the function, restored when it returns. The third archives
     // a departing member's own AI sessions in that workspace, which are private to them even from
-    // the admin who removed them (T-085, owner decision 2026-09-27). Nothing else in the database
+    // the admin who removed them (T-085, owner decision 2026-09-27), and voids their plans there that
+    // have not started (T-048). Nothing else in the database
     // may do that; in the application, only PlatformContext can (tenant-plumbing).
     const elevated = await owner<{ name: string }[]>`
       SELECT proname AS name FROM pg_proc
@@ -193,7 +194,7 @@ describe('row-level security', () => {
     ]);
   });
 
-  it('lets the departing-member trigger archive and nothing else', async () => {
+  it('lets the departing-member trigger archive sessions, void open plans, and nothing else', async () => {
     const [row] = await owner<{ src: string }[]>`
       SELECT prosrc AS src FROM pg_proc WHERE proname = 'archive_departed_member_sessions'`;
     const statements = row!.src
@@ -203,6 +204,7 @@ describe('row-level security', () => {
       .filter((s) => s !== '' && s !== 'END');
     expect(statements).toEqual([
       'BEGIN UPDATE ai_sessions SET archived_at = now(), updated_at = now() WHERE tenant_id = NEW.tenant_id AND user_id = NEW.user_id AND archived_at IS NULL AND deleted_at IS NULL',
+      "UPDATE ai_plans SET status = 'CANCELLED', confirmation_status = 'VOIDED', reason = 'member_left', finished_at = now(), updated_at = now() WHERE tenant_id = NEW.tenant_id AND user_id = NEW.user_id AND status IN ('PROPOSED', 'CONFIRMED')",
       'RETURN NULL',
     ]);
   });

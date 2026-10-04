@@ -188,8 +188,9 @@ tenant_memberships:  ACTIVE ◄──► SUSPENDED
 > - **AI sessions**: when a membership leaves ACTIVE, `archive_departed_member_sessions` archives that
 >   person's sessions in that workspace, whoever wrote the change. Sessions are private to their owner
 >   even from the admin, so this is the third function allowed to raise platform access; its body is
->   held to the one UPDATE by `rls.spec.ts`. **Pending confirmations** do not exist yet: voiding a
->   departed member's is T-048's to build.
+>   held to its two UPDATEs by `rls.spec.ts`. Since T-048 it also **voids their plans there that have
+>   not started** — a pending or confirmed-but-not-running confirmation does not outlive the
+>   membership (`ai-plans.md`).
 > - **Not yet:** teams in an invitation (T-086) and an investigator profile to take over (T-184 —
 >   agency-held profiles exist since T-087, but a profile is held by a membership and changing its
 >   holder touches verification and reputation).
@@ -582,6 +583,7 @@ visibility fails *open*: the owner check returns early when it cannot see the wo
 | `quotes` | Two-party | `parties` (`customer_tenant_id` denormalised from the mission) |
 | `assignments`, `assignment_status_history` | Two-party | `parties` |
 | `reviews`, `review_texts` | Two-party + public projection | `parties_read`; `public_read` of a standing rating on a published profile, and of a text only while `PUBLISHED`; the customer writes the review, the supplier the response; staff moderate and remove under `PlatformContext` (T-037, `reviews.md`) |
+| `ai_plans`, `ai_plan_steps`, `ai_tool_results` | Tenant-owned, own user | As `ai_sessions`, owner copied from the session (steps: from the plan). A plan from one workspace — and so its confirmation — is invisible in another (T-048, `ai-plans.md`) |
 | `saved_mission_searches` | Tenant-owned, own user | As `ai_sessions`: `tenant_id = current AND user_id = current` — an investigator's saved browses are theirs alone, not even their agency owner's (T-054) |
 | `idempotency_keys` | Tenant-owned | **`tenant_id` joins the unique key.** A replay in another workspace must never return this workspace's response |
 | `outbox_events` | System | Written in the producer's context — `tenant_id`, `user_id`, `membership_id` by DEFAULT, and the insert policy requires all three to be the context's own (T-082); read and marked only by the dispatcher's system context. NULL for an event the system produced |

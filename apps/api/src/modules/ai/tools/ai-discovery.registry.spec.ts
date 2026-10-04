@@ -71,7 +71,11 @@ describe('assistant tool registry (T-018)', () => {
       ['no operation', { operation: 'maybe' }],
       ['no confirmation', { confirmation: 'sometimes' }],
       [
-        'a write, even a confirmed one — T-048 has not built confirmation',
+        'a write that does not require confirmation',
+        { operation: 'write', confirmation: 'none', observe: async () => ({}) },
+      ],
+      [
+        'a write that cannot say what it acts on, so a confirmation could not be re-checked (T-048)',
         { operation: 'write', confirmation: 'required' },
       ],
       ['an input that ignores unknown arguments', { input: z.object({ q: z.string() }) }],
@@ -101,8 +105,14 @@ describe('assistant tool registry (T-018)', () => {
       );
     });
 
-    it('accepts one that keeps it', () => {
+    it('accepts one that keeps it, read or confirmed write', () => {
       expect(() => assertRegistrable(echo() as AssistantTool)).not.toThrow();
+      const write = echo({
+        operation: 'write',
+        confirmation: 'required',
+        observe: async () => ({ version: 1 }),
+      });
+      expect(() => assertRegistrable(write as AssistantTool)).not.toThrow();
     });
   });
 
@@ -229,6 +239,140 @@ describe('assistant tool registry (T-018)', () => {
       await expect(
         inside(() => runner.invoke(testActor({ userId: 'u9' }), tool, {}, req)),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('a write: proposed, never invoked; run only as a confirmed step (T-048)', () => {
+    type Tally = { name: string; amount: number };
+    const write = (seen: { executed: unknown[]; observed: number }) =>
+      echo({
+        name: 'addToTally',
+        operation: 'write',
+        confirmation: 'required',
+        auditEvent: 'ai.tool.add_to_tally',
+        rateLimit: { perMinute: 1 },
+        input: z.strictObject({ name: z.string().max(10), amount: z.number().int() }) as never,
+        auditArguments: ((i: Tally) => `amount=${i.amount}`) as never,
+        observe: async () => {
+          seen.observed += 1;
+          return { version: seen.observed };
+        },
+        execute: (async (_a: Actor, i: Tally, _r: unknown, effect: unknown) => {
+          seen.executed.push([i, effect]);
+          return { said: i.name, secret: 'stripped' };
+        }) as never,
+      }) as AssistantTool;
+    const setup = () => {
+      const seen = { executed: [] as unknown[], observed: 0 };
+      const built = build([write(seen), echo() as AssistantTool]);
+      const [tally, read] = built.runner.tools() as [AssistantTool, AssistantTool];
+      return { ...built, seen, tally, read };
+    };
+
+    it('finds a tool by name, and nothing by a name not registered', () => {
+      const { runner, tally } = setup();
+      expect(runner.find('addToTally')).toBe(tally);
+      expect(runner.find('dropTables')).toBeUndefined();
+    });
+
+    it('refuses to invoke a write on the model’s call, and runs nothing', async () => {
+      const { runner, tally, seen, events } = setup();
+      await expect(
+        inside(() => runner.invoke(customer, tally, { name: 'a', amount: 1 }, req)),
+      ).rejects.toThrow(/runs only through a confirmed plan/);
+      expect([seen.executed, seen.observed, events]).toEqual([[], 0, []]);
+    });
+
+    it('prepares a write without running it: arguments as parsed, what it observes, audited as proposed', async () => {
+      const { runner, tally, seen, events } = setup();
+      const step = await inside(() =>
+        runner.prepare(customer, tally, { name: 'a', amount: 2 }, req),
+      );
+      expect(step).toEqual({ arguments: { name: 'a', amount: 2 }, observed: { version: 1 } });
+      expect(seen.executed).toEqual([]);
+      expect(events.map((e) => [e.action, e.reason])).toEqual([
+        ['ai.tool.add_to_tally', 'proposed: amount=2'],
+      ]);
+      // The proposal spends the model's allowance for the tool.
+      await expect(
+        inside(() => runner.prepare(customer, tally, { name: 'a', amount: 2 }, req)),
+      ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    });
+
+    it('prepares only writes, as the caller holds a role now, with strict arguments', async () => {
+      const { runner, tally, read, events } = setup();
+      await expect(inside(() => runner.prepare(customer, read, {}, req))).rejects.toThrow(
+        /is a read: it is run, not proposed/,
+      );
+      const investigator = testActor({ userId: 'u3', roles: ['INVESTIGATOR'] });
+      await expect(
+        inside(() => runner.prepare(investigator, tally, { name: 'a', amount: 1 }, req)),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        inside(() =>
+          runner.prepare(
+            testActor({ userId: 'u4' }),
+            tally,
+            { name: 'a', amount: 1, userId: 'x' },
+            req,
+          ),
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(events.at(-1)).toMatchObject({ reason: 'rejected: invalid arguments' });
+    });
+
+    it('observes a stored step again, checking the caller and the arguments first', async () => {
+      const { runner, tally, read } = setup();
+      await expect(
+        inside(() => runner.observe(customer, tally, { name: 'a', amount: 1 }, req)),
+      ).resolves.toEqual({ version: 1 });
+      await expect(inside(() => runner.observe(customer, read, {}, req))).rejects.toThrow(
+        /is a read/,
+      );
+      await expect(
+        inside(() => runner.observe(customer, tally, { name: 'a', amount: 'many' }, req)),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    });
+
+    it('runs a confirmed step with its key, strips the output, audits it — and spends no allowance', async () => {
+      const { runner, tally, seen, events } = setup();
+      const effect = { idempotencyKey: 'ai-plan:p:1' };
+      for (const amount of [1, 2]) {
+        await expect(
+          inside(() => runner.runConfirmed(customer, tally, { name: 'a', amount }, req, effect)),
+        ).resolves.toEqual({ said: 'a' });
+      }
+      expect(seen.executed).toEqual([
+        [{ name: 'a', amount: 1 }, effect],
+        [{ name: 'a', amount: 2 }, effect],
+      ]);
+      expect(events.map((e) => e.reason)).toEqual([
+        'ok: confirmed: amount=1',
+        'ok: confirmed: amount=2',
+      ]);
+    });
+
+    it('re-authorizes a confirmed step: no workspace, or no role now, runs nothing', async () => {
+      const { runner, tally, read, seen } = setup();
+      const effect = { idempotencyKey: 'ai-plan:p:1' };
+      await expect(
+        runner.runConfirmed(customer, tally, { name: 'a', amount: 1 }, req, effect),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        inside(() =>
+          runner.runConfirmed(
+            testActor({ userId: 'u5', roles: [] }),
+            tally,
+            { name: 'a', amount: 1 },
+            req,
+            effect,
+          ),
+        ),
+      ).rejects.toMatchObject({ status: 403 });
+      await expect(
+        inside(() => runner.runConfirmed(customer, read, {}, req, effect)),
+      ).rejects.toThrow(/is a read/);
+      expect(seen.executed).toEqual([]);
     });
   });
 });

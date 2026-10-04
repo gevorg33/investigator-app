@@ -85,12 +85,20 @@ transaction. A task that needs one writes a class with `eventType` and `handle(e
 it to `EVENT_SUBSCRIBERS` in `worker.ts`. It runs in the producer's workspace and reaches the
 database only through `tx`. The first are the notification triggers (T-036, `notifications.md`):
 they only queue a job on the `notifications` queue, because who else an event concerns is not
-something the producer's context can read.
+something the producer's context can read. `PlanConfirmedTrigger` (T-048) queues a confirmed plan's
+`ai.plan.execute` job as the person who confirmed it (`ai-plans.md`).
 
 ### Adding a job type
 
 A `JobHandler` (`command`, `queue`, `parse`, `run(payload, tx, envelope)`) in `JOB_HANDLERS`. Its
 file ends `.handler.ts`, and `jobs.static.spec.ts` holds that it never injects the database.
+
+**One deliberate exception to "the effect commits with the claim"**: a confirmed plan
+(`ExecutePlanHandler`, T-048) runs steps whose tools call services with their own transactions, so
+the effects cannot share the job's. The plan's status commits with the claim; each step's progress is
+written by `PlanExecutor` as it happens, so a worker that dies is replaced by one that resumes from
+the steps rather than repeating them, and a step caught mid-way is run again under the same
+idempotency key (`ai-plans.md`).
 
 ## Redis is a trust boundary
 

@@ -80,6 +80,10 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the refusal service, which records one only as the consequence of a refusal or a review (T-050)',
   ai_messages:
     'the session service, which numbers each message under a lock on its session (T-045)',
+  ai_plans:
+    'the plans service, which proposes only through the tool registry and hashes what it stores (T-048)',
+  ai_plan_steps: 'the plans service, with their plan in one transaction (T-048)',
+  ai_tool_results: 'the tool result store, from a tool’s own output (T-048)',
   reviews:
     'the reviews service, which writes one only for a completed assignment; the database rules are driven by direct writes in test/isolation/reviews.spec.ts (T-037)',
   review_texts:

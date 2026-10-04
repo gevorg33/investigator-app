@@ -8,6 +8,16 @@ export const ASSISTANT_TOOLS = Symbol('ASSISTANT_TOOLS');
 export type ResourceScope = 'own' | 'assignment_participant' | 'staff_scoped' | 'public_projection';
 
 /**
+ * What a confirmed plan hands a write tool when it runs one of its steps (T-048). The key is the
+ * step's own — `ai-plan:<plan>:<ordinal>` — and the tool is idempotent on it (ADR-0012): a worker
+ * that dies between the tool's effect and the step's record is replaced by one that runs the step
+ * again with the same key, and the second run must not do the thing twice.
+ */
+export interface ToolEffect {
+  readonly idempotencyKey: string;
+}
+
+/**
  * Something the assistant may call (`ai-tool-registry`, T-018).
  *
  * The nine declared fields are the contract; `auditArguments` and `execute` are how it is kept.
@@ -34,7 +44,15 @@ export interface AssistantTool<I = unknown, O = unknown> {
   readonly rateLimit: { perMinute: number };
   /** What of the arguments the audit row may hold: which filters, how many — never free text or coordinates. */
   auditArguments(input: I): string;
-  execute(actor: Actor, input: I, req: RequestContext): Promise<O>;
+  /**
+   * A write tool's view of what it would act on, read now as the caller — the status and version of
+   * the mission, the quote, the message thread. The plan keeps a digest of it when proposed and reads
+   * it again before running (T-048): a confirmation is for the state the person saw, and anything
+   * material that changed since voids it. Required of every write tool, absent from reads.
+   */
+  observe?(actor: Actor, input: I, req: RequestContext): Promise<unknown>;
+  /** `effect` is given to a write tool, by a confirmed plan, and never to a read. */
+  execute(actor: Actor, input: I, req: RequestContext, effect?: ToolEffect): Promise<O>;
 }
 
 const SCOPES: readonly ResourceScope[] = [
@@ -55,9 +73,10 @@ const IDENTITY_ARGUMENT = /^(actor|user|tenant|workspace|membership)/i;
  * every tool when the registry is built, so a bad tool stops the application starting rather
  * than reaching a user.
  *
- * Write tools do not register at all yet. A write needs a confirmation the user gives and the
- * model never sees, bound to the exact arguments and used once (`ai-tool-registry`), and that
- * flow is T-048's. Until it exists, the only safe write tool is none.
+ * A write tool registers only as `confirmation: 'required'` — lowering that is approval-gated
+ * (AGENTS.md) — and with `observe`, the state a confirmation is checked against. It never runs on
+ * the model's say-so: `ToolRunner.invoke` refuses it, and only a plan the person confirmed runs it
+ * (T-048, `docs/architecture/ai-plans.md`).
  */
 export function assertRegistrable(tool: AssistantTool): void {
   const refuse = (why: string): never => {
@@ -77,8 +96,11 @@ export function assertRegistrable(tool: AssistantTool): void {
   if (tool.confirmation !== 'none' && tool.confirmation !== 'required') {
     refuse('confirmation is required');
   }
-  if (tool.operation === 'write') {
-    refuse('write tools need the confirmation flow, which does not exist yet (T-048)');
+  if (tool.operation === 'write' && tool.confirmation !== 'required') {
+    refuse('a write tool requires confirmation');
+  }
+  if (tool.operation === 'write' && typeof tool.observe !== 'function') {
+    refuse('a write tool observes the state it acts on');
   }
   if (
     !(tool.input instanceof z.ZodObject) ||

@@ -2577,11 +2577,11 @@ pnpm --filter api test ai-memory
 ---
 
 ### T-048 — Plan persistence, confirmation survival and tool result store
-- **Status:** TODO
+- **Status:** DONE — 2026-10-05; migration 0042 (`ai_plans`, `ai_plan_steps`, `ai_tool_results`), `modules/ai/plans/**`, `modules/ai/results/**`, `ToolRunner.prepare`/`observe`/`runConfirmed`, `ActorService.forJob`, the worker runs confirmed plans; `ai-plans.md`, assistant-tools, ai-sessions, jobs, tenancy, retention
 - **Priority:** P1
 - **Depends on:** T-045, T-018, T-077
 - **Risk:** HIGH
-- **Human approval required:** Yes — confirmation is the mutation gate
+- **Human approval required:** Yes — confirmation is the mutation gate; chosen 2026-10-05 over T-168, T-110 and T-046
 - **Owner agent:** ai-rag
 - **Affected:** apps/api/src/modules/ai/plans/**, apps/api/src/modules/ai/results/**
 
@@ -2590,17 +2590,45 @@ What makes a confirmation survive a browser close, and keeps 10,000 records out 
 
 **Tenancy (ADR-0011).** Plans, confirmations and tool results are tenant-scoped rows. A confirmation from workspace A is invalid in B. Superseded in scope by ADR-0012: the command contract and DAGs follow in T-095 and T-096.
 
+**What shipped**
+
+- **Proposal** (no route; the assistant's): each step through `ToolRunner.prepare` — checked as it
+  would be to run, observed, never run — fixed and hashed (SHA-256 of canonical JSON: plan id, session,
+  every step's tool, parsed arguments and observation digest). 1–10 steps; waits 24 hours.
+- **Confirmation** is the person's request, `POST /ai/sessions/:id/plans/:planId/confirm { planHash }`:
+  once, for that hash, while PROPOSED and unexpired, the stored steps re-hashed; CONFIRMED and the
+  `ai.plan.confirmed` outbox event in one transaction. Decline, list (`?open=true` for a returning
+  client), get. No tool reaches confirmation.
+- **Execution** in the worker as the person (`PlanConfirmedTrigger` → `ai.plan.execute`): hash, the
+  actor read now (`ActorService.forJob`), the confirmed role or nothing, every step observed again
+  before the first runs, each step re-authorized and run with key `ai-plan:<plan>:<ordinal>`. Refused
+  before any step: CANCELLED/INVALIDATED. After: FAILED, rest SKIPPED.
+- **Resume**: step progress persists outside the job's transaction, so "started" is read from the
+  steps. **Found in testing:** reading it from the plan's status — which a dead worker's lost
+  transaction resets to CONFIRMED — re-checked a resumed plan and voided it on its own first step's
+  effect, and misfiled a mid-plan refusal as "never started". Both fixed, both now tested.
+- **Departure**: `archive_departed_member_sessions` also voids that person's PROPOSED/CONFIRMED plans
+  in the workspace (`member_left`).
+- **Result store**: whole result kept, referenced by id; summary + 20 + cursor (bound to its result);
+  paged in SQL; `forContext` the one renderer, and a spec holds nothing else reads the table.
+- **Write tools** register only with `confirmation: 'required'` and `observe`; `invoke` refuses them.
+  `WRITE_TOOLS` is empty — the first commands are T-095's — and is registered by both processes.
+- Verified against the real API and worker: a seeded plan listed, a stranger 404 on every route, a
+  wrong hash 409 `CHANGED`, confirmed 200, again 409 `NOT_PENDING`; the worker took the outbox event,
+  ran `ai.plan.execute` as the person and — no `addToTally` in its registry — CANCELLED/INVALIDATED it
+  `tool_unavailable` with the step SKIPPED, audited; SIGTERM, exit 0.
+
 **Acceptance criteria**
-- [ ] `AiPlan` persisted with `plan_id`, `plan_hash`, commands, status, confirmation status
-- [ ] A pending confirmation **survives browser close, app restart and worker restart** — tested
-- [ ] Before execution: re-authorize, re-check the hash, re-read resource state
-- [ ] **Material change invalidates the confirmation** and forces a fresh one — tested
-- [ ] A confirmation is single-use and bound to exact arguments (`ai-tool-registry`)
-- [ ] Large tool results stored and referenced by `result_id` with summary, top-N and cursor
-- [ ] A test proves a large result set never enters a prompt in full
-- [ ] A killed worker is replaced by another that resumes from persisted state
-- [ ] A member who leaves (suspended or removed, T-085) has their pending confirmations in that workspace voided — their sessions are already archived by a trigger then; the confirmations must follow
-- [ ] Plan rows are workspace-scoped (`tenant_id` under RLS, ADR-0011). **No DAG orchestration here**: it lands in T-096 over these rows (ADR-0012). No learned risk engine
+- [x] `AiPlan` persisted with `plan_id`, `plan_hash`, commands, status, confirmation status
+- [x] A pending confirmation **survives browser close, app restart and worker restart** — tested
+- [x] Before execution: re-authorize, re-check the hash, re-read resource state
+- [x] **Material change invalidates the confirmation** and forces a fresh one — tested
+- [x] A confirmation is single-use and bound to exact arguments (`ai-tool-registry`)
+- [x] Large tool results stored and referenced by `result_id` with summary, top-N and cursor
+- [x] A test proves a large result set never enters a prompt in full — 10,000 records render as 20 through `forContext`, the only renderer; no prompt consumes stored results yet (T-046, T-095)
+- [x] A killed worker is replaced by another that resumes from persisted state
+- [x] A member who leaves (suspended or removed, T-085) has their pending confirmations in that workspace voided — their sessions are already archived by a trigger then; the confirmations must follow
+- [x] Plan rows are workspace-scoped (`tenant_id` under RLS, ADR-0011). **No DAG orchestration here**: it lands in T-096 over these rows (ADR-0012). No learned risk engine
 
 **Validation**
 ```bash
@@ -3333,6 +3361,7 @@ model proposal and a real mutation.
 - [ ] Irreversible or money-adjacent actions state the consequence plainly before confirming
 - [ ] The confirmation token never reaches the model; the UI never auto-confirms
 - [ ] Mobile: full-screen, never a sheet a user can dismiss by accident
+- [ ] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`)
 
 **Validation**
 ```bash
@@ -9260,6 +9289,34 @@ service: the API's image and environment, `node dist/worker.main.js`, no port, a
 **Validation**
 ```bash
 docker compose -f infrastructure/compose/server.yml config --quiet
+```
+
+---
+
+### T-209 — The session-cookie scope spec compares expiry times to the second
+- **Status:** TODO
+- **Priority:** P3 — a flaky test in the coverage gate, not a product fault
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/auth/auth-cookies.spec.ts
+
+**Description**
+Found in T-048's validation. "scopes the session the same whatever the domain map holds" compares
+three whole `Set-Cookie` lines, `Expires` included, from three sign-ins made one after another. Under
+load two of them fell in different seconds (`22:44:21` against `22:44:22`) and the gate failed; the
+rerun passed. What the test is about is the scope — name, `Path`, `HttpOnly`, `Secure`, `SameSite`,
+no `Domain` — and it already parses those as `attributes`. Compare the attributes, and `Max-Age`
+rather than `Expires`; the expiry itself is another test's to hold.
+
+**Acceptance criteria**
+- [ ] The test asserts the scoping attributes and `Max-Age`, not the wall-clock `Expires`
+- [ ] It still fails if a domain map could add `Domain=` or change `Path`, `Secure` or `SameSite`
+
+**Validation**
+```bash
+pnpm --filter api test auth-cookies
 ```
 
 ---

@@ -40,7 +40,8 @@ and leaves a tombstone — owner and deletion time. A trigger keeps the tombston
 application holds DELETE on messages only, and none on sessions.
 
 `SESSION_CONTENT` cannot fall behind: a spec compares it with every foreign key into `ai_sessions`,
-so summaries (T-046), memory (T-047) and embeddings (T-133) fail it until they are added.
+so summaries (T-046), memory (T-047) and embeddings (T-133) fail it until they are added. Plans,
+their steps and stored tool results are on it since T-048 — steps before their plan.
 
 ## Reading a conversation from its end (T-057)
 
@@ -123,6 +124,13 @@ The client is the assistant panel in app-web (`app-web.md`).
 ## Not yet
 
 - **Summaries, memory, embeddings** — T-046, T-047, T-133; each joins `SESSION_CONTENT`.
-- **Tool events in a session** — discovery's answer is stored as the reply's metadata; tool calls
-  and results as `TOOL_CALL`/`TOOL_RESULT` rows, with results by reference, arrive with the result
-  store (T-048).
+- **Tool events in a session** — discovery's answer is stored as the reply's metadata. The result
+  store they will reference exists (T-048, `ai-plans.md`); recording tool calls and results as
+  `TOOL_CALL`/`TOOL_RESULT` rows is the orchestrator's (T-095), which decides which arguments a
+  session may keep.
+
+## Plans and results in a session (T-048)
+
+A session holds the assistant's **plans** — writes proposed, awaiting or past its person's
+confirmation — and **stored tool results** too large for a prompt. Both are private as the session,
+listed in `SESSION_CONTENT`, and erased with it. `ai-plans.md`.

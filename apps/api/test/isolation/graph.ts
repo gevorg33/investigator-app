@@ -274,6 +274,18 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
   const said = await id(owner`
     INSERT INTO ai_messages (session_id, sequence, role, content)
     VALUES (${conversation}, 1, 'USER', 'What does a due-diligence mission cover?') RETURNING id`);
+  // A plan proposed in it, one step, and a stored tool result (T-048).
+  const plan = await id(owner`
+    INSERT INTO ai_plans (session_id, plan_hash, expires_at)
+    VALUES (${conversation}, repeat('a', 64), now() + interval '1 day') RETURNING id`);
+  const planStep = await id(owner`
+    INSERT INTO ai_plan_steps (plan_id, ordinal, tool, arguments, observed)
+    VALUES (${plan}, 1, 'draftMission', '{"title":"Due diligence"}'::jsonb, repeat('b', 64))
+    RETURNING id`);
+  const toolResult = await id(owner`
+    INSERT INTO ai_tool_results (session_id, tool, summary, items, total)
+    VALUES (${conversation}, 'searchInvestigators', '{"count":1}'::jsonb, '[{"n":1}]'::jsonb, 1)
+    RETURNING id`);
 
   // A browse saved by the supplier's investigator, their own (T-054).
   const savedSearch = await id(owner`
@@ -387,6 +399,9 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       investigation_tasks: task,
       ai_sessions: conversation,
       ai_messages: said,
+      ai_plans: plan,
+      ai_plan_steps: planStep,
+      ai_tool_results: toolResult,
       saved_mission_searches: savedSearch,
       policy_reviews: review,
       money_decisions: money,

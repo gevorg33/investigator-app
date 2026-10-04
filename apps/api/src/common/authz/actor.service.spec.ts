@@ -213,6 +213,40 @@ describe('resolving the actor', () => {
     });
   });
 
+  describe('for background work — a confirmed plan running in the worker (T-048)', () => {
+    it('reads the account and its roles now, on no session', async () => {
+      const { userId } = await seed({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
+      const actor = await actors.forJob(userId);
+      expect(actor).toMatchObject({ userId, sessionId: '', status: 'ACTIVE' });
+      expect([...actor.roles].sort()).toEqual(['CUSTOMER', 'INVESTIGATOR']);
+      expect(actor.activeRole).toBeUndefined();
+      expect(Object.isFrozen(actor)).toBe(true);
+
+      // A role revoked after the job was queued is gone when it runs.
+      await db.delete(userRoles).where(eq(userRoles.userId, userId));
+      expect((await actors.forJob(userId)).roles).toEqual([]);
+    });
+
+    it('narrows to the role given, and never to one no longer held', async () => {
+      const { userId } = await seed({ roles: ['CUSTOMER', 'INVESTIGATOR'] });
+      expect((await actors.forJob(userId, 'CUSTOMER')).activeRole).toBe('CUSTOMER');
+      expect((await actors.forJob(userId, null)).activeRole).toBeUndefined();
+      expect((await actors.forJob(userId, 'STAFF')).activeRole).toBeUndefined();
+    });
+
+    it.each(['SUSPENDED', 'DELETED'] as const)('refuses a %s account', async (status) => {
+      const { userId } = await seed({ status });
+      await expect(actors.forJob(userId)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    });
+
+    it('refuses a soft-deleted or unknown user', async () => {
+      const { userId } = await seed();
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, userId));
+      await expect(actors.forJob(userId)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+      await expect(actors.forJob(randomUUID())).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    });
+  });
+
   it('is frozen, so nothing downstream can widen it', async () => {
     const { token } = await seed({ roles: ['CUSTOMER'] });
     const actor = await actors.fromRefreshToken(token);

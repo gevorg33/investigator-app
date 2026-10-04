@@ -10,78 +10,80 @@ import * as m6 from './modules/ai/assistant.controller';
 import * as m7 from './modules/ai/discovery/discovery-answer.controller';
 import * as m8 from './modules/ai/discovery/discovery-answer.dto';
 import * as m9 from './modules/ai/knowledge-answer.dto';
-import * as m10 from './modules/assignments/assignments.controller';
-import * as m11 from './modules/assignments/assignments.dto';
-import * as m12 from './modules/assignments/policy-reviews.controller';
-import * as m13 from './modules/auth/auth.controller';
-import * as m14 from './modules/auth/auth.dto';
-import * as m15 from './modules/auth/google-auth.controller';
-import * as m16 from './modules/blocks/blocks.controller';
-import * as m17 from './modules/blocks/blocks.dto';
-import * as m18 from './modules/health/health.controller';
-import * as m19 from './modules/investigation-sources/investigation-sources.controller';
-import * as m20 from './modules/investigation-sources/investigation-sources.dto';
-import * as m21 from './modules/investigation-workspace/investigation-workspace.dto';
-import * as m22 from './modules/investigation-workspace/notes.controller';
-import * as m23 from './modules/investigation-workspace/tasks.controller';
-import * as m24 from './modules/knowledge/knowledge.controller';
-import * as m25 from './modules/knowledge/knowledge.dto';
-import * as m26 from './modules/legal-hold/legal-hold.controller';
-import * as m27 from './modules/legal-hold/legal-hold.dto';
-import * as m28 from './modules/legal/legal.controller';
-import * as m29 from './modules/legal/legal.dto';
-import * as m30 from './modules/media/media.controller';
-import * as m31 from './modules/media/media.dto';
-import * as m32 from './modules/mission-policy/mission-moderation.controller';
-import * as m33 from './modules/mission-policy/mission-moderation.dto';
-import * as m34 from './modules/missions/missions.controller';
-import * as m35 from './modules/missions/missions.dto';
-import * as m36 from './modules/notifications/notifications.controller';
-import * as m37 from './modules/notifications/notifications.dto';
-import * as m38 from './modules/profiles/agency-investigators.controller';
-import * as m39 from './modules/profiles/profiles.controller';
-import * as m40 from './modules/profiles/profiles.dto';
-import * as m41 from './modules/quotes/quotes.controller';
-import * as m42 from './modules/quotes/quotes.dto';
-import * as m43 from './modules/reviews/review-moderation.controller';
-import * as m44 from './modules/reviews/reviews.controller';
-import * as m45 from './modules/reviews/reviews.dto';
-import * as m46 from './modules/search/mission-browse.controller';
-import * as m47 from './modules/search/mission-browse.dto';
-import * as m48 from './modules/search/search.controller';
-import * as m49 from './modules/search/search.dto';
-import * as m50 from './modules/service-areas/service-areas.controller';
-import * as m51 from './modules/service-areas/service-areas.dto';
-import * as m52 from './modules/taxonomy/tags.controller';
-import * as m53 from './modules/taxonomy/tags.dto';
-import * as m54 from './modules/taxonomy/taxonomy.controller';
-import * as m55 from './modules/taxonomy/taxonomy.dto';
-import * as m56 from './modules/teams/teams.controller';
-import * as m57 from './modules/teams/teams.dto';
-import * as m58 from './modules/tenants/agencies.controller';
-import * as m59 from './modules/tenants/agencies.dto';
-import * as m60 from './modules/tenants/employees/employees.controller';
-import * as m61 from './modules/tenants/employees/employees.dto';
-import * as m62 from './modules/tenants/profile/agency-profile.controller';
-import * as m63 from './modules/tenants/profile/agency-profile.dto';
-import * as m64 from './modules/tenants/settings/agency-settings.controller';
-import * as m65 from './modules/tenants/settings/agency-settings.dto';
-import * as m66 from './modules/tenants/workspaces.controller';
-import * as m67 from './modules/verification/verification.controller';
-import * as m68 from './modules/verification/verification.dto';
+import * as m10 from './modules/ai/plans/ai-plans.controller';
+import * as m11 from './modules/ai/plans/ai-plans.dto';
+import * as m12 from './modules/assignments/assignments.controller';
+import * as m13 from './modules/assignments/assignments.dto';
+import * as m14 from './modules/assignments/policy-reviews.controller';
+import * as m15 from './modules/auth/auth.controller';
+import * as m16 from './modules/auth/auth.dto';
+import * as m17 from './modules/auth/google-auth.controller';
+import * as m18 from './modules/blocks/blocks.controller';
+import * as m19 from './modules/blocks/blocks.dto';
+import * as m20 from './modules/health/health.controller';
+import * as m21 from './modules/investigation-sources/investigation-sources.controller';
+import * as m22 from './modules/investigation-sources/investigation-sources.dto';
+import * as m23 from './modules/investigation-workspace/investigation-workspace.dto';
+import * as m24 from './modules/investigation-workspace/notes.controller';
+import * as m25 from './modules/investigation-workspace/tasks.controller';
+import * as m26 from './modules/knowledge/knowledge.controller';
+import * as m27 from './modules/knowledge/knowledge.dto';
+import * as m28 from './modules/legal-hold/legal-hold.controller';
+import * as m29 from './modules/legal-hold/legal-hold.dto';
+import * as m30 from './modules/legal/legal.controller';
+import * as m31 from './modules/legal/legal.dto';
+import * as m32 from './modules/media/media.controller';
+import * as m33 from './modules/media/media.dto';
+import * as m34 from './modules/mission-policy/mission-moderation.controller';
+import * as m35 from './modules/mission-policy/mission-moderation.dto';
+import * as m36 from './modules/missions/missions.controller';
+import * as m37 from './modules/missions/missions.dto';
+import * as m38 from './modules/notifications/notifications.controller';
+import * as m39 from './modules/notifications/notifications.dto';
+import * as m40 from './modules/profiles/agency-investigators.controller';
+import * as m41 from './modules/profiles/profiles.controller';
+import * as m42 from './modules/profiles/profiles.dto';
+import * as m43 from './modules/quotes/quotes.controller';
+import * as m44 from './modules/quotes/quotes.dto';
+import * as m45 from './modules/reviews/review-moderation.controller';
+import * as m46 from './modules/reviews/reviews.controller';
+import * as m47 from './modules/reviews/reviews.dto';
+import * as m48 from './modules/search/mission-browse.controller';
+import * as m49 from './modules/search/mission-browse.dto';
+import * as m50 from './modules/search/search.controller';
+import * as m51 from './modules/search/search.dto';
+import * as m52 from './modules/service-areas/service-areas.controller';
+import * as m53 from './modules/service-areas/service-areas.dto';
+import * as m54 from './modules/taxonomy/tags.controller';
+import * as m55 from './modules/taxonomy/tags.dto';
+import * as m56 from './modules/taxonomy/taxonomy.controller';
+import * as m57 from './modules/taxonomy/taxonomy.dto';
+import * as m58 from './modules/teams/teams.controller';
+import * as m59 from './modules/teams/teams.dto';
+import * as m60 from './modules/tenants/agencies.controller';
+import * as m61 from './modules/tenants/agencies.dto';
+import * as m62 from './modules/tenants/employees/employees.controller';
+import * as m63 from './modules/tenants/employees/employees.dto';
+import * as m64 from './modules/tenants/profile/agency-profile.controller';
+import * as m65 from './modules/tenants/profile/agency-profile.dto';
+import * as m66 from './modules/tenants/settings/agency-settings.controller';
+import * as m67 from './modules/tenants/settings/agency-settings.dto';
+import * as m68 from './modules/tenants/workspaces.controller';
+import * as m69 from './modules/verification/verification.controller';
+import * as m70 from './modules/verification/verification.dto';
 
 export default async () => {
-    const t = {["./modules/assignments/assignments.dto"]: m11, ["./modules/profiles/profiles.dto"]: m40, ["./modules/search/mission-browse.dto"]: m47, ["./modules/search/search.dto"]: m49, ["./modules/service-areas/service-areas.dto"]: m51};
+    const t = {["./modules/assignments/assignments.dto"]: m13, ["./modules/profiles/profiles.dto"]: m42, ["./modules/search/mission-browse.dto"]: m49, ["./modules/search/search.dto"]: m51, ["./modules/service-areas/service-areas.dto"]: m53};
     return {
     "@nestjs/swagger": {
         models: [
             [m1, {
                     UpdatePreferencesDto: { locale: { required: false, enum: ["en", "ru", "hy"] }, timezone: { required: false, type: () => String } }
                 }],
-            [m29, {
+            [m31, {
                     AcceptDocumentsDto: { acceptedDocumentIds: { required: true, type: () => [String], minItems: 1, maxItems: 12, minLength: 36, maxLength: 36 } }
                 }],
-            [m14, {
+            [m16, {
                     CredentialsDto: { email: { required: true, type: () => String }, password: { required: true, type: () => String, minLength: 12, maxLength: 200 } },
                     RegisterDto: { acceptedDocumentIds: { required: false, type: () => [String], description: "The documents being accepted, by id \u2014 so the record says which exact version and locale was\nshown (T-021). Empty is valid: with nothing published there is nothing to accept, and the\ngate refuses only when something required is in force and missing from this list.", maxItems: 12, minLength: 36, maxLength: 36 }, locale: { required: false, description: "The language the sign-up screen was shown in (T-127). Saved on the account, so the language\nsomeone registered in is the one they get back at every sign-in. Absent: English.", enum: ["en", "ru", "hy"] }, timezone: { required: false, type: () => String, description: "The browser's time zone, for dates shown to this person (T-127). Absent: UTC." } },
                     EmailOnlyDto: { email: { required: true, type: () => String } },
@@ -89,44 +91,44 @@ export default async () => {
                     ResetPasswordDto: { token: { required: true, type: () => String, maxLength: 256 }, password: { required: true, type: () => String, minLength: 12, maxLength: 200 } },
                     CompleteGoogleSignupDto: { acceptedDocumentIds: { required: false, type: () => [String], maxItems: 12, minLength: 36, maxLength: 36 }, locale: { required: false, enum: ["en", "ru", "hy"] }, timezone: { required: false, type: () => String } }
                 }],
-            [m27, {
+            [m29, {
                     PlaceLegalHoldDto: { resourceType: { required: true, enum: ["USER", "TENANT", "MISSION", "ASSIGNMENT", "MEDIA_ASSET"] }, resourceId: { required: true, type: () => String, format: "uuid" }, reason: { required: true, type: () => String, pattern: "\\S" } },
                     ReleaseLegalHoldDto: { reason: { required: true, type: () => String, pattern: "\\S" } },
                     LegalHoldListQueryDto: { resourceType: { required: false, enum: ["USER", "TENANT", "MISSION", "ASSIGNMENT", "MEDIA_ASSET"] }, resourceId: { required: false, type: () => String, format: "uuid" }, status: { required: false, enum: ["ACTIVE", "RELEASED", "ALL"] }, limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
                 }],
-            [m31, {
+            [m33, {
                     AuthorizeUploadDto: { category: { required: true, enum: ["PROFILE_IMAGE", "VERIFICATION_DOCUMENT", "AGENCY_LOGO", "AGENCY_COVER"] }, mimeType: { required: true, type: () => String, maxLength: 100 }, bytes: { required: true, type: () => Number, minimum: 1 } }
                 }],
-            [m51, {
+            [m53, {
                     LonLatDto: { lon: { required: true, type: () => Number, minimum: -180, maximum: 180 }, lat: { required: true, type: () => Number, minimum: -90, maximum: 90 } },
                     CreateServiceAreaDto: { kind: { required: true, enum: ["RADIUS", "POLYGON"] }, label: { required: true, type: () => String, minLength: 1, maxLength: 80 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, region: { required: false, type: () => String, minLength: 1, maxLength: 80 }, city: { required: false, type: () => String, minLength: 1, maxLength: 80 }, centre: { required: false, type: () => t["./modules/service-areas/service-areas.dto"].LonLatDto }, radiusKm: { required: false, type: () => Number }, boundary: { required: false, type: () => [t["./modules/service-areas/service-areas.dto"].LonLatDto], minItems: 3 } }
                 }],
-            [m35, {
+            [m37, {
                     SaveMissionDraftDto: { taxonomyNodeId: { required: false, type: () => String, nullable: true, format: "uuid" }, title: { required: false, type: () => String, nullable: true }, description: { required: false, type: () => String, nullable: true }, countryCode: { required: false, type: () => String, nullable: true, description: "ISO 3166-1 alpha-2 \u2014 the jurisdiction the work happens in.", pattern: "^[A-Z]{2}$" }, locationLabel: { required: false, type: () => String, nullable: true }, location: { required: false, type: () => t["./modules/service-areas/service-areas.dto"].LonLatDto, nullable: true }, startBy: { required: false, type: () => String, nullable: true, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, deadline: { required: false, type: () => String, nullable: true, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }, budgetMinMinor: { required: false, type: () => Number, nullable: true, minimum: 0 }, budgetMaxMinor: { required: false, type: () => Number, nullable: true, minimum: 0 }, currency: { required: false, type: () => String, nullable: true, description: "ISO 4217. Meaningless without it: 5000 is not an amount.", pattern: "^[A-Z]{3}$" }, languages: { required: false, type: () => [String], nullable: true, pattern: "^[a-z]{2}$" }, purpose: { required: false, type: () => String, nullable: true }, subjectRelationship: { required: false, nullable: true, enum: ["SELF_OR_OWN_ORGANISATION", "EMPLOYER", "BUSINESS_RELATIONSHIP", "LEGAL_REPRESENTATIVE", "FAMILY_MEMBER", "PARTNER_OR_SPOUSE", "FORMER_PARTNER", "NO_PERSONAL_RELATIONSHIP", "OTHER"] }, protectiveOrderDeclared: { required: false, type: () => Boolean, nullable: true }, tagIds: { required: false, type: () => [String], description: "Tags the customer suggests from the curated vocabulary (T-055) \u2014 never free text. The whole\nset: it replaces the draft's suggestions, and `[]` withdraws them all. A moderator confirms\nthe tags when publishing; until then nobody else sees them.", format: "uuid" } },
                     VersionedDto: { version: { required: true, type: () => Number, minimum: 1 } },
                     UpdateMissionDraftDto: { version: { required: true, type: () => Number, minimum: 1 } },
                     SubmitMissionDto: { lawfulPurposeConfirmed: { required: true, type: () => Boolean, description: "Must be exactly `true`. This is the customer's lawful-purpose confirmation, and it is\nrequired before a mission can be submitted \u2014 recorded with its timestamp, and cleared if\nthe mission comes back for changes so that a resubmission is confirmed afresh." } },
                     CancelMissionDto: { reason: { required: false, type: () => String } }
                 }],
-            [m55, {
+            [m57, {
                     Reasoned: { reason: { required: true, type: () => String, minLength: 12, maxLength: 500 } },
                     TaxonomyReadQuery: { locale: { required: false, enum: ["en", "ru", "hy"] } },
                     CreateTaxonomyNodeDto: { slug: { required: true, type: () => String, description: "Permanent (ADR-0007 rule 1): lowercase words joined by hyphens. The database checks it too.", minLength: 2, maxLength: 80, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }, parentId: { required: false, type: () => String, format: "uuid" }, position: { required: false, type: () => Number, minimum: 0, maximum: 10000 }, riskBand: { required: true, description: "Required, not defaulted. Screening treats an unbanded node as HIGH, so a default would be\neither wrong or meaningless; the person adding the node is the one who has to decide.", enum: ["STANDARD", "ELEVATED", "HIGH", "RESTRICTED"] }, label: { required: true, type: () => String, description: "The English label, which every other locale falls back to \u2014 so a node cannot exist without it.", minLength: 1, maxLength: 120 }, description: { required: false, type: () => String, maxLength: 500 } },
                     UpdateTaxonomyNodeDto: { position: { required: false, type: () => Number, minimum: 0, maximum: 10000 }, riskBand: { required: false, enum: ["STANDARD", "ELEVATED", "HIGH", "RESTRICTED"] }, status: { required: false, enum: ["ACTIVE", "DEPRECATED"] } },
                     SetTaxonomyLabelDto: { label: { required: true, type: () => String, minLength: 1, maxLength: 120 }, description: { required: false, type: () => String, maxLength: 500 } }
                 }],
-            [m53, {
+            [m55, {
                     CreateTagDto: { slug: { required: true, type: () => String, description: "Permanent: lowercase words joined by hyphens. The database checks it too.", minLength: 2, maxLength: 60, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }, label: { required: true, type: () => String, description: "The English label, which every other locale falls back to.", minLength: 1, maxLength: 60, pattern: "\\S" } },
                     SetTagLabelDto: { label: { required: true, type: () => String, minLength: 1, maxLength: 60, pattern: "\\S" } },
                     DeprecateTagDto: {},
                     MergeTagDto: { intoId: { required: true, type: () => String, format: "uuid" } }
                 }],
-            [m33, {
+            [m35, {
                     DecideModerationDto: { outcome: { required: true, enum: ["PUBLISHED", "REJECTED", "CHANGES_REQUESTED"] }, reason: { required: true, type: () => String, minLength: 1, pattern: "\\S" }, internalNote: { required: false, type: () => String, minLength: 1, pattern: "\\S" }, version: { required: true, type: () => Number, minimum: 1 }, tagIds: { required: false, type: () => [String], description: "The tags the mission is published with (T-055): the moderator confirms the customer's\nsuggestions they agree with and may add others, all from the curated vocabulary. Publication\nonly \u2014 a rejected or returned mission carries no confirmed tag. Omitted, none is confirmed.", format: "uuid" } },
                     ModerationQueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } },
                     LatencyQueryDto: { days: { required: false, enum: [30, 90, 365] } }
                 }],
-            [m11, {
+            [m13, {
                     DeclineAssignmentDto: { reasonCode: { required: false, enum: ["OTHER", "POLICY_CONCERN", "UNAVAILABLE", "OUTSIDE_EXPERTISE"] }, reason: { required: false, type: () => String, description: "Free text. For a policy concern it is the ground staff review, at least 20 characters, and it\nis never shown to the customer (T-050); otherwise optional." } },
                     HaltAssignmentDto: { ground: { required: true, type: () => String, minLength: 20, maxLength: 2000 } },
                     MoneyDecisionDto: { decision: { required: true, enum: ["FULL_REFUND", "SPLIT", "HOLD"] }, investigatorAmountMinor: { required: false, type: () => Number, description: "SPLIT only: what the investigator is paid for work lawfully done; the rest is refunded.", minimum: 0 }, reason: { required: true, type: () => String, minLength: 5, maxLength: 2000 } },
@@ -134,20 +136,20 @@ export default async () => {
                     PolicyReviewQueueQuery: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, maxLength: 512 } },
                     AcceptAssignmentDto: {}
                 }],
-            [m42, {
+            [m44, {
                     SubmitQuoteDto: { priceMinor: { required: true, type: () => Number, description: "Minor units. Money is an integer, never a float.", minimum: 0 }, currency: { required: true, type: () => String, description: "ISO 4217.", pattern: "^[A-Z]{3}$" }, estimatedDurationDays: { required: true, type: () => Number, minimum: 1 }, scope: { required: true, type: () => String, minLength: 1 }, deliverables: { required: true, type: () => String, minLength: 1 }, assumptions: { required: false, type: () => String, minLength: 1 }, exclusions: { required: false, type: () => String, minLength: 1 }, cancellationTerms: { required: true, type: () => String, minLength: 1 }, expiresAt: { required: true, type: () => String, description: "When the offer lapses. Bounded by the service: an expiry already in the past, or absurdly\nfar out, is refused. After it passes the quote cannot be accepted or reinstated." } },
                     AcceptQuoteDto: {}
                 }],
-            [m47, {
+            [m49, {
                     MissionBrowseFiltersDto: { taxonomyNodeIds: { required: false, type: () => [String], description: "Shared taxonomy node ids. A mission matches when it is filed at a requested node, below one,\nor above one \u2014 the tree is walked both ways, as discovery walks it (ADR-0007).", format: "uuid" }, tagIds: { required: false, type: () => [String], description: "Curated tag ids (T-055). A mission matches when it carries every one, confirmed when it was\npublished \u2014 or a tag since merged into one of them. Each added tag narrows; none widens.", format: "uuid" }, currency: { required: false, type: () => String, description: "ISO 4217. Required with a budget filter or the budget sort: budgets in different currencies do not compare.", pattern: "^[A-Z]{3}$" }, budgetMinMinor: { required: false, type: () => Number, description: "The mission's budget range must reach at least this, in minor units.", minimum: 0 }, budgetMaxMinor: { required: false, type: () => Number, description: "The mission's budget range must start at or below this, in minor units.", minimum: 0 }, deadlineFrom: { required: false, type: () => String, description: "The mission's deadline is on or after this date. Missions without a deadline are left out." }, deadlineTo: { required: false, type: () => String, description: "The mission's deadline is on or before this date. Missions without a deadline are left out." }, serviceAreaId: { required: false, type: () => String, description: "One of the investigator's own service areas, to measure distance from. Without it, distance\nis measured from the nearest of them.", format: "uuid" }, withinKm: { required: false, type: () => Number, description: "Only missions this far from the service area's edge, or closer; 0 means inside it. Missions\nwithout a location are left out.", minimum: 0 }, languages: { required: false, type: () => [String], description: "ISO 639-1: the languages the investigator works in. A mission matches when every language it\nrequires is among them \u2014 a mission needing Armenian and English is not one an English-only\ninvestigator can take.", pattern: "^[a-z]{2}$" }, postedWithinDays: { required: false, type: () => Number, description: "Published within this many days. Relative, so a saved search still means \"recent\" later.", minimum: 1 }, q: { required: false, type: () => String, description: "Free text. It **orders** the eligible missions by how well their title and description match\n\u2014 it never removes one (`investigator-discovery`). So it goes with `sort: relevance`, which is\nalso the default when it is given.", minLength: 1, maxLength: 200 }, sort: { required: false, enum: ["newest", "closest", "budget", "deadline", "relevance"] } },
                     BrowseMissionsDto: { limit: { required: false, type: () => Number, description: "Clamped, never rejected (docs/api/pagination.md)." }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } },
                     SaveMissionSearchDto: { name: { required: true, type: () => String, minLength: 1, maxLength: 80 }, filters: { required: true, type: () => t["./modules/search/mission-browse.dto"].MissionBrowseFiltersDto } }
                 }],
-            [m49, {
+            [m51, {
                     AvailabilityFilterDto: { dayOfWeek: { required: true, type: () => Number, description: "0 = Monday (ISO 8601) through 6 = Sunday.", minimum: 0, maximum: 6 }, startMinute: { required: true, type: () => Number, minimum: 0, maximum: 1439 }, endMinute: { required: true, type: () => Number, minimum: 1, maximum: 1440 } },
                     SearchInvestigatorsDto: { countryCode: { required: false, type: () => String, description: "ISO 3166-1 alpha-2. Matches the country an investigator declared on a service area.", pattern: "^[A-Z]{2}$" }, region: { required: false, type: () => String, minLength: 1, maxLength: 80 }, city: { required: false, type: () => String, minLength: 1, maxLength: 80 }, near: { required: false, type: () => t["./modules/service-areas/service-areas.dto"].LonLatDto, description: "Search around a point. Travels in the body, never in a URL: this is often the customer's\nown location or the subject's, and coordinates do not belong in query strings or logs." }, radiusKm: { required: false, type: () => Number, description: "How far from `near` to look. 0 \u2014 the default \u2014 means the point must fall inside a service\narea, which is what the investigator article promises.", minimum: 0 }, languages: { required: false, type: () => [String], description: "ISO 639-1. An investigator must work in every language asked for, not merely one.", pattern: "^[a-z]{2}$" }, taxonomyNodeIds: { required: false, type: () => [String], description: "Shared taxonomy node ids (ADR-0007). A node matches investigators who declared it or any\nof its descendants \u2014 matching walks the tree, so both sides need not pick the same depth.", format: "uuid" }, availableDuring: { required: false, type: () => t["./modules/search/search.dto"].AvailabilityFilterDto }, pricingModel: { required: false, enum: ["HOURLY", "FIXED_FEE", "RETAINER", "MIXED"] }, limit: { required: false, type: () => Number, description: "Bounded by the server, not by the client: docs/api/pagination.md says a request above the\nmaximum is **clamped, not rejected**, so there is no `@Max` here. `clampLimit` is what\ndecides, and it is the only thing that needs to know the ceiling." }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
                 }],
-            [m40, {
+            [m42, {
                     LanguageDto: { languageCode: { required: true, type: () => String, pattern: "^[a-z]{2}$" }, proficiency: { required: true, enum: ["BASIC", "CONVERSATIONAL", "FLUENT", "NATIVE"] } },
                     AvailabilityWindowDto: { dayOfWeek: { required: true, type: () => Number, description: "0 = Monday (ISO 8601) through 6 = Sunday.", minimum: 0, maximum: 6 }, startMinute: { required: true, type: () => Number, minimum: 0, maximum: 1439 }, endMinute: { required: true, type: () => Number, minimum: 1, maximum: 1440 } },
                     InvestigatorStorefrontDto: { pseudonym: { required: false, type: () => String, nullable: true, description: "The name customers know the investigator by (T-181) \u2014 theirs to choose, and the only one\ncustomers ever see unless the holder chooses otherwise. Unique without case; may not\nshare a word with the legal name or carry contact details (`pseudonym.ts`). `null` clears it,\nand customers see the stand-in code again.", minLength: 2, maxLength: 60, pattern: "\\S" }, headline: { required: false, type: () => String, maxLength: 120 }, bio: { required: false, type: () => String, maxLength: 4000 }, yearsExperience: { required: false, type: () => Number, minimum: 0, maximum: 80 }, pricingModel: { required: false, enum: ["HOURLY", "FIXED_FEE", "RETAINER", "MIXED"] }, hourlyRateMinor: { required: false, type: () => Number, description: "Minor units. An integer because a rate is money and money is not a float.", minimum: 0 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, acceptingWork: { required: false, type: () => Boolean }, visibility: { required: false, enum: ["PUBLISHED", "DRAFT"] }, contactPhone: { required: false, type: () => String, maxLength: 32 }, languages: { required: false, type: () => [t["./modules/profiles/profiles.dto"].LanguageDto], maxItems: 20 }, specialtyNodeIds: { required: false, type: () => [String], maxItems: 30 }, availability: { required: false, type: () => [t["./modules/profiles/profiles.dto"].AvailabilityWindowDto], maxItems: 50 } },
@@ -157,38 +159,38 @@ export default async () => {
                     UpdateCustomerProfileDto: { organisationName: { required: false, type: () => String, maxLength: 200 }, contactPhone: { required: false, type: () => String, maxLength: 32 } },
                     ActivateRoleDto: { role: { required: true, enum: ["CUSTOMER", "INVESTIGATOR"] }, acceptedDocumentIds: { required: false, type: () => [String], description: "The documents being accepted, by id \u2014 so the record says which exact version and locale was\nshown (T-021). Empty is valid: with nothing published there is nothing to accept, and the\ngate refuses only when something required is in force and missing from this list.", maxItems: 12, minLength: 36, maxLength: 36 } }
                 }],
-            [m68, {
+            [m70, {
                     SubmitVerificationDto: { documentIds: { required: true, type: () => [String], format: "uuid", minItems: 1 } },
                     DecideVerificationDto: { outcome: { required: true, enum: ["REJECTED", "APPROVED"] }, reason: { required: true, type: () => String, minLength: 1, pattern: "\\S" } },
                     QueueQueryDto: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, description: "Opaque. Clients must not parse, construct or modify it.", maxLength: 512 } }
                 }],
-            [m57, {
+            [m59, {
                     CreateTeamDto: { name: { required: true, type: () => String, minLength: 1, maxLength: 80 }, description: { required: false, type: () => String, minLength: 1, maxLength: 500 } },
                     UpdateTeamDto: { name: { required: false, type: () => String, minLength: 1, maxLength: 80 }, description: { required: false, type: () => String, nullable: true, minLength: 1, maxLength: 500 } },
                     AddTeamMemberDto: { membershipId: { required: true, type: () => String, format: "uuid" } }
                 }],
-            [m59, {
+            [m61, {
                     CreateAgencyDto: { name: { required: true, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String, description: "Where the platform writes to the business, which is not the creator's personal address.", format: "email", minLength: 3, maxLength: 254 }, timezone: { required: false, type: () => String, minLength: 1, maxLength: 64 }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" }, agreementDocumentId: { required: true, type: () => String, description: "The agency terms the creator is accepting, by id \u2014 so the record says which exact version and\nlocale they were shown (T-021), rather than the server deciding after the fact.", minLength: 36, maxLength: 36 } },
                     UpdateAgencyDetailsDto: { version: { required: true, type: () => Number, minimum: 1 }, name: { required: false, type: () => String, minLength: 2, maxLength: 120 }, countryCode: { required: false, type: () => String, pattern: "^[A-Z]{2}$" }, businessEmail: { required: false, type: () => String }, timezone: { required: false, type: () => String }, currency: { required: false, type: () => String, pattern: "^[A-Z]{3}$" } }
                 }],
-            [m63, {
+            [m65, {
                     ProfileVersionDto: { version: { required: true, type: () => Number, minimum: 0 } },
                     UpdateAgencyProfileDto: { displayName: { required: false, type: () => String, nullable: true, maxLength: 200 }, headline: { required: false, type: () => String, nullable: true, maxLength: 300 }, about: { required: false, type: () => String, nullable: true, maxLength: 4000 }, logoMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_LOGO uploads (`POST /media/uploads`).", format: "uuid" }, coverMediaId: { required: false, type: () => String, nullable: true, description: "One of this agency's own AGENCY_COVER uploads.", format: "uuid" } }
                 }],
-            [m65, {
+            [m67, {
                     UpdateSettingsSectionDto: { version: { required: true, type: () => Number, minimum: 0 }, values: { required: true, type: "object", additionalProperties: true } }
                 }],
-            [m61, {
+            [m63, {
                     InviteEmployeeDto: { email: { required: true, type: () => String }, role: { required: true, type: () => String, minLength: 1, maxLength: 64 } },
                     AcceptInvitationDto: { token: { required: true, type: () => String, minLength: 20, maxLength: 200 } },
                     UpdateEmployeeDto: { jobTitle: { required: false, type: () => String, nullable: true, minLength: 1, maxLength: 120 }, department: { required: false, type: () => String, nullable: true, minLength: 1, maxLength: 120 }, locale: { required: false, nullable: true, enum: ["en", "ru", "hy"] }, timezone: { required: false, type: () => String, nullable: true } },
                     SetEmployeeRolesDto: { roles: { required: true, type: () => [String], minItems: 1, maxItems: 6, minLength: 1, maxLength: 64 } }
                 }],
-            [m20, {
+            [m22, {
                     CreateSourceDto: { type: { required: true, enum: ["OTHER", "PUBLIC_RECORD", "REGISTRY", "WEBSITE", "WITNESS", "DOCUMENT", "OBSERVATION"] }, title: { required: true, type: () => String, minLength: 1, maxLength: 200 }, locator: { required: false, type: () => String, maxLength: 2000 }, accessedAt: { required: false, type: () => String }, reliability: { required: false, enum: ["HIGH", "MEDIUM", "LOW", "UNKNOWN"] }, reliabilityRationale: { required: false, type: () => String, maxLength: 1000 }, shared: { required: false, type: () => Boolean } },
                     UpdateSourceDto: { type: { required: false, enum: ["OTHER", "PUBLIC_RECORD", "REGISTRY", "WEBSITE", "WITNESS", "DOCUMENT", "OBSERVATION"] }, title: { required: false, type: () => String, minLength: 1, maxLength: 200 }, locator: { required: false, type: () => String, maxLength: 2000 }, accessedAt: { required: false, type: () => String }, reliability: { required: false, enum: ["HIGH", "MEDIUM", "LOW", "UNKNOWN"] }, reliabilityRationale: { required: false, type: () => String, maxLength: 1000 }, shared: { required: false, type: () => Boolean } }
                 }],
-            [m21, {
+            [m23, {
                     CreateNoteDto: { body: { required: true, type: () => String, minLength: 1, maxLength: 20000 }, visibility: { required: false, enum: ["PRIVATE", "SHARED"] } },
                     UpdateNoteDto: { body: { required: false, type: () => String, minLength: 1, maxLength: 20000 }, visibility: { required: false, enum: ["PRIVATE", "SHARED"] } },
                     CreateTaskDto: { title: { required: true, type: () => String, minLength: 1, maxLength: 200 }, description: { required: false, type: () => String, maxLength: 4000 }, dueOn: { required: false, type: () => String, description: "A calendar day, `YYYY-MM-DD`.", minLength: 10, maxLength: 10 }, position: { required: false, type: () => Number, minimum: 0, maximum: 100000 }, visibility: { required: false, enum: ["PRIVATE", "SHARED"] } },
@@ -202,7 +204,7 @@ export default async () => {
                     SearchSessionsQuery: { q: { required: true, type: () => String, minLength: 2, maxLength: 200 } },
                     ListMessagesQuery: { order: { required: false, description: "`newest`: from the end of the conversation backwards, newest first (T-057).", enum: ["newest", "oldest"] }, limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, maxLength: 512 } }
                 }],
-            [m25, {
+            [m27, {
                     ReadDocumentQuery: { locale: { required: true, description: "The reader's language; the English version when the article has none in it.", enum: ["en", "ru", "hy"] } }
                 }],
             [m5, {
@@ -215,7 +217,11 @@ export default async () => {
             [m8, {
                     FindInvestigatorsDto: { question: { required: true, type: () => String, minLength: 3, maxLength: 2000 }, locale: { required: false, description: "The language to answer in. The user's chosen language when absent.", enum: ["en", "ru", "hy"] }, near: { required: false, type: () => t["./modules/service-areas/service-areas.dto"].LonLatDto, description: "A real point \u2014 the device's location, or a pin the person dropped. In the body, never a URL\n(docs/architecture/discovery.md). It is used to search and is never sent to the model." }, radiusKm: { required: false, type: () => Number, description: "How far from `near`. 0, the default, means a service area must cover the point.", minimum: 0 }, taxonomyNodeIds: { required: false, type: () => [String], description: "The specialty chosen from a clarification's options.", format: "uuid" }, purpose: { required: false, type: () => String, description: "What the search is for, when the assistant asked. Screened like the question.", minLength: 3, maxLength: 1000 } }
                 }],
-            [m45, {
+            [m11, {
+                    ListPlansQuery: { open: { required: false, description: "`true` lists only plans still waiting for an answer, unexpired \u2014 what a returning client shows.", enum: ["true", "false"] } },
+                    ConfirmPlanDto: { planHash: { required: true, type: () => String, description: "The hash of the plan as the client showed it. A plan that is not exactly that is not confirmed.", pattern: "^[0-9a-f]{64}$" } }
+                }],
+            [m47, {
                     CreateReviewDto: { rating: { required: true, type: () => Number }, text: { required: false, type: () => String, minLength: 1 } },
                     RespondToReviewDto: { text: { required: true, type: () => String, minLength: 1 } },
                     ReportReviewTextDto: { part: { required: true, enum: ["REVIEW", "RESPONSE"] }, reason: { required: true, type: () => String } },
@@ -223,11 +229,11 @@ export default async () => {
                     RemoveReviewDto: { reason: { required: true, type: () => String } },
                     ReviewListQuery: { limit: { required: false, type: () => Number }, cursor: { required: false, type: () => String, maxLength: 512 } }
                 }],
-            [m37, {
+            [m39, {
                     ListNotificationsQuery: { cursor: { required: false, type: () => String, maxLength: 200 } },
                     SetPreferenceDto: { category: { required: true, type: () => String }, channel: { required: true, type: () => String }, enabled: { required: true, type: () => Boolean } }
                 }],
-            [m17, {
+            [m19, {
                     BlockDto: { investigatorProfileId: { required: false, type: () => String, format: "uuid" }, missionId: { required: false, type: () => String, format: "uuid" }, assignmentId: { required: false, type: () => String, format: "uuid" } }
                 }]
         ],
@@ -238,7 +244,7 @@ export default async () => {
                         updatePreferences: { type: Object }
                     }
                 }],
-            [m28, {
+            [m30, {
                     LegalController: {
                         current: { type: Object },
                         required: { type: [Object] },
@@ -246,7 +252,7 @@ export default async () => {
                         accept: {}
                     }
                 }],
-            [m13, {
+            [m15, {
                     AuthController: {
                         register: {},
                         login: {},
@@ -260,7 +266,7 @@ export default async () => {
                         logout: {}
                     }
                 }],
-            [m15, {
+            [m17, {
                     GoogleAuthController: {
                         providers: {},
                         start: {},
@@ -272,26 +278,26 @@ export default async () => {
                         unlink: {}
                     }
                 }],
-            [m26, {
+            [m28, {
                     LegalHoldController: {
                         list: { type: Object },
                         place: { type: Object },
                         release: { type: Object }
                     }
                 }],
-            [m18, {
+            [m20, {
                     HealthController: {
                         check: { type: Object }
                     }
                 }],
-            [m30, {
+            [m32, {
                     MediaController: {
                         authorize: { type: Object },
                         complete: { type: Object },
                         deliveryUrl: { type: Object }
                     }
                 }],
-            [m34, {
+            [m36, {
                     MissionsController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -301,7 +307,7 @@ export default async () => {
                         cancel: { type: Object }
                     }
                 }],
-            [m52, {
+            [m54, {
                     TagsController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -310,7 +316,7 @@ export default async () => {
                         merge: { type: Object }
                     }
                 }],
-            [m54, {
+            [m56, {
                     TaxonomyController: {
                         tree: { type: [Object] },
                         node: { type: Object },
@@ -319,7 +325,7 @@ export default async () => {
                         setLabel: { type: Object }
                     }
                 }],
-            [m32, {
+            [m34, {
                     MissionModerationController: {
                         queue: { type: Object },
                         latency: { type: Object },
@@ -327,7 +333,7 @@ export default async () => {
                         decide: { type: Object }
                     }
                 }],
-            [m10, {
+            [m12, {
                     AssignmentsController: {
                         get: { type: Object },
                         accept: { type: Object },
@@ -335,14 +341,14 @@ export default async () => {
                         halt: { type: Object }
                     }
                 }],
-            [m12, {
+            [m14, {
                     PolicyReviewsController: {
                         queue: {},
                         myRecord: { type: Object },
                         resolve: { type: Object }
                     }
                 }],
-            [m41, {
+            [m43, {
                     QuotesController: {
                         submit: { type: Object },
                         listMine: { type: [Object] },
@@ -351,7 +357,7 @@ export default async () => {
                         accept: { type: Object }
                     }
                 }],
-            [m46, {
+            [m48, {
                     MissionBrowseController: {
                         missions: { type: Object },
                         saved: {},
@@ -359,12 +365,12 @@ export default async () => {
                         remove: {}
                     }
                 }],
-            [m48, {
+            [m50, {
                     SearchController: {
                         investigators: { type: Object }
                     }
                 }],
-            [m50, {
+            [m52, {
                     ServiceAreasController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -376,7 +382,7 @@ export default async () => {
                         remove: {}
                     }
                 }],
-            [m38, {
+            [m40, {
                     AgencyInvestigatorsController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -384,7 +390,7 @@ export default async () => {
                         update: { type: Object }
                     }
                 }],
-            [m39, {
+            [m41, {
                     ProfilesController: {
                         activateRole: {},
                         getMyInvestigator: { type: Object },
@@ -396,7 +402,7 @@ export default async () => {
                         getCustomer: { type: Object }
                     }
                 }],
-            [m67, {
+            [m69, {
                     VerificationController: {
                         submit: { type: Object },
                         listMine: { type: [Object] },
@@ -406,7 +412,7 @@ export default async () => {
                         openDocument: { type: Object }
                     }
                 }],
-            [m56, {
+            [m58, {
                     TeamsController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -417,14 +423,14 @@ export default async () => {
                         removeMember: { type: Object }
                     }
                 }],
-            [m58, {
+            [m60, {
                     AgenciesController: {
                         create: { type: Object },
                         readCurrent: { type: Object },
                         updateCurrent: { type: Object }
                     }
                 }],
-            [m62, {
+            [m64, {
                     AgencyProfileController: {
                         readOwn: { type: Object },
                         update: { type: Object },
@@ -433,19 +439,19 @@ export default async () => {
                         readPublished: { type: Object }
                     }
                 }],
-            [m64, {
+            [m66, {
                     AgencySettingsController: {
                         read: { type: Object },
                         update: { type: Object }
                     }
                 }],
-            [m66, {
+            [m68, {
                     WorkspacesController: {
                         list: { type: [Object] },
                         activate: {}
                     }
                 }],
-            [m60, {
+            [m62, {
                     MembersController: {
                         list: { type: [Object] },
                         update: { type: Object },
@@ -464,7 +470,7 @@ export default async () => {
                         accept: { type: Object }
                     }
                 }],
-            [m19, {
+            [m21, {
                     InvestigationSourcesController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -472,7 +478,7 @@ export default async () => {
                         withdraw: {}
                     }
                 }],
-            [m22, {
+            [m24, {
                     NotesController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -480,7 +486,7 @@ export default async () => {
                         remove: {}
                     }
                 }],
-            [m23, {
+            [m25, {
                     TasksController: {
                         list: { type: [Object] },
                         create: { type: Object },
@@ -502,7 +508,7 @@ export default async () => {
                         delete: {}
                     }
                 }],
-            [m24, {
+            [m26, {
                     KnowledgeController: {
                         read: { type: Object }
                     }
@@ -523,14 +529,22 @@ export default async () => {
                         answer: { type: Object }
                     }
                 }],
-            [m43, {
+            [m10, {
+                    AiPlansController: {
+                        list: { type: [Object] },
+                        get: { type: Object },
+                        confirm: { type: Object },
+                        decline: { type: Object }
+                    }
+                }],
+            [m45, {
                     ReviewModerationController: {
                         queue: {},
                         moderate: {},
                         remove: { type: Object }
                     }
                 }],
-            [m44, {
+            [m46, {
                     ReviewsController: {
                         create: { type: Object },
                         get: { type: Object },
@@ -539,7 +553,7 @@ export default async () => {
                         forProfile: {}
                     }
                 }],
-            [m36, {
+            [m38, {
                     NotificationsController: {
                         list: {},
                         unread: {},
@@ -551,7 +565,7 @@ export default async () => {
                         unsubscribe: {}
                     }
                 }],
-            [m16, {
+            [m18, {
                     BlocksController: {
                         block: { type: Object },
                         list: {},
