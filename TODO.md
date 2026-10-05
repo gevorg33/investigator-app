@@ -9781,7 +9781,7 @@ pnpm --filter api test ai-enablement
 ---
 
 ### T-224 — Every plan ends, honestly (P-13)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-06; migration 0043 (departure ends only unstarted plans as void), `JobHandler.onDeadLetter` + `PlanExecutor.abandon`, execution deadline and lock timeout in `PlanExecutor`, `?open=true` keeps confirmed plans, session delete settles plans first; `ai-plans.endings.spec.ts`; ai-plans.md, ai-sessions.md, jobs.md, retention.md
 - **Priority:** P0 — defects in T-048, found by the plan review
 - **Depends on:** T-048
 - **Risk:** HIGH
@@ -9809,20 +9809,20 @@ The fixes:
 - **`?open=true`:** lists started plans until they end.
 - **Execution deadline:** a confirmed plan with no started step 15 minutes after confirmation is
   invalidated as `confirmation_stale`.
-- **Session delete:** refuses (`plan_in_flight`) while a plan is running, voids one that has not
+- **Session delete:** refuses (`plan_in_flight`) while a plan is running — its rows taken with SKIP LOCKED, so the refusal never waits, voids one that has not
   started, and writes each run plan's outcome — steps done, failed, skipped, with command names — to
   audit before the rows go.
-- **Lock timeout:** on the plan job's transaction.
+- **Lock timeout:** on the plan job's transaction. `idle_in_transaction_session_timeout` was not set: the job's transaction is idle by design while its steps run on other connections, and the timeout would kill a legitimate long plan.
 
 Telling the person is T-226.
 
 **Acceptance criteria**
-- [ ] A member removed after step 1 is DONE: the plan reads FAILED `member_left`, not VOIDED (regression test, seen to fail first)
-- [ ] A dead-lettered plan job ends the plan; a later replay finds nothing to run
-- [ ] `?open=true` shows a started plan until it ends
-- [ ] A confirmed plan the worker reaches after the deadline never runs a step
-- [ ] Deleting the session mid-run refuses without hanging; deleting it with an unstarted plan voids the plan; an executed plan's outcome survives in audit
-- [ ] `rls.spec.ts` still bounds the departure function's statements
+- [x] A member removed after step 1 is DONE: the plan reads FAILED `member_left`, not VOIDED (regression test, seen to fail first)
+- [x] A dead-lettered plan job ends the plan; a later replay finds nothing to run
+- [x] `?open=true` shows a started plan until it ends
+- [x] A confirmed plan the worker reaches after the deadline never runs a step
+- [x] Deleting the session mid-run refuses without hanging; deleting it with an unstarted plan voids the plan; an executed plan's outcome survives in audit
+- [x] `rls.spec.ts` still bounds the departure function's statements
 
 **Validation**
 ```bash

@@ -17,6 +17,12 @@ type StepRow = typeof aiPlanSteps.$inferSelect;
 
 /** How long a proposal waits for its person. Past it, what it was about may have moved on. */
 export const PLAN_TTL_MS = 24 * 60 * 60 * 1000;
+/**
+ * How long a confirmed plan may wait for the worker to start it (T-224). Past it, the plan is invalid
+ * (`confirmation_stale`) and the person confirms again: what they confirmed may have moved on. A plan
+ * that has started finishes whenever its worker returns.
+ */
+export const EXECUTION_DEADLINE_MS = 15 * 60 * 1000;
 /** A plan is something a person reads before confirming; bulk is a command of its own (T-095). */
 export const MAX_STEPS = 10;
 /** The event a confirmation writes, in its transaction; the worker runs the plan from it. */
@@ -151,7 +157,10 @@ export class AiPlansService {
     });
   }
 
-  /** A session's plans, newest first; `open` keeps those still waiting for an answer. */
+  /**
+   * A session's plans, newest first. `open` keeps those not yet ended: proposals still waiting for an
+   * answer, and confirmed plans until they finish — a stuck one stays in view (T-224).
+   */
   async list(
     actor: Actor,
     sessionId: string,
@@ -168,12 +177,17 @@ export class AiPlansService {
       .where(
         and(
           eq(aiPlans.sessionId, sessionId),
-          query.open === true ? eq(aiPlans.status, 'PROPOSED') : undefined,
+          query.open === true
+            ? inArray(aiPlans.status, ['PROPOSED', 'CONFIRMED', 'EXECUTING'])
+            : undefined,
         ),
       )
       .orderBy(desc(aiPlans.createdAt), desc(aiPlans.id))
       .limit(20);
-    const open = query.open === true ? plans.filter((p) => p.expiresAt > now) : plans;
+    const open =
+      query.open === true
+        ? plans.filter((p) => p.status !== 'PROPOSED' || p.expiresAt > now)
+        : plans;
     if (open.length === 0) return [];
     const steps = await this.db
       .select()

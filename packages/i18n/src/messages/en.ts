@@ -1443,6 +1443,10 @@ export const en = {
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
       assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
+      ai_session: {
+        plan_in_flight:
+          'A plan in this conversation is still running. Delete the conversation once it has finished.',
+      },
       ai_plan: {
         not_pending: 'This plan has already been answered.',
         expired: 'This plan waited too long to be confirmed. Ask the assistant again.',

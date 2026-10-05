@@ -230,6 +230,54 @@ describe('the job runner', () => {
     });
   });
 
+  describe('after a job fails for good (T-224)', () => {
+    /** A handler that ends what its job left open, and says where it ran. */
+    const hooked = (heard: unknown[]): JobHandler<{ n: number }> => ({
+      ...probe,
+      command: 'hooked',
+      onDeadLetter: async (payload, tx) => {
+        const [row] = await tx.execute<{ tenant: string | null }>(
+          raw`SELECT app_current_tenant() AS tenant`,
+        );
+        heard.push({ payload, system: currentPlatformAccess()?.purpose, tenantInDb: row!.tenant });
+      },
+    });
+    const withHook = (heard: unknown[]) => {
+      const db = scopedDb(sql);
+      const audit = new AuditService(db);
+      return new JobRunner(
+        db,
+        new WorkspaceResolver(db, new AuthzService(audit)),
+        new PlatformContext(audit),
+        [probe, hooked(heard)],
+      );
+    };
+
+    it('hands the job to its handler once, in the audited system context, in no workspace', async () => {
+      const heard: unknown[] = [];
+      const context = await personal();
+      const data = runInContext(context, () => envelopeFor('hooked', randomUUID(), { n: 7 }));
+      await withHook(heard).deadLettered(data);
+      expect(heard).toEqual([{ payload: { n: 7 }, system: 'jobs.dead_letter', tenantInDb: null }]);
+      const crossings = await ownerSql<{ n: number }[]>`
+        SELECT count(*)::int AS n FROM audit_logs
+         WHERE action = 'platform.access' AND resource_id = 'jobs.dead_letter'
+           AND correlation_id = ${data.jobId}`;
+      expect(crossings[0]!.n).toBe(1);
+    });
+
+    it.each([
+      ['something that is not an envelope', () => 'nope'],
+      ['a command nobody handles', () => envelopeFor('elsewhere', 'k', {})],
+      ['a handler with no hook', () => envelopeFor('probe', 'k', { n: 1 })],
+      ['a payload the command does not take', () => envelopeFor('hooked', 'k', { n: 'x' })],
+    ])('does nothing for %s', async (_label, data) => {
+      const heard: unknown[] = [];
+      await expect(withHook(heard).deadLettered(data())).resolves.toBeUndefined();
+      expect([heard, seen]).toEqual([[], []]);
+    });
+  });
+
   describe('what it refuses outright', () => {
     it.each([
       ['something that is not an envelope', 'nope', 'invalid_envelope'],

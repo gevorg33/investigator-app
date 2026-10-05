@@ -77,14 +77,13 @@ Two rules hold the design together:
 | Audit | Append-only `audit_logs`; outbox in the change's transaction; `job_runs`; dead letters | **The confirmation's audit row holds only the plan id** (P-17). The job runs under the job's id, not the request's correlation id (P-3a) |
 | UI | The assistant panel, with streaming turn steps, Stop and Retry (T-056, T-057) | Confirmation, progress and outcome (T-058) |
 
-**Defects found in T-048, after it merged** (P-13, filed as T-224):
-1. A member leaving voids every `CONFIRMED` plan as "nothing happened". But a plan whose worker died
-   mid-run also reads `CONFIRMED`, because `EXECUTING` commits only at the end. So a plan that already
-   did step 1 is reported as never having run. `ai-plans.md` says otherwise.
-2. A plan whose job is dead-lettered stays `CONFIRMED` forever, and `?open=true` does not list it.
-3. Deleting the session while its plan runs can hang. The delete waits on the plan row the job holds,
-   and the job waits on a step update the delete blocks; no `lock_timeout` is set anywhere. It also
-   erases the only record of which steps ran.
+**Defects found in T-048, after it merged — fixed in T-224** (migration 0043, `ai-plans.md`):
+1. A member leaving voided every `CONFIRMED` plan, including one whose worker died after step 1. Now a
+   started plan ends `FAILED`, `member_left`.
+2. A plan whose job was dead-lettered stayed `CONFIRMED` for ever. Now the dead-letter hook ends it as
+   `infrastructure_failed`, and `?open=true` lists a plan until it ends.
+3. Deleting the session while its plan ran could hang on locks and erase the only record of which steps
+   ran. Now the delete refuses (`PLAN_IN_FLIGHT`), and a plan that ran leaves its outcome in audit.
 
 ## 4. Understanding — inside the Planner
 

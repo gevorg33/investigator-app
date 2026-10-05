@@ -182,7 +182,7 @@ describe('row-level security', () => {
     // platform access — a SET clause on the function, restored when it returns. The third archives
     // a departing member's own AI sessions in that workspace, which are private to them even from
     // the admin who removed them (T-085, owner decision 2026-09-27), and voids their plans there that
-    // have not started (T-048). Nothing else in the database
+    // have not started (T-048), failing those that have (T-224). Nothing else in the database
     // may do that; in the application, only PlatformContext can (tenant-plumbing).
     const elevated = await owner<{ name: string }[]>`
       SELECT proname AS name FROM pg_proc
@@ -194,7 +194,7 @@ describe('row-level security', () => {
     ]);
   });
 
-  it('lets the departing-member trigger archive sessions, void open plans, and nothing else', async () => {
+  it('lets the departing-member trigger archive sessions, end open plans, and nothing else', async () => {
     const [row] = await owner<{ src: string }[]>`
       SELECT prosrc AS src FROM pg_proc WHERE proname = 'archive_departed_member_sessions'`;
     const statements = row!.src
@@ -204,7 +204,10 @@ describe('row-level security', () => {
       .filter((s) => s !== '' && s !== 'END');
     expect(statements).toEqual([
       'BEGIN UPDATE ai_sessions SET archived_at = now(), updated_at = now() WHERE tenant_id = NEW.tenant_id AND user_id = NEW.user_id AND archived_at IS NULL AND deleted_at IS NULL',
-      "UPDATE ai_plans SET status = 'CANCELLED', confirmation_status = 'VOIDED', reason = 'member_left', finished_at = now(), updated_at = now() WHERE tenant_id = NEW.tenant_id AND user_id = NEW.user_id AND status IN ('PROPOSED', 'CONFIRMED')",
+      "UPDATE ai_plans p SET status = 'CANCELLED', confirmation_status = 'VOIDED', reason = 'member_left', finished_at = now(), updated_at = now() WHERE p.tenant_id = NEW.tenant_id AND p.user_id = NEW.user_id AND p.status IN ('PROPOSED', 'CONFIRMED') AND NOT EXISTS (SELECT 1 FROM ai_plan_steps s WHERE s.plan_id = p.id AND s.status <> 'PENDING')",
+      "UPDATE ai_plans p SET status = 'EXECUTING', updated_at = now() WHERE p.tenant_id = NEW.tenant_id AND p.user_id = NEW.user_id AND p.status = 'CONFIRMED' AND EXISTS (SELECT 1 FROM ai_plan_steps s WHERE s.plan_id = p.id AND s.status <> 'PENDING')",
+      "UPDATE ai_plans p SET status = 'FAILED', reason = 'member_left', finished_at = now(), updated_at = now() WHERE p.tenant_id = NEW.tenant_id AND p.user_id = NEW.user_id AND p.status = 'EXECUTING'",
+      "UPDATE ai_plan_steps s SET status = 'SKIPPED', finished_at = now() WHERE s.status = 'PENDING' AND EXISTS (SELECT 1 FROM ai_plans p WHERE p.id = s.plan_id AND p.tenant_id = NEW.tenant_id AND p.user_id = NEW.user_id AND p.status = 'FAILED' AND p.reason = 'member_left')",
       'RETURN NULL',
     ]);
   });

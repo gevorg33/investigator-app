@@ -65,6 +65,27 @@ export class JobRunner {
     );
   }
 
+  /**
+   * The job failed for good and its letter is kept: hand it to its handler's `onDeadLetter`, if it
+   * has one, in the system context (T-224). Anything that is not a job a handler can read is left to
+   * the letter alone.
+   */
+  async deadLettered(data: unknown): Promise<void> {
+    if (!isEnvelope(data)) return;
+    const handler = this.handlers.find((h) => h.command === data.command);
+    if (handler?.onDeadLetter === undefined) return;
+    let payload: unknown;
+    try {
+      payload = handler.parse(data.payload);
+    } catch {
+      return;
+    }
+    const envelope = { ...data, payload };
+    await this.platform.asSystem('jobs.dead_letter', { correlationId: data.jobId }, () =>
+      this.db.transaction((tx) => handler.onDeadLetter!(payload, tx, envelope)),
+    );
+  }
+
   private async claimAndRun(
     tx: Tx,
     handler: JobHandler,

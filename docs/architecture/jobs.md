@@ -93,6 +93,12 @@ something the producer's context can read. `PlanConfirmedTrigger` (T-048) queues
 A `JobHandler` (`command`, `queue`, `parse`, `run(payload, tx, envelope)`) in `JOB_HANDLERS`. Its
 file ends `.handler.ts`, and `jobs.static.spec.ts` holds that it never injects the database.
 
+A handler may also have `onDeadLetter(payload, tx, envelope)` (T-224): called once the job has failed
+for good and its letter is kept, in the audited system context (`jobs.dead_letter`), because the job's
+own context may be what was refused. It ends what the job left open — a confirmed plan, for
+`ai.plan.execute`. A hook that fails never turns the failure back into a retry; the letter is kept
+either way.
+
 **One deliberate exception to "the effect commits with the claim"**: a confirmed plan
 (`ExecutePlanHandler`, T-048) runs steps whose tools call services with their own transactions, so
 the effects cannot share the job's. The plan's status commits with the claim; each step's progress is

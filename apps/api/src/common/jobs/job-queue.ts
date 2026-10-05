@@ -135,6 +135,14 @@ export function processorFor(runner: JobRunner, deadLetters: DeadLetters, queue:
       const last = attempts >= (job.opts.attempts ?? 1);
       if (!(error instanceof PermanentJobError) && !last) throw error;
       await deadLetters.record(data, queue, error, attempts);
+      // Its handler ends what the job left open (T-224). A failure here — thrown or rejected — must
+      // not turn a permanent failure back into a retry: the letter is kept either way, and its alert
+      // (T-227) says so.
+      try {
+        await runner.deadLettered(data);
+      } catch {
+        // Kept in the letter; nothing more to do here.
+      }
       throw new UnrecoverableError(error instanceof Error ? error.message : String(error));
     }
   };

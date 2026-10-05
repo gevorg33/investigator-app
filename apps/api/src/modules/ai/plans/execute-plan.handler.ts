@@ -51,4 +51,13 @@ export class ExecutePlanHandler implements JobHandler<ExecutePlan> {
   async run(payload: ExecutePlan, tx: Tx, envelope: JobEnvelope<ExecutePlan>): Promise<void> {
     await this.executor.run(payload.planId, tx, { correlationId: envelope.jobId });
   }
+
+  /** Failed for good: the plan ends, saying how far it got — never left CONFIRMED (T-224). */
+  async onDeadLetter(
+    payload: ExecutePlan,
+    tx: Tx,
+    envelope: JobEnvelope<ExecutePlan>,
+  ): Promise<void> {
+    await this.executor.abandon(payload.planId, tx, { correlationId: envelope.jobId });
+  }
 }
