@@ -9425,7 +9425,7 @@ pnpm --filter api test ai-critic
 ---
 
 ### T-212 — One correlation id from request to every step (P-3a, part)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07; `ai.plan.confirmed` and `ai.plan.execute` carry the request's correlation id, used by the run and the dead-letter hook; `ai-plans.correlation.spec.ts`; ai-plans.md
 - **Priority:** P1 — before the write-enable gate
 - **Depends on:** T-048
 - **Risk:** LOW
@@ -9439,8 +9439,8 @@ id is lost between the outbox and the worker. Carry it on the `ai.plan.confirmed
 and use it for every step's audit row.
 
 **Acceptance criteria**
-- [ ] A test joins confirm → outbox event → job → each step's audit row on one correlation id
-- [ ] A payload without one, from before this change, still runs, under the job's id
+- [x] A test joins confirm → outbox event → job → each step's audit row on one correlation id
+- [x] A payload without one, from before this change, still runs, under the job's id
 
 **Validation**
 ```bash

@@ -276,7 +276,11 @@ export class AiPlansService {
         aggregateType: 'ai_plan',
         aggregateId: planId,
         eventType: PLAN_CONFIRMED,
-        payload: { planId },
+        // The request's id travels with the event into the job, so every step joins to it (T-212).
+        payload: {
+          planId,
+          ...(req.correlationId !== undefined && { correlationId: req.correlationId }),
+        },
         correlationId: req.correlationId ?? null,
       });
       await this.record(actor, c, 'ai_plan.confirmed', planId, undefined, tx);

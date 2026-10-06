@@ -181,7 +181,14 @@ describe('assistant plans and confirmation (T-048)', () => {
       const plan = await plans.propose(me, session.id, [tally('a', 1)], req());
       const asCustomer = { ...me, activeRole: 'CUSTOMER' as const };
 
-      const confirmed = await plans.confirm(asCustomer, session.id, plan.id, plan.planHash, req());
+      const confirming = req();
+      const confirmed = await plans.confirm(
+        asCustomer,
+        session.id,
+        plan.id,
+        plan.planHash,
+        confirming,
+      );
       expect(confirmed).toMatchObject({ status: 'CONFIRMED', confirmation: 'CONFIRMED' });
       expect(confirmed.confirmedAt).not.toBeNull();
 
@@ -192,7 +199,11 @@ describe('assistant plans and confirmation (T-048)', () => {
         SELECT event_type AS type, payload, user_id AS user FROM outbox_events
          WHERE aggregate_id = ${plan.id}`;
       expect(events).toEqual([
-        { type: PLAN_CONFIRMED, payload: { planId: plan.id }, user: me.userId },
+        {
+          type: PLAN_CONFIRMED,
+          payload: { planId: plan.id, correlationId: confirming.correlationId },
+          user: me.userId,
+        },
       ]);
 
       // Once. A second yes, or a no after a yes, is refused and changes nothing.

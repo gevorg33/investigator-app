@@ -80,7 +80,9 @@ Then `CONFIRMED`, with the time and the role the person had narrowed to (`confir
 ## Running — `PlanExecutor`, in the worker
 
 `PlanConfirmedTrigger` hears `ai.plan.confirmed` in the producer's context — the person who
-confirmed — and queues `ai.plan.execute`, keyed `ai-plan-<id>`, on the `events` queue. The job
+confirmed — and queues `ai.plan.execute`, keyed `ai-plan-<id>`, on the `events` queue. The confirming
+request's correlation id rides on the event and the job, so the confirmation, the plan's end and every
+step's audit row share it (T-212); a job queued before that runs under its own id. The job
 runner re-reads that person's account, membership and workspace (a removed member's job is refused,
 `context_refused`) and runs `ExecutePlanHandler` in their context:
 
