@@ -41,7 +41,8 @@ application holds DELETE on messages only, and none on sessions.
 
 `SESSION_CONTENT` cannot fall behind: a spec compares it with every foreign key into `ai_sessions`,
 so summaries (T-046), memory (T-047) and embeddings (T-133) fail it until they are added. Plans,
-their steps and stored tool results are on it since T-048 — steps before their plan.
+their steps and stored tool results are on it since T-048 — steps before their plan. A plan still
+running refuses the delete, and one that ran leaves its outcome in audit first (T-224, `ai-plans.md`).
 
 ## Reading a conversation from its end (T-057)
 

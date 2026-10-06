@@ -38,6 +38,12 @@ export interface JobHandler<P = unknown> {
   readonly queue: QueueName;
   parse(payload: unknown): P;
   run(payload: P, tx: Tx, envelope: JobEnvelope<P>): Promise<void>;
+  /**
+   * After the job has failed for good and its letter is kept: a chance to end what the job left open
+   * (T-224) — a plan that would otherwise wait for ever. Runs once, in the audited system context,
+   * because the job's own context may be the very thing that was refused.
+   */
+  onDeadLetter?(payload: P, tx: Tx, envelope: JobEnvelope<P>): Promise<void>;
 }
 
 /** The handlers the runner dispatches on, provided as one list. */

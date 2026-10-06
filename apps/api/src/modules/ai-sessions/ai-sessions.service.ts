@@ -5,6 +5,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../common/authz/authz.service';
 import type { Actor } from '../../common/authz/contract';
 import { currentContext } from '../../common/context/execution-context';
+import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../database/database.module';
 import { aiMessages, aiPlanSteps, aiPlans, aiSessions, aiToolResults } from '../../database/schema';
@@ -302,6 +303,7 @@ export class AiSessionsService {
 
     await this.db.transaction(async (tx) => {
       await this.find(actor, sessionId, c, tx, true);
+      await this.settlePlans(actor, sessionId, c, tx);
       let erased = 0;
       for (const { table, sessionId: column } of SESSION_CONTENT) {
         erased += (await tx.delete(table).where(eq(column, sessionId)).returning()).length;
@@ -407,6 +409,79 @@ export class AiSessionsService {
     });
   }
 
+  /**
+   * A conversation's plans, before it is erased (T-224).
+   *
+   * - **Running** — its row held by the worker, or started and waiting for a retry: the delete is
+   *   refused. Erasing it would wait on the worker, which waits on its own step writes, and would take
+   *   the only record of what ran. A row the worker holds is skipped, never waited for, so the
+   *   refusal is immediate.
+   * - **Confirmed, not started:** void, said in audit; its job then finds nothing to run.
+   * - **Ran:** its outcome goes to audit first — status, and which commands were done, failed,
+   *   running or skipped. Command names only, never arguments.
+   */
+  private async settlePlans(
+    actor: Actor,
+    sessionId: string,
+    c: AuthzContext,
+    tx: Tx,
+  ): Promise<void> {
+    // The session row is locked (find), so no plan can be added meanwhile; any plan this cannot lock
+    // is held by a running worker.
+    const all = await tx
+      .select({ id: aiPlans.id })
+      .from(aiPlans)
+      .where(eq(aiPlans.sessionId, sessionId));
+    const plans = await tx
+      .select()
+      .from(aiPlans)
+      .where(eq(aiPlans.sessionId, sessionId))
+      .for('update', { skipLocked: true });
+    if (plans.length < all.length) throw PLAN_IN_FLIGHT();
+    if (plans.length === 0) return;
+    const steps = await tx
+      .select({ planId: aiPlanSteps.planId, tool: aiPlanSteps.tool, status: aiPlanSteps.status })
+      .from(aiPlanSteps)
+      .where(
+        inArray(
+          aiPlanSteps.planId,
+          plans.map((p) => p.id),
+        ),
+      )
+      .orderBy(asc(aiPlanSteps.ordinal));
+
+    for (const plan of plans) {
+      const own = steps.filter((s) => s.planId === plan.id);
+      const started = own.some((s) => s.status !== 'PENDING');
+      const open = plan.status === 'CONFIRMED' || plan.status === 'EXECUTING';
+      if (open && started) throw PLAN_IN_FLIGHT();
+      const planEvent = async (action: string, reason: string) =>
+        this.audit.record(
+          {
+            correlationId: c.correlationId,
+            ipAddress: c.ipAddress,
+            actorId: actor.userId,
+            action,
+            resourceType: 'ai_plan',
+            resourceId: plan.id,
+            reason,
+          },
+          tx,
+        );
+      if (open) {
+        await planEvent('ai_plan.voided', 'session_deleted');
+      } else if (started) {
+        const by = (status: string) => own.filter((s) => s.status === status).map((s) => s.tool);
+        const outcome = (['done', 'failed', 'running', 'skipped'] as const)
+          .map((k) => [k, by(k.toUpperCase())] as const)
+          .filter(([, tools]) => tools.length > 0)
+          .map(([k, tools]) => `${k}=${tools.join(',')}`)
+          .join('; ');
+        await planEvent('ai_plan.erased', `${plan.status}: ${outcome}`);
+      }
+    }
+  }
+
   /** A live account, in a workspace: a session belongs to exactly one, so there must be one. */
   private async enter(actor: Actor, c: AuthzContext): Promise<void> {
     await this.authz.requireActive(actor, c);
@@ -462,6 +537,9 @@ export class AiSessionsService {
  * was lost — and exactly why it would have been the day anything else wrote it.
  */
 const lastActivityMs = sql<Date>`date_trunc('milliseconds', ${aiSessions.lastActivityAt})`;
+
+const PLAN_IN_FLIGHT = () =>
+  AppError.conflictOn('plan', 'PLAN_IN_FLIGHT', 'error.validation.ai_session.plan_in_flight');
 
 const ctx = (action: string, req: RequestContext, resourceId?: string): AuthzContext => ({
   action,

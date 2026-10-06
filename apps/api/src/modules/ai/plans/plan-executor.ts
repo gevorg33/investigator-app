@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { ActorService } from '../../../common/authz/actor.service';
 import { AuditService } from '../../../common/audit/audit.service';
 import type { Actor } from '../../../common/authz/contract';
@@ -8,12 +8,20 @@ import type { RequestContext } from '../../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../../database/database.module';
 import { aiPlanSteps, aiPlans } from '../../../database/schema';
 import { ToolRunner } from '../tools/tool-runner';
+import { EXECUTION_DEADLINE_MS } from './ai-plans.service';
 import { digestObservation, planHash } from './plan-hash';
 
 type PlanRow = typeof aiPlans.$inferSelect;
 type StepRow = typeof aiPlanSteps.$inferSelect;
 
 export type PlanOutcome = 'completed' | 'failed' | 'invalidated' | 'gone' | 'not_runnable';
+
+/**
+ * How long a run waits for its plan row (T-224). Anything else holding it — a session being deleted, a
+ * member's departure — finishes in milliseconds; waiting longer only hides a cycle PostgreSQL cannot
+ * see, because half of it is this run's own step writes on another connection.
+ */
+const PLAN_LOCK_TIMEOUT = '5s';
 
 /** An error's code as a plan or a step records it: lower-case, never the message. */
 const codeOf = (e: AppError) => e.code.toLowerCase();
@@ -58,6 +66,8 @@ export class PlanExecutor {
   ) {}
 
   async run(planId: string, tx: Tx, req: RequestContext): Promise<PlanOutcome> {
+    // A lock timeout is not an AppError: the job is retried, and finds the row free — or gone.
+    await tx.execute(sql.raw(`SET LOCAL lock_timeout = '${PLAN_LOCK_TIMEOUT}'`));
     const [plan] = await tx.select().from(aiPlans).where(eq(aiPlans.id, planId)).for('update');
     // Deleted with its session, or voided since: there is nothing to run, and nothing to retry.
     if (plan === undefined) return 'gone';
@@ -74,6 +84,12 @@ export class PlanExecutor {
       started
         ? this.fail(tx, plan, steps, reason, req)
         : this.invalidate(tx, plan, steps, reason, req);
+
+    // Confirmed, then not started in time — the worker was down, or queued behind others. What the
+    // person confirmed may have moved on; they confirm again (T-224). A started plan finishes.
+    if (!started && Date.now() - plan.confirmedAt!.getTime() > EXECUTION_DEADLINE_MS) {
+      return refuse('confirmation_stale');
+    }
 
     if (planHash({ id: plan.id, sessionId: plan.sessionId, steps }) !== plan.planHash) {
       return refuse('hash_mismatch');
@@ -129,6 +145,28 @@ export class PlanExecutor {
       .where(eq(aiPlans.id, planId));
     await this.record(plan, 'ai_plan.completed', undefined, req, tx);
     return 'completed';
+  }
+
+  /**
+   * The job that runs this plan failed for good (T-224): end the plan, saying how far it got. Nothing
+   * ran: CANCELLED, its confirmation INVALIDATED. Something ran: FAILED — and a step left RUNNING
+   * stays RUNNING, which is the honest "may have taken effect". Runs in the system context, from the
+   * dead-letter hook. A plan gone with its session, or already ended, is left as it is; EXECUTING is
+   * never committed on its own (it commits with the run's end), so CONFIRMED is the only open state.
+   */
+  async abandon(planId: string, tx: Tx, req: RequestContext): Promise<void> {
+    const [plan] = await tx.select().from(aiPlans).where(eq(aiPlans.id, planId)).for('update');
+    if (plan?.status !== 'CONFIRMED') return;
+    const steps = await tx
+      .select()
+      .from(aiPlanSteps)
+      .where(eq(aiPlanSteps.planId, planId))
+      .orderBy(asc(aiPlanSteps.ordinal));
+    if (steps.some((s) => s.status !== 'PENDING')) {
+      await this.fail(tx, plan, steps, 'infrastructure_failed', req);
+    } else {
+      await this.invalidate(tx, plan, steps, 'infrastructure_failed', req);
+    }
   }
 
   /**

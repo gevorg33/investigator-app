@@ -48,7 +48,7 @@ was about may have moved on. Expiry is derived from `expires_at`, never stored.
 
 | | |
 |---|---|
-| `GET …/plans` | The session's plans, newest first, at most 20. `?open=true`: only those still awaiting an answer — what a returning client shows, after a closed browser or a restarted app |
+| `GET …/plans` | The session's plans, newest first, at most 20. `?open=true`: only those not yet ended — proposals awaiting an answer, and confirmed plans until they finish, so a stuck one stays in view (T-224). What a returning client shows, after a closed browser or a restarted app |
 | `GET …/plans/:planId` | One plan, its steps and their progress |
 | `POST …/plans/:planId/confirm` `{ planHash }` | The person's yes, to exactly the plan with that hash |
 | `POST …/plans/:planId/decline` | The person's no, to a plan still awaiting one |
@@ -80,12 +80,15 @@ Then `CONFIRMED`, with the time and the role the person had narrowed to (`confir
 ## Running — `PlanExecutor`, in the worker
 
 `PlanConfirmedTrigger` hears `ai.plan.confirmed` in the producer's context — the person who
-confirmed — and queues `ai.plan.execute`, keyed `ai-plan-<id>`, on the `events` queue. The job
+confirmed — and queues `ai.plan.execute`, keyed `ai-plan-<id>`, on the `events` queue. The confirming
+request's correlation id rides on the event and the job, so the confirmation, the plan's end and every
+step's audit row share it (T-212); a job queued before that runs under its own id. The job
 runner re-reads that person's account, membership and workspace (a removed member's job is refused,
 `context_refused`) and runs `ExecutePlanHandler` in their context:
 
 ```
-plan locked in the job's transaction → still CONFIRMED (or EXECUTING) — otherwise nothing to do
+plan locked in the job's transaction (lock_timeout 5s) → still CONFIRMED — otherwise nothing to do
+  → if no step has started: confirmed within the last 15 minutes else: confirmation_stale
   → steps still hash to plan_hash                         else: hash_mismatch
   → the person read now (ActorService.forJob)            else: account_refused
   → in the role they confirmed as, if they narrowed       else: role_revoked — never wider
@@ -115,16 +118,46 @@ steps, which survive, never from its status. A started plan is not observed agai
 steps may have moved the state it acts on, and that is not a change the person did not see. Two
 deliveries at once are one run: the second waits on the claim and is a duplicate.
 
+**Every plan ends (T-224).**
+- **Execution deadline.** A confirmed plan the worker has not started 15 minutes after confirmation
+  (`EXECUTION_DEADLINE_MS`) is invalidated as `confirmation_stale`, and the person confirms again: what
+  they confirmed may have moved on. A started plan finishes whenever its worker returns.
+- **A job that fails for good.** It is dead-lettered after five attempts, or at once when its context
+  is refused. Its handler's `onDeadLetter` then ends the plan, in the audited system context: nothing
+  ran → `CANCELLED` / `INVALIDATED`; something ran → `FAILED`. Either way the reason is
+  `infrastructure_failed`. PENDING steps become SKIPPED; a step left RUNNING stays RUNNING — it may have
+  taken effect. A later replay (T-168) finds nothing to run.
+- **Lock timeout.** The run waits at most 5 seconds for its plan row; past that the job is retried. A
+  cycle through the run's own step writes, on another connection, is one PostgreSQL cannot see.
+
+Telling the person how it ended is T-226.
+
 **No edges.** Steps run in order and do not depend on each other. Dependencies — a step that consumes
 another's output — are T-096's DAG, over these same rows.
 
 ## When a member leaves the workspace
 
-`archive_departed_member_sessions` (migration 0028, extended in 0042) archives the person's sessions
-in that workspace and **voids their plans there that have not started** — `PROPOSED` or `CONFIRMED`
-becomes `CANCELLED` / `VOIDED` (`member_left`) — whoever made the change. One already executing runs
-on a job whose context the runner re-reads, and a removed member's is refused. `rls.spec.ts` holds
-the function to exactly those two statements.
+`archive_departed_member_sessions` (migration 0028, extended in 0042 and corrected in 0043, T-224)
+archives the person's sessions in that workspace, and ends their open plans there, whoever made the
+change:
+- **Not started** (no step left PENDING): `CANCELLED` / `VOIDED`, `member_left`.
+- **Started** — a step ran, and the plan still reads `CONFIRMED` because a worker died part-way:
+  `FAILED`, `member_left`, by way of `EXECUTING`. Its never-run steps become SKIPPED, and a RUNNING step
+  stays RUNNING. 0042 voided these too, which reported a half-run plan as never run.
+
+A plan running at that moment holds its row; the departure waits for the run to end and then leaves
+it as it ended. `rls.spec.ts` holds the function to exactly these statements.
+
+## Deleting the conversation (T-224)
+
+`AiSessionsService.delete` settles the session's plans before it erases them:
+- **Running** — its row held by the worker (taken with SKIP LOCKED, so never waited for), or started
+  and waiting for a retry: the delete is refused, `409 PLAN_IN_FLIGHT`
+  (`error.validation.ai_session.plan_in_flight`). Erasing it would wait on the worker and take the only
+  record of what ran.
+- **Confirmed, not started:** audited `ai_plan.voided`, `session_deleted`; its job finds nothing.
+- **Ran:** audited `ai_plan.erased` with its status and the commands done, failed, running or skipped
+  — command names only, never arguments.
 
 ## Kept by the database
 

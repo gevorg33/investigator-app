@@ -171,6 +171,40 @@ describe('the job queue', () => {
       ]);
     });
 
+    it('hands the kept letter to its handler, and stops the job even when that fails (T-224)', async () => {
+      const data = envelope();
+      const seen: unknown[] = [];
+      const process = processorFor(
+        {
+          run: async () => Promise.reject(new PermanentJobError('context_refused')),
+          deadLettered: async (d: unknown) => {
+            // The letter is already kept when the handler hears of it.
+            seen.push([d, (await lettersFor(data.jobId)).length]);
+            throw new Error('the hook failed');
+          },
+        } as unknown as JobRunner,
+        deadLetters,
+        'events',
+      );
+      await expect(process(jobOf(data, 0))).rejects.toBeInstanceOf(UnrecoverableError);
+      expect(seen).toEqual([[data, 1]]);
+    });
+
+    it('does not hand a job that will be retried to the dead-letter hook', async () => {
+      const data = envelope();
+      const seen: unknown[] = [];
+      const process = processorFor(
+        {
+          run: async () => Promise.reject(new Error('lock timeout')),
+          deadLettered: async (d: unknown) => void seen.push(d),
+        } as unknown as JobRunner,
+        deadLetters,
+        'events',
+      );
+      await expect(process(jobOf(data, 0))).rejects.toThrow('lock timeout');
+      expect(seen).toEqual([]);
+    });
+
     it('counts a job with no attempts set as having had its one', async () => {
       const data = envelope();
       const process = processorFor(

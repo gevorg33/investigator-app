@@ -12,6 +12,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ExecutePlan {
   readonly planId: string;
+  /** The confirming request's id (T-212). Absent from a job queued before it. */
+  readonly correlationId?: string;
 }
 
 /**
@@ -25,8 +27,14 @@ export class PlanConfirmedTrigger implements EventSubscriber {
   constructor(private readonly queue: JobQueue) {}
 
   async handle(event: OutboxEvent): Promise<void> {
-    const { planId } = event.data as ExecutePlan;
-    await this.queue.enqueue('events', envelopeFor(EXECUTE_PLAN, `ai-plan-${planId}`, { planId }));
+    const { planId, correlationId } = event.data as ExecutePlan;
+    await this.queue.enqueue(
+      'events',
+      envelopeFor(EXECUTE_PLAN, `ai-plan-${planId}`, {
+        planId,
+        ...(correlationId !== undefined && { correlationId }),
+      }),
+    );
   }
 }
 
@@ -43,12 +51,36 @@ export class ExecutePlanHandler implements JobHandler<ExecutePlan> {
   constructor(private readonly executor: PlanExecutor) {}
 
   parse(payload: unknown): ExecutePlan {
-    const planId = (payload as Record<string, unknown> | null)?.['planId'];
+    const p = payload as Record<string, unknown> | null;
+    const planId = p?.['planId'];
+    const correlationId = p?.['correlationId'];
     if (typeof planId !== 'string' || !UUID.test(planId)) throw new Error('not a plan');
-    return { planId };
+    if (correlationId === undefined) return { planId };
+    if (
+      typeof correlationId !== 'string' ||
+      correlationId.length < 1 ||
+      correlationId.length > 200
+    ) {
+      throw new Error('not a plan');
+    }
+    return { planId, correlationId };
   }
 
+  /** Under the confirming request's id; a job from before T-212 has only its own. */
   async run(payload: ExecutePlan, tx: Tx, envelope: JobEnvelope<ExecutePlan>): Promise<void> {
-    await this.executor.run(payload.planId, tx, { correlationId: envelope.jobId });
+    await this.executor.run(payload.planId, tx, {
+      correlationId: payload.correlationId ?? envelope.jobId,
+    });
+  }
+
+  /** Failed for good: the plan ends, saying how far it got — never left CONFIRMED (T-224). */
+  async onDeadLetter(
+    payload: ExecutePlan,
+    tx: Tx,
+    envelope: JobEnvelope<ExecutePlan>,
+  ): Promise<void> {
+    await this.executor.abandon(payload.planId, tx, {
+      correlationId: payload.correlationId ?? envelope.jobId,
+    });
   }
 }
