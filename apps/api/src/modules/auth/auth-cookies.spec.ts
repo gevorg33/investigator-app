@@ -155,8 +155,14 @@ describe('cookies the API sets (T-025)', () => {
   );
 
   it('scopes the session the same whatever the domain map holds — a new site cannot widen it', async () => {
+    // The scope, and Max-Age — never the raw line, whose Expires is a wall-clock time: two sign-ins
+    // a second apart differ there, and that flaked the gate (T-209).
     const attributesOf = async (env: Record<string, string | undefined>) =>
-      (await everyCookie({ NODE_ENV: 'production', ...env }))['login']!;
+      (await everyCookie({ NODE_ENV: 'production', ...env }))['login']!.map((c) => ({
+        name: c.name,
+        attributes: c.attributes,
+        maxAge: /;\s*Max-Age=(\d+)/i.exec(c.line)?.[1],
+      }));
     const local = await attributesOf({ DOMAIN: undefined });
     const deployed = await attributesOf({ DOMAIN: 'example.test' });
     const moved = await attributesOf({
@@ -164,6 +170,14 @@ describe('cookies the API sets (T-025)', () => {
       ADMIN_HOST: 'staff.example.test',
       NEWS_HOST: 'letters.example.test',
     });
+    // Pinned, so equality cannot pass vacuously: host-only, Path=/, Secure, SameSite=Strict.
+    expect(local).toEqual([
+      {
+        name: SESSION,
+        attributes: ['httponly', 'path=/', 'samesite=strict', 'secure'],
+        maxAge: String(30 * 24 * 60 * 60),
+      },
+    ]);
     expect(deployed).toEqual(local);
     expect(moved).toEqual(local);
   });

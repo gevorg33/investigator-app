@@ -9322,7 +9322,7 @@ docker compose -f infrastructure/compose/server.yml config --quiet
 ---
 
 ### T-209 — The session-cookie scope spec compares expiry times to the second
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07; the scope test compares name, attributes and Max-Age, never the raw line, and pins the expected scope; a mutation adding `Domain` fails it. It flaked PR #113's CI the same way
 - **Priority:** P3 — a flaky test in the coverage gate, not a product fault
 - **Depends on:** —
 - **Risk:** LOW
@@ -9339,8 +9339,8 @@ no `Domain` — and it already parses those as `attributes`. Compare the attribu
 rather than `Expires`; the expiry itself is another test's to hold.
 
 **Acceptance criteria**
-- [ ] The test asserts the scoping attributes and `Max-Age`, not the wall-clock `Expires`
-- [ ] It still fails if a domain map could add `Domain=` or change `Path`, `Secure` or `SameSite`
+- [x] The test asserts the scoping attributes and `Max-Age`, not the wall-clock `Expires`
+- [x] It still fails if a domain map could add `Domain=` or change `Path`, `Secure` or `SameSite`
 
 **Validation**
 ```bash
