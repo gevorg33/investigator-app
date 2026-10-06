@@ -9,7 +9,7 @@ Builder's choice (T-046), never a trimmed session.
 | | |
 |---|---|
 | `ai_sessions` | owner (workspace + user), optional title, `next_sequence`, `last_activity_at`, `archived_at`, `deleted_at` |
-| `ai_messages` | `sequence` unique per session, role, kind (`TEXT` / `TOOL_CALL` / `TOOL_RESULT`), content, structured `event`, `metadata` |
+| `ai_messages` | `sequence` unique per session, role, kind (`TEXT` / `TOOL_CALL` / `TOOL_RESULT` / `PLAN_OUTCOME` — the last written only by the database when a plan ends, `ai-plans.md`), content, structured `event`, `metadata` |
 
 **Lifecycle is derived** (`ai-sessions.policy.ts`): DELETED if `deleted_at`, ARCHIVED if
 `archived_at`, IDLE after 30 minutes without a message, ACTIVE otherwise. Nothing stores it, so it

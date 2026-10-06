@@ -1,6 +1,17 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { assignmentPlan, CATEGORY_OF, hrefFor, missionPlan, NOTIFICATION_KINDS } from './kinds';
+import {
+  assistantHref,
+  assistantPlanKind,
+  assignmentPlan,
+  CATEGORY_OF,
+  EMAILED_KINDS,
+  hrefFor,
+  IN_APP_KINDS,
+  isEmailed,
+  missionPlan,
+  NOTIFICATION_KINDS,
+} from './kinds';
 import { readUnsubscribeToken, unsubscribeToken } from './unsubscribe';
 
 /** What each status change tells whom (T-036) — and what it tells nobody. */
@@ -45,10 +56,29 @@ describe('what a status change means', () => {
     expect(hrefFor('investigator', 'm-1')).toBe('/missions');
   });
 
-  it('files every kind under a category a person can stop', () => {
-    expect(NOTIFICATION_KINDS.map((k) => CATEGORY_OF[k])).toEqual(
-      NOTIFICATION_KINDS.map(() => 'activity'),
-    );
+  it('files every kind that emails under a category a person can stop', () => {
+    expect(EMAILED_KINDS.map((k) => CATEGORY_OF[k])).toEqual(EMAILED_KINDS.map(() => 'activity'));
+    expect(EMAILED_KINDS.every(isEmailed)).toBe(true);
+  });
+
+  it('keeps an assistant plan’s ending in the centre, never in an email (T-226)', () => {
+    expect(NOTIFICATION_KINDS).toEqual([...EMAILED_KINDS, ...IN_APP_KINDS]);
+    expect(IN_APP_KINDS.some(isEmailed)).toBe(false);
+  });
+
+  it.each([
+    [{ status: 'FAILED', confirmedAt: new Date() }, 'assistant_plan_failed'],
+    [{ status: 'CANCELLED', confirmedAt: new Date() }, 'assistant_plan_voided'],
+    // What was asked happened; or the person said no, or never said yes.
+    [{ status: 'COMPLETED', confirmedAt: new Date() }, undefined],
+    [{ status: 'CANCELLED', confirmedAt: null }, undefined],
+    [{ status: 'EXECUTING', confirmedAt: new Date() }, undefined],
+  ])('an assistant plan ending %j tells its person %s', (plan, kind) => {
+    expect(assistantPlanKind(plan)).toBe(kind);
+  });
+
+  it('leads an assistant plan’s notification to its conversation', () => {
+    expect(assistantHref('s-1')).toBe('/?assistant=s-1');
   });
 });
 

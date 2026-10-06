@@ -36,6 +36,7 @@ import {
   SendEmailHandler,
   type Notice,
 } from './notification-jobs';
+import { PLAN_ENDED } from '../ai/plans/ai-plans.service';
 import { readUnsubscribeToken } from './unsubscribe';
 
 /**
@@ -97,6 +98,45 @@ describe('notification delivery', () => {
     data,
   });
   const fanOut = (e: OutboxEvent) => runner.run(systemEnvelope(FAN_OUT, e.eventId, e));
+  /**
+   * A plan in a fresh conversation of `who`'s, ended by direct writes as `to` says — the ending is
+   * what the fan-out reads, never the event.
+   */
+  const endedPlan = async (
+    who: SeededGraph['customer'],
+    to: 'COMPLETED' | 'FAILED' | 'VOIDED' | 'DECLINED',
+  ) => {
+    const [session] = await ownerSql<{ id: string }[]>`
+      INSERT INTO ai_sessions (tenant_id, user_id) VALUES (${who.tenantId}, ${who.userId}) RETURNING id`;
+    const [plan] = await ownerSql<{ id: string }[]>`
+      INSERT INTO ai_plans (session_id, plan_hash, expires_at)
+      VALUES (${session!.id}, repeat('a', 64), now() + interval '1 day') RETURNING id`;
+    const set = (fields: string) =>
+      ownerSql.unsafe(`UPDATE ai_plans SET ${fields} WHERE id = '${plan!.id}'`);
+    if (to === 'DECLINED') {
+      await set(
+        "status = 'CANCELLED', confirmation_status = 'DECLINED', reason = 'declined', finished_at = now()",
+      );
+    } else {
+      await set("status = 'CONFIRMED', confirmation_status = 'CONFIRMED', confirmed_at = now()");
+      if (to === 'VOIDED') {
+        await set(
+          "status = 'CANCELLED', confirmation_status = 'INVALIDATED', reason = 'state_changed', finished_at = now()",
+        );
+      } else {
+        await set("status = 'EXECUTING'");
+        await set(`status = '${to}', finished_at = now()`);
+      }
+    }
+    const e: OutboxEvent = {
+      eventId: randomUUID(),
+      eventType: PLAN_ENDED,
+      aggregateType: 'ai_plan',
+      aggregateId: plan!.id,
+      data: { to },
+    };
+    return { sessionId: session!.id, planId: plan!.id, event: e };
+  };
   const notice = (over: Partial<Notice> = {}): Notice => ({
     eventId: randomUUID(),
     kind: 'mission_published',
@@ -209,6 +249,75 @@ describe('notification delivery', () => {
       expect(queued).toEqual([]);
     });
 
+    describe('an assistant plan that ended (T-226)', () => {
+      it.each([
+        ['FAILED', 'assistant_plan_failed'],
+        ['VOIDED', 'assistant_plan_voided'],
+      ] as const)(
+        'tells its own person a plan %s, in its workspace, leading to the conversation',
+        async (to, kind) => {
+          const p = await endedPlan(graph.customer, to);
+          await fanOut(p.event);
+          expect(queued).toEqual([
+            {
+              queue: 'notifications',
+              envelope: envelopeAs(
+                as(graph.customer),
+                DELIVER,
+                `${p.event.eventId}-${graph.customer.userId}`,
+                {
+                  eventId: p.event.eventId,
+                  kind,
+                  subjectType: 'ai_plan',
+                  subjectId: p.planId,
+                  href: `/?assistant=${p.sessionId}`,
+                },
+              ),
+            },
+          ]);
+        },
+      );
+
+      it('reads the ending from the plan, not the event: a completed or declined plan tells nobody', async () => {
+        for (const to of ['COMPLETED', 'DECLINED'] as const) {
+          const p = await endedPlan(graph.customer, to);
+          // An event claiming otherwise changes nothing.
+          await fanOut({ ...p.event, data: { to: 'FAILED' } });
+        }
+        expect(queued).toEqual([]);
+      });
+
+      it('tells nobody of a plan erased with its conversation', async () => {
+        await fanOut({
+          eventId: randomUUID(),
+          eventType: PLAN_ENDED,
+          aggregateType: 'ai_plan',
+          aggregateId: randomUUID(),
+          data: { to: 'FAILED' },
+        });
+        expect(queued).toEqual([]);
+      });
+
+      it('fills the centre and queues no email, whatever the person chose for email', async () => {
+        // The graph's supplier has activity email on.
+        const p = await endedPlan(graph.supplier, 'FAILED');
+        const n = notice({
+          eventId: p.event.eventId,
+          kind: 'assistant_plan_failed',
+          subjectType: 'ai_plan',
+          subjectId: p.planId,
+          href: `/?assistant=${p.sessionId}`,
+        });
+        await runner.run(envelopeAs(as(graph.supplier), DELIVER, `${n.eventId}-x`, n));
+        expect(queued).toEqual([]);
+        expect(
+          (await centreOf(graph.supplier)).filter((r) => r.eventId === n.eventId),
+        ).toMatchObject([
+          { kind: 'assistant_plan_failed', subjectType: 'ai_plan', subjectId: p.planId },
+        ]);
+      });
+    });
+
     it('is asked for by a trigger, keyed on the event, as the system', async () => {
       const e = event('mission.status_changed', { from: 'UNDER_REVIEW', to: 'QUOTED' });
       await new NotificationTrigger('mission.status_changed', queue).handle(e);
@@ -311,6 +420,8 @@ describe('notification delivery', () => {
     [DELIVER, () => ({ ...notice(), href: 'https://evil.example' })],
     [DELIVER, () => ({ ...notice(), kind: 'marketing' })],
     [SEND_EMAIL, () => undefined],
+    // A kind that stays in the centre is never mailed, even if an email job names it.
+    [SEND_EMAIL, () => notice({ kind: 'assistant_plan_failed' })],
   ])('refuses a %s it cannot trust, for good', async (command, payloadOf) => {
     const payload = payloadOf();
     const job =

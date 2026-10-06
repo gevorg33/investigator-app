@@ -7,10 +7,11 @@ import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message';
 import Link from 'next/link';
-import { discoveryReply, knowledgeReply, type AiMessage } from '@/lib/api/assistant';
+import { discoveryReply, knowledgeReply, planOutcome, type AiMessage } from '@/lib/api/assistant';
 import { slug } from '@/lib/slug';
 import { useAssistant } from './assistant-provider';
 import { DiscoveryReply } from './discovery-reply';
+import { PlanOutcomeNote } from './plan-outcome';
 
 /** A tool's arguments as name and value, whatever shape they came in. */
 const entriesOf = (value: unknown): Array<[string, unknown]> =>
@@ -36,8 +37,9 @@ export function Question({ text, children }: { text: string; children?: ReactNod
 
 /**
  * One stored message, by what it is (ai-session-context): the person's question, the assistant's
- * words with the sources it used, "not covered" as a state of its own, and a tool call or result
- * as a structured block — which tool, with what — never as a sentence about it.
+ * words with the sources it used, "not covered" as a state of its own, a tool call or result as a
+ * structured block — which tool, with what — never as a sentence about it, and how a plan ended in
+ * the reader's own words, from its steps.
  */
 export function MessageItem({
   message,
@@ -49,6 +51,9 @@ export function MessageItem({
 }) {
   const t = useTranslations('assistant');
   const { closeIfCovering } = useAssistant();
+
+  const outcome = planOutcome(message);
+  if (outcome !== null) return <PlanOutcomeNote outcome={outcome} />;
 
   if (message.kind !== 'TEXT') {
     // The database holds a tool event to its shape (`ai_messages_shape`): a tool name, always.

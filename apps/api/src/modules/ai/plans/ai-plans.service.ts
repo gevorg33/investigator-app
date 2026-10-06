@@ -27,6 +27,11 @@ export const EXECUTION_DEADLINE_MS = 15 * 60 * 1000;
 export const MAX_STEPS = 10;
 /** The event a confirmation writes, in its transaction; the worker runs the plan from it. */
 export const PLAN_CONFIRMED = 'ai.plan.confirmed';
+/**
+ * The event a plan the worker was running writes when it ends without doing what was asked — FAILED,
+ * or voided before it ran — in the transaction that ends it. Its person is notified from it (T-226).
+ */
+export const PLAN_ENDED = 'ai.plan.ended';
 
 export type ConfirmationView = PlanRow['confirmationStatus'] | 'EXPIRED';
 

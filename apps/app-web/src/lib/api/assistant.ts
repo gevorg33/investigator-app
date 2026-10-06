@@ -24,12 +24,33 @@ export interface AiMessage {
   id: string;
   sequence: number;
   role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
-  kind: 'TEXT' | 'TOOL_CALL' | 'TOOL_RESULT';
+  kind: 'TEXT' | 'TOOL_CALL' | 'TOOL_RESULT' | 'PLAN_OUTCOME';
   content: string | null;
   event: { tool?: unknown; arguments?: unknown; resultId?: unknown } | null;
   metadata: Record<string, unknown>;
   createdAt: string;
 }
+
+/**
+ * How a plan ended (T-226), as the database wrote it from the plan's step rows when it ended — never a
+ * model's words. A step that never ran reads SKIPPED; one left RUNNING may have taken effect.
+ */
+export interface PlanOutcome {
+  planId: string;
+  outcome: 'completed' | 'partial' | 'failed' | 'not_run' | 'declined';
+  status: 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  reason: string | null;
+  /** A FAILED step always carries its code (`ai_plan_steps_progress`); no other step does. */
+  steps: Array<
+    { ordinal: number; tool: string } & (
+      { status: 'FAILED'; error: string } | { status: 'DONE' | 'SKIPPED' | 'RUNNING'; error: null }
+    )
+  >;
+}
+
+/** A PLAN_OUTCOME message's event — held to its shape by the database (`ai_messages_shape`). */
+export const planOutcome = (message: AiMessage): PlanOutcome | null =>
+  message.kind === 'PLAN_OUTCOME' ? (message.event as unknown as PlanOutcome) : null;
 
 /** How far answering has got (T-056, T-059). */
 export type TurnStep =

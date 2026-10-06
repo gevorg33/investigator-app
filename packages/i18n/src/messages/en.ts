@@ -50,6 +50,8 @@ export const en = {
       assignment_accepted: 'Your investigator accepted the assignment',
       assignment_declined: 'Your investigator declined the assignment',
       assignment_report_ready: 'Your report is ready',
+      assistant_plan_failed: 'An action the assistant was taking for you failed',
+      assistant_plan_voided: 'An action you confirmed did not run',
     },
   },
   home: {
@@ -1017,6 +1019,35 @@ export const en = {
     tool: {
       call: 'Used {tool}',
       result: 'Result from {tool}',
+    },
+    outcome: {
+      completed: 'Done. Every step of the plan was carried out.',
+      partial:
+        'The plan stopped part-way. What was done stays done — nothing is undone automatically.',
+      failed: 'The plan failed before it changed anything.',
+      not_run: 'The plan did not run. Nothing was changed.',
+      declined: 'You declined the plan. Nothing was changed.',
+      steps: 'What happened, step by step',
+      step: {
+        done: 'Done',
+        failed: 'Failed ({code})',
+        skipped: 'Not run',
+        running: 'Started, and may have taken effect — its result is unknown',
+      },
+      reason: {
+        confirmation_stale:
+          'It waited too long to start after you confirmed. Ask again to confirm it afresh.',
+        hash_mismatch:
+          'The plan changed after it was shown to you, so your confirmation did not cover it.',
+        state_changed:
+          'What it would act on changed after you confirmed. Ask again to see it as it is now.',
+        recheck: 'What it would act on could not be checked again before it ran.',
+        account_refused: 'Your account could not act when the plan was due to run.',
+        role_revoked: 'You no longer had the role you confirmed it as.',
+        tool_unavailable: 'An action in the plan is no longer available.',
+        member_left: 'You left the workspace it was running in.',
+        infrastructure_failed: 'It could not be finished because of a problem on our side.',
+      },
     },
     turn: {
       stopped: 'Stopped before an answer.',

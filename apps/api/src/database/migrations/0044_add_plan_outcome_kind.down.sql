@@ -1,0 +1,3 @@
+-- Reverses 0044_add_plan_outcome_kind, as far as PostgreSQL allows: an enum value cannot be removed.
+-- 0045's down erases every message of this kind and restores the shape that refuses it, so the value
+-- stays, unused and unwritable.

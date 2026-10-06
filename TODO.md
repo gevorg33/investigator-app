@@ -3367,7 +3367,7 @@ model proposal and a real mutation.
 - [ ] Irreversible or money-adjacent actions state the consequence plainly before confirming
 - [ ] The confirmation token never reaches the model; the UI never auto-confirms
 - [ ] Mobile: full-screen, never a sheet a user can dismiss by accident
-- [ ] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`)
+- [ ] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`); and how a plan ends — the conversation says what was done step by step, what failed and what never ran, nothing done is undone automatically, and a plan that fails or is voided after confirming also notifies (from T-226, `ai-plans.md`)
 - [ ] T-225's preview lines beside the exact arguments; ids shown with labels, never bare; values from content the model read marked with their source (review 2026-10-06)
 - [ ] Act-mode clarifying questions as option chips of at least 44px; each step's T-210 outcome shown; plans over three steps collapse below `md` (review 2026-10-06)
 - [ ] States read from step rows: EXECUTING, COMPLETED, partial, FAILED, EXPIRED, VOIDED, superseded; confirm disabled after the first tap; progress by polling (review 2026-10-06)
@@ -9864,7 +9864,7 @@ pnpm --filter api test ai-plans ai-preview
 ---
 
 ### T-226 — The outcome reaches the person (P-15)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07. Migrations 0044–0045: `record_ai_plan_outcome` writes one `PLAN_OUTCOME` message per ended plan from its step rows, whoever ends it; `PlanExecutor` writes `ai.plan.ended`, fanned out as the in-app-only `assistant_plan_failed` / `assistant_plan_voided`; app-web renders the outcome from `assistant.outcome.*` (en/ru/hy). Polling UI stays with T-058; the notification's deep link is T-231
 - **Priority:** P0 for Release 1
 - **Depends on:** T-048, T-224, T-036
 - **Risk:** MEDIUM
@@ -9883,8 +9883,8 @@ it went.
 - The client polls while the plan runs.
 
 **Acceptance criteria**
-- [ ] A FAILED or partial plan never renders as success (spec)
-- [ ] A worker killed between the last step and the status write yields exactly one message
+- [x] A FAILED or partial plan never renders as success (spec) — `ai-plans.outcome.spec.ts` (direct writes, every step mix; mutation of the rule turns 12 tests red) and `assistant.spec.tsx`
+- [x] A worker killed between the last step and the status write yields exactly one message — killed after the last step's effect, and after the status write before its commit
 
 **Validation**
 ```bash
@@ -10007,6 +10007,89 @@ pnpm --filter api test ai-settings
 **Validation**
 ```bash
 pnpm --filter api test ai-triage
+```
+
+### T-231 — Open the assistant on the conversation a notification names
+- **Status:** TODO
+- **Priority:** P2
+- **Depends on:** T-226, T-057
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/**, apps/app-web/src/components/notifications/**
+
+**Description**
+From T-226. A plan that fails, or is voided after the person confirmed it, notifies them with
+`href: /?assistant=<sessionId>` (`notifications/kinds.ts`, `assistantHref`). The assistant is a panel,
+not a route, and app-web does not read that parameter yet: the notification lands on the home page with
+the assistant closed. Read `?assistant=` on load and when a notification is opened. Open the panel on
+that conversation through the same path as choosing it from the list, then drop the parameter from the
+URL. A conversation that is gone, or belongs to another workspace, reads like any unknown one
+(`assistant.notice.gone`).
+
+**Acceptance criteria**
+- [ ] Opening an `assistant_plan_failed` notification opens the assistant on that conversation, with
+      its PLAN_OUTCOME message in view
+- [ ] A deleted or foreign conversation shows the "no longer available" notice, never an error page
+- [ ] Phone and desktop: the panel opens as it does from the shell (visual QA at 375 / 768 / 1440)
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant notifications
+```
+
+### T-232 — The notifications end-to-end spec through Redis times out in some orders
+- **Status:** TODO
+- **Priority:** P1 — a red CI run that is not about the change under review
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/notifications/notifications.jobs.spec.ts, apps/api/test/**
+
+**Description**
+Found during T-226. `notifications end to end, through Redis › turns a published mission into one
+notification and one email for its customer` times out at 15 s, waiting for a mail that never comes, in
+some orders. On dev's code (T-226's changes stashed), `vitest run notifications.jobs.spec.ts
+--sequence.shuffle` failed 4 of 6 runs; with them, 2 of 6. In default order it failed once in about 13
+runs of `pnpm --filter api test ai-plans notifications`. Find what the test depends on — the shared
+graph, a queue prefix, an unpublished event left by another test, the worker's start — and remove the
+dependency. Do not raise the timeout: the test waits for an event, not for time.
+
+**Acceptance criteria**
+- [ ] The cause is named in the fix's commit
+- [ ] 20 consecutive `--sequence.shuffle` runs of the file pass, and the suite passes in reverse order
+
+**Validation**
+```bash
+cd apps/api && for i in $(seq 1 20); do pnpm exec vitest run src/modules/notifications/notifications.jobs.spec.ts --sequence.shuffle || exit 1; done
+```
+
+### T-233 — Signing in before verifying the email shows "Application error"
+- **Status:** TODO
+- **Priority:** P1 — the first thing a new person may do
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/session/start/**
+
+**Description**
+Found during T-226's browser check (2026-10-07). An account still `PENDING_VERIFICATION` may sign in
+(by design, `auth.service.ts`: login admits it, and each feature gates on `requireActive`). The app's
+`/session/start` route then reads `GET /workspaces`. That is refused `403 FORBIDDEN`
+(`authz.denied.workspace.list`, `account_not_active`), the route throws, and the person sees Next's
+"Application error: a server-side exception has occurred". Reproduce by signing up, then signing in
+before clicking the link. Send an unverified person to `/check-email` (or a page saying their address
+needs confirming, with resend), never an error page.
+
+**Acceptance criteria**
+- [ ] Signing in unverified lands on a page that says to confirm the address, with a way to resend
+- [ ] No server exception in app-web's log for that path; an e2e journey covers it
+
+**Validation**
+```bash
+pnpm --filter app-web test session
 ```
 
 ---

@@ -6,9 +6,9 @@ import type { Actor } from '../../../common/authz/contract';
 import { AppError } from '../../../common/errors/app-error';
 import type { RequestContext } from '../../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../../database/database.module';
-import { aiPlanSteps, aiPlans } from '../../../database/schema';
+import { aiPlanSteps, aiPlans, outboxEvents } from '../../../database/schema';
 import { ToolRunner } from '../tools/tool-runner';
-import { EXECUTION_DEADLINE_MS } from './ai-plans.service';
+import { EXECUTION_DEADLINE_MS, PLAN_ENDED } from './ai-plans.service';
 import { digestObservation, planHash } from './plan-hash';
 
 type PlanRow = typeof aiPlans.$inferSelect;
@@ -55,6 +55,11 @@ const codeOf = (e: AppError) => e.code.toLowerCase();
  * **Ends honestly.** Refused before any step ran, the plan is CANCELLED and its confirmation
  * INVALIDATED — nothing happened, and a fresh confirmation is needed. Refused after, it is FAILED:
  * some of it happened, and its steps say which.
+ *
+ * **And says so** (T-226). Whatever the ending, the database writes the conversation's PLAN_OUTCOME
+ * message from the step rows in the transaction that sets it (migration 0045). An ending that is not
+ * what the person asked for also writes `ai.plan.ended`, from which they are notified: they confirmed,
+ * walked away, and may not be watching.
  */
 @Injectable()
 export class PlanExecutor {
@@ -208,6 +213,7 @@ export class PlanExecutor {
       steps,
       { status: 'CANCELLED', confirmationStatus: 'INVALIDATED' },
       reason,
+      req,
     );
     await this.record(plan, 'ai_plan.invalidated', reason, req, tx);
     return 'invalidated';
@@ -222,7 +228,7 @@ export class PlanExecutor {
     req: RequestContext,
   ): Promise<PlanOutcome> {
     await this.executing(tx, plan);
-    await this.stop(tx, plan, steps, { status: 'FAILED' }, reason);
+    await this.stop(tx, plan, steps, { status: 'FAILED' }, reason, req);
     await this.record(plan, 'ai_plan.failed', reason, req, tx);
     return 'failed';
   }
@@ -235,13 +241,17 @@ export class PlanExecutor {
       .where(and(eq(aiPlans.id, plan.id), eq(aiPlans.status, 'CONFIRMED')));
   }
 
-  /** The plan ends here; every step that had not run is SKIPPED with it. */
+  /**
+   * The plan ends here, short of what was asked; every step that had not run is SKIPPED with it, and
+   * its person is told. Every plan this runs was confirmed, so every such ending is one to tell.
+   */
   private async stop(
     tx: Tx,
     plan: PlanRow,
     steps: readonly StepRow[],
-    to: Partial<Pick<PlanRow, 'status' | 'confirmationStatus'>>,
+    to: Pick<PlanRow, 'status'> & Partial<Pick<PlanRow, 'confirmationStatus'>>,
     reason: string,
+    req: RequestContext,
   ): Promise<void> {
     const now = new Date();
     const waiting = steps.filter((s) => s.status === 'PENDING').map((s) => s.id);
@@ -255,6 +265,15 @@ export class PlanExecutor {
       .update(aiPlans)
       .set({ ...to, reason, finishedAt: now, updatedAt: now })
       .where(eq(aiPlans.id, plan.id));
+    await tx.insert(outboxEvents).values({
+      aggregateType: 'ai_plan',
+      aggregateId: plan.id,
+      eventType: PLAN_ENDED,
+      // Which way it ended, and nothing of what it was: the notification re-reads the plan.
+      payload: { to: to.status },
+      // Always set here: the job carries the confirming request's id, or is run under its own.
+      correlationId: req.correlationId,
+    });
   }
 
   private async record(

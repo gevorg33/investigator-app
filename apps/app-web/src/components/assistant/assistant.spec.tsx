@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, apiError } from '@/test/api';
 import { aiMessage, aiReply, aiSession, emptyPage } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
+import type { AiMessage } from '@/lib/api/assistant';
 import { AssistantPanel } from './assistant-panel';
 import { AssistantProvider, useAssistant, type AssistantAudience } from './assistant-provider';
 
@@ -298,6 +299,172 @@ describe('the assistant (T-056)', () => {
       expect(items[4]).toHaveTextContent('Conversation resumed.');
       expect(items[5]).toHaveTextContent('Plain words.');
       expect(items[5]).not.toHaveTextContent(en.reply.sources);
+    });
+  });
+
+  describe('how a plan ended (T-226)', () => {
+    const outcome = (
+      id: string,
+      event: {
+        outcome: string;
+        status: string;
+        reason: string | null;
+        steps: Array<{ status: string; error?: string }>;
+      },
+    ) =>
+      aiMessage({
+        id,
+        sequence: Number(id.slice(1)),
+        role: 'SYSTEM',
+        kind: 'PLAN_OUTCOME',
+        content: null,
+        event: {
+          planId: `plan-${id}`,
+          confirmation: 'CONFIRMED',
+          ...event,
+          steps: event.steps.map((s, i) => ({
+            ordinal: i + 1,
+            tool: 'addToTally',
+            error: null,
+            ...s,
+          })),
+        } as unknown as AiMessage['event'],
+      });
+    const stepsOf = (entry: HTMLElement) =>
+      within(within(entry).getByRole('list', { name: en.outcome.steps }))
+        .getAllByRole('listitem')
+        .map((li) => li.textContent);
+
+    it('says what happened from the steps, in the reader’s words — never success for a plan that stopped', async () => {
+      await openWith({
+        latest: SESSION,
+        messages: [
+          aiMessage(),
+          outcome('m2', {
+            outcome: 'completed',
+            status: 'COMPLETED',
+            reason: null,
+            steps: [{ status: 'DONE' }, { status: 'DONE' }],
+          }),
+          outcome('m3', {
+            outcome: 'partial',
+            status: 'FAILED',
+            reason: 'step_failed',
+            steps: [
+              { status: 'DONE' },
+              { status: 'FAILED', error: 'forbidden' },
+              { status: 'SKIPPED' },
+            ],
+          }),
+          outcome('m4', {
+            outcome: 'partial',
+            status: 'FAILED',
+            reason: 'infrastructure_failed',
+            steps: [{ status: 'DONE' }, { status: 'RUNNING' }],
+          }),
+          outcome('m5', {
+            outcome: 'failed',
+            status: 'FAILED',
+            reason: 'step_failed',
+            steps: [{ status: 'FAILED', error: 'conflict' }],
+          }),
+        ],
+      });
+      await screen.findByRole('log');
+      const [, completed, partial, stuck, failed] = entries();
+
+      expect(completed).toHaveTextContent(en.outcome.completed);
+      expect(stepsOf(completed!)).toEqual([
+        `addToTally${en.outcome.step.done}`,
+        `addToTally${en.outcome.step.done}`,
+      ]);
+
+      expect(partial).toHaveTextContent(en.outcome.partial);
+      expect(partial).not.toHaveTextContent(en.outcome.completed);
+      expect(stepsOf(partial!)).toEqual([
+        `addToTally${en.outcome.step.done}`,
+        'addToTallyFailed (forbidden)',
+        `addToTally${en.outcome.step.skipped}`,
+      ]);
+
+      // A step left running may have taken effect, and the reason is said.
+      expect(stuck).toHaveTextContent(en.outcome.reason.infrastructure_failed);
+      expect(stepsOf(stuck!)[1]).toBe(`addToTally${en.outcome.step.running}`);
+
+      expect(failed).toHaveTextContent(en.outcome.failed);
+      expect(stepsOf(failed!)).toEqual(['addToTallyFailed (conflict)']);
+    });
+
+    it('says why a plan did not run, and lists no steps when none was attempted', async () => {
+      await openWith({
+        latest: SESSION,
+        messages: [
+          aiMessage(),
+          outcome('m2', {
+            outcome: 'not_run',
+            status: 'CANCELLED',
+            reason: 'state_changed',
+            steps: [{ status: 'SKIPPED' }],
+          }),
+          outcome('m3', {
+            outcome: 'not_run',
+            status: 'CANCELLED',
+            reason: 'recheck_forbidden',
+            steps: [{ status: 'SKIPPED' }],
+          }),
+          outcome('m4', {
+            outcome: 'declined',
+            status: 'CANCELLED',
+            reason: 'declined',
+            steps: [{ status: 'SKIPPED' }],
+          }),
+          outcome('m5', {
+            outcome: 'not_run',
+            status: 'CANCELLED',
+            reason: null,
+            steps: [{ status: 'SKIPPED' }],
+          }),
+        ],
+      });
+      await screen.findByRole('log');
+      const [, changed, recheck, declined, unexplained] = entries();
+      expect(changed).toHaveTextContent(`${en.outcome.not_run}${en.outcome.reason.state_changed}`);
+      expect(recheck).toHaveTextContent(`${en.outcome.not_run}${en.outcome.reason.recheck}`);
+      // The person's own no needs no reason.
+      expect(declined).toHaveTextContent(en.outcome.declined);
+      expect(declined!.querySelector('p')).toBeNull();
+      expect(unexplained!.querySelector('p')).toBeNull();
+      for (const entry of [changed, recheck, declined, unexplained]) {
+        expect(within(entry!).queryByRole('list')).toBeNull();
+      }
+    });
+
+    it('speaks the reader’s language', async () => {
+      const ru = catalogs.ru.assistant.outcome;
+      api.on(LATEST, 200, { ...emptyPage, items: [SESSION] });
+      api.on(
+        MESSAGES,
+        200,
+        newestFirst([
+          aiMessage(),
+          outcome('m2', {
+            outcome: 'partial',
+            status: 'FAILED',
+            reason: 'member_left',
+            steps: [{ status: 'DONE' }, { status: 'SKIPPED' }],
+          }),
+        ]),
+      );
+      renderIntl(
+        <AssistantProvider audience="CUSTOMER">
+          <Opener />
+          <AssistantPanel />
+        </AssistantProvider>,
+        'ru',
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Open assistant' }));
+      expect(await screen.findByText(ru.partial)).toBeInTheDocument();
+      expect(screen.getByText(ru.reason.member_left)).toBeInTheDocument();
     });
   });
 
