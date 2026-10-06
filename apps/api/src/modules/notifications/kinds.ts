@@ -116,6 +116,7 @@ export function hrefFor(to: Party, missionId: string): string {
 
 /**
  * Where an assistant plan's notification leads: the app, naming the conversation it ended in. The
- * assistant is a panel rather than a page, so the conversation travels as a parameter.
+ * assistant is a panel rather than a page, so the conversation travels as a parameter, which app-web's
+ * `AssistantDeepLink` reads (T-231).
  */
 export const assistantHref = (sessionId: string): string => `/?assistant=${sessionId}`;

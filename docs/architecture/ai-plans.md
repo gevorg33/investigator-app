@@ -191,8 +191,8 @@ asked, it writes `ai.plan.ended` (`payload: { to }`) to the outbox in the same t
 `FAILED`, or `CANCELLED` before anything ran, and it covers the dead-letter path too. The person
 confirmed and walked away, and may not be watching. The notification fan-out re-reads the plan's row and
 tells its own person `assistant_plan_failed` or `assistant_plan_voided`, in the centre only
-(`notifications.md`). A completed plan is what they asked for, and a decline is their own; neither
-notifies. A departed member is not notified, because they are no longer a member.
+(`notifications.md`); opening one opens the assistant on that conversation (T-231). A completed plan
+is what they asked for, and a decline is their own; neither notifies. A departed member is not notified, because they are no longer a member.
 
 **The client polls while a plan runs.** The API needs nothing more for that: `GET …/plans/:planId` and
 `GET …/plans?open=true` read the status and step rows as they stand. The confirmation UI that polls them

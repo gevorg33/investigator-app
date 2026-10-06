@@ -24,7 +24,8 @@ what each status change means; nothing else does.
 
 **An assistant plan's ending (T-226)** is decided from the plan's row as the fan-out reads it, never
 from the event: a plan erased with its conversation since tells nobody, and a completed or declined
-one never does. Its notification leads to `/?assistant=<session>`. The two kinds are `IN_APP_KINDS`:
+one never does. Its notification leads to `/?assistant=<session>`, which opens the assistant on
+that conversation (T-231, `app-web.md`). The two kinds are `IN_APP_KINDS`:
 the conversation already holds the outcome, so they are not worth an email. `DeliverHandler` queues no
 email for them whatever the person chose, and `SendEmailHandler` refuses one by name. They are not
 mail templates, so they have only a `notifications.kind.*` line.

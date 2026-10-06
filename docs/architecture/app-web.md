@@ -522,6 +522,20 @@ goes to the composer; after a refusal, back to the options. **A conversation tha
 404 from any of these, which is also what someone else's conversation answers (T-045) — is replaced
 by a fresh one saying "That conversation is no longer available", showing nothing of it.
 
+**Opened by a link (T-231).** `?assistant=<session id>` on any workspace address opens the assistant
+on that conversation, as if it were chosen from the list: `GET /ai/sessions/:id` for its name, then
+its newest page. The latest conversation is not read. A plan's notification leads there
+(`assistant_plan_failed` / `assistant_plan_voided`, `notifications.md`). `AssistantDeepLink`, mounted
+by the workspace layout inside `Suspense` because it reads the address, does it on a page load and
+on a link followed within the app. It then drops the parameter with `router.replace`, so a reload or
+a copied address does not open it again. A conversation that has gone, or is not the reader's, says
+"That conversation is no longer available"; a parameter that is not a session id is dropped; an
+unconfirmed address opens the panel on `ConfirmFirst` and reads nothing. If the reader follows a
+second link before the first has loaded, the first's reply is ignored.
+
+**Plan outcomes (T-226).** A `PLAN_OUTCOME` message renders in the reader's words from its event
+(`plan-outcome.tsx`; `ai-plans.md`): the outcome, a reason worth a sentence, and each attempted step.
+
 **Structured results (T-059).** A discovery reply renders from its stored answer, never as prose:
 what was searched, said out loud (and "every area" when no place was named), the order, then each
 investigator as a card (`InvestigatorCard`): name, the agency they work for (T-185) and headline in their own words, Verified,

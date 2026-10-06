@@ -1,9 +1,10 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { ConfirmFirst } from '@/components/account/confirm-first';
 import { AccountNotices } from '@/components/account/notices';
 import { AssistantBeside } from '@/components/assistant/assistant-beside';
+import { AssistantDeepLink } from '@/components/assistant/assistant-deep-link';
 import { AssistantProvider } from '@/components/assistant/assistant-provider';
 import { AppShell } from '@/components/shell/app-shell';
 import { AgencySetupNotice } from '@/components/workspace/agency-setup-notice';
@@ -39,6 +40,10 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
         audience={investigator ? 'INVESTIGATOR' : customer ? 'CUSTOMER' : 'NONE'}
         confirmFirst={account.emailVerified ? undefined : <ConfirmFirst email={account.email} />}
       >
+        {/* Reads the address, so it waits in its own boundary rather than holding the page. */}
+        <Suspense fallback={null}>
+          <AssistantDeepLink />
+        </Suspense>
         <AppShell
           workspaces={
             all.length > 1

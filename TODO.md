@@ -10010,7 +10010,7 @@ pnpm --filter api test ai-triage
 ```
 
 ### T-231 — Open the assistant on the conversation a notification names
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07. `AssistantDeepLink` (mounted by the workspace layout in `Suspense`) reads `?assistant=`, opens the panel through `openConversation` → `useConversation.openById` (`GET /ai/sessions/:id`, then its newest page) and drops the parameter with `router.replace`; `app-web.md`
 - **Priority:** P2
 - **Depends on:** T-226, T-057
 - **Risk:** LOW
@@ -10028,10 +10028,10 @@ URL. A conversation that is gone, or belongs to another workspace, reads like an
 (`assistant.notice.gone`).
 
 **Acceptance criteria**
-- [ ] Opening an `assistant_plan_failed` notification opens the assistant on that conversation, with
-      its PLAN_OUTCOME message in view
-- [ ] A deleted or foreign conversation shows the "no longer available" notice, never an error page
-- [ ] Phone and desktop: the panel opens as it does from the shell (visual QA at 375 / 768 / 1440)
+- [x] Opening an `assistant_plan_failed` notification opens the assistant on that conversation, with
+      its PLAN_OUTCOME message in view — browser, from the bell, on a phone and a desktop, with a newer conversation present
+- [x] A deleted or foreign conversation shows the "no longer available" notice, never an error page — another person's session in the browser; 404 in `assistant-deep-link.spec.tsx`
+- [x] Phone and desktop: the panel opens as it does from the shell (visual QA at 375 / 768 / 1024 — the pane's widest)
 
 **Validation**
 ```bash
