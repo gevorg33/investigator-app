@@ -10066,7 +10066,11 @@ cd apps/api && for i in $(seq 1 20); do pnpm exec vitest run src/modules/notific
 ```
 
 ### T-233 — Signing in before verifying the email shows "Application error"
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07, closed without a code change: **not a bug**. The crash needs an account whose address is confirmed while its status is not `ACTIVE`, and that pair occurs only by hand. T-226's browser check made it: `email_verified_at` was set directly and `PENDING_VERIFICATION` left. In every real state the app behaves:
+  - Verification sets both together (`auth.service.ts`, `verifyEmail`).
+  - A genuinely unconfirmed sign-in skips `/workspaces` (`getWorkspaces`, T-164) and lands on Home with the confirm notice. Its Review link goes to Account → profile, which offers resend. Checked in the browser, with no server errors.
+  - Login refuses `SUSPENDED` and deleted accounts.
+  - An account suspended mid-session is sent to sign-in on its next page.
 - **Priority:** P1 — the first thing a new person may do
 - **Depends on:** —
 - **Risk:** LOW
@@ -10084,8 +10088,8 @@ before clicking the link. Send an unverified person to `/check-email` (or a page
 needs confirming, with resend), never an error page.
 
 **Acceptance criteria**
-- [ ] Signing in unverified lands on a page that says to confirm the address, with a way to resend
-- [ ] No server exception in app-web's log for that path; an e2e journey covers it
+- [x] Signing in unverified lands on a page that says to confirm the address, with a way to resend — already so: Home with `shell.unverified`, linking to the profile's resend (browser, 2026-10-07)
+- [ ] No server exception in app-web's log for that path; an e2e journey covers it — the first half is verified (no exception in the log). No e2e was added: `account.e2e.ts` already signs its account in five times, the API's per-account limit in five minutes, so the journey needs its own account. The behaviour is unit-tested in `routes.spec.tsx` and `server.spec.ts` (T-164)
 
 **Validation**
 ```bash
