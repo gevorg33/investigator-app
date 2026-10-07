@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type postgres from 'postgres';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { testPool } from '../../../test/db';
 import { seedGraph, type SeededGraph } from '../../../test/isolation/graph';
 import { TEST_REDIS_URL, testQueuePrefix } from '../../../test/redis';
@@ -57,10 +57,11 @@ describe('notification delivery', () => {
       void queued.push({ queue: q, envelope }),
   } as unknown as JobQueue;
   const mailer: Mailer = { send: async (m) => void mailed.push(m) };
-  const secret = process.env['SESSION_SECRET'];
 
   beforeAll(async () => {
-    process.env['SESSION_SECRET'] = 's'.repeat(32);
+    // Stubbed, never assigned back: `= undefined` stores the string "undefined", and a later block
+    // ran on that leaked secret without setting its own (T-232).
+    vi.stubEnv('SESSION_SECRET', 's'.repeat(32));
     sql = testPool({ max: 4 });
     ownerSql = testPool({ role: 'owner' });
     ownerDb = drizzle(ownerSql, { schema });
@@ -81,7 +82,7 @@ describe('notification delivery', () => {
   });
 
   afterAll(async () => {
-    process.env['SESSION_SECRET'] = secret;
+    vi.unstubAllEnvs();
     await sql.end();
     await ownerSql.end();
   });
@@ -438,6 +439,8 @@ describe('notifications end to end, through Redis', () => {
   const open: Array<{ close(): Promise<void> }> = [];
 
   beforeAll(() => {
+    // Its own: the email carries an unsubscribe link signed with it (T-232).
+    vi.stubEnv('SESSION_SECRET', 'e'.repeat(32));
     sql = testPool({ max: 4 });
     ownerSql = testPool({ role: 'owner' });
   });
@@ -445,6 +448,7 @@ describe('notifications end to end, through Redis', () => {
     await Promise.all(open.splice(0).map((o) => o.close()));
   });
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await sql.end();
     await ownerSql.end();
   });

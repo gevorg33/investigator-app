@@ -10039,7 +10039,7 @@ pnpm --filter app-web test assistant notifications
 ```
 
 ### T-232 — The notifications end-to-end spec through Redis times out in some orders
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07. Cause: the Redis block never set `SESSION_SECRET` (its email signs an unsubscribe link with it) and ran on the string `"undefined"` that the delivery block's `afterAll` wrote back; run first, the email job threw and the test waited out its timeout. Both blocks now `vi.stubEnv` / `vi.unstubAllEnvs`; the rule is in the `testing` skill
 - **Priority:** P1 — a red CI run that is not about the change under review
 - **Depends on:** —
 - **Risk:** LOW
@@ -10057,8 +10057,8 @@ graph, a queue prefix, an unpublished event left by another test, the worker's s
 dependency. Do not raise the timeout: the test waits for an event, not for time.
 
 **Acceptance criteria**
-- [ ] The cause is named in the fix's commit
-- [ ] 20 consecutive `--sequence.shuffle` runs of the file pass, and the suite passes in reverse order
+- [x] The cause is named in the fix's commit
+- [x] 20 consecutive `--sequence.shuffle` runs of the file pass, and the suite passes in reverse order — 20/20 twice; seed 3, which put the block first and failed, passes; the block alone (`-t`), which failed every time, passes; the API suite in reverse, 3600/3600
 
 **Validation**
 ```bash

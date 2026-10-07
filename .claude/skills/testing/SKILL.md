@@ -183,6 +183,14 @@ Running a file alone is one `vitest run <file>`. A dependency that only appears 
 still a dependency: two of them were found this way, and both were tests passing for reasons
 that had nothing to do with what they asserted.
 
+**The environment is not isolated.** The database is per file. The process's variables are per
+worker: one `describe` block reads what another left, and the next file sees it too. Each block sets
+what it reads with `vi.stubEnv(name, value)` and puts it back with `vi.unstubAllEnvs()`. Never write
+`process.env[name] = saved` to restore: when `saved` is `undefined`, that stores the string
+`"undefined"`. T-232 was exactly this. An end-to-end test never set `SESSION_SECRET` and ran on one
+leaked by the block before it, so it timed out whenever shuffling ran it first. Run one block alone
+with `-t "<its name>"`; that is the order shuffling finds only sometimes.
+
 ### Time
 
 Expiry logic takes the moment as a parameter with a default — `isExpired(expiresAt, now = new
