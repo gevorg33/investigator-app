@@ -50,6 +50,7 @@ was about may have moved on. Expiry is derived from `expires_at`, never stored.
 |---|---|
 | `GET …/plans` | The session's plans, newest first, at most 20. `?open=true`: only those not yet ended — proposals awaiting an answer, and confirmed plans until they finish, so a stuck one stays in view (T-224). What a returning client shows, after a closed browser or a restarted app |
 | `GET …/plans/:planId` | One plan, its steps and their progress |
+| `GET …/plans/:planId/timeline` | The plan from proposal to its last step, with its audit (T-214) — below |
 | `POST …/plans/:planId/confirm` `{ planHash }` | The person's yes, to exactly the plan with that hash |
 | `POST …/plans/:planId/decline` | The person's no, to a plan still awaiting one |
 
@@ -198,6 +199,47 @@ is what they asked for, and a decline is their own; neither notifies. A departed
 `GET …/plans?open=true` read the status and step rows as they stand. The confirmation UI that polls them
 is T-058.
 
+## The timeline (T-214)
+
+`GET …/plans/:planId/timeline` returns the plan from proposal to its last step, for its own person,
+admitted exactly as `get` is. Built by `buildTimeline` (`plan-timeline.ts`):
+
+```json
+{ "planId": "…", "sessionId": "…", "status": "FAILED", "outcome": "partial",
+  "correlationId": "<the confirming request's id>", "unknown": [2],
+  "events": [ { "type": "proposed", "steps": 3 }, { "type": "confirmed", "role": null },
+              { "type": "step_started", "ordinal": 1, "tool": "createTeam" },
+              { "type": "step_finished", "ordinal": 1, "tool": "createTeam", "status": "DONE", "error": null },
+              { "type": "step_started", "ordinal": 2, "tool": "inviteMember" },
+              { "type": "ended", "status": "FAILED", "confirmation": "CONFIRMED", "reason": "infrastructure_failed" } ],
+  "audit":  [ { "action": "ai_plan.proposed", "outcome": "createTeam,inviteMember,inviteMember", "correlationId": "…" },
+              { "action": "ai.tool.create_team", "outcome": "ok", "correlationId": "…" } ] }
+```
+
+(Every entry also has an `at`.)
+
+- **`events` come from the plan's own rows, in causal order:** proposed, confirmed, then each step by
+  ordinal, started then finished, then ended. They are not sorted by clock. The database stamps a
+  plan's creation, and the API and the worker stamp its progress. Their clocks need not agree; in
+  development the database ran 50–250 ms ahead, which put "ended" before "proposed".
+- **A step's status is its row's.** A FAILED step shows FAILED with its code. A step left RUNNING when
+  the plan ended has no finish, and is listed in `unknown`: it may have taken effect.
+- **`outcome` is the plan's `PLAN_OUTCOME` message** (0045), so the timeline and the conversation never
+  disagree. It is null while the plan is open.
+- **`audit` is in the database's own time order**, and holds two kinds of row:
+  - the plan's lifecycle (`ai_plan.proposed`, `confirmed`, `declined`, `invalidated`, `failed`,
+    `completed`), by its person;
+  - the tool calls their confirmation made, joined by its correlation id (`correlationId`, T-212).
+
+  Each entry carries a code only: the plan row's reason, or the tool call's first word (`ok`,
+  `rejected`). Never arguments, an address, a device, or anyone else's row. A colleague's refused look
+  at the plan is audited in the same workspace and is left out. A dead-lettered run's end is audited
+  in the system context, which belongs to no workspace, so that row is absent; the plan's own
+  `ended` still says how it ended.
+
+Staff reading a person's plan timeline is not built. It reads a private conversation's content under
+`PlatformContext`, so it needs its own approval (T-234).
+
 ## When a member leaves the workspace
 
 `archive_departed_member_sessions` (migration 0028, extended in 0042 and corrected in 0043, T-224)
@@ -283,8 +325,12 @@ nowhere, `ai-sessions.md`). The Context Builder (T-046) renders results through 
   after the status write before its commit, still gives exactly one; through direct writes, no mix of
   steps makes a FAILED plan `completed`; the shape constraint; `ai.plan.ended` only for endings to tell; an outcome is its person's alone —
   a colleague in the same workspace reads none of it.
-- `ai-plans.authz.spec.ts` — a stranger, a colleague and the agency's owner get 404 on every path; the
-  policy shows them nothing; a confirmation does not cross the person's own workspaces.
+- `ai-plans.timeline.spec.ts` — completed, partial with the FAILED step's code, a step left running
+  (`unknown`), still proposed, declined; codes only in the audit; a colleague in the same workspace
+  gets 404 and their audited refusal is not in the person's timeline.
+- `ai-plans.authz.spec.ts` — a stranger, a colleague and the agency's owner get 404 on every path,
+  the timeline included; the policy shows them nothing; a confirmation does not cross the person's own
+  workspaces.
 - `ai-plans.hash.spec.ts`, `ai-plans.controller.spec.ts`, `ai-plans.wiring.spec.ts`,
   `ai-results.store.spec.ts`, `ai-discovery.registry.spec.ts` (the runner's write paths).
 - The isolation matrix covers all three tables.

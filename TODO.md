@@ -9485,7 +9485,7 @@ pnpm --filter api test ai-trace
 ---
 
 ### T-214 — Plan timeline (P-3b)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. The person's view: `GET …/plans/:planId/timeline` (`plan-timeline.ts`, `AiPlansService.timeline`) — the plan's rows in causal order, its outcome from the PLAN_OUTCOME message, its audit (lifecycle and the confirmation's tool calls, codes only) by the database's clock; `ai-plans.md`. Staff in scope is T-234 (approval)
 - **Priority:** P2
 - **Depends on:** T-212, T-226
 - **Risk:** LOW
@@ -9498,8 +9498,8 @@ A read model of one plan, from proposal to its last step, built from plan, step 
 one correlation id. It is for the person and for staff in scope.
 
 **Acceptance criteria**
-- [ ] Partial success reads as partial; a FAILED step is never shown as done
-- [ ] Another person's plan is a 404
+- [x] Partial success reads as partial; a FAILED step is never shown as done — `ai-plans.timeline.spec.ts`
+- [x] Another person's plan is a 404 — a stranger, a colleague in the same workspace, the agency's owner (`ai-plans.authz.spec.ts`), and the person's own plan asked for under another conversation
 
 **Validation**
 ```bash
@@ -10094,6 +10094,32 @@ needs confirming, with resend), never an error page.
 **Validation**
 ```bash
 pnpm --filter app-web test session
+```
+
+### T-234 — Staff read a person's plan timeline, in scope
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-214, T-061
+- **Risk:** HIGH
+- **Human approval required:** Yes — staff reading a private conversation's plan under `PlatformContext`
+- **Owner agent:** backend-domain + security-privacy (review)
+- **Affected:** apps/api/src/modules/ai/plans/**, apps/admin-web/**
+
+**Description**
+From T-214, which built the person's own view. P-3b says the timeline is "for the person and for staff
+in scope". A plan lives in a conversation that row-level security keeps to one user in one workspace;
+not even an agency's owner reads it. Decide which staff scope may read one: support handling a report,
+or compliance under a legal hold. Decide what they see: the timeline is content-free, but its tool names
+and failure codes still describe what the person asked for. The read is audited, and runs through
+`PlatformContext` with a reason.
+
+**Acceptance criteria**
+- [ ] Only the decided scope reads it, with a reason, audited; every other staff member gets 404
+- [ ] What staff see is decided in writing (`ai-plans.md`) and matches the response
+
+**Validation**
+```bash
+pnpm --filter api test ai-plans
 ```
 
 ---

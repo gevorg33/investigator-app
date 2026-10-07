@@ -39,6 +39,7 @@ describe('nobody else reaches a plan, or confirms it', () => {
     plan: { id: string; planHash: string },
   ): Array<() => Promise<unknown>> => [
     () => plans.get(actor, sessionId, plan.id, req()),
+    () => plans.timeline(actor, sessionId, plan.id, req()),
     () => plans.list(actor, sessionId, {}, req()),
     () => plans.confirm(actor, sessionId, plan.id, plan.planHash, req()),
     () => plans.decline(actor, sessionId, plan.id, req()),
