@@ -3,7 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiMessage } from '@/lib/api/assistant';
-import { newestFirst, openAssistant, viewport } from '@/test/assistant';
+import { newestFirst, noPlans, openAssistant, viewport } from '@/test/assistant';
 import { api, apiError } from '@/test/api';
 import { aiMessage, aiReply, aiSession, emptyPage } from '@/test/fixtures';
 import { SEARCH_DELAY_MS } from './session-list';
@@ -63,6 +63,7 @@ describe('conversations — the list and what can be done with one (T-057)', () 
   beforeEach(() => {
     api.install();
     api.on('GET /workspaces', 200, [{ id: 'w1', kind: 'PERSONAL', name: null, current: true }]);
+    noPlans(A.id, B.id, ARCHIVED.id, '00000000-0000-4000-8000-0000000000dd');
     viewport(false);
   });
   afterEach(() => {

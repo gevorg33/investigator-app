@@ -33,6 +33,8 @@ export interface Conversation {
   open: (session: AiSession, focus?: number | null) => Promise<void>;
   /** Opens a conversation by its id alone — one a link names (T-231) — at its end. */
   openById: (id: string) => Promise<void>;
+  /** Reads how the open conversation's plans ended (T-058), and adds nothing else. */
+  readOutcomes: () => Promise<void>;
   /** Tries the last opening again after it failed: whichever of `load` and `open` it was. */
   reload: () => Promise<void>;
   loadEarlier: () => Promise<void>;
@@ -200,6 +202,18 @@ export function useConversation(api: AssistantApi): Conversation {
     [api],
   );
 
+  const readOutcomes = useCallback(async () => {
+    const sessionId = latest.current.session?.id;
+    if (sessionId === undefined) return;
+    const gen = generation.current;
+    try {
+      const { items } = await api.page(sessionId);
+      if (gen === generation.current) dispatch({ type: 'outcomes', messages: items });
+    } catch {
+      // Read again with the conversation: the outcome is stored, and nothing here depends on it.
+    }
+  }, [api]);
+
   const run = useCallback(
     async (input: Ask | { retry: true }) => {
       const gen = ++generation.current;
@@ -338,6 +352,7 @@ export function useConversation(api: AssistantApi): Conversation {
       load,
       open,
       openById,
+      readOutcomes,
       reload,
       loadEarlier,
       send,
@@ -357,6 +372,7 @@ export function useConversation(api: AssistantApi): Conversation {
       load,
       open,
       openById,
+      readOutcomes,
       reload,
       loadEarlier,
       send,

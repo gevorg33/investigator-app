@@ -3339,7 +3339,7 @@ sign in); the specs cover sheet vs dock and focus.
 ---
 
 ### T-058 — Confirmation and plan UI
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `PlanConfirmation` + `usePlans` in the assistant's conversation (app-web): exact steps and arguments, workspace, expiry, Decline/Confirm; running by polling; ended plans give way to their PLAN_OUTCOME message; refusals re-read and shown as they stand. KB `kb-customer-ai-assistant` v9 (en; ru/hy drafts). Criteria that need T-225, T-210, T-095 stay open below
 - **Priority:** P0
 - **Depends on:** T-048, T-056
 - **Risk:** HIGH
@@ -3357,21 +3357,21 @@ model proposal and a real mutation.
 **Tenancy (ADR-0011).** The confirmation UI shows the workspace a plan will run in. From T-096 it shows the whole DAG under one confirmation.
 
 **Acceptance criteria**
-- [ ] A write tool renders the **exact proposed action and arguments** — never a paraphrase
-- [ ] Confirm and cancel are equally reachable; confirm is not the default focus
-- [ ] **Opening a session with a pending confirmation surfaces it immediately** — tested by
-      closing the browser mid-flow and returning
-- [ ] Re-validation before execution is visible: if the plan changed or state moved, the user is
-      told **why** they are being asked again, not silently re-prompted
-- [ ] A stale confirmation cannot be submitted — the UI reflects invalidation
-- [ ] Irreversible or money-adjacent actions state the consequence plainly before confirming
-- [ ] The confirmation token never reaches the model; the UI never auto-confirms
-- [ ] Mobile: full-screen, never a sheet a user can dismiss by accident
-- [ ] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`); and how a plan ends — the conversation says what was done step by step, what failed and what never ran, nothing done is undone automatically, and a plan that fails or is voided after confirming also notifies (from T-226, `ai-plans.md`)
-- [ ] T-225's preview lines beside the exact arguments; ids shown with labels, never bare; values from content the model read marked with their source (review 2026-10-06)
-- [ ] Act-mode clarifying questions as option chips of at least 44px; each step's T-210 outcome shown; plans over three steps collapse below `md` (review 2026-10-06)
-- [ ] States read from step rows: EXECUTING, COMPLETED, partial, FAILED, EXPIRED, VOIDED, superseded; confirm disabled after the first tap; progress by polling (review 2026-10-06)
-- [ ] Visual QA at 375 / 768 / 1440 against a seeded account, not waived (review 2026-10-06)
+- [x] A write tool renders the **exact proposed action and arguments** — never a paraphrase
+- [x] Confirm and cancel are equally reachable; confirm is not the default focus — side by side, 149×44 each at 1440; focus stays in the composer
+- [x] **Opening a session with a pending confirmation surfaces it immediately** — tested by
+      closing the browser mid-flow and returning (a fresh page load on a seeded plan, 375 / 768 / 1440)
+- [x] Re-validation before execution is visible: if the plan changed or state moved, the user is
+      told **why** they are being asked again, not silently re-prompted — the plan's PLAN_OUTCOME reason (T-226), for a confirm refused as changed and for a run invalidated
+- [x] A stale confirmation cannot be submitted — the UI reflects invalidation — expired (refused, or past its time while shown) offers nothing to press; changed or voided leaves for its outcome
+- [x] Irreversible or money-adjacent actions state the consequence plainly before confirming — every plan says nothing happens until confirmed, that it runs as the person, and that nothing is undone automatically; per-command consequences are T-225's preview lines; payments are never a command
+- [x] The confirmation token never reaches the model; the UI never auto-confirms — the hash goes only in the confirm request body (spec asserts it exactly), and nothing calls confirm but a tap
+- [x] Mobile: full-screen, never a sheet a user can dismiss by accident — inline in the assistant's full-screen sheet (`handleOnly`), one dialog
+- [x] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`); and how a plan ends — the conversation says what was done step by step, what failed and what never ran, nothing done is undone automatically, and a plan that fails or is voided after confirming also notifies (from T-226, `ai-plans.md`)
+- [ ] T-225's preview lines beside the exact arguments; ids shown with labels, never bare; values from content the model read marked with their source (review 2026-10-06) — open: T-225 is not built; the card has the place for them
+- [ ] Act-mode clarifying questions as option chips of at least 44px; each step's T-210 outcome shown; plans over three steps collapse below `md` (review 2026-10-06) — the collapse is done; act mode (T-095) and T-210 are not built
+- [ ] States read from step rows: EXECUTING, COMPLETED, partial, FAILED, EXPIRED, VOIDED, superseded; confirm disabled after the first tap; progress by polling (review 2026-10-06) — all but superseded, which has no state until one open proposal per session lands (T-095, AI-EXECUTION-PLAN §5 row 13)
+- [x] Visual QA at 375 / 768 / 1440 against a seeded account, not waived (review 2026-10-06) — light and dark; confirm, progress, partial end, decline, expiry while shown; a plan hashed as the API hashes it, confirmed through the real API
 
 **Validation**
 ```bash
@@ -10120,6 +10120,29 @@ and failure codes still describe what the person asked for. The read is audited,
 **Validation**
 ```bash
 pnpm --filter api test ai-plans
+```
+
+### T-235 — Pause watching a running plan while the tab is hidden
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-058
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/use-plans.ts
+
+**Description**
+From T-058. `usePlans` reads a running plan every 2 seconds until it ends. The assistant panel stays
+mounted once opened, so it keeps reading while the tab is hidden, and while a plan sits CONFIRMED for
+a worker that is down (up to the 15-minute execution deadline, T-224). Pause on `visibilitychange`
+while hidden, and read once at once on return, as the notification count does (T-169).
+
+**Acceptance criteria**
+- [ ] No plan is read while the tab is hidden; one is read at once when it shows again
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-confirmation
 ```
 
 ---

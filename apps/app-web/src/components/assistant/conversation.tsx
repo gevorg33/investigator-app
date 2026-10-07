@@ -1,7 +1,14 @@
 'use client';
 
 import { Info, RotateCcw } from 'lucide-react';
-import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form/form-error';
 import { Button } from '@/components/ui/button';
@@ -12,7 +19,9 @@ import { Composer } from './composer';
 import { ConversationHeader } from './conversation-header';
 import { EmptyConversation } from './empty-conversation';
 import { MessageItem } from './message-item';
+import { PlanConfirmation } from './plan-confirmation';
 import { TurnStatus } from './turn-status';
+import { usePlans } from './use-plans';
 
 /** Where the list was, for deciding where it should be after it changes. */
 interface Seen {
@@ -40,8 +49,14 @@ export function Conversation({
   onClose: () => void;
 }) {
   const t = useTranslations('assistant');
-  const { audience, conversation } = useAssistant();
-  const { state, running, canRetry, reload, loadEarlier, send, retry, stop } = conversation;
+  const { audience, api, conversation } = useAssistant();
+  const { state, workspace, running, canRetry, reload, loadEarlier, send, retry, stop } =
+    conversation;
+  const sessionId = state.status === 'ready' ? (state.session?.id ?? null) : null;
+  const plans = usePlans(api, sessionId, () => void conversation.readOutcomes());
+  const { refresh: readPlans } = plans;
+  // A Personal workspace has no name of its own (`WorkspaceView`), as the header says.
+  const place = workspace === null ? null : (workspace.name ?? t('workspace.personal'));
   const scroller = useRef<HTMLDivElement>(null);
   const seen = useRef<Seen>({ first: undefined, last: undefined, height: 0, focus: null });
   const [reaching, setReaching] = useState(false);
@@ -63,7 +78,16 @@ export function Conversation({
       el.scrollTop += el.scrollHeight - prev.height;
     } else el.scrollTop = el.scrollHeight;
     seen.current = { first, last, height: el.scrollHeight, focus: state.focus };
-  }, [state.messages, state.turn, state.focus]);
+  }, [state.messages, state.turn, state.focus, plans.entries.length]);
+
+  // Something new in the conversation may have come with a plan to answer (T-058).
+  const count = state.messages.length;
+  const opened = useRef(count);
+  useEffect(() => {
+    if (opened.current === count) return;
+    opened.current = count;
+    void readPlans();
+  }, [count, readPlans]);
 
   const earlier = async () => {
     setReaching(true);
@@ -143,6 +167,32 @@ export function Conversation({
                 </li>
               ))}
             </ol>
+            {plans.entries.length > 0 && (
+              <section aria-label={t('plan.region')} className="grid gap-4">
+                {plans.entries.map((entry) => (
+                  <PlanConfirmation
+                    key={entry.plan.id}
+                    entry={entry}
+                    workspace={place}
+                    onConfirm={() => void plans.confirm(entry.plan.id)}
+                    onDecline={() => void plans.decline(entry.plan.id)}
+                  />
+                ))}
+              </section>
+            )}
+            {plans.failed && (
+              <div className="grid gap-2">
+                <p className="text-sm">{t('plan.failed')}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => void readPlans()}
+                  className="justify-self-start"
+                >
+                  <RotateCcw aria-hidden />
+                  {t('plan.reload')}
+                </Button>
+              </div>
+            )}
             <TurnStatus state={state} canRetry={canRetry} onRetry={() => void retry()} />
           </div>
         )}

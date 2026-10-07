@@ -48,6 +48,35 @@ export interface PlanOutcome {
   >;
 }
 
+/** One step of a plan as `/plans` returns it (T-048): what runs, exactly, and how far it has got. */
+export type PlanStep = {
+  ordinal: number;
+  tool: string;
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+} &
+  /** A FAILED step always carries its code (`ai_plan_steps_progress`). */
+  (
+    | { status: 'FAILED'; error: string }
+    | { status: 'PENDING' | 'RUNNING' | 'DONE' | 'SKIPPED'; error: null }
+  );
+
+/** A plan the assistant proposed, as `/ai/sessions/:id/plans` returns it (`PlanView`, T-048). */
+export interface Plan {
+  id: string;
+  sessionId: string;
+  /** What confirming sends back: the plan as it was shown, and no other. Never shown, never sent anywhere else. */
+  planHash: string;
+  status: 'PROPOSED' | 'CONFIRMED' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  confirmation: 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'INVALIDATED' | 'VOIDED' | 'EXPIRED';
+  reason: string | null;
+  expiresAt: string;
+  confirmedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  steps: PlanStep[];
+}
+
 /** A PLAN_OUTCOME message's event — held to its shape by the database (`ai_messages_shape`). */
 export const planOutcome = (message: AiMessage): PlanOutcome | null =>
   message.kind === 'PLAN_OUTCOME' ? (message.event as unknown as PlanOutcome) : null;
@@ -276,6 +305,18 @@ export function assistantApi() {
     restore: (id: string) => call<AiSession>(`/ai/sessions/${id}/resume`, 'POST', {}),
     remove: (id: string) => call<null>(`/ai/sessions/${id}`, 'DELETE'),
     workspaces: () => call<Workspace[]>('/workspaces'),
+
+    /** A conversation's plans not yet ended: waiting for an answer, or confirmed and running (T-224). */
+    openPlans: (sessionId: string) => call<Plan[]>(`/ai/sessions/${sessionId}/plans?open=true`),
+    plan: (sessionId: string, planId: string) =>
+      call<Plan>(`/ai/sessions/${sessionId}/plans/${planId}`),
+    /** The person's yes, to exactly the plan with the hash they were shown. */
+    confirm: (plan: Plan) =>
+      call<Plan>(`/ai/sessions/${plan.sessionId}/plans/${plan.id}/confirm`, 'POST', {
+        planHash: plan.planHash,
+      }),
+    decline: (plan: Plan) =>
+      call<Plan>(`/ai/sessions/${plan.sessionId}/plans/${plan.id}/decline`, 'POST', {}),
 
     /**
      * A turn: `ask` sends a new question, `retry` answers the one left unanswered. Resolves when

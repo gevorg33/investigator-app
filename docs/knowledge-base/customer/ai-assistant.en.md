@@ -4,9 +4,9 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 8
+version: 9
 status: current
-updated: 2026-10-01
+updated: 2026-10-08
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -116,9 +116,25 @@ Request quotes to get real prices.
 
 ## Can it act on my behalf — accept a quote or send a message?
 
-Not on its own. It can prepare something and show it to you, but anything that commits you
-— accepting a quote, sending a message, making a payment — requires your explicit
-confirmation of that specific action.
+Not on its own. When it can do something for you, it first shows you exactly what it would do, and
+nothing happens until you confirm.
+
+You are shown each step — the action and every value it would use, exactly as it would use them —
+the workspace it would run in, and how long it waits for your answer: 24 hours. Confirm or
+Decline. Declining runs nothing. A plan left unanswered for 24 hours expires and never runs; ask
+again if you still want it.
+
+**If something changes, you are asked again.** Just before it runs, the platform checks that what
+you confirmed still holds — the plan itself, and what it acts on. If either changed, it does not
+run, and the conversation tells you why.
+
+**How it ends.** Once confirmed, it runs as you, step by step, and you can watch it. When it
+finishes, the conversation says what was done, what failed and with what code, and what never ran.
+Nothing it did is undone automatically. If a plan fails, or is cancelled after you confirmed it, you
+also get a notification.
+
+**What is kept.** Deleting the conversation deletes its plans with it. That you confirmed an
+action — its kind, never its content — stays in the platform's audit trail.
 
 It cannot change your mission status, grant anyone access to your evidence, or move money.
 

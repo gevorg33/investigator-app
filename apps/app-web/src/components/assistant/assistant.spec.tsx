@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, apiError } from '@/test/api';
+import { noPlans } from '@/test/assistant';
 import { aiMessage, aiReply, aiSession, emptyPage } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
 import type { AiMessage } from '@/lib/api/assistant';
@@ -95,6 +96,7 @@ describe('the assistant (T-056)', () => {
       { id: 'w1', kind: 'PERSONAL', name: null, current: true },
       { id: 'w2', kind: 'AGENCY', name: 'Ararat Agency', current: false },
     ]);
+    noPlans(SESSION.id, '00000000-0000-4000-8000-00000000a002');
     viewport(false);
   });
   afterEach(() => vi.unstubAllGlobals());

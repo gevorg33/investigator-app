@@ -1049,6 +1049,33 @@ export const en = {
         infrastructure_failed: 'It could not be finished because of a problem on our side.',
       },
     },
+    plan: {
+      region: 'Waiting for your answer',
+      title: 'The assistant asks to do this',
+      title_running: 'What you confirmed',
+      title_expired: 'What the assistant asked to do',
+      workspace: 'In {workspace}',
+      step: 'Step {n}',
+      no_arguments: 'No details',
+      waits: 'Waits for your answer until {time}.',
+      consequence:
+        'Nothing happens until you confirm. Once you do, it runs as you, and what it does is not undone automatically.',
+      confirm: 'Confirm',
+      decline: 'Decline',
+      expired:
+        'This plan waited too long for an answer and will not run. Ask the assistant again if you still want it.',
+      running: 'Confirmed. It is running now.',
+      status: {
+        pending: 'Waiting',
+        running: 'Running',
+        done: 'Done',
+        failed: 'Failed ({code})',
+        skipped: 'Not run',
+      },
+      more: 'Show all {count} steps',
+      failed: 'Plans waiting for your answer could not be read.',
+      reload: 'Read the plans again',
+    },
     turn: {
       stopped: 'Stopped before an answer.',
       unsent: 'Not sent.',

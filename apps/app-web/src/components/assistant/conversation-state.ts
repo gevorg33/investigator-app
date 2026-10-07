@@ -61,6 +61,11 @@ export type Action =
   | { type: 'earlier_failed' }
   /** The newest messages read back from the server, when what it holds was uncertain. */
   | { type: 'synced'; messages: AiMessage[] }
+  /**
+   * How plans ended, from the newest messages (T-058): only PLAN_OUTCOME messages are taken, which the
+   * database writes as a plan ends — nothing a turn under way is showing is touched.
+   */
+  | { type: 'outcomes'; messages: AiMessage[] }
   | { type: 'reset'; notice?: Notice }
   | { type: 'session'; session: AiSession }
   | { type: 'start'; question: Ask; stored: boolean }
@@ -120,6 +125,14 @@ export function reduce(state: ConversationState, action: Action): ConversationSt
           : t;
       return { ...state, messages, turn: kept?.phase === 'running' ? null : kept };
     }
+    case 'outcomes':
+      return {
+        ...state,
+        messages: merged(
+          state.messages,
+          action.messages.filter((m) => m.kind === 'PLAN_OUTCOME'),
+        ),
+      };
     case 'reset':
       return { ...initialState, status: 'ready', notice: action.notice ?? null };
     case 'session':

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiMessage } from '@/lib/api/assistant';
-import { newestFirst, Opener, OPENER, viewport } from '@/test/assistant';
+import { newestFirst, noPlans, Opener, OPENER, viewport } from '@/test/assistant';
 import { api, apiError } from '@/test/api';
 import { aiMessage, aiSession } from '@/test/fixtures';
 import { renderIntl } from '@/test/intl';
@@ -57,6 +57,7 @@ describe('opening the assistant on the conversation a link names (T-231)', () =>
     router.reset();
     api.install();
     api.on('GET /workspaces', 200, [{ id: 'w1', kind: 'PERSONAL', name: null, current: true }]);
+    noPlans(FAILED.id, LATER.id);
     viewport(false);
   });
   afterEach(() => vi.unstubAllGlobals());

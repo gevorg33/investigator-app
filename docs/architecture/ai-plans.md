@@ -196,8 +196,9 @@ tells its own person `assistant_plan_failed` or `assistant_plan_voided`, in the 
 is what they asked for, and a decline is their own; neither notifies. A departed member is not notified, because they are no longer a member.
 
 **The client polls while a plan runs.** The API needs nothing more for that: `GET …/plans/:planId` and
-`GET …/plans?open=true` read the status and step rows as they stand. The confirmation UI that polls them
-is T-058.
+`GET …/plans?open=true` read the status and step rows as they stand. app-web's confirmation UI (T-058,
+`app-web.md`) reads a running plan every 2 seconds until it ends, then reads the conversation's
+PLAN_OUTCOME message.
 
 ## The timeline (T-214)
 

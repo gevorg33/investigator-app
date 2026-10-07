@@ -533,6 +533,39 @@ a copied address does not open it again. A conversation that has gone, or is not
 unconfirmed address opens the panel on `ConfirmFirst` and reads nothing. If the reader follows a
 second link before the first has loaded, the first's reply is ignored.
 
+**Confirming a plan (T-058).** When the assistant wants to change something, it proposes a plan, and
+nothing runs until the person confirms it. `usePlans` reads the open conversation's plans with
+`GET …/plans?open=true`. It reads them when the conversation opens, and again whenever the
+conversation grows. So a plan left waiting is there at once when the person comes back after closing
+the browser. `PlanConfirmation` shows each plan at the end of the conversation, in the order the
+plans were proposed:
+- **Exactly what runs:** each step's command, and every argument as the API holds it, value for
+  value. These are the values the confirmation's hash covers, never a sentence about them. Plans
+  over three steps show three below `md`, and "Show all N steps" reveals the rest.
+- **Where and until when:** the workspace it runs in, and the time it waits until, in the reader's
+  locale and device time zone.
+- **What confirming means:** nothing happens until you confirm; it runs as you; what it does is not
+  undone automatically.
+- **The buttons:** Decline and Confirm sit side by side, the same size, Decline first. Neither is
+  focused for the reader, and both are disabled from the first tap until the API answers, so nothing
+  is sent twice. The plan hash goes only in the confirm request; it is never shown and never reaches
+  the model. Nothing in the app confirms on its own.
+- **Running:** a confirmed plan is titled "What you confirmed" and read again every 2 s (`POLL_MS`),
+  each step marked Waiting, Running, Done, Failed with its code, or Not run.
+- **Ending:** once the plan ends — here, in another tab, or refused — the card leaves, and the
+  conversation reads its newest page for the PLAN_OUTCOME message the database wrote, which says what
+  happened and why. `readOutcomes` merges only PLAN_OUTCOME messages, so a turn under way is never
+  disturbed.
+- **A refusal:** the plan is read again and shown as it now stands.
+  - Changed under the person: it has ended, and its outcome says why.
+  - Past its time: the card says so, with nothing to press.
+  - Answered in another tab: it shows running.
+  - Not sent at all: the error sits beside the buttons, and they work again.
+- **Expiry on the device's clock:** a plan whose time passes while it is shown stops offering Confirm.
+
+On a phone the plan is part of the assistant's full-screen sheet, which cannot be swiped away. It is
+never a sheet of its own that a stray gesture could dismiss.
+
 **Plan outcomes (T-226).** A `PLAN_OUTCOME` message renders in the reader's words from its event
 (`plan-outcome.tsx`; `ai-plans.md`): the outcome, a reason worth a sentence, and each attempted step.
 
