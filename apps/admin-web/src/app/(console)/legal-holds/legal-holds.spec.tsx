@@ -12,6 +12,20 @@ import LegalHoldsPage, { metadata } from './page';
 vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextNavigation);
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 
+// No pause between keystrokes and steps (`delay: null`), as in app-web's specs (T-180).
+const user = () => userEvent.setup({ delay: null });
+/**
+ * A long value as staff enter one — a record's id copied from elsewhere, a reason drafted elsewhere:
+ * pasted. Typed, each character is a render; a walk-through typing a hundred of them took 5.8 s of a
+ * 5 s budget under a full `pnpm test`, and the abandoned test kept typing into the next one's focused
+ * field (T-236). Keystrokes stay where they are the point: crossing a minimum, a blank answer.
+ */
+const paste = async (field: HTMLElement, text: string) => {
+  const u = user();
+  await u.click(field);
+  await u.paste(text);
+};
+
 const ME = {
   id: 'staff-1',
   email: 'compliance@example.test',
@@ -244,7 +258,7 @@ describe('legal holds in the console (T-205)', () => {
 
   describe('placing a hold', () => {
     const open = async () => {
-      await userEvent.click(screen.getByRole('button', { name: t('hold.place.open') }));
+      await user().click(screen.getByRole('button', { name: t('hold.place.open') }));
       return screen.findByRole('dialog', { name: t('hold.place.title') });
     };
 
@@ -263,20 +277,14 @@ describe('legal holds in the console (T-205)', () => {
           .every((r) => !(r as HTMLInputElement).checked),
       ).toBe(true);
 
-      await userEvent.click(within(sheet).getByRole('radio', { name: t('holds.resource.TENANT') }));
-      await userEvent.type(
-        within(sheet).getByRole('textbox', { name: t('hold.place.id') }),
-        ACCOUNT,
-      );
-      await userEvent.type(
+      await user().click(within(sheet).getByRole('radio', { name: t('holds.resource.TENANT') }));
+      await paste(within(sheet).getByRole('textbox', { name: t('hold.place.id') }), ACCOUNT);
+      await paste(
         within(sheet).getByRole('textbox', { name: t('hold.place.reason') }),
         ' '.repeat(12) + 'x'.repeat(11),
       );
       expect(submit).toBeDisabled();
-      await userEvent.type(
-        within(sheet).getByRole('textbox', { name: t('hold.place.reason') }),
-        'x',
-      );
+      await user().type(within(sheet).getByRole('textbox', { name: t('hold.place.reason') }), 'x');
       expect(submit).toBeEnabled();
     });
 
@@ -285,16 +293,13 @@ describe('legal holds in the console (T-205)', () => {
       await show();
       api.on('POST /legal-holds', 201, hold());
       const sheet = await open();
-      await userEvent.click(within(sheet).getByRole('radio', { name: t('holds.resource.USER') }));
-      await userEvent.type(
-        within(sheet).getByRole('textbox', { name: t('hold.place.id') }),
-        ` ${ACCOUNT} `,
-      );
-      await userEvent.type(
+      await user().click(within(sheet).getByRole('radio', { name: t('holds.resource.USER') }));
+      await paste(within(sheet).getByRole('textbox', { name: t('hold.place.id') }), ` ${ACCOUNT} `);
+      await paste(
         within(sheet).getByRole('textbox', { name: t('hold.place.reason') }),
         `  ${REASON}  `,
       );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.place.submit') }));
+      await user().click(within(sheet).getByRole('button', { name: t('hold.place.submit') }));
       await waitFor(() => expect(router.refresh).toHaveBeenCalled());
       expect(api.calls.at(-1)).toMatchObject({
         method: 'POST',
@@ -328,11 +333,8 @@ describe('legal holds in the console (T-205)', () => {
       await show({ resourceType: 'MISSION', resourceId: MISSION });
       api.on('POST /legal-holds', 404, apiError('NOT_FOUND', 'error.common.not_found'));
       const sheet = await open();
-      await userEvent.type(
-        within(sheet).getByRole('textbox', { name: t('hold.place.reason') }),
-        REASON,
-      );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.place.submit') }));
+      await paste(within(sheet).getByRole('textbox', { name: t('hold.place.reason') }), REASON);
+      await user().click(within(sheet).getByRole('button', { name: t('hold.place.submit') }));
       expect(await within(sheet).findByRole('alert')).toHaveTextContent(t('hold.place.not_found'));
       expect(router.refresh).not.toHaveBeenCalled();
     });
@@ -348,7 +350,7 @@ describe('legal holds in the console (T-205)', () => {
       await show();
       const sheet = await open();
       expect(sheet).toHaveAttribute('data-vaul-drawer-direction', 'right');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.cancel') }));
+      await user().click(within(sheet).getByRole('button', { name: t('hold.cancel') }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
     });
@@ -356,7 +358,7 @@ describe('legal holds in the console (T-205)', () => {
 
   describe('releasing a hold', () => {
     const open = async () => {
-      await userEvent.click(
+      await user().click(
         screen.getByRole('button', { name: new RegExp(`^${t('hold.release.open')} — `) }),
       );
       return screen.findByRole('dialog', { name: t('hold.release.title') });
@@ -369,12 +371,12 @@ describe('legal holds in the console (T-205)', () => {
       expect(sheet).toHaveAccessibleDescription(t('hold.release.description'));
       const submit = within(sheet).getByRole('button', { name: t('hold.release.submit') });
       expect(submit).toBeDisabled();
-      await userEvent.type(
+      await user().type(
         within(sheet).getByRole('textbox', { name: t('hold.release.reason') }),
         'x'.repeat(11),
       );
       expect(submit).toBeDisabled();
-      await userEvent.type(
+      await user().type(
         within(sheet).getByRole('textbox', { name: t('hold.release.reason') }),
         'x',
       );
@@ -386,11 +388,11 @@ describe('legal holds in the console (T-205)', () => {
       await show();
       api.on(`POST /legal-holds/${HOLD}/release`, 200, released);
       const sheet = await open();
-      await userEvent.type(
+      await paste(
         within(sheet).getByRole('textbox', { name: t('hold.release.reason') }),
         ` ${RELEASE} `,
       );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.release.submit') }));
+      await user().click(within(sheet).getByRole('button', { name: t('hold.release.submit') }));
       await waitFor(() => expect(router.refresh).toHaveBeenCalled());
       expect(api.calls.at(-1)).toMatchObject({
         method: 'POST',
@@ -410,7 +412,7 @@ describe('legal holds in the console (T-205)', () => {
       await show();
       const sheet = await open();
       expect(sheet).toHaveAttribute('data-vaul-drawer-direction', 'right');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.cancel') }));
+      await user().click(within(sheet).getByRole('button', { name: t('hold.cancel') }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
     });
@@ -424,11 +426,8 @@ describe('legal holds in the console (T-205)', () => {
         apiError('STATE_CONFLICT', 'error.common.state_conflict'),
       );
       const sheet = await open();
-      await userEvent.type(
-        within(sheet).getByRole('textbox', { name: t('hold.release.reason') }),
-        RELEASE,
-      );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('hold.release.submit') }));
+      await paste(within(sheet).getByRole('textbox', { name: t('hold.release.reason') }), RELEASE);
+      await user().click(within(sheet).getByRole('button', { name: t('hold.release.submit') }));
       expect(await within(sheet).findByRole('alert')).toHaveTextContent(t('hold.release.conflict'));
       expect(router.refresh).not.toHaveBeenCalled();
     });

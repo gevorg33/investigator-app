@@ -19,6 +19,20 @@ vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders
 const navigated = vi.hoisted(() => ({ to: [] as string[] }));
 vi.mock('@/lib/navigate', () => ({ navigate: (url: string) => navigated.to.push(url) }));
 
+// No pause between keystrokes and steps (`delay: null`), as in app-web's specs (T-180).
+const user = () => userEvent.setup({ delay: null });
+/**
+ * A long value as staff enter one — a record's id copied from elsewhere, a reason drafted elsewhere:
+ * pasted. Typed, each character is a render; a walk-through typing a hundred of them took 5.8 s of a
+ * 5 s budget under a full `pnpm test`, and the abandoned test kept typing into the next one's focused
+ * field (T-236). Keystrokes stay where they are the point: crossing a minimum, a blank answer.
+ */
+const paste = async (field: HTMLElement, text: string) => {
+  const u = user();
+  await u.click(field);
+  await u.paste(text);
+};
+
 const ME = {
   id: 'staff-1',
   email: 'reviewer@example.test',
@@ -157,7 +171,7 @@ describe('the staff verification console (T-070)', () => {
       expect(screen.getByRole('heading', { name: t('staff_only.title') })).toBeInTheDocument();
       expect(screen.queryByText('inside')).toBeNull();
       api.on('POST /auth/logout', 204);
-      await userEvent.click(screen.getByRole('button', { name: t('shell.sign_out') }));
+      await user().click(screen.getByRole('button', { name: t('shell.sign_out') }));
       await waitFor(() => expect(navigated.to).toEqual(['/sign-in']));
     });
 
@@ -211,9 +225,9 @@ describe('the staff verification console (T-070)', () => {
         screen.getByRole('heading', { level: 1, name: t('sign_in.title') }),
       ).toBeInTheDocument();
       api.on('POST /auth/login', 200, { userId: 'staff-1' });
-      await userEvent.type(screen.getByLabelText(t('sign_in.email')), 'reviewer@example.test');
-      await userEvent.type(screen.getByLabelText(t('sign_in.password')), 'a long passphrase');
-      await userEvent.click(screen.getByRole('button', { name: t('sign_in.submit') }));
+      await user().type(screen.getByLabelText(t('sign_in.email')), 'reviewer@example.test');
+      await user().type(screen.getByLabelText(t('sign_in.password')), 'a long passphrase');
+      await user().click(screen.getByRole('button', { name: t('sign_in.submit') }));
       await waitFor(() => expect(navigated.to).toEqual([`/verification/${ID}`]));
       expect(api.calls[0]).toMatchObject({
         origin: '',
@@ -224,9 +238,9 @@ describe('the staff verification console (T-070)', () => {
     it('never follows a `next` that leaves the site', async () => {
       render(await SignInPage({ searchParams: Promise.resolve({ next: '//evil.example' }) }));
       api.on('POST /auth/login', 200, { userId: 'staff-1' });
-      await userEvent.type(screen.getByLabelText(t('sign_in.email')), 'reviewer@example.test');
-      await userEvent.type(screen.getByLabelText(t('sign_in.password')), 'a long passphrase');
-      await userEvent.click(screen.getByRole('button', { name: t('sign_in.submit') }));
+      await user().type(screen.getByLabelText(t('sign_in.email')), 'reviewer@example.test');
+      await user().type(screen.getByLabelText(t('sign_in.password')), 'a long passphrase');
+      await user().click(screen.getByRole('button', { name: t('sign_in.submit') }));
       await waitFor(() => expect(navigated.to).toEqual(['/']));
     });
 
@@ -237,10 +251,10 @@ describe('the staff verification console (T-070)', () => {
         [400, 'VALIDATION_FAILED', 'error.common.validation_failed'],
       ] as const) {
         api.on('POST /auth/login', status, apiError(code, key));
-        await userEvent.clear(screen.getByLabelText(t('sign_in.email')));
-        await userEvent.type(screen.getByLabelText(t('sign_in.email')), 'someone@example.test');
-        await userEvent.type(screen.getByLabelText(t('sign_in.password')), 'x');
-        await userEvent.click(screen.getByRole('button', { name: t('sign_in.submit') }));
+        await user().clear(screen.getByLabelText(t('sign_in.email')));
+        await user().type(screen.getByLabelText(t('sign_in.email')), 'someone@example.test');
+        await user().type(screen.getByLabelText(t('sign_in.password')), 'x');
+        await user().click(screen.getByRole('button', { name: t('sign_in.submit') }));
         expect(await screen.findByRole('alert')).toHaveTextContent(t('sign_in.failed'));
       }
       expect(navigated.to).toEqual([]);
@@ -254,7 +268,7 @@ describe('the staff verification console (T-070)', () => {
         500,
         apiError('INTERNAL_ERROR', 'error.common.internal', { correlationId: 'req-9' }),
       );
-      await userEvent.click(screen.getByRole('button', { name: t('shell.sign_out') }));
+      await user().click(screen.getByRole('button', { name: t('shell.sign_out') }));
       expect(await screen.findByRole('alert')).toHaveTextContent('Reference: req-9');
       expect(navigated.to).toEqual([]);
     });
@@ -490,7 +504,7 @@ describe('the staff verification console (T-070)', () => {
         signedUrl: 'https://res.cloudinary.test/signed/secret-token',
         expiresAt: '2026-09-25T12:05:00Z',
       });
-      await userEvent.click(screen.getByRole('button', { name: 'Open document 1' }));
+      await user().click(screen.getByRole('button', { name: 'Open document 1' }));
       await waitFor(() =>
         expect(opened.location.href).toBe('https://res.cloudinary.test/signed/secret-token'),
       );
@@ -504,7 +518,7 @@ describe('the staff verification console (T-070)', () => {
       const { opened } = tab();
       await showReview();
       api.on(URL_PATH, 409, apiError('STATE_CONFLICT', 'error.common.state_conflict'));
-      await userEvent.click(screen.getByRole('button', { name: 'Open document 1' }));
+      await user().click(screen.getByRole('button', { name: 'Open document 1' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(t('error.common.state_conflict'));
       expect(opened.close).toHaveBeenCalled();
     });
@@ -513,7 +527,7 @@ describe('the staff verification console (T-070)', () => {
       const { opened } = tab();
       await showReview();
       api.down(URL_PATH);
-      await userEvent.click(screen.getByRole('button', { name: 'Open document 1' }));
+      await user().click(screen.getByRole('button', { name: 'Open document 1' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(t('error.common.internal'));
       expect(opened.close).toHaveBeenCalled();
     });
@@ -524,7 +538,7 @@ describe('the staff verification console (T-070)', () => {
         vi.fn(() => null),
       );
       await showReview();
-      await userEvent.click(screen.getByRole('button', { name: 'Open document 1' }));
+      await user().click(screen.getByRole('button', { name: 'Open document 1' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(t('review.documents.blocked'));
       expect(api.calls.some((c) => c.path.includes('delivery-url'))).toBe(false);
     });
@@ -532,15 +546,12 @@ describe('the staff verification console (T-070)', () => {
 
   describe('deciding', () => {
     const decide = async (outcome: 'Approve' | 'Reject', reason: string) => {
-      await userEvent.click(screen.getByRole('button', { name: t('decision.open') }));
+      await user().click(screen.getByRole('button', { name: t('decision.open') }));
       const sheet = await screen.findByRole('dialog', { name: t('decision.title') });
-      await userEvent.click(within(sheet).getByRole('radio', { name: outcome }));
+      await user().click(within(sheet).getByRole('radio', { name: outcome }));
       if (reason !== '')
-        await userEvent.type(
-          within(sheet).getByRole('textbox', { name: t('decision.reason') }),
-          reason,
-        );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('decision.submit') }));
+        await paste(within(sheet).getByRole('textbox', { name: t('decision.reason') }), reason);
+      await user().click(within(sheet).getByRole('button', { name: t('decision.submit') }));
       return sheet;
     };
 
@@ -558,15 +569,15 @@ describe('the staff verification console (T-070)', () => {
 
     it('asks for both an outcome and a reason, and will not send a reason of spaces', async () => {
       await showReview();
-      await userEvent.click(screen.getByRole('button', { name: t('decision.open') }));
+      await user().click(screen.getByRole('button', { name: t('decision.open') }));
       const sheet = await screen.findByRole('dialog', { name: t('decision.title') });
       for (const radio of within(sheet).getAllByRole('radio')) expect(radio).toBeRequired();
       const reason = within(sheet).getByRole('textbox', { name: t('decision.reason') });
       expect(reason).toBeRequired();
       expect(reason).toHaveAccessibleDescription(t('decision.reason_hint'));
-      await userEvent.click(within(sheet).getByRole('radio', { name: 'Approve' }));
-      await userEvent.type(reason, '   ');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('decision.submit') }));
+      await user().click(within(sheet).getByRole('radio', { name: 'Approve' }));
+      await user().type(reason, '   ');
+      await user().click(within(sheet).getByRole('button', { name: t('decision.submit') }));
       expect(await within(sheet).findByRole('alert')).toHaveTextContent(
         t('error.validation.verification.reason_required'),
       );
@@ -593,10 +604,10 @@ describe('the staff verification console (T-070)', () => {
         removeEventListener: () => undefined,
       }));
       await showReview();
-      await userEvent.click(screen.getByRole('button', { name: t('decision.open') }));
+      await user().click(screen.getByRole('button', { name: t('decision.open') }));
       const sheet = await screen.findByRole('dialog', { name: t('decision.title') });
       expect(sheet).toHaveAttribute('data-vaul-drawer-direction', 'right');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('decision.cancel') }));
+      await user().click(within(sheet).getByRole('button', { name: t('decision.cancel') }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
     });

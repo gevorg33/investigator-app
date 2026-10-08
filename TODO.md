@@ -10148,13 +10148,13 @@ pnpm --filter app-web test assistant-confirmation
 ---
 
 ### T-236 — Two admin-web specs time out under the root `pnpm test`
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. Root `test` now runs the packages one at a time, as `test:coverage` has since T-160, guarded in `workspace-scripts.spec.ts` (seen failing on the old script). The three console specs paste long values (ids, drafted reasons) instead of typing them. Under load, "places it, trimmed" went from 3.6–5.2 s (one timeout) to 0.8–4.2 s with pasting alone; serialized, five consecutive root `pnpm test` runs passed (255, 164, 304, 156, 175 s). ci-cd skill updated
 - **Priority:** P3
 - **Depends on:** —
 - **Risk:** LOW
 - **Human approval required:** No
 - **Owner agent:** frontend
-- **Affected:** apps/admin-web/src/app/(console)/{legal-holds/legal-holds,moderation/moderation}.spec.tsx
+- **Affected:** apps/admin-web/src/app/(console)/{legal-holds/legal-holds,moderation/moderation,verification/verification}.spec.tsx; package.json (`test`); apps/api/test/workspace-scripts.spec.ts; .claude/skills/ci-cd/SKILL.md — widened from the first two once measured (below)
 
 **Description**
 Found during T-235: one root `pnpm test` (every package at once) failed four admin-web tests at the
@@ -10166,9 +10166,18 @@ the root script is the documented local gate. Same shape as T-180's filter sheet
 with the default `delay: 0` yields to a timer per keystroke. Measure each, and give the walk-throughs
 `userEvent.setup({ delay: null })` as T-180 did. No timeout raised, no step removed.
 
+**What measuring showed (2026-10-08)** — the description above guessed wrong on two counts:
+- Only two tests timed out. The other two failed because the timed-out test kept running after it
+  was abandoned, and user-event types into whatever is focused — the next test's field (a reason
+  received as `"aObroduitn,a rayn dc owmhpaatn yy ocuh enceke.d to"`).
+- The per-keystroke timer is not the cost: `delay: null` barely moved them. Under load each
+  keystroke is a render that costs ~25 ms instead of ~1.5 ms; typing was 2.3 s of a 2.8 s test.
+- The cause is T-160's: the root `test` script still ran every package at once, and the tests that
+  take 180 ms alone took up to 5.8 s. CI was fixed then; the local gate was not.
+
 **Acceptance criteria**
-- [ ] Each of the four is measured before and after, alone and under a full root `pnpm test`
-- [ ] Five consecutive root `pnpm test` runs pass
+- [x] Each of the four is measured before and after, alone and under load (the API and app-web suites running beside it)
+- [x] Five consecutive root `pnpm test` runs pass
 
 **Validation**
 ```bash
