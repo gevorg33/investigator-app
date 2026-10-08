@@ -551,7 +551,10 @@ plans were proposed:
   is sent twice. The plan hash goes only in the confirm request; it is never shown and never reaches
   the model. Nothing in the app confirms on its own.
 - **Running:** a confirmed plan is titled "What you confirmed" and read again every 2 s (`POLL_MS`),
-  each step marked Waiting, Running, Done, Failed with its code, or Not run.
+  each step marked Waiting, Running, Done, Failed with its code, or Not run. Nothing is read while the
+  tab is hidden — the panel stays mounted, and a plan can sit CONFIRMED for a worker that is down until
+  its execution deadline (T-224) — and a running plan is read at once when the tab shows again, as the
+  notification count is (T-235). A read already on its way when the tab hides still lands.
 - **Ending:** once the plan ends — here, in another tab, or refused — the card leaves, and the
   conversation reads its newest page for the PLAN_OUTCOME message the database wrote, which says what
   happened and why. `readOutcomes` merges only PLAN_OUTCOME messages, so a turn under way is never

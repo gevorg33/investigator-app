@@ -14,6 +14,8 @@ import { KnowledgeRetrievalService } from '../../knowledge/knowledge-retrieval.s
 import { SearchService } from '../../search/search.service';
 import { TaxonomyService } from '../../taxonomy/taxonomy.service';
 import { HashingEmbedder } from '../../../../test/hashing-embedder';
+import { ContextBuilderService } from '../context-builder/context-builder.service';
+import { ToolResultStore } from '../results/tool-result-store';
 import { AssistantTurnService, type TurnEvent } from '../assistant-turn.service';
 import type { ChatModel, ChatPrompt } from '../chat-model';
 import { DiscoveryAnswerService } from '../discovery/discovery-answer.service';
@@ -107,7 +109,13 @@ describe('screening and routing a turn (T-220)', () => {
       owner,
     );
     const turns = asRequests(
-      new AssistantTurnService(sessions, knowledge, discovery, plans),
+      new AssistantTurnService(
+        sessions,
+        knowledge,
+        discovery,
+        plans,
+        new ContextBuilderService(db, authz, audit, new ToolResultStore(db, authz), model),
+      ),
       owner,
     );
     return {

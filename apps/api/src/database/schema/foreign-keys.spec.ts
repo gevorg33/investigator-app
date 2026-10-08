@@ -7,6 +7,7 @@ import { taxonomyNodeLabels, taxonomyNodes } from './taxonomy';
 import { assignments } from './assignments';
 import { investigationSources } from './investigation-sources';
 import { investigationNotes, investigationTasks } from './investigation-workspace';
+import { aiSessionEntities, aiSessionSummaries } from './ai-context';
 import { aiPlanSteps, aiPlans, aiToolResults } from './ai-plans';
 import { aiMessages, aiSessions } from './ai-sessions';
 import { tenants } from './tenants';
@@ -163,6 +164,15 @@ describe('assistant sessions (T-045)', () => {
     expect(fks(aiToolResults)).toEqual([
       { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
     ]);
+  });
+
+  it('keep summaries and session state until the session is erased on purpose (T-046)', () => {
+    // As messages: erased by session deletion (SESSION_CONTENT), never by a cascade.
+    for (const table of [aiSessionSummaries, aiSessionEntities]) {
+      expect(fks(table)).toEqual([
+        { columns: ['session_id'], target: aiSessions, onDelete: 'restrict' },
+      ]);
+    }
   });
 });
 

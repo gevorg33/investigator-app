@@ -22,6 +22,7 @@ export * from './investigation-sources';
 export * from './investigation-workspace';
 export * from './ai-sessions';
 export * from './ai-plans';
+export * from './ai-context';
 export * from './policy-reviews';
 export * from './knowledge';
 export * from './reviews';

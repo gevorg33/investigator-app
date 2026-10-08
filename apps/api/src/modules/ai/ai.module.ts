@@ -8,6 +8,7 @@ import { AssistantTurnController } from './assistant-turn.controller';
 import { AssistantTurnService } from './assistant-turn.service';
 import { AssistantController } from './assistant.controller';
 import { CHAT_MODEL, chatModelFromEnv } from './chat-model';
+import { ContextBuilderService } from './context-builder/context-builder.service';
 import { DiscoveryAnswerController } from './discovery/discovery-answer.controller';
 import { DiscoveryAnswerService } from './discovery/discovery-answer.service';
 import { KnowledgeAnswerService } from './knowledge-answer.service';
@@ -26,7 +27,8 @@ import { ToolRunner } from './tools/tool-runner';
  * caller's session, answered from the knowledge base and streamed as it forms. The chat model is
  * null until `OPENAI_API_KEY` and `OPENAI_CHAT_MODEL` are set, and every endpoint that needs it
  * answers 503 until then. T-048: plans — a write is proposed, confirmed by its person, and run by the
- * worker — and the store that keeps large tool results out of a prompt.
+ * worker — and the store that keeps large tool results out of a prompt. T-046: the Context Builder,
+ * which decides what of a conversation reaches the model, and compacts it into summaries.
  */
 @Module({
   // AuthModule for the shared rate limiter. Search and taxonomy are the services the discovery
@@ -53,6 +55,7 @@ import { ToolRunner } from './tools/tool-runner';
     ToolRunner,
     AiPlansService,
     ToolResultStore,
+    ContextBuilderService,
     { provide: CHAT_MODEL, useFactory: () => chatModelFromEnv(process.env) },
   ],
 })

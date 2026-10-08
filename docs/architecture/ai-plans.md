@@ -198,7 +198,8 @@ is what they asked for, and a decline is their own; neither notifies. A departed
 **The client polls while a plan runs.** The API needs nothing more for that: `GET …/plans/:planId` and
 `GET …/plans?open=true` read the status and step rows as they stand. app-web's confirmation UI (T-058,
 `app-web.md`) reads a running plan every 2 seconds until it ends, then reads the conversation's
-PLAN_OUTCOME message.
+PLAN_OUTCOME message. It reads nothing while the tab is hidden, and once at once when it shows again
+(T-235).
 
 ## The timeline (T-214)
 

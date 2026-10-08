@@ -55,6 +55,8 @@ export interface AnswerOptions {
   onStep?: (step: AnswerStep) => void;
   /** Abandons the answer; whatever is under way rejects with the signal's reason. */
   signal?: AbortSignal;
+  /** What the Context Builder chose of the conversation so far (T-046), as delimited data. */
+  conversation?: string;
 }
 
 const ADMITTED: unique symbol = Symbol('admitted');
@@ -138,7 +140,7 @@ export class KnowledgeAnswerService {
     question: string,
     { locale, reader }: Admitted,
     req: RequestContext,
-    { onStep, signal }: AnswerOptions = {},
+    { onStep, signal, conversation }: AnswerOptions = {},
   ): Promise<KnowledgeAnswer> {
     const model = this.model!;
     try {
@@ -148,7 +150,7 @@ export class KnowledgeAnswerService {
 
       signal?.throwIfAborted();
       onStep?.({ step: 'writing', sources: found.chunks.length });
-      const prompt = knowledgePrompt(question, found.chunks, locale);
+      const prompt = knowledgePrompt(question, found.chunks, locale, conversation);
       const reply = parseAnswer(await model.complete(prompt, signal), prompt.sources);
       if (reply === null) return await this.noAnswer(actor, locale, 'unsupported', req);
 

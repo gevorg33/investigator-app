@@ -293,6 +293,63 @@ describe('confirming what the assistant will do (T-058)', () => {
       await waitFor(() => expect(screen.queryByRole('group', { name: CARD })).toBeNull());
       expect(calls(ONE)).toHaveLength(2);
     });
+
+    it('reads nothing while the tab is hidden, and reads at once when it shows again (T-235)', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      const visibility = vi.spyOn(document, 'visibilityState', 'get');
+      const show = (state: DocumentVisibilityState) => {
+        visibility.mockReturnValue(state);
+        act(() => void document.dispatchEvent(new Event('visibilitychange')));
+      };
+      await openOn([plan({ status: 'CONFIRMED', confirmation: 'CONFIRMED' })]);
+      await card();
+      api.on(
+        ONE,
+        200,
+        plan({
+          status: 'EXECUTING',
+          confirmation: 'CONFIRMED',
+          steps: [step(1, { status: 'DONE' }), step(2, { status: 'RUNNING' })],
+        }),
+      );
+
+      show('hidden');
+      await act(() => vi.advanceTimersByTimeAsync(POLL_MS * 10));
+      expect(calls(ONE)).toHaveLength(0);
+
+      // Back in view: read now, not a tick later — then every tick again.
+      show('visible');
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(calls(ONE)).toHaveLength(1);
+      expect(await within(await card()).findByText(en.plan.status.done)).toBeInTheDocument();
+      await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+      expect(calls(ONE)).toHaveLength(2);
+
+      // Hidden while a read is on its way: it lands, and nothing follows it.
+      const release = api.hold(ONE, 200, plan({ status: 'EXECUTING', confirmation: 'CONFIRMED' }));
+      await act(() => vi.advanceTimersByTimeAsync(POLL_MS));
+      show('hidden');
+      release();
+      await act(() => vi.advanceTimersByTimeAsync(POLL_MS * 10));
+      expect(calls(ONE)).toHaveLength(3);
+      visibility.mockRestore();
+    });
+
+    it('starts watching a plan confirmed while the tab was out of view only once it is back', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+      await openOn([plan({ status: 'CONFIRMED', confirmation: 'CONFIRMED' })]);
+      await card();
+      await act(() => vi.advanceTimersByTimeAsync(POLL_MS * 3));
+      expect(calls(ONE)).toHaveLength(0);
+
+      api.on(ONE, 200, plan({ status: 'EXECUTING', confirmation: 'CONFIRMED' }));
+      visibility.mockReturnValue('visible');
+      act(() => void document.dispatchEvent(new Event('visibilitychange')));
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(calls(ONE)).toHaveLength(1);
+      visibility.mockRestore();
+    });
   });
 
   describe('when the API says no', () => {

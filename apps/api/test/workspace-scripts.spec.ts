@@ -81,6 +81,13 @@ describe('CI runs what it says it runs', () => {
     expect(steps).toMatch(/run: pnpm test:coverage\n/);
   });
 
+  it('runs the packages’ tests one at a time locally too, as CI does (T-236)', () => {
+    // `pnpm test` is the local gate (CLAUDE.md). Left parallel after T-160, it oversubscribed a
+    // developer's machine the same way: an admin-web walk-through taking 180 ms alone passed 5 s,
+    // and the abandoned test went on typing into the next one's focused field.
+    expect(root.scripts?.['test']).toBe('pnpm -r --workspace-concurrency=1 test');
+  });
+
   it('gates coverage in every package that ships code that runs', () => {
     // A package of pure type declarations compiles to nothing and has nothing to cover. One
     // that exports a value does, and it does not get to escape the gate by having no runner.

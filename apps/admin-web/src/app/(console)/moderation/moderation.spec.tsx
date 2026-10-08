@@ -13,6 +13,20 @@ import QueuePage from './page';
 vi.mock('next/navigation', async () => (await import('@/test/navigation')).nextNavigation);
 vi.mock('next/headers', async () => (await import('@/test/request')).nextHeaders);
 
+// No pause between keystrokes and steps (`delay: null`), as in app-web's specs (T-180).
+const user = () => userEvent.setup({ delay: null });
+/**
+ * A long value as staff enter one — a record's id copied from elsewhere, a reason drafted elsewhere:
+ * pasted. Typed, each character is a render; a walk-through typing a hundred of them took 5.8 s of a
+ * 5 s budget under a full `pnpm test`, and the abandoned test kept typing into the next one's focused
+ * field (T-236). Keystrokes stay where they are the point: crossing a minimum, a blank answer.
+ */
+const paste = async (field: HTMLElement, text: string) => {
+  const u = user();
+  await u.click(field);
+  await u.paste(text);
+};
+
 const ME = {
   id: 'staff-1',
   email: 'moderator@example.test',
@@ -381,7 +395,7 @@ describe('the moderation console (T-051)', () => {
       expect(ai).toHaveTextContent(t('mission.ai.note'));
       expect(ai).toHaveTextContent('"suggestedOutcome": "PUBLISHED"');
 
-      await userEvent.click(screen.getByRole('button', { name: t('moderate.open') }));
+      await user().click(screen.getByRole('button', { name: t('moderate.open') }));
       const sheet = await screen.findByRole('dialog', { name: t('moderate.title') });
       for (const radio of within(sheet).getAllByRole('radio')) expect(radio).not.toBeChecked();
       expect(within(sheet).getByRole('button', { name: t('moderate.submit') })).toBeDisabled();
@@ -513,7 +527,7 @@ describe('the moderation console (T-051)', () => {
 
   describe('deciding', () => {
     const open = async () => {
-      await userEvent.click(screen.getByRole('button', { name: t('moderate.open') }));
+      await user().click(screen.getByRole('button', { name: t('moderate.open') }));
       return screen.findByRole('dialog', { name: t('moderate.title') });
     };
 
@@ -525,10 +539,10 @@ describe('the moderation console (T-051)', () => {
       expect(reason).toHaveAccessibleDescription(t('moderate.reason_hint'));
       expect(submit).toBeDisabled();
 
-      await userEvent.type(reason, '   ');
-      await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+      await user().type(reason, '   ');
+      await user().click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
       expect(submit).toBeDisabled();
-      await userEvent.type(reason, 'x');
+      await user().type(reason, 'x');
       expect(submit).toBeEnabled();
     });
 
@@ -544,7 +558,7 @@ describe('the moderation console (T-051)', () => {
         ],
         [t('moderate.publish'), t('moderate.reason.staff'), t('moderate.reason.staff_hint')],
       ] as const) {
-        await userEvent.click(within(sheet).getByRole('radio', { name: outcome }));
+        await user().click(within(sheet).getByRole('radio', { name: outcome }));
         expect(within(sheet).getByRole('textbox', { name: label })).toHaveAccessibleDescription(
           hint,
         );
@@ -558,18 +572,16 @@ describe('the moderation console (T-051)', () => {
       await showMission();
       api.on(`POST /moderation/missions/${ID}/decision`, 201, { outcome: 'CHANGES_REQUESTED' });
       const sheet = await open();
-      await userEvent.click(
-        within(sheet).getByRole('radio', { name: t('moderate.request_changes') }),
-      );
-      await userEvent.type(
+      await user().click(within(sheet).getByRole('radio', { name: t('moderate.request_changes') }));
+      await paste(
         within(sheet).getByRole('textbox', { name: t('moderate.reason.customer') }),
         `  ${REASON}  `,
       );
-      await userEvent.type(
+      await paste(
         within(sheet).getByRole('textbox', { name: t('moderate.note') }),
         ' Reads like a partner check. ',
       );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+      await user().click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
       await waitFor(() => expect(router.refresh).toHaveBeenCalled());
       expect(api.calls.at(-1)).toMatchObject({
         method: 'POST',
@@ -587,13 +599,13 @@ describe('the moderation console (T-051)', () => {
       await showMission();
       api.on(`POST /moderation/missions/${ID}/decision`, 201, { outcome: 'PUBLISHED' });
       const sheet = await open();
-      await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.publish') }));
-      await userEvent.type(
+      await user().click(within(sheet).getByRole('radio', { name: t('moderate.publish') }));
+      await paste(
         within(sheet).getByRole('textbox', { name: t('moderate.reason.staff') }),
         'Ordinary company check.',
       );
-      await userEvent.type(within(sheet).getByRole('textbox', { name: t('moderate.note') }), '   ');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+      await user().type(within(sheet).getByRole('textbox', { name: t('moderate.note') }), '   ');
+      await user().click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
       await waitFor(() => expect(router.refresh).toHaveBeenCalled());
       expect(api.calls.at(-1)?.body).toEqual({
         outcome: 'PUBLISHED',
@@ -610,20 +622,20 @@ describe('the moderation console (T-051)', () => {
         apiError('STATE_CONFLICT', 'error.common.state_conflict'),
       );
       const sheet = await open();
-      await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
-      await userEvent.type(
+      await user().click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+      await paste(
         within(sheet).getByRole('textbox', { name: t('moderate.reason.customer') }),
         REASON,
       );
-      await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+      await user().click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
       expect(await within(sheet).findByRole('alert')).toHaveTextContent(t('moderate.conflict'));
       expect(router.refresh).not.toHaveBeenCalled();
     });
 
     describe('confirming tags on publication (T-055)', () => {
       const publish = async (sheet: HTMLElement) => {
-        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.publish') }));
-        await userEvent.type(
+        await user().click(within(sheet).getByRole('radio', { name: t('moderate.publish') }));
+        await paste(
           within(sheet).getByRole('textbox', { name: t('moderate.reason.staff') }),
           'Ordinary company check.',
         );
@@ -638,7 +650,7 @@ describe('the moderation console (T-051)', () => {
       it('offers the vocabulary only on Publish: the suggestions ticked and first, a retired one left out', async () => {
         await showMission(suggesting(URGENT, RETIRED));
         const sheet = await open();
-        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+        await user().click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
         expect(checklist(sheet)).toBeNull();
 
         await publish(sheet);
@@ -660,9 +672,9 @@ describe('the moderation console (T-051)', () => {
         const sheet = await open();
         await publish(sheet);
         const group = checklist(sheet)!;
-        await userEvent.click(within(group).getByRole('checkbox', { name: /Remote/ }));
-        await userEvent.click(within(group).getByRole('checkbox', { name: 'Court use' }));
-        await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+        await user().click(within(group).getByRole('checkbox', { name: /Remote/ }));
+        await user().click(within(group).getByRole('checkbox', { name: 'Court use' }));
+        await user().click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
         await waitFor(() => expect(router.refresh).toHaveBeenCalled());
         expect(api.calls.at(-1)?.body).toEqual({
           outcome: 'PUBLISHED',
@@ -677,8 +689,8 @@ describe('the moderation console (T-051)', () => {
         api.on(`POST /moderation/missions/${ID}/decision`, 201, { outcome: 'REJECTED' });
         const sheet = await open();
         await publish(sheet);
-        await userEvent.click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
-        await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
+        await user().click(within(sheet).getByRole('radio', { name: t('moderate.reject') }));
+        await user().click(within(sheet).getByRole('button', { name: t('moderate.submit') }));
         await waitFor(() => expect(router.refresh).toHaveBeenCalled());
         expect(api.calls.at(-1)?.body).not.toHaveProperty('tagIds');
       });
@@ -691,9 +703,9 @@ describe('the moderation console (T-051)', () => {
         const sheet = await open();
         await publish(sheet);
         const boxes = within(checklist(sheet)!).getAllByRole('checkbox');
-        for (const box of boxes.slice(0, 8)) await userEvent.click(box);
+        for (const box of boxes.slice(0, 8)) await user().click(box);
         expect(boxes.slice(8).every((b) => (b as HTMLInputElement).disabled)).toBe(true);
-        await userEvent.click(boxes[0]!);
+        await user().click(boxes[0]!);
         expect(boxes[8]).toBeEnabled();
       });
 
@@ -715,7 +727,7 @@ describe('the moderation console (T-051)', () => {
       await showMission();
       const sheet = await open();
       expect(sheet).toHaveAttribute('data-vaul-drawer-direction', 'right');
-      await userEvent.click(within(sheet).getByRole('button', { name: t('moderate.cancel') }));
+      await user().click(within(sheet).getByRole('button', { name: t('moderate.cancel') }));
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
     });

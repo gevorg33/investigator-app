@@ -2512,7 +2512,7 @@ sees a conversation, what deleting does, and how search works.
 ---
 
 ### T-046 — Context Builder, summaries and compaction
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `ai/context-builder`: `ContextBuilderService` (build: own session → live plans, state, summaries, unsummarized messages, same-session full-text retrieval → budget with output reserved → five rungs → escaped `<conversation>`; compact: proactive at 75%, level-0 spans and level-1 roll-ups, versioned with model, prompt and range; note: entity refs). Migration 0046: `ai_session_summaries` (append-only) and `ai_session_entities`, own-conversation RLS, on `SESSION_CONTENT`. Wired into knowledge answers (`knowledge-answer-v2`); discovery results noted as `result`. 45 specs in `context-builder`, plus turn wiring. Docs: `ai-context.md`, `ai-sessions.md`; KB `kb-customer-ai-assistant` v11 (en; ru/hy drafts behind); counsel brief 36–37
 - **Priority:** P1
 - **Depends on:** T-045, T-016, T-077
 - **Risk:** HIGH
@@ -2527,22 +2527,22 @@ The service that decides what enters the model context. Per
 **Tenancy (ADR-0011).** The Context Builder reads only through the execution context. A summary never carries a workspace or authority. There is a test for stale context after a workspace switch.
 
 **Acceptance criteria**
-- [ ] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
+- [x] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
       `ai-sessions.service.spec.ts` fails until they do
-- [ ] **Permissions applied before assembly**, not after; a test proves no cross-session or
+- [x] **Permissions applied before assembly**, not after; a test proves no cross-session or
       cross-user message can be retrieved by semantic relevance
-- [ ] Token budget reserves output space; input never fills the window
-- [ ] Compaction triggers proactively at ~70–80%; **no message is ever deleted to fit**
-- [ ] Progressive degradation: recent → +summary → compress older → retrieve history → structured state
-- [ ] An **active plan or pending confirmation is never compacted away** — tested explicitly
-- [ ] Summaries incremental and hierarchical; versioned with model and source sequence range
-- [ ] Summaries preserve goal, entities, decisions, constraints, completed and pending actions
-- [ ] Retrieved content delimited and treated as data; injection test passes
-- [ ] A test proves a summary claiming a permission grants nothing
-- [ ] Structured session state (entity refs: kind, id, status, last-mentioned turn) as columns in a SESSION_CONTENT table under RLS (review 2026-10-06)
-- [ ] CONFIRMED and EXECUTING plans are in context with their live status; a follow-up that depends on one is a question until it completes (review 2026-10-06)
-- [ ] Tool results reach a prompt only through `forContext`, wrapped and escaped like knowledge sources; the injection test covers tool results (review 2026-10-06)
-- [ ] Before history, tool results or mission content go to the model provider: the customer article says so, and `counsel-brief.md` gains the processor question (review 2026-10-06)
+- [x] Token budget reserves output space; input never fills the window
+- [x] Compaction triggers proactively at ~70–80%; **no message is ever deleted to fit**
+- [x] Progressive degradation: recent → +summary → compress older → retrieve history → structured state
+- [x] An **active plan or pending confirmation is never compacted away** — tested explicitly
+- [x] Summaries incremental and hierarchical; versioned with model and source sequence range
+- [x] Summaries preserve goal, entities, decisions, constraints, completed and pending actions
+- [x] Retrieved content delimited and treated as data; injection test passes
+- [x] A test proves a summary claiming a permission grants nothing
+- [x] Structured session state (entity refs: kind, id, status, last-mentioned turn) as columns in a SESSION_CONTENT table under RLS (review 2026-10-06)
+- [x] CONFIRMED and EXECUTING plans are in context with their live status; a follow-up that depends on one is a question until it completes (review 2026-10-06) — live status tested; "a question" holds structurally (a turn has no write path; it only answers) and by the `knowledge-answer-v2` rule; a behavioural eval case belongs to T-215
+- [x] Tool results reach a prompt only through `forContext`, wrapped and escaped like knowledge sources; the injection test covers tool results (review 2026-10-06)
+- [x] Before history, tool results or mission content go to the model provider: the customer article says so, and `counsel-brief.md` gains the processor question (review 2026-10-06)
 
 **Validation**
 ```bash
@@ -10123,7 +10123,7 @@ pnpm --filter api test ai-plans
 ```
 
 ### T-235 — Pause watching a running plan while the tab is hidden
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `usePlans` tracks `visibilitychange`: no timer while hidden; on return the running plans are read after 0 ms, then every `POLL_MS`. Two specs in `assistant-confirmation.spec.tsx`, seen failing first. Live against the built app and API with a seeded CONFIRMED plan: reads at 2.4/4.5/6.5 s, none in 10 s hidden, the first 12 ms after return; a plan completed while hidden left the card at once and its outcome showed. Docs: `app-web.md`, `ai-plans.md`
 - **Priority:** P3
 - **Depends on:** T-058
 - **Risk:** LOW
@@ -10138,11 +10138,50 @@ a worker that is down (up to the 15-minute execution deadline, T-224). Pause on 
 while hidden, and read once at once on return, as the notification count does (T-169).
 
 **Acceptance criteria**
-- [ ] No plan is read while the tab is hidden; one is read at once when it shows again
+- [x] No plan is read while the tab is hidden; one is read at once when it shows again
 
 **Validation**
 ```bash
 pnpm --filter app-web test assistant-confirmation
+```
+
+---
+
+### T-236 — Two admin-web specs time out under the root `pnpm test`
+- **Status:** DONE — 2026-10-08. Root `test` now runs the packages one at a time, as `test:coverage` has since T-160, guarded in `workspace-scripts.spec.ts` (seen failing on the old script). The three console specs paste long values (ids, drafted reasons) instead of typing them. Under load, "places it, trimmed" went from 3.6–5.2 s (one timeout) to 0.8–4.2 s with pasting alone; serialized, five consecutive root `pnpm test` runs passed (255, 164, 304, 156, 175 s). ci-cd skill updated
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/admin-web/src/app/(console)/{legal-holds/legal-holds,moderation/moderation,verification/verification}.spec.tsx; package.json (`test`); apps/api/test/workspace-scripts.spec.ts; .claude/skills/ci-cd/SKILL.md — widened from the first two once measured (below)
+
+**Description**
+Found during T-235: one root `pnpm test` (every package at once) failed four admin-web tests at the
+5 s timeout — legal holds › placing a hold › "places it, trimmed, then reads the page again" and
+"starts from the record looked up"; moderation › deciding › "records a return with its reason and
+internal note…" and "sends no internal note when none was written". Alone they passed 3 of 3, and the
+next full run was green. CI is not exposed (`test:coverage` runs one package at a time, T-160), but
+the root script is the documented local gate. Same shape as T-180's filter sheet: `userEvent.type`
+with the default `delay: 0` yields to a timer per keystroke. Measure each, and give the walk-throughs
+`userEvent.setup({ delay: null })` as T-180 did. No timeout raised, no step removed.
+
+**What measuring showed (2026-10-08)** — the description above guessed wrong on two counts:
+- Only two tests timed out. The other two failed because the timed-out test kept running after it
+  was abandoned, and user-event types into whatever is focused — the next test's field (a reason
+  received as `"aObroduitn,a rayn dc owmhpaatn yy ocuh enceke.d to"`).
+- The per-keystroke timer is not the cost: `delay: null` barely moved them. Under load each
+  keystroke is a render that costs ~25 ms instead of ~1.5 ms; typing was 2.3 s of a 2.8 s test.
+- The cause is T-160's: the root `test` script still ran every package at once, and the tests that
+  take 180 ms alone took up to 5.8 s. CI was fixed then; the local gate was not.
+
+**Acceptance criteria**
+- [x] Each of the four is measured before and after, alone and under load (the API and app-web suites running beside it)
+- [x] Five consecutive root `pnpm test` runs pass
+
+**Validation**
+```bash
+pnpm --filter admin-web test legal-holds moderation
 ```
 
 ---
