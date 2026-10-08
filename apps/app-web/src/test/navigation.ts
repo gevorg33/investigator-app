@@ -17,11 +17,16 @@ export class NotFound extends Error {
 /** A stand-in for Next's router, for specs that mock `next/navigation` with `nextNavigation`. */
 export const router = {
   pathname: '/',
+  /** The address's query, as `useSearchParams` reads it. */
+  search: '',
   push: vi.fn(),
+  replace: vi.fn(),
   refresh: vi.fn(),
   reset() {
     this.pathname = '/';
+    this.search = '';
     this.push.mockReset();
+    this.replace.mockReset();
     this.refresh.mockReset();
   },
 };
@@ -29,6 +34,7 @@ export const router = {
 export const nextNavigation = {
   usePathname: () => router.pathname,
   useRouter: () => router,
+  useSearchParams: () => new URLSearchParams(router.search),
   redirect: (url: string) => {
     throw new Redirected(url);
   },

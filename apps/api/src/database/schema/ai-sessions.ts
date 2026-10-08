@@ -73,8 +73,17 @@ export const aiMessageRole = pgEnum('ai_message_role', ['USER', 'ASSISTANT', 'SY
  * What a message is. A tool call and its result are **structured events**, never prose (ADR-0006):
  * which tool, with what arguments, returning which stored result — so a later reader, human or
  * Context Builder, can tell exactly what was done rather than parse a sentence about it.
+ *
+ * A plan's outcome is one too (T-226): written by the database from the plan's step rows in the
+ * transaction that ends the plan, and put into words by the reader's own templates — no model
+ * writes it.
  */
-export const aiMessageKind = pgEnum('ai_message_kind', ['TEXT', 'TOOL_CALL', 'TOOL_RESULT']);
+export const aiMessageKind = pgEnum('ai_message_kind', [
+  'TEXT',
+  'TOOL_CALL',
+  'TOOL_RESULT',
+  'PLAN_OUTCOME',
+]);
 
 /**
  * One message in a session, in order (T-045).

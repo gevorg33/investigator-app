@@ -413,7 +413,9 @@ export type NotificationKind =
   | 'assignment_new'
   | 'assignment_accepted'
   | 'assignment_declined'
-  | 'assignment_report_ready';
+  | 'assignment_report_ready'
+  | 'assistant_plan_failed'
+  | 'assistant_plan_voided';
 
 /** One of the reader's notifications: a kind and where it leads — never its content. */
 export interface NotificationView {

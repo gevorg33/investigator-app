@@ -50,6 +50,8 @@ export const en = {
       assignment_accepted: 'Your investigator accepted the assignment',
       assignment_declined: 'Your investigator declined the assignment',
       assignment_report_ready: 'Your report is ready',
+      assistant_plan_failed: 'An action the assistant was taking for you failed',
+      assistant_plan_voided: 'An action you confirmed did not run',
     },
   },
   home: {
@@ -1018,6 +1020,71 @@ export const en = {
       call: 'Used {tool}',
       result: 'Result from {tool}',
     },
+    outcome: {
+      completed: 'Done. Every step of the plan was carried out.',
+      partial:
+        'The plan stopped part-way. What was done stays done — nothing is undone automatically.',
+      failed: 'The plan failed before it changed anything.',
+      not_run: 'The plan did not run. Nothing was changed.',
+      declined: 'You declined the plan. Nothing was changed.',
+      steps: 'What happened, step by step',
+      step: {
+        done: 'Done',
+        failed: 'Failed ({code})',
+        skipped: 'Not run',
+        running: 'Started, and may have taken effect — its result is unknown',
+      },
+      reason: {
+        confirmation_stale:
+          'It waited too long to start after you confirmed. Ask again to confirm it afresh.',
+        hash_mismatch:
+          'The plan changed after it was shown to you, so your confirmation did not cover it.',
+        state_changed:
+          'What it would act on changed after you confirmed. Ask again to see it as it is now.',
+        recheck: 'What it would act on could not be checked again before it ran.',
+        account_refused: 'Your account could not act when the plan was due to run.',
+        role_revoked: 'You no longer had the role you confirmed it as.',
+        tool_unavailable: 'An action in the plan is no longer available.',
+        member_left: 'You left the workspace it was running in.',
+        infrastructure_failed: 'It could not be finished because of a problem on our side.',
+      },
+    },
+    screen: {
+      credential:
+        'I removed what looked like a password, key or token from your message, and did not read it. Never share credentials here. If it was real, change it now.',
+    },
+    routing: {
+      confirm_pointer:
+        "I can't confirm from a message. To go ahead, use Confirm on the plan — it shows exactly what will run.",
+      show_plan: 'Show the plan',
+    },
+    plan: {
+      region: 'Waiting for your answer',
+      title: 'The assistant asks to do this',
+      title_running: 'What you confirmed',
+      title_expired: 'What the assistant asked to do',
+      workspace: 'In {workspace}',
+      step: 'Step {n}',
+      no_arguments: 'No details',
+      waits: 'Waits for your answer until {time}.',
+      consequence:
+        'Nothing happens until you confirm. Once you do, it runs as you, and what it does is not undone automatically.',
+      confirm: 'Confirm',
+      decline: 'Decline',
+      expired:
+        'This plan waited too long for an answer and will not run. Ask the assistant again if you still want it.',
+      running: 'Confirmed. It is running now.',
+      status: {
+        pending: 'Waiting',
+        running: 'Running',
+        done: 'Done',
+        failed: 'Failed ({code})',
+        skipped: 'Not run',
+      },
+      more: 'Show all {count} steps',
+      failed: 'Plans waiting for your answer could not be read.',
+      reload: 'Read the plans again',
+    },
     turn: {
       stopped: 'Stopped before an answer.',
       unsent: 'Not sent.',
@@ -1442,6 +1509,10 @@ export const en = {
         required: 'Confirm that your request is for a lawful purpose.',
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
+      assistant: {
+        credential:
+          'That looks like a password, key or token. Remove it and ask again — never share credentials here.',
+      },
       assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
       ai_session: {
         plan_in_flight:

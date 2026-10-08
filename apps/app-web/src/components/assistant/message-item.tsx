@@ -1,16 +1,26 @@
 'use client';
 
-import { BookOpen, Info, Wrench } from 'lucide-react';
+import { BookOpen, Info, ShieldAlert, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
+import { Button } from '@/components/ui/button';
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker';
 import { Message, MessageContent, MessageFooter } from '@/components/ui/message';
 import Link from 'next/link';
-import { discoveryReply, knowledgeReply, type AiMessage } from '@/lib/api/assistant';
+import {
+  discoveryReply,
+  knowledgeReply,
+  planOutcome,
+  preparedReply,
+  type AiMessage,
+} from '@/lib/api/assistant';
 import { slug } from '@/lib/slug';
 import { useAssistant } from './assistant-provider';
 import { DiscoveryReply } from './discovery-reply';
+import { PlanOutcomeNote } from './plan-outcome';
+
+const NONE_WAITING: ReadonlySet<string> = new Set();
 
 /** A tool's arguments as name and value, whatever shape they came in. */
 const entriesOf = (value: unknown): Array<[string, unknown]> =>
@@ -36,19 +46,28 @@ export function Question({ text, children }: { text: string; children?: ReactNod
 
 /**
  * One stored message, by what it is (ai-session-context): the person's question, the assistant's
- * words with the sources it used, "not covered" as a state of its own, and a tool call or result
- * as a structured block — which tool, with what — never as a sentence about it.
+ * words with the sources it used, "not covered" as a state of its own, a tool call or result as a
+ * structured block — which tool, with what — never as a sentence about it, and how a plan ended in
+ * the reader's own words, from its steps.
  */
 export function MessageItem({
   message,
   pending = false,
+  waiting = NONE_WAITING,
+  onShowPlan,
 }: {
   message: AiMessage;
   /** The conversation's last word, with nothing running: a question in it can be answered. */
   pending?: boolean;
+  /** The plans still waiting for an answer: a pointer to one of them can show it. */
+  waiting?: ReadonlySet<string>;
+  onShowPlan?: (planId: string) => void;
 }) {
   const t = useTranslations('assistant');
   const { closeIfCovering } = useAssistant();
+
+  const outcome = planOutcome(message);
+  if (outcome !== null) return <PlanOutcomeNote outcome={outcome} />;
 
   if (message.kind !== 'TEXT') {
     // The database holds a tool event to its shape (`ai_messages_shape`): a tool name, always.
@@ -87,6 +106,49 @@ export function MessageItem({
       <Marker>
         <MarkerContent>{message.content}</MarkerContent>
       </Marker>
+    );
+  }
+
+  const prepared = preparedReply(message);
+  if (prepared?.source === 'screen') {
+    return (
+      <Marker
+        role="note"
+        className="items-start rounded-lg border border-border bg-surface px-3 py-2 text-text"
+      >
+        <MarkerIcon className="mt-0.5 text-danger">
+          <ShieldAlert />
+        </MarkerIcon>
+        <MarkerContent>
+          <span className="sr-only">{t('speaker.assistant')}: </span>
+          {t('screen.credential')}
+        </MarkerContent>
+      </Marker>
+    );
+  }
+  if (prepared?.source === 'routing') {
+    return (
+      <div className="grid gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+        <Marker className="items-start text-text">
+          <MarkerIcon className="mt-0.5">
+            <Info />
+          </MarkerIcon>
+          <MarkerContent>
+            <span className="sr-only">{t('speaker.assistant')}: </span>
+            {t('routing.confirm_pointer')}
+          </MarkerContent>
+        </Marker>
+        {/* Shows the plan — and never confirms it: Confirm stays the person's own press. */}
+        {waiting.has(prepared.planId) && onShowPlan !== undefined && (
+          <Button
+            variant="outline"
+            className="justify-self-start"
+            onClick={() => onShowPlan(prepared.planId)}
+          >
+            {t('routing.show_plan')}
+          </Button>
+        )}
+      </div>
     );
   }
 

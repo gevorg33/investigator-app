@@ -8,6 +8,7 @@ import {
   type AssistantAudience,
 } from '@/components/assistant/assistant-provider';
 import type { AiMessage } from '@/lib/api/assistant';
+import { api } from './api';
 import { emptyPage } from './fixtures';
 import { renderIntl } from './intl';
 
@@ -46,6 +47,14 @@ export const newestFirst = (messages: AiMessage[], earlier: string | null = null
   items: [...messages].reverse(),
   pageInfo: { nextCursor: earlier, hasNextPage: earlier !== null },
 });
+
+/**
+ * Conversations with no plan waiting or running (T-058). Opening a conversation reads its open plans,
+ * so a spec says what each conversation it opens answers — here, none.
+ */
+export const noPlans = (...sessionIds: string[]) => {
+  for (const id of sessionIds) api.on(`GET /ai/sessions/${id}/plans?open=true`, 200, []);
+};
 
 /** Renders the assistant as the workspace layout mounts it, and opens it. */
 export async function openAssistant(audience: AssistantAudience = 'CUSTOMER') {

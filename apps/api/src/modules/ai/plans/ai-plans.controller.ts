@@ -18,6 +18,7 @@ import type { Actor } from '../../../common/authz/contract';
 import { requestContext } from '../../../common/http/request-context';
 import { ConfirmPlanDto, ListPlansQuery } from './ai-plans.dto';
 import { AiPlansService, type PlanView } from './ai-plans.service';
+import type { PlanTimeline } from './plan-timeline';
 
 /**
  * The assistant's plans in the caller's session (T-048). A person reads, confirms or declines them
@@ -52,6 +53,20 @@ export class AiPlansController {
     @Req() req: Request,
   ): Promise<PlanView> {
     return this.plans.get(actor, sessionId, planId, requestContext(req));
+  }
+
+  @Get(':planId/timeline')
+  @ApiOperation({
+    summary:
+      'One plan from proposal to its last step: its rows and its audit, under one correlation id',
+  })
+  timeline(
+    @CurrentActor() actor: Actor,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Param('planId', ParseUUIDPipe) planId: string,
+    @Req() req: Request,
+  ): Promise<PlanTimeline> {
+    return this.plans.timeline(actor, sessionId, planId, requestContext(req));
   }
 
   @Post(':planId/confirm')

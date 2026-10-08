@@ -4,9 +4,9 @@ title: The AI assistant, for investigators
 audience: investigator
 visibility: authenticated
 locale: en
-version: 3
+version: 4
 status: current
-updated: 2026-09-25
+updated: 2026-10-08
 source_of_truth: docs
 implementation_status: partial
 related_code:
@@ -82,3 +82,12 @@ Your questions and the assistant's answers are kept in your conversation until y
 write an answer, your question is sent, together with the guidance found for it, to the AI service
 that composes the reply; the privacy policy names that service. Do not put a customer's personal details in a question about how
 the platform works — the assistant does not need them to explain a rule.
+
+## What if I paste a password or key into a message?
+
+The assistant removes it before your message is saved, and does not read it. Passwords, API keys,
+access tokens and private keys are recognised and replaced with •••••, and the assistant replies that
+it removed something instead of answering. Nothing you pasted reaches the model, the conversation or
+the platform's records.
+
+Never share credentials here. If what you pasted was real, change it now.

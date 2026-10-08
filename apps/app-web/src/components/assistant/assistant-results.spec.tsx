@@ -2,7 +2,7 @@ import { catalogs } from '@investigator/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { newestFirst, openAssistant, viewport } from '@/test/assistant';
+import { newestFirst, noPlans, openAssistant, viewport } from '@/test/assistant';
 import { api } from '@/test/api';
 import {
   aiDiscoveryReply,
@@ -37,6 +37,7 @@ describe('structured results in the assistant (T-059)', () => {
   beforeEach(() => {
     api.install();
     api.on('GET /workspaces', 200, []);
+    noPlans(S.id);
     viewport(false);
   });
   afterEach(() => vi.unstubAllGlobals());

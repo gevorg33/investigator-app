@@ -31,6 +31,10 @@ export interface Conversation {
   load: () => Promise<void>;
   /** Opens a conversation from the list — at its end, or reaching back to a message a search found. */
   open: (session: AiSession, focus?: number | null) => Promise<void>;
+  /** Opens a conversation by its id alone — one a link names (T-231) — at its end. */
+  openById: (id: string) => Promise<void>;
+  /** Reads how the open conversation's plans ended (T-058), and adds nothing else. */
+  readOutcomes: () => Promise<void>;
   /** Tries the last opening again after it failed: whichever of `load` and `open` it was. */
   reload: () => Promise<void>;
   loadEarlier: () => Promise<void>;
@@ -89,16 +93,21 @@ export function useConversation(api: AssistantApi): Conversation {
     [api],
   );
 
+  /** The workspace the conversation is in, for its header. Shown, never needed. */
+  const readWorkspace = useCallback(() => {
+    void api.workspaces().then(
+      (all) => setWorkspace(all.find((w) => w.current) ?? null),
+      // A conversation works without its workspace's name.
+      () => undefined,
+    );
+  }, [api]);
+
   const load = useCallback(async () => {
     lastLoad.current = load;
     leave();
     const gen = generation.current;
     dispatch({ type: 'load' });
-    void api.workspaces().then(
-      (all) => setWorkspace(all.find((w) => w.current) ?? null),
-      // The workspace is shown, never needed: a conversation works without its name.
-      () => undefined,
-    );
+    readWorkspace();
     try {
       const last = await api.latest();
       const session = last?.status === 'ACTIVE' ? last : null;
@@ -110,7 +119,7 @@ export function useConversation(api: AssistantApi): Conversation {
       if (gen !== generation.current) return;
       dispatch({ type: 'load_failed', error: asApiError(e) });
     }
-  }, [api, leave, read]);
+  }, [api, leave, read, readWorkspace]);
 
   const open = useCallback(
     async (session: AiSession, focus: number | null = null) => {
@@ -131,6 +140,28 @@ export function useConversation(api: AssistantApi): Conversation {
       }
     },
     [leave, read],
+  );
+
+  const openById = useCallback(
+    async (id: string) => {
+      lastLoad.current = () => openById(id);
+      leave();
+      const gen = generation.current;
+      dispatch({ type: 'load' });
+      readWorkspace();
+      let session: AiSession;
+      try {
+        session = await api.open(id);
+      } catch (e) {
+        if (gen !== generation.current) return;
+        // Deleted since, or never the reader's — another person's, another workspace's: one 404.
+        if (isGone(e)) dispatch({ type: 'reset', notice: 'gone' });
+        else dispatch({ type: 'load_failed', error: asApiError(e) });
+        return;
+      }
+      if (gen === generation.current) await open(session);
+    },
+    [api, leave, open, readWorkspace],
   );
 
   const reload = useCallback(() => lastLoad.current!(), []);
@@ -170,6 +201,18 @@ export function useConversation(api: AssistantApi): Conversation {
     },
     [api],
   );
+
+  const readOutcomes = useCallback(async () => {
+    const sessionId = latest.current.session?.id;
+    if (sessionId === undefined) return;
+    const gen = generation.current;
+    try {
+      const { items } = await api.page(sessionId);
+      if (gen === generation.current) dispatch({ type: 'outcomes', messages: items });
+    } catch {
+      // Read again with the conversation: the outcome is stored, and nothing here depends on it.
+    }
+  }, [api]);
 
   const run = useCallback(
     async (input: Ask | { retry: true }) => {
@@ -308,6 +351,8 @@ export function useConversation(api: AssistantApi): Conversation {
       canRetry,
       load,
       open,
+      openById,
+      readOutcomes,
       reload,
       loadEarlier,
       send,
@@ -326,6 +371,8 @@ export function useConversation(api: AssistantApi): Conversation {
       canRetry,
       load,
       open,
+      openById,
+      readOutcomes,
       reload,
       loadEarlier,
       send,

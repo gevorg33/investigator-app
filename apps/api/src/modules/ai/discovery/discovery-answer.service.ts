@@ -32,6 +32,7 @@ import {
   parseProposal,
   type DiscoveryProposal,
 } from './discovery-proposal';
+import { refuseCredentials } from '../understanding/credentials';
 
 /** The knowledge-base article a refusal points to: the policy, in words a customer reads. */
 export const PROHIBITED_REQUESTS_DOCUMENT = 'kb-policy-prohibited-requests';
@@ -135,6 +136,8 @@ export class DiscoveryAnswerService {
     };
     await this.authz.requireActive(actor, c);
     await this.authz.requireWorkspace(actor, currentContext() !== undefined, c);
+    // A secret in the words is refused before any model sees them, or the allowance is spent (T-220).
+    refuseCredentials({ question: input.question, purpose: input.purpose });
     // Before the rate limit: an unconfigured assistant should not spend anyone's allowance.
     if (this.model === null) throw new AppError(ErrorCode.SERVICE_UNAVAILABLE);
     await this.limits.consume('assistantQuestionPerAccount', actor.userId);

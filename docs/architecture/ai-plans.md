@@ -50,6 +50,7 @@ was about may have moved on. Expiry is derived from `expires_at`, never stored.
 |---|---|
 | `GET …/plans` | The session's plans, newest first, at most 20. `?open=true`: only those not yet ended — proposals awaiting an answer, and confirmed plans until they finish, so a stuck one stays in view (T-224). What a returning client shows, after a closed browser or a restarted app |
 | `GET …/plans/:planId` | One plan, its steps and their progress |
+| `GET …/plans/:planId/timeline` | The plan from proposal to its last step, with its audit (T-214) — below |
 | `POST …/plans/:planId/confirm` `{ planHash }` | The person's yes, to exactly the plan with that hash |
 | `POST …/plans/:planId/decline` | The person's no, to a plan still awaiting one |
 
@@ -130,10 +131,115 @@ deliveries at once are one run: the second waits on the claim and is a duplicate
 - **Lock timeout.** The run waits at most 5 seconds for its plan row; past that the job is retried. A
   cycle through the run's own step writes, on another connection, is one PostgreSQL cannot see.
 
-Telling the person how it ended is T-226.
+The person is told how it ended — below.
 
 **No edges.** Steps run in order and do not depend on each other. Dependencies — a step that consumes
 another's output — are T-096's DAG, over these same rows.
+
+## Telling the person how it ended (T-226)
+
+Confirming returns at `CONFIRMED`; the worker runs the plan later. So the conversation is told.
+
+**One `PLAN_OUTCOME` message per ended plan, written by the database.** `record_ai_plan_outcome`
+(migration 0045) fires `AFTER UPDATE OF status` on `ai_plans` when the status becomes `COMPLETED`,
+`FAILED` or `CANCELLED`. In the transaction that ends the plan, it appends a `SYSTEM` message of kind
+`PLAN_OUTCOME` to the plan's session. It takes the session's next sequence under the session row's lock,
+as `AiSessionsService.append` does, and leaves the session's activity and archive state alone. A trigger,
+because the plan has several writers: the worker, the dead-letter hook, a person's decline, a confirm
+that finds the rows rewritten, and the departing-member function, which is SQL. Whoever ends the plan,
+the conversation says so. The status moves forward only and ends once (`check_ai_plan_change`), so there
+is exactly one message. A worker that dies before its commit takes the message with the status, and the
+run that does end the plan writes it.
+
+The message has no words (`content` is null). Its `event` is built from the step rows:
+
+```json
+{ "planId": "…", "outcome": "partial", "status": "FAILED", "confirmation": "CONFIRMED",
+  "reason": "step_failed",
+  "steps": [ { "ordinal": 1, "tool": "createTeam", "status": "DONE",    "error": null },
+             { "ordinal": 2, "tool": "inviteMember", "status": "FAILED", "error": "forbidden" },
+             { "ordinal": 3, "tool": "inviteMember", "status": "SKIPPED", "error": null } ] }
+```
+
+| `outcome` | When |
+|---|---|
+| `completed` | `COMPLETED`, **and** every step `DONE` |
+| `partial` | Otherwise, any step `DONE` — or left `RUNNING`, which may have taken effect |
+| `failed` | `FAILED`, and nothing took effect |
+| `declined` | The person said no |
+| `not_run` | Voided or invalidated before anything ran |
+
+**The outcome is read from the steps, never from the status alone.** A plan that stopped part-way is
+never told as done, even if something wrote `COMPLETED` over an unfinished step. A step still `PENDING`
+when its plan ends will never run, so it is told as `SKIPPED`. 0043 ends a departing member's plan
+first and skips its steps afterwards; the outcome reads the same either way. `ai_messages_shape` holds
+the event to this shape: role `SYSTEM`, no content, a `planId`, one of the five outcomes, and a `steps`
+array.
+
+**The reader's catalog writes the words.** app-web renders the event (`assistant/plan-outcome.tsx`) from
+`assistant.outcome.*` in en, ru and hy:
+- the outcome, and a sentence for a reason worth one (`confirmation_stale`, `hash_mismatch`,
+  `state_changed`, any `recheck_*`, `account_refused`, `role_revoked`, `tool_unavailable`,
+  `member_left`, `infrastructure_failed`);
+- for a plan that attempted anything, each step: done, failed with its code, not run, or "started, and
+  may have taken effect".
+
+A partial plan says that what was done stays done: undo is never automatic, and an inverse is offered as
+a new plan (T-096). No model writes any of it. The Context Builder (T-046) reads the same event.
+
+**A notification when it is not what was asked.** When `PlanExecutor` ends a plan short of what was
+asked, it writes `ai.plan.ended` (`payload: { to }`) to the outbox in the same transaction. That is
+`FAILED`, or `CANCELLED` before anything ran, and it covers the dead-letter path too. The person
+confirmed and walked away, and may not be watching. The notification fan-out re-reads the plan's row and
+tells its own person `assistant_plan_failed` or `assistant_plan_voided`, in the centre only
+(`notifications.md`); opening one opens the assistant on that conversation (T-231). A completed plan
+is what they asked for, and a decline is their own; neither notifies. A departed member is not notified, because they are no longer a member.
+
+**The client polls while a plan runs.** The API needs nothing more for that: `GET …/plans/:planId` and
+`GET …/plans?open=true` read the status and step rows as they stand. app-web's confirmation UI (T-058,
+`app-web.md`) reads a running plan every 2 seconds until it ends, then reads the conversation's
+PLAN_OUTCOME message.
+
+## The timeline (T-214)
+
+`GET …/plans/:planId/timeline` returns the plan from proposal to its last step, for its own person,
+admitted exactly as `get` is. Built by `buildTimeline` (`plan-timeline.ts`):
+
+```json
+{ "planId": "…", "sessionId": "…", "status": "FAILED", "outcome": "partial",
+  "correlationId": "<the confirming request's id>", "unknown": [2],
+  "events": [ { "type": "proposed", "steps": 3 }, { "type": "confirmed", "role": null },
+              { "type": "step_started", "ordinal": 1, "tool": "createTeam" },
+              { "type": "step_finished", "ordinal": 1, "tool": "createTeam", "status": "DONE", "error": null },
+              { "type": "step_started", "ordinal": 2, "tool": "inviteMember" },
+              { "type": "ended", "status": "FAILED", "confirmation": "CONFIRMED", "reason": "infrastructure_failed" } ],
+  "audit":  [ { "action": "ai_plan.proposed", "outcome": "createTeam,inviteMember,inviteMember", "correlationId": "…" },
+              { "action": "ai.tool.create_team", "outcome": "ok", "correlationId": "…" } ] }
+```
+
+(Every entry also has an `at`.)
+
+- **`events` come from the plan's own rows, in causal order:** proposed, confirmed, then each step by
+  ordinal, started then finished, then ended. They are not sorted by clock. The database stamps a
+  plan's creation, and the API and the worker stamp its progress. Their clocks need not agree; in
+  development the database ran 50–250 ms ahead, which put "ended" before "proposed".
+- **A step's status is its row's.** A FAILED step shows FAILED with its code. A step left RUNNING when
+  the plan ended has no finish, and is listed in `unknown`: it may have taken effect.
+- **`outcome` is the plan's `PLAN_OUTCOME` message** (0045), so the timeline and the conversation never
+  disagree. It is null while the plan is open.
+- **`audit` is in the database's own time order**, and holds two kinds of row:
+  - the plan's lifecycle (`ai_plan.proposed`, `confirmed`, `declined`, `invalidated`, `failed`,
+    `completed`), by its person;
+  - the tool calls their confirmation made, joined by its correlation id (`correlationId`, T-212).
+
+  Each entry carries a code only: the plan row's reason, or the tool call's first word (`ok`,
+  `rejected`). Never arguments, an address, a device, or anyone else's row. A colleague's refused look
+  at the plan is audited in the same workspace and is left out. A dead-lettered run's end is audited
+  in the system context, which belongs to no workspace, so that row is absent; the plan's own
+  `ended` still says how it ended.
+
+Staff reading a person's plan timeline is not built. It reads a private conversation's content under
+`PlatformContext`, so it needs its own approval (T-234).
 
 ## When a member leaves the workspace
 
@@ -144,6 +250,9 @@ change:
 - **Started** — a step ran, and the plan still reads `CONFIRMED` because a worker died part-way:
   `FAILED`, `member_left`, by way of `EXECUTING`. Its never-run steps become SKIPPED, and a RUNNING step
   stays RUNNING. 0042 voided these too, which reported a half-run plan as never run.
+
+Either way, the archived conversation gets the plan's `PLAN_OUTCOME` message (T-226) and stays
+archived.
 
 A plan running at that moment holds its row; the departure waits for the run to end and then leaves
 it as it ended. `rls.spec.ts` holds the function to exactly these statements.
@@ -170,6 +279,8 @@ it as it ended. `rls.spec.ts` holds the function to exactly these statements.
 - **Status and confirmation move together** (`ai_plans_status_pairs`): nothing runs unconfirmed.
 - **Owners copied and never changed**; a plan's owner is its session's, and a step's its plan's
   (composite foreign keys). Nothing is added to a deleted session.
+- **Every ended plan tells its conversation once** (`record_ai_plan_outcome`, 0045), whoever ended it
+  — above.
 
 ## Write tools
 
@@ -209,8 +320,18 @@ nowhere, `ai-sessions.md`). The Context Builder (T-046) renders results through 
   its key; two deliveries one run; state changed, hash broken, role revoked, confirmed role gone,
   account suspended — nothing runs; a refused step fails the plan; a worker killed before or after a
   step's effect is replaced and the plan completes with each effect once.
-- `ai-plans.authz.spec.ts` — a stranger, a colleague and the agency's owner get 404 on every path; the
-  policy shows them nothing; a confirmation does not cross the person's own workspaces.
+- `ai-plans.outcome.spec.ts` — one outcome message per ended plan, from every writer: completed,
+  partial with the failed step's code, failed, invalidated, left running, declined, rewritten at
+  confirm, a departing member's (started and not); a worker killed after the last step's effect, and
+  after the status write before its commit, still gives exactly one; through direct writes, no mix of
+  steps makes a FAILED plan `completed`; the shape constraint; `ai.plan.ended` only for endings to tell; an outcome is its person's alone —
+  a colleague in the same workspace reads none of it.
+- `ai-plans.timeline.spec.ts` — completed, partial with the FAILED step's code, a step left running
+  (`unknown`), still proposed, declined; codes only in the audit; a colleague in the same workspace
+  gets 404 and their audited refusal is not in the person's timeline.
+- `ai-plans.authz.spec.ts` — a stranger, a colleague and the agency's owner get 404 on every path,
+  the timeline included; the policy shows them nothing; a confirmation does not cross the person's own
+  workspaces.
 - `ai-plans.hash.spec.ts`, `ai-plans.controller.spec.ts`, `ai-plans.wiring.spec.ts`,
   `ai-results.store.spec.ts`, `ai-discovery.registry.spec.ts` (the runner's write paths).
 - The isolation matrix covers all three tables.

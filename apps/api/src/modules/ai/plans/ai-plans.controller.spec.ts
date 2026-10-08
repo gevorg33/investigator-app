@@ -63,10 +63,11 @@ describe('assistant plan routes', () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it('routes reading, confirming and declining to the service, with the caller', async () => {
+  it('routes reading, the timeline, confirming and declining to the service, with the caller', async () => {
     const s = {
       list: vi.fn().mockResolvedValue([]),
       get: vi.fn().mockResolvedValue({ id: PLAN }),
+      timeline: vi.fn().mockResolvedValue({ planId: PLAN, events: [] }),
       confirm: vi.fn().mockResolvedValue({ id: PLAN }),
       decline: vi.fn().mockResolvedValue({ id: PLAN }),
     };
@@ -76,6 +77,8 @@ describe('assistant plan routes', () => {
     expect((await http.get(`${base}?open=true`)).status).toBe(200);
     expect((await http.get(base)).status).toBe(200);
     expect((await http.get(`${base}/${PLAN}`)).status).toBe(200);
+    expect((await http.get(`${base}/${PLAN}/timeline`)).status).toBe(200);
+    expect((await http.get(`${base}/latest/timeline`)).status).toBe(400);
     expect((await http.post(`${base}/${PLAN}/confirm`).send({ planHash: HASH })).status).toBe(200);
     expect((await http.post(`${base}/${PLAN}/decline`)).status).toBe(200);
 
@@ -84,6 +87,7 @@ describe('assistant plan routes', () => {
       [me, SESSION, { open: false }],
     ]);
     expect(s.get.mock.calls[0]?.slice(0, 3)).toEqual([me, SESSION, PLAN]);
+    expect(s.timeline.mock.calls.map((c) => c.slice(0, 3))).toEqual([[me, SESSION, PLAN]]);
     expect(s.confirm.mock.calls[0]?.slice(0, 4)).toEqual([me, SESSION, PLAN, HASH]);
     expect(s.decline.mock.calls[0]?.slice(0, 3)).toEqual([me, SESSION, PLAN]);
   });

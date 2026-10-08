@@ -522,6 +522,66 @@ goes to the composer; after a refusal, back to the options. **A conversation tha
 404 from any of these, which is also what someone else's conversation answers (T-045) — is replaced
 by a fresh one saying "That conversation is no longer available", showing nothing of it.
 
+**Opened by a link (T-231).** `?assistant=<session id>` on any workspace address opens the assistant
+on that conversation, as if it were chosen from the list: `GET /ai/sessions/:id` for its name, then
+its newest page. The latest conversation is not read. A plan's notification leads there
+(`assistant_plan_failed` / `assistant_plan_voided`, `notifications.md`). `AssistantDeepLink`, mounted
+by the workspace layout inside `Suspense` because it reads the address, does it on a page load and
+on a link followed within the app. It then drops the parameter with `router.replace`, so a reload or
+a copied address does not open it again. A conversation that has gone, or is not the reader's, says
+"That conversation is no longer available"; a parameter that is not a session id is dropped; an
+unconfirmed address opens the panel on `ConfirmFirst` and reads nothing. If the reader follows a
+second link before the first has loaded, the first's reply is ignored.
+
+**Confirming a plan (T-058).** When the assistant wants to change something, it proposes a plan, and
+nothing runs until the person confirms it. `usePlans` reads the open conversation's plans with
+`GET …/plans?open=true`. It reads them when the conversation opens, and again whenever the
+conversation grows. So a plan left waiting is there at once when the person comes back after closing
+the browser. `PlanConfirmation` shows each plan at the end of the conversation, in the order the
+plans were proposed:
+- **Exactly what runs:** each step's command, and every argument as the API holds it, value for
+  value. These are the values the confirmation's hash covers, never a sentence about them. Plans
+  over three steps show three below `md`, and "Show all N steps" reveals the rest.
+- **Where and until when:** the workspace it runs in, and the time it waits until, in the reader's
+  locale and device time zone.
+- **What confirming means:** nothing happens until you confirm; it runs as you; what it does is not
+  undone automatically.
+- **The buttons:** Decline and Confirm sit side by side, the same size, Decline first. Neither is
+  focused for the reader, and both are disabled from the first tap until the API answers, so nothing
+  is sent twice. The plan hash goes only in the confirm request; it is never shown and never reaches
+  the model. Nothing in the app confirms on its own.
+- **Running:** a confirmed plan is titled "What you confirmed" and read again every 2 s (`POLL_MS`),
+  each step marked Waiting, Running, Done, Failed with its code, or Not run.
+- **Ending:** once the plan ends — here, in another tab, or refused — the card leaves, and the
+  conversation reads its newest page for the PLAN_OUTCOME message the database wrote, which says what
+  happened and why. `readOutcomes` merges only PLAN_OUTCOME messages, so a turn under way is never
+  disturbed.
+- **A refusal:** the plan is read again and shown as it now stands.
+  - Changed under the person: it has ended, and its outcome says why.
+  - Past its time: the card says so, with nothing to press.
+  - Answered in another tab: it shows running.
+  - Not sent at all: the error sits beside the buttons, and they work again.
+- **Expiry on the device's clock:** a plan whose time passes while it is shown stops offering Confirm.
+- **What just happened stays in view.** Plans sit after the conversation and its turn status. While
+  one waits, a new message or a turn's progress brings the end of the conversation into view, not
+  the plan again, which would hide the reply (found in T-220's browser check). A plan that appears
+  is still scrolled to.
+
+On a phone the plan is part of the assistant's full-screen sheet, which cannot be swiped away. It is
+never a sheet of its own that a stray gesture could dismiss.
+
+**Replies decided before any model (T-220).** The API answers two kinds of message itself, with no
+words of its own, and `MessageItem` says them in the reader's language:
+- **A credential removed** (`source: 'screen'`): a note says a password, key or token was removed
+  and not read, and to change it if it was real. The person's message shows as stored, with the
+  secret as `•••••`.
+- **A yes while a plan waits** (`source: 'routing'`): a note says the assistant cannot confirm from a
+  message and points at Confirm on the plan. While that plan still waits, "Show the plan" scrolls to
+  its card and focuses the card, never Confirm.
+
+**Plan outcomes (T-226).** A `PLAN_OUTCOME` message renders in the reader's words from its event
+(`plan-outcome.tsx`; `ai-plans.md`): the outcome, a reason worth a sentence, and each attempted step.
+
 **Structured results (T-059).** A discovery reply renders from its stored answer, never as prose:
 what was searched, said out loud (and "every area" when no place was named), the order, then each
 investigator as a card (`InvestigatorCard`): name, the agency they work for (T-185) and headline in their own words, Verified,

@@ -29,6 +29,8 @@ interface AssistantValue {
   toggle: () => void;
   /** Closes, and gives focus back to whatever opened it — the docked panel has no dialog to. */
   close: () => void;
+  /** Opens the assistant on one conversation, by id — the one a link names (T-231). */
+  openConversation: (id: string) => void;
   /**
    * Closes the assistant if it covers the page — the phone's sheet — before following a link out
    * of it (a citation, the policy). Docked beside the page, it stays: the page opens next to it.
@@ -63,7 +65,7 @@ export function AssistantProvider({
   const conversation = useConversation(api);
   const [open, setOpenState] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
-  const { load, state } = conversation;
+  const { load, openById, state } = conversation;
   const idle = state.status === 'idle';
 
   const setOpen = useCallback(
@@ -82,6 +84,16 @@ export function AssistantProvider({
     opener.current?.focus();
   }, []);
 
+  const openConversation = useCallback(
+    (id: string) => {
+      if (!open) opener.current = document.activeElement as HTMLElement | null;
+      setOpenState(true);
+      // Unconfirmed, the panel says how to confirm instead, and nothing is read (T-165).
+      if (confirmFirst === undefined) void openById(id);
+    },
+    [open, confirmFirst, openById],
+  );
+
   const closeIfCovering = useCallback(() => {
     if (!window.matchMedia(`(min-width: ${breakpoints.lg})`).matches) setOpenState(false);
   }, []);
@@ -92,13 +104,25 @@ export function AssistantProvider({
       setOpen,
       toggle,
       close,
+      openConversation,
       closeIfCovering,
       audience,
       confirmFirst,
       api,
       conversation,
     }),
-    [open, setOpen, toggle, close, closeIfCovering, audience, confirmFirst, api, conversation],
+    [
+      open,
+      setOpen,
+      toggle,
+      close,
+      openConversation,
+      closeIfCovering,
+      audience,
+      confirmFirst,
+      api,
+      conversation,
+    ],
   );
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }

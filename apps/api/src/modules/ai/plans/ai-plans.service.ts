@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { AuditService } from '../../../common/audit/audit.service';
 import { AuthzService, type AuthzContext } from '../../../common/authz/authz.service';
 import type { Actor } from '../../../common/authz/contract';
@@ -8,9 +8,17 @@ import { currentContext } from '../../../common/context/execution-context';
 import { AppError } from '../../../common/errors/app-error';
 import type { RequestContext } from '../../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../../database/database.module';
-import { aiPlanSteps, aiPlans, aiSessions, outboxEvents } from '../../../database/schema';
+import {
+  aiMessages,
+  aiPlanSteps,
+  aiPlans,
+  aiSessions,
+  auditLogs,
+  outboxEvents,
+} from '../../../database/schema';
 import { ToolRunner } from '../tools/tool-runner';
 import { digestObservation, planHash, type HashedStep } from './plan-hash';
+import { buildTimeline, PLAN_ACTIONS, type Outcome, type PlanTimeline } from './plan-timeline';
 
 type PlanRow = typeof aiPlans.$inferSelect;
 type StepRow = typeof aiPlanSteps.$inferSelect;
@@ -27,6 +35,11 @@ export const EXECUTION_DEADLINE_MS = 15 * 60 * 1000;
 export const MAX_STEPS = 10;
 /** The event a confirmation writes, in its transaction; the worker runs the plan from it. */
 export const PLAN_CONFIRMED = 'ai.plan.confirmed';
+/**
+ * The event a plan the worker was running writes when it ends without doing what was asked — FAILED,
+ * or voided before it ran — in the transaction that ends it. Its person is notified from it (T-226).
+ */
+export const PLAN_ENDED = 'ai.plan.ended';
 
 export type ConfirmationView = PlanRow['confirmationStatus'] | 'EXPIRED';
 
@@ -219,6 +232,82 @@ export class AiPlansService {
     await this.session(actor, sessionId, c);
     const plan = await this.plan(actor, sessionId, planId, c, this.db);
     return view(plan, await this.steps(planId, this.db));
+  }
+
+  /**
+   * One plan from proposal to its last step (T-214): the caller's own, as `get` admits it. Its audit
+   * rows are the plan's own lifecycle, and the tool calls made under its confirmation's correlation id
+   * as its person — never a refusal of someone else's look at it, never an address, a device or an
+   * argument. A row written in the system context (a dead-lettered run's end) belongs to no workspace
+   * and is not among them; the plan's own row still says how it ended.
+   */
+  async timeline(
+    actor: Actor,
+    sessionId: string,
+    planId: string,
+    req: RequestContext,
+  ): Promise<PlanTimeline> {
+    const c = ctx('ai_plan.timeline', req, planId);
+    await this.enter(actor, c);
+    await this.session(actor, sessionId, c);
+    const plan = await this.plan(actor, sessionId, planId, c, this.db);
+    const steps = await this.steps(planId, this.db);
+
+    const own = await this.db
+      .select({
+        occurredAt: auditLogs.occurredAt,
+        action: auditLogs.action,
+        reason: auditLogs.reason,
+        correlationId: auditLogs.correlationId,
+        resourceType: auditLogs.resourceType,
+      })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.resourceType, 'ai_plan'),
+          eq(auditLogs.resourceId, planId),
+          inArray(auditLogs.action, [...PLAN_ACTIONS]),
+          eq(auditLogs.actorId, plan.userId),
+        ),
+      );
+    const correlationId = own.find((a) => a.action === 'ai_plan.confirmed')?.correlationId ?? null;
+    const calls =
+      correlationId === null
+        ? []
+        : await this.db
+            .select({
+              occurredAt: auditLogs.occurredAt,
+              action: auditLogs.action,
+              reason: auditLogs.reason,
+              correlationId: auditLogs.correlationId,
+              resourceType: auditLogs.resourceType,
+            })
+            .from(auditLogs)
+            .where(
+              and(
+                eq(auditLogs.resourceType, 'assistant_tool'),
+                eq(auditLogs.correlationId, correlationId),
+                eq(auditLogs.actorId, plan.userId),
+                or(
+                  sql`${auditLogs.reason} LIKE 'ok: confirmed:%'`,
+                  eq(auditLogs.reason, 'rejected: invalid arguments'),
+                ),
+              ),
+            );
+
+    // How it ended is what the database wrote from the steps when it ended (migration 0045).
+    const [told] = await this.db
+      .select({ event: aiMessages.event })
+      .from(aiMessages)
+      .where(
+        and(
+          eq(aiMessages.sessionId, sessionId),
+          eq(aiMessages.kind, 'PLAN_OUTCOME'),
+          sql`${aiMessages.event} ->> 'planId' = ${planId}`,
+        ),
+      );
+    const outcome = (told?.event?.['outcome'] as Outcome | undefined) ?? null;
+    return buildTimeline(plan, steps, [...own, ...calls], outcome, correlationId);
   }
 
   /**

@@ -533,6 +533,7 @@ export default async () => {
                     AiPlansController: {
                         list: { type: [Object] },
                         get: { type: Object },
+                        timeline: { type: Object },
                         confirm: { type: Object },
                         decline: { type: Object }
                     }

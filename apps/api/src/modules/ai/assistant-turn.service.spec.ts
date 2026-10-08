@@ -27,6 +27,7 @@ import { AssistantTurnService, type TurnEvent } from './assistant-turn.service';
 import type { ChatModel, ChatPrompt } from './chat-model';
 import { DiscoveryAnswerService } from './discovery/discovery-answer.service';
 import { KnowledgeAnswerService } from './knowledge-answer.service';
+import { AiPlansService } from './plans/ai-plans.service';
 import { ListTaxonomyTool } from './tools/discovery/list-taxonomy.tool';
 import { SearchInvestigatorsTool } from './tools/discovery/search-investigators.tool';
 import { ToolRunner } from './tools/tool-runner';
@@ -145,10 +146,12 @@ describe('a turn in a conversation (T-056)', () => {
       search,
       model,
     );
+    // No write tools: a conversation here has no plan waiting (T-220's routing reads them).
+    const plans = new AiPlansService(db, authz, audit, new ToolRunner(authz, audit, limits, []));
     return {
       sessions,
       discovery,
-      turns: asRequests(new AssistantTurnService(sessions, knowledge, discovery), owner),
+      turns: asRequests(new AssistantTurnService(sessions, knowledge, discovery, plans), owner),
     };
   };
   const req = () => ({ correlationId: randomUUID(), ip: '203.0.113.56', userAgent: 'spec' });

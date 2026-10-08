@@ -3339,7 +3339,7 @@ sign in); the specs cover sheet vs dock and focus.
 ---
 
 ### T-058 — Confirmation and plan UI
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `PlanConfirmation` + `usePlans` in the assistant's conversation (app-web): exact steps and arguments, workspace, expiry, Decline/Confirm; running by polling; ended plans give way to their PLAN_OUTCOME message; refusals re-read and shown as they stand. KB `kb-customer-ai-assistant` v9 (en; ru/hy drafts). Criteria that need T-225, T-210, T-095 stay open below
 - **Priority:** P0
 - **Depends on:** T-048, T-056
 - **Risk:** HIGH
@@ -3357,21 +3357,21 @@ model proposal and a real mutation.
 **Tenancy (ADR-0011).** The confirmation UI shows the workspace a plan will run in. From T-096 it shows the whole DAG under one confirmation.
 
 **Acceptance criteria**
-- [ ] A write tool renders the **exact proposed action and arguments** — never a paraphrase
-- [ ] Confirm and cancel are equally reachable; confirm is not the default focus
-- [ ] **Opening a session with a pending confirmation surfaces it immediately** — tested by
-      closing the browser mid-flow and returning
-- [ ] Re-validation before execution is visible: if the plan changed or state moved, the user is
-      told **why** they are being asked again, not silently re-prompted
-- [ ] A stale confirmation cannot be submitted — the UI reflects invalidation
-- [ ] Irreversible or money-adjacent actions state the consequence plainly before confirming
-- [ ] The confirmation token never reaches the model; the UI never auto-confirms
-- [ ] Mobile: full-screen, never a sheet a user can dismiss by accident
-- [ ] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`)
-- [ ] T-225's preview lines beside the exact arguments; ids shown with labels, never bare; values from content the model read marked with their source (review 2026-10-06)
-- [ ] Act-mode clarifying questions as option chips of at least 44px; each step's T-210 outcome shown; plans over three steps collapse below `md` (review 2026-10-06)
-- [ ] States read from step rows: EXECUTING, COMPLETED, partial, FAILED, EXPIRED, VOIDED, superseded; confirm disabled after the first tap; progress by polling (review 2026-10-06)
-- [ ] Visual QA at 375 / 768 / 1440 against a seeded account, not waived (review 2026-10-06)
+- [x] A write tool renders the **exact proposed action and arguments** — never a paraphrase
+- [x] Confirm and cancel are equally reachable; confirm is not the default focus — side by side, 149×44 each at 1440; focus stays in the composer
+- [x] **Opening a session with a pending confirmation surfaces it immediately** — tested by
+      closing the browser mid-flow and returning (a fresh page load on a seeded plan, 375 / 768 / 1440)
+- [x] Re-validation before execution is visible: if the plan changed or state moved, the user is
+      told **why** they are being asked again, not silently re-prompted — the plan's PLAN_OUTCOME reason (T-226), for a confirm refused as changed and for a run invalidated
+- [x] A stale confirmation cannot be submitted — the UI reflects invalidation — expired (refused, or past its time while shown) offers nothing to press; changed or voided leaves for its outcome
+- [x] Irreversible or money-adjacent actions state the consequence plainly before confirming — every plan says nothing happens until confirmed, that it runs as the person, and that nothing is undone automatically; per-command consequences are T-225's preview lines; payments are never a command
+- [x] The confirmation token never reaches the model; the UI never auto-confirms — the hash goes only in the confirm request body (spec asserts it exactly), and nothing calls confirm but a tap
+- [x] Mobile: full-screen, never a sheet a user can dismiss by accident — inline in the assistant's full-screen sheet (`handleOnly`), one dialog
+- [x] `kb-customer-ai-assistant` (en/ru/hy) explains confirming: what is shown, that a plan waits 24 hours, that a change to what it acts on asks again, and that the fact of a confirmed action — its kind, never its content — stays in the audit trail after the conversation is deleted (from T-048, `ai-plans.md`); and how a plan ends — the conversation says what was done step by step, what failed and what never ran, nothing done is undone automatically, and a plan that fails or is voided after confirming also notifies (from T-226, `ai-plans.md`)
+- [ ] T-225's preview lines beside the exact arguments; ids shown with labels, never bare; values from content the model read marked with their source (review 2026-10-06) — open: T-225 is not built; the card has the place for them
+- [ ] Act-mode clarifying questions as option chips of at least 44px; each step's T-210 outcome shown; plans over three steps collapse below `md` (review 2026-10-06) — the collapse is done; act mode (T-095) and T-210 are not built
+- [ ] States read from step rows: EXECUTING, COMPLETED, partial, FAILED, EXPIRED, VOIDED, superseded; confirm disabled after the first tap; progress by polling (review 2026-10-06) — all but superseded, which has no state until one open proposal per session lands (T-095, AI-EXECUTION-PLAN §5 row 13)
+- [x] Visual QA at 375 / 768 / 1440 against a seeded account, not waived (review 2026-10-06) — light and dark; confirm, progress, partial end, decline, expiry while shown; a plan hashed as the API hashes it, confirmed through the real API
 
 **Validation**
 ```bash
@@ -9485,7 +9485,7 @@ pnpm --filter api test ai-trace
 ---
 
 ### T-214 — Plan timeline (P-3b)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. The person's view: `GET …/plans/:planId/timeline` (`plan-timeline.ts`, `AiPlansService.timeline`) — the plan's rows in causal order, its outcome from the PLAN_OUTCOME message, its audit (lifecycle and the confirmation's tool calls, codes only) by the database's clock; `ai-plans.md`. Staff in scope is T-234 (approval)
 - **Priority:** P2
 - **Depends on:** T-212, T-226
 - **Risk:** LOW
@@ -9498,8 +9498,8 @@ A read model of one plan, from proposal to its last step, built from plan, step 
 one correlation id. It is for the person and for staff in scope.
 
 **Acceptance criteria**
-- [ ] Partial success reads as partial; a FAILED step is never shown as done
-- [ ] Another person's plan is a 404
+- [x] Partial success reads as partial; a FAILED step is never shown as done — `ai-plans.timeline.spec.ts`
+- [x] Another person's plan is a 404 — a stranger, a colleague in the same workspace, the agency's owner (`ai-plans.authz.spec.ts`), and the person's own plan asked for under another conversation
 
 **Validation**
 ```bash
@@ -9656,7 +9656,7 @@ pnpm --filter api test ai-handoff
 ---
 
 ### T-220 — Normalize, structural routing, credential screen (P-9)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `modules/ai/understanding/` (`ai-understanding.md`): text normalized, credentials masked and screened, and structural routing, all wired into every turn before storing; the credential refusal also on `/ai/knowledge/answer` and `/ai/discovery/answer`; `resolveWhen` and `parseAmount` built for T-095's commands. app-web renders the screen's and the router's replies. KB customer v10 and investigator v4
 - **Priority:** P1 — the credential screen before any act turn
 - **Depends on:** T-056; confirm routing on T-058
 - **Risk:** MEDIUM
@@ -9674,9 +9674,9 @@ pnpm --filter api test ai-handoff
   waits points at its confirm control and never confirms.
 
 **Acceptance criteria**
-- [ ] A pasted key appears in no session message, plan step or audit row, and in no request body sent to the model
-- [ ] A spec holds that no stage here returns an action
-- [ ] Trilingual cases, including cross-zone and DST
+- [x] A pasted key appears in no session message, plan step or audit row, and in no request body sent to the model — `ai-normalize.turn.spec.ts` searches messages, steps, audit, outbox and titles, with a positive control; checked again in the browser
+- [x] A spec holds that no stage here returns an action — outputs scanned over a corpus, and no stage imports a tool, a plan, a model or the database
+- [x] Trilingual cases, including cross-zone and DST — New York, Moscow, Yerevan; New York's spring gap and autumn overlap, Berlin's overlap
 
 **Validation**
 ```bash
@@ -9864,7 +9864,7 @@ pnpm --filter api test ai-plans ai-preview
 ---
 
 ### T-226 — The outcome reaches the person (P-15)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-07. Migrations 0044–0045: `record_ai_plan_outcome` writes one `PLAN_OUTCOME` message per ended plan from its step rows, whoever ends it; `PlanExecutor` writes `ai.plan.ended`, fanned out as the in-app-only `assistant_plan_failed` / `assistant_plan_voided`; app-web renders the outcome from `assistant.outcome.*` (en/ru/hy). Polling UI stays with T-058; the notification's deep link is T-231
 - **Priority:** P0 for Release 1
 - **Depends on:** T-048, T-224, T-036
 - **Risk:** MEDIUM
@@ -9883,8 +9883,8 @@ it went.
 - The client polls while the plan runs.
 
 **Acceptance criteria**
-- [ ] A FAILED or partial plan never renders as success (spec)
-- [ ] A worker killed between the last step and the status write yields exactly one message
+- [x] A FAILED or partial plan never renders as success (spec) — `ai-plans.outcome.spec.ts` (direct writes, every step mix; mutation of the rule turns 12 tests red) and `assistant.spec.tsx`
+- [x] A worker killed between the last step and the status write yields exactly one message — killed after the last step's effect, and after the status write before its commit
 
 **Validation**
 ```bash
@@ -10007,6 +10007,142 @@ pnpm --filter api test ai-settings
 **Validation**
 ```bash
 pnpm --filter api test ai-triage
+```
+
+### T-231 — Open the assistant on the conversation a notification names
+- **Status:** DONE — 2026-10-07. `AssistantDeepLink` (mounted by the workspace layout in `Suspense`) reads `?assistant=`, opens the panel through `openConversation` → `useConversation.openById` (`GET /ai/sessions/:id`, then its newest page) and drops the parameter with `router.replace`; `app-web.md`
+- **Priority:** P2
+- **Depends on:** T-226, T-057
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/**, apps/app-web/src/components/notifications/**
+
+**Description**
+From T-226. A plan that fails, or is voided after the person confirmed it, notifies them with
+`href: /?assistant=<sessionId>` (`notifications/kinds.ts`, `assistantHref`). The assistant is a panel,
+not a route, and app-web does not read that parameter yet: the notification lands on the home page with
+the assistant closed. Read `?assistant=` on load and when a notification is opened. Open the panel on
+that conversation through the same path as choosing it from the list, then drop the parameter from the
+URL. A conversation that is gone, or belongs to another workspace, reads like any unknown one
+(`assistant.notice.gone`).
+
+**Acceptance criteria**
+- [x] Opening an `assistant_plan_failed` notification opens the assistant on that conversation, with
+      its PLAN_OUTCOME message in view — browser, from the bell, on a phone and a desktop, with a newer conversation present
+- [x] A deleted or foreign conversation shows the "no longer available" notice, never an error page — another person's session in the browser; 404 in `assistant-deep-link.spec.tsx`
+- [x] Phone and desktop: the panel opens as it does from the shell (visual QA at 375 / 768 / 1024 — the pane's widest)
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant notifications
+```
+
+### T-232 — The notifications end-to-end spec through Redis times out in some orders
+- **Status:** DONE — 2026-10-07. Cause: the Redis block never set `SESSION_SECRET` (its email signs an unsubscribe link with it) and ran on the string `"undefined"` that the delivery block's `afterAll` wrote back; run first, the email job threw and the test waited out its timeout. Both blocks now `vi.stubEnv` / `vi.unstubAllEnvs`; the rule is in the `testing` skill
+- **Priority:** P1 — a red CI run that is not about the change under review
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** backend-domain
+- **Affected:** apps/api/src/modules/notifications/notifications.jobs.spec.ts, apps/api/test/**
+
+**Description**
+Found during T-226. `notifications end to end, through Redis › turns a published mission into one
+notification and one email for its customer` times out at 15 s, waiting for a mail that never comes, in
+some orders. On dev's code (T-226's changes stashed), `vitest run notifications.jobs.spec.ts
+--sequence.shuffle` failed 4 of 6 runs; with them, 2 of 6. In default order it failed once in about 13
+runs of `pnpm --filter api test ai-plans notifications`. Find what the test depends on — the shared
+graph, a queue prefix, an unpublished event left by another test, the worker's start — and remove the
+dependency. Do not raise the timeout: the test waits for an event, not for time.
+
+**Acceptance criteria**
+- [x] The cause is named in the fix's commit
+- [x] 20 consecutive `--sequence.shuffle` runs of the file pass, and the suite passes in reverse order — 20/20 twice; seed 3, which put the block first and failed, passes; the block alone (`-t`), which failed every time, passes; the API suite in reverse, 3600/3600
+
+**Validation**
+```bash
+cd apps/api && for i in $(seq 1 20); do pnpm exec vitest run src/modules/notifications/notifications.jobs.spec.ts --sequence.shuffle || exit 1; done
+```
+
+### T-233 — Signing in before verifying the email shows "Application error"
+- **Status:** DONE — 2026-10-07, closed without a code change: **not a bug**. The crash needs an account whose address is confirmed while its status is not `ACTIVE`, and that pair occurs only by hand. T-226's browser check made it: `email_verified_at` was set directly and `PENDING_VERIFICATION` left. In every real state the app behaves:
+  - Verification sets both together (`auth.service.ts`, `verifyEmail`).
+  - A genuinely unconfirmed sign-in skips `/workspaces` (`getWorkspaces`, T-164) and lands on Home with the confirm notice. Its Review link goes to Account → profile, which offers resend. Checked in the browser, with no server errors.
+  - Login refuses `SUSPENDED` and deleted accounts.
+  - An account suspended mid-session is sent to sign-in on its next page.
+- **Priority:** P1 — the first thing a new person may do
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/app/session/start/**
+
+**Description**
+Found during T-226's browser check (2026-10-07). An account still `PENDING_VERIFICATION` may sign in
+(by design, `auth.service.ts`: login admits it, and each feature gates on `requireActive`). The app's
+`/session/start` route then reads `GET /workspaces`. That is refused `403 FORBIDDEN`
+(`authz.denied.workspace.list`, `account_not_active`), the route throws, and the person sees Next's
+"Application error: a server-side exception has occurred". Reproduce by signing up, then signing in
+before clicking the link. Send an unverified person to `/check-email` (or a page saying their address
+needs confirming, with resend), never an error page.
+
+**Acceptance criteria**
+- [x] Signing in unverified lands on a page that says to confirm the address, with a way to resend — already so: Home with `shell.unverified`, linking to the profile's resend (browser, 2026-10-07)
+- [ ] No server exception in app-web's log for that path; an e2e journey covers it — the first half is verified (no exception in the log). No e2e was added: `account.e2e.ts` already signs its account in five times, the API's per-account limit in five minutes, so the journey needs its own account. The behaviour is unit-tested in `routes.spec.tsx` and `server.spec.ts` (T-164)
+
+**Validation**
+```bash
+pnpm --filter app-web test session
+```
+
+### T-234 — Staff read a person's plan timeline, in scope
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-214, T-061
+- **Risk:** HIGH
+- **Human approval required:** Yes — staff reading a private conversation's plan under `PlatformContext`
+- **Owner agent:** backend-domain + security-privacy (review)
+- **Affected:** apps/api/src/modules/ai/plans/**, apps/admin-web/**
+
+**Description**
+From T-214, which built the person's own view. P-3b says the timeline is "for the person and for staff
+in scope". A plan lives in a conversation that row-level security keeps to one user in one workspace;
+not even an agency's owner reads it. Decide which staff scope may read one: support handling a report,
+or compliance under a legal hold. Decide what they see: the timeline is content-free, but its tool names
+and failure codes still describe what the person asked for. The read is audited, and runs through
+`PlatformContext` with a reason.
+
+**Acceptance criteria**
+- [ ] Only the decided scope reads it, with a reason, audited; every other staff member gets 404
+- [ ] What staff see is decided in writing (`ai-plans.md`) and matches the response
+
+**Validation**
+```bash
+pnpm --filter api test ai-plans
+```
+
+### T-235 — Pause watching a running plan while the tab is hidden
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** T-058
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/app-web/src/components/assistant/use-plans.ts
+
+**Description**
+From T-058. `usePlans` reads a running plan every 2 seconds until it ends. The assistant panel stays
+mounted once opened, so it keeps reading while the tab is hidden, and while a plan sits CONFIRMED for
+a worker that is down (up to the 15-minute execution deadline, T-224). Pause on `visibilitychange`
+while hidden, and read once at once on return, as the notification count does (T-169).
+
+**Acceptance criteria**
+- [ ] No plan is read while the tab is hidden; one is read at once when it shows again
+
+**Validation**
+```bash
+pnpm --filter app-web test assistant-confirmation
 ```
 
 ---

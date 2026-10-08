@@ -19,6 +19,16 @@ what each status change means; nothing else does.
 | `assignment.status_changed` | `PENDING_ACCEPTANCE → ACCEPTED` | `assignment_accepted` | customer |
 | `assignment.status_changed` | `* → CANCELLED`, by the investigator | `assignment_declined` | customer |
 | `assignment.status_changed` | `* → REPORT_SUBMITTED` | `assignment_report_ready` | customer |
+| `ai.plan.ended` | the plan reads `FAILED` | `assistant_plan_failed` | the plan's person — **in-app only** |
+| `ai.plan.ended` | the plan reads `CANCELLED`, having been confirmed | `assistant_plan_voided` | the plan's person — **in-app only** |
+
+**An assistant plan's ending (T-226)** is decided from the plan's row as the fan-out reads it, never
+from the event: a plan erased with its conversation since tells nobody, and a completed or declined
+one never does. Its notification leads to `/?assistant=<session>`, which opens the assistant on
+that conversation (T-231, `app-web.md`). The two kinds are `IN_APP_KINDS`:
+the conversation already holds the outcome, so they are not worth an email. `DeliverHandler` queues no
+email for them whatever the person chose, and `SendEmailHandler` refuses one by name. They are not
+mail templates, so they have only a `notifications.kind.*` line.
 
 A person's own moves tell nobody — they know. The outbox payload carries `actorKind` so a decline
 by the investigator can be told apart from a cancellation by anyone else.
