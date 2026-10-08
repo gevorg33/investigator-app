@@ -10123,7 +10123,7 @@ pnpm --filter api test ai-plans
 ```
 
 ### T-235 — Pause watching a running plan while the tab is hidden
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `usePlans` tracks `visibilitychange`: no timer while hidden; on return the running plans are read after 0 ms, then every `POLL_MS`. Two specs in `assistant-confirmation.spec.tsx`, seen failing first. Live against the built app and API with a seeded CONFIRMED plan: reads at 2.4/4.5/6.5 s, none in 10 s hidden, the first 12 ms after return; a plan completed while hidden left the card at once and its outcome showed. Docs: `app-web.md`, `ai-plans.md`
 - **Priority:** P3
 - **Depends on:** T-058
 - **Risk:** LOW
@@ -10138,11 +10138,41 @@ a worker that is down (up to the 15-minute execution deadline, T-224). Pause on 
 while hidden, and read once at once on return, as the notification count does (T-169).
 
 **Acceptance criteria**
-- [ ] No plan is read while the tab is hidden; one is read at once when it shows again
+- [x] No plan is read while the tab is hidden; one is read at once when it shows again
 
 **Validation**
 ```bash
 pnpm --filter app-web test assistant-confirmation
+```
+
+---
+
+### T-236 — Two admin-web specs time out under the root `pnpm test`
+- **Status:** TODO
+- **Priority:** P3
+- **Depends on:** —
+- **Risk:** LOW
+- **Human approval required:** No
+- **Owner agent:** frontend
+- **Affected:** apps/admin-web/src/app/(console)/{legal-holds/legal-holds,moderation/moderation}.spec.tsx
+
+**Description**
+Found during T-235: one root `pnpm test` (every package at once) failed four admin-web tests at the
+5 s timeout — legal holds › placing a hold › "places it, trimmed, then reads the page again" and
+"starts from the record looked up"; moderation › deciding › "records a return with its reason and
+internal note…" and "sends no internal note when none was written". Alone they passed 3 of 3, and the
+next full run was green. CI is not exposed (`test:coverage` runs one package at a time, T-160), but
+the root script is the documented local gate. Same shape as T-180's filter sheet: `userEvent.type`
+with the default `delay: 0` yields to a timer per keystroke. Measure each, and give the walk-throughs
+`userEvent.setup({ delay: null })` as T-180 did. No timeout raised, no step removed.
+
+**Acceptance criteria**
+- [ ] Each of the four is measured before and after, alone and under a full root `pnpm test`
+- [ ] Five consecutive root `pnpm test` runs pass
+
+**Validation**
+```bash
+pnpm --filter admin-web test legal-holds moderation
 ```
 
 ---

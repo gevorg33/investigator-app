@@ -46,7 +46,8 @@ export interface Plans {
  * **Watches a confirmed plan run** by reading it again every `POLL_MS` until it ends. A plan that
  * ends — here, in another tab, or refused at the last moment — leaves the list, and `onEnded` reads
  * the conversation again: the database has written how it ended there (T-226), which is what says
- * why, never this.
+ * why, never this. Nothing is read while the tab is hidden; shown again, a running plan is read at
+ * once, as the notification count is (T-235).
  */
 export function usePlans(api: AssistantApi, sessionId: string | null, onEnded: () => void): Plans {
   const [entries, setEntries] = useState<PlanEntry[]>([]);
@@ -125,24 +126,40 @@ export function usePlans(api: AssistantApi, sessionId: string | null, onEnded: (
     void refresh();
   }, [refresh]);
 
+  // Hidden, the panel stays mounted: without this it would read every tick until the plan ends.
+  const [hidden, setHidden] = useState(false);
+  const wasHidden = useRef(false);
+  useEffect(() => {
+    const onChange = () => setHidden(document.visibilityState === 'hidden');
+    onChange();
+    document.addEventListener('visibilitychange', onChange);
+    return () => document.removeEventListener('visibilitychange', onChange);
+  }, []);
+
   const running = entries.filter((e) => isRunning(e.plan)).map((e) => e.plan.id);
   const watching = running.join(',');
   useEffect(() => {
-    if (watching === '') return;
+    // Shown again after being hidden: read at once, not a tick later.
+    const returned = wasHidden.current && !hidden;
+    wasHidden.current = hidden;
+    if (watching === '' || hidden) return;
     const gen = generation.current;
-    const timer = setTimeout(() => {
-      void Promise.all(
-        watching.split(',').map(async (planId) => {
-          const plan = await reread(planId);
-          if (gen !== generation.current) return;
-          // Not read this time: read again on the next tick.
-          if (plan === undefined) return void update(planId, (e) => ({ ...e }));
-          settle(planId, plan, null);
-        }),
-      );
-    }, POLL_MS);
+    const timer = setTimeout(
+      () => {
+        void Promise.all(
+          watching.split(',').map(async (planId) => {
+            const plan = await reread(planId);
+            if (gen !== generation.current) return;
+            // Not read this time: read again on the next tick.
+            if (plan === undefined) return void update(planId, (e) => ({ ...e }));
+            settle(planId, plan, null);
+          }),
+        );
+      },
+      returned ? 0 : POLL_MS,
+    );
     return () => clearTimeout(timer);
-  }, [watching, entries, reread, settle, update]);
+  }, [watching, entries, hidden, reread, settle, update]);
 
   const answer = useCallback(
     async (planId: string, how: 'confirm' | 'decline') => {
