@@ -240,3 +240,22 @@ could rest on data. Partner and relationship investigation would never be publis
     jurisdiction, and what would the platform's position be if one of them turned out to request
     something unlawful?
 
+
+### The assistant and its AI provider (T-046, added 2026-10-08)
+
+The assistant answers questions about the platform by sending text to a third-party AI model
+provider (OpenAI, behind the platform's own provider abstraction). Until T-046 it sent each
+question on its own. It now also sends, for the same conversation only: recent messages, a summary
+of older ones, results it showed the person, and the plans it is waiting to have confirmed or is
+carrying out. Older parts of a conversation are also sent to the provider to be summarised, and the
+summary is stored with the conversation and erased with it. Customer conversations can mention
+missions, people and places, so this text can include personal data about third parties.
+
+36. **The provider as processor.** Is the AI provider our processor for this text, and does its
+    standard data-processing agreement suffice in each launch jurisdiction — including its
+    retention of inputs, any use for training, and transfer outside Armenia and the EU? Must the
+    privacy policy name it, and must a user consent to (or be able to refuse) earlier conversation
+    being sent with a question, or is notice enough?
+37. **Mission content in prompts.** When the assistant later reads a person's own missions and
+    assignments to answer about them (planned, not built), does sending that content to the
+    provider change the answer to 36 — in particular for evidence and investigation subjects?

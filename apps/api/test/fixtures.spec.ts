@@ -84,6 +84,9 @@ const WRITTEN_BY: Readonly<Record<string, string>> = {
     'the plans service, which proposes only through the tool registry and hashes what it stores (T-048)',
   ai_plan_steps: 'the plans service, with their plan in one transaction (T-048)',
   ai_tool_results: 'the tool result store, from a tool’s own output (T-048)',
+  ai_session_summaries:
+    'the summary service, which numbers each version and records the model and range that made it (T-046)',
+  ai_session_entities: 'the session state service, from what a turn mentioned (T-046)',
   reviews:
     'the reviews service, which writes one only for a completed assignment; the database rules are driven by direct writes in test/isolation/reviews.spec.ts (T-037)',
   review_texts:

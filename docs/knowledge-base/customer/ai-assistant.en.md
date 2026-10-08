@@ -4,7 +4,7 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 10
+version: 11
 status: current
 updated: 2026-10-08
 source_of_truth: docs
@@ -42,9 +42,22 @@ conversation for when you open it again, even if you move to another page meanwh
 
 ## Does it remember what I asked earlier in the conversation?
 
-Not yet. Each question is answered on its own, from the help articles, so a follow-up such as "and
-after that?" is answered without the question before it. Ask each question in full. The
-conversation itself is kept, so you can read back what was said.
+Yes, within the same conversation. When you ask a question about how the platform works, the
+assistant reads what was said before it in that conversation, so a follow-up such as "and how long
+does that take?" is understood. It uses the earlier conversation only to work out what you mean —
+the answer itself still comes from the help articles, and still shows which ones it used.
+
+It never reads your other conversations, or anyone else's, and nothing said in a conversation
+changes what you are allowed to see or do on the platform.
+
+In a long conversation, the assistant keeps a short summary of the older part and reads that
+together with the most recent messages. Your messages themselves are never shortened or removed:
+the whole conversation stays as it was until you delete it. When the assistant is carrying out
+something you confirmed, it checks how far it has got each time you ask, rather than relying on
+what was said earlier.
+
+Searches for investigators do not use the earlier conversation yet: describe what you need in full
+each time you search.
 
 ## What does it show while it works?
 
@@ -192,7 +205,11 @@ yet, it answers from the English page and says so.
 ## What happens to the question I ask?
 
 To write an answer, the assistant sends your question, together with the guidance it found, to
-the AI service that composes the reply. When you ask it to find investigators, it sends your
+the AI service that composes the reply. From the second question in a conversation on, it also
+sends what that conversation needs for the answer to make sense: the recent messages, a summary
+of older ones, results it showed you there, and anything it is waiting for you to confirm or is
+carrying out. To keep long conversations short, it also sends older parts of the conversation to
+the same service to be summarised; the summary is kept with the conversation and deleted with it. When you ask it to find investigators, it sends your
 request — and your answer, if it asked what the search is for — together with the list of
 investigation specialties, so the AI service can turn it into search requirements. The privacy policy names the services that process your
 data and governs how they may use it. Where this answer and the privacy policy differ, the privacy

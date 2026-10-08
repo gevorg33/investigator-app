@@ -21,6 +21,8 @@ import {
   type AnswerStep,
   type KnowledgeAnswer,
 } from './knowledge-answer.service';
+import { ContextBuilderService } from './context-builder/context-builder.service';
+import { KNOWLEDGE_MATERIAL_TOKENS, knowledgeSystem } from './knowledge-answer.prompt';
 import { AiPlansService } from './plans/ai-plans.service';
 import { screenCredentials, type CredentialKind } from './understanding/credentials';
 import { normalizeText } from './understanding/normalize';
@@ -91,6 +93,8 @@ const DISCOVERY_REPLIES: ReadonlySet<DiscoveryAnswer['status']> = new Set([
 /** A turn that was let through, ready to be answered. Only this service makes one. */
 export type Turn = {
   readonly sessionId: string;
+  /** The person's message this turn answers: what context is built from before. */
+  readonly sequence: number;
   /** Sent before any answering starts: the stored question, and the session it may have named. */
   readonly opening: readonly TurnEvent[];
 } & (
@@ -133,9 +137,12 @@ export type Turn = {
  * leaves it as the last message, and {@link retry} answers it. A reply is stored only once the
  * answer is complete and nobody has stopped it, so a conversation never holds half an answer.
  *
- * Each question is answered on its own: earlier turns do not reach the model until the Context
- * Builder (T-046) decides what may. The one exception is discovery's own question — which
- * specialty, where, what for — whose answer is paired with the question it was asked about.
+ * **The conversation so far reaches the knowledge answer through the Context Builder** (T-046): what
+ * of it fits, as delimited data, chosen by that service and never by the model. Discovery is still
+ * single-turn, except for its own question — which specialty, where, what for — whose answer is
+ * paired with the question it was asked about. After a reply is stored, the conversation is
+ * compacted if the next call would need it, and investigators shown as results are noted in
+ * structured session state.
  */
 @Injectable()
 export class AssistantTurnService {
@@ -146,6 +153,7 @@ export class AssistantTurnService {
     private readonly knowledge: KnowledgeAnswerService,
     private readonly discovery: DiscoveryAnswerService,
     private readonly plans: AiPlansService,
+    private readonly context: ContextBuilderService,
   ) {}
 
   /** A new question — or an answer to discovery's: checked, then stored, then ready to answer. */
@@ -186,7 +194,7 @@ export class AssistantTurnService {
     req: RequestContext,
     rest: Turn extends infer T
       ? T extends unknown
-        ? Omit<T, 'sessionId' | 'opening'>
+        ? Omit<T, 'sessionId' | 'opening' | 'sequence'>
         : never
       : never,
   ): Promise<Turn> {
@@ -194,6 +202,7 @@ export class AssistantTurnService {
     const session = await this.sessions.open(actor, sessionId, req);
     return {
       sessionId,
+      sequence: message.sequence,
       ...rest,
       opening: [
         { type: 'message', message },
@@ -252,12 +261,15 @@ export class AssistantTurnService {
     if (Array.isArray(screened)) {
       return {
         sessionId,
+        sequence: last.sequence,
         prepared: { source: 'screen', status: 'credential', kinds: screened as CredentialKind[] },
         opening: [],
       };
     }
     const decided = await this.decide(actor, sessionId, last.content, false, req);
-    if (decided !== null) return { sessionId, prepared: decided, opening: [] };
+    if (decided !== null) {
+      return { sessionId, sequence: last.sequence, prepared: decided, opening: [] };
+    }
     // An unanswered answer to discovery's question is paired again with what it answers — with the
     // specialty it picked, but not a location, which was never stored: discovery asks again.
     const stored = last.metadata['taxonomyNodeIds'];
@@ -273,7 +285,14 @@ export class AssistantTurnService {
       1,
     );
     const admitted = await this.knowledge.admit(actor, input.locale, req);
-    return { sessionId, question: last.content, discovery: request, admitted, opening: [] };
+    return {
+      sessionId,
+      sequence: last.sequence,
+      question: last.content,
+      discovery: request,
+      admitted,
+      opening: [],
+    };
   }
 
   /**
@@ -348,13 +367,22 @@ export class AssistantTurnService {
         // Structured, whole: the client renders it; nothing in it is the model's own wording.
         reply = { content: '', metadata: { source: 'discovery', answer: found } };
       } else {
-        const answer = await this.knowledge.respond(
+        // What of the conversation so far may help read the question: the Context Builder's choice.
+        const context = await this.context.build(
           actor,
-          turn.question,
-          turn.admitted,
+          turn.sessionId,
+          {
+            request: turn.question,
+            before: turn.sequence,
+            system: knowledgeSystem(turn.admitted.locale),
+            material: KNOWLEDGE_MATERIAL_TOKENS,
+          },
           req,
-          options,
         );
+        const answer = await this.knowledge.respond(actor, turn.question, turn.admitted, req, {
+          ...options,
+          conversation: context.text,
+        });
         if (signal.aborted) return;
         reply = {
           // "I don't have that" has no words of its own: the client says it, in the reader's
@@ -376,9 +404,45 @@ export class AssistantTurnService {
         req,
       );
       emit({ type: 'message', message });
+      if (found.status === 'results') {
+        // Shown as a list: state records them as results — never a referent on their own (T-216).
+        await this.context.note(
+          actor,
+          turn.sessionId,
+          message.sequence,
+          found.results.map((r) => ({
+            kind: 'investigator_profile' as const,
+            entityId: r.investigatorId,
+            origin: 'result' as const,
+          })),
+          req,
+        );
+      }
+      await this.compact(actor, turn, req);
     } catch (e) {
       if (signal.aborted) return;
       emit({ type: 'error', error: this.describe(e, req) });
+    }
+  }
+
+  /**
+   * Summarises the conversation if the next knowledge call would need it (T-046). The reply is
+   * stored already, so a failure here fails nothing the person sees: it is logged by kind and tried
+   * again after the next turn.
+   */
+  private async compact(actor: Actor, turn: Turn & { admitted: Admitted }, req: RequestContext) {
+    try {
+      await this.context.compact(
+        actor,
+        turn.sessionId,
+        { system: knowledgeSystem(turn.admitted.locale), material: KNOWLEDGE_MATERIAL_TOKENS },
+        req,
+      );
+    } catch (e) {
+      this.logger.warn(
+        { failure: e instanceof Error ? e.name : typeof e, correlationId: req.correlationId },
+        'session compaction failed',
+      );
     }
   }
 

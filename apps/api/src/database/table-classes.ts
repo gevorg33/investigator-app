@@ -228,6 +228,16 @@ export const TABLE_CLASSES: Readonly<Record<string, TableClassification>> = {
     columns: ['tenant_id'],
     note: 'as ai_sessions, with the owner copied from the session; append-only (T-048)',
   },
+  ai_session_summaries: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_sessions, with the owner copied from the session; append-only — a summary is a new version, never a rewrite (T-046)',
+  },
+  ai_session_entities: {
+    class: 'tenant_owned',
+    columns: ['tenant_id'],
+    note: 'as ai_sessions, with the owner copied from the session; structured state, updated as the conversation moves (T-046)',
+  },
   investigation_sources: {
     class: 'two_party',
     columns: ['customer_tenant_id', 'supplier_tenant_id'],

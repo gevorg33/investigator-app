@@ -40,7 +40,8 @@ and leaves a tombstone — owner and deletion time. A trigger keeps the tombston
 application holds DELETE on messages only, and none on sessions.
 
 `SESSION_CONTENT` cannot fall behind: a spec compares it with every foreign key into `ai_sessions`,
-so summaries (T-046), memory (T-047) and embeddings (T-133) fail it until they are added. Plans,
+so memory (T-047) and embeddings (T-133) fail it until they are added. Summaries and session state
+are on it since T-046. Plans,
 their steps and stored tool results are on it since T-048 — steps before their plan. A plan still
 running refuses the delete, and one that ran leaves its outcome in audit first (T-224, `ai-plans.md`).
 
@@ -117,8 +118,10 @@ clarification: `purpose` is the content; a specialty must be one of those offere
 - **The reply** is an `ASSISTANT` `TEXT` message with `metadata`
   `{ source: 'knowledge', status, citations, locale, fallback }`. "Not covered" (`no_answer`) is
   stored with empty content: the client says it, in the reader's language, from `status`.
-- **No history reaches the model yet.** Each question is answered on its own; what earlier turns may
-  contribute is the Context Builder's decision (T-046). The help articles say so.
+- **History reaches the knowledge answer through the Context Builder** (T-046, `ai-context.md`): the
+  conversation before the question, fitted to the budget, as delimited data. Discovery is still
+  single-turn. After the reply is stored, the turn compacts the conversation if the next call would
+  need it, and notes investigators shown as results in structured state. The help articles say so.
 - A failure that is not an `AppError` is logged by kind and correlation id only — a database
   error's detail can quote the row, and the row is the question (`logging.md`).
 
@@ -132,7 +135,8 @@ The client is the assistant panel in app-web (`app-web.md`).
 
 ## Not yet
 
-- **Summaries, memory, embeddings** — T-046, T-047, T-133; each joins `SESSION_CONTENT`.
+- **Memory, embeddings** — T-047, T-133; each joins `SESSION_CONTENT`, as summaries and session state
+  did (T-046, `ai-context.md`).
 - **Tool events in a session** — discovery's answer is stored as the reply's metadata. The result
   store they will reference exists (T-048, `ai-plans.md`); recording tool calls and results as
   `TOOL_CALL`/`TOOL_RESULT` rows is the orchestrator's (T-095), which decides which arguments a

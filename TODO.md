@@ -2512,7 +2512,7 @@ sees a conversation, what deleting does, and how search works.
 ---
 
 ### T-046 — Context Builder, summaries and compaction
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `ai/context-builder`: `ContextBuilderService` (build: own session → live plans, state, summaries, unsummarized messages, same-session full-text retrieval → budget with output reserved → five rungs → escaped `<conversation>`; compact: proactive at 75%, level-0 spans and level-1 roll-ups, versioned with model, prompt and range; note: entity refs). Migration 0046: `ai_session_summaries` (append-only) and `ai_session_entities`, own-conversation RLS, on `SESSION_CONTENT`. Wired into knowledge answers (`knowledge-answer-v2`); discovery results noted as `result`. 45 specs in `context-builder`, plus turn wiring. Docs: `ai-context.md`, `ai-sessions.md`; KB `kb-customer-ai-assistant` v11 (en; ru/hy drafts behind); counsel brief 36–37
 - **Priority:** P1
 - **Depends on:** T-045, T-016, T-077
 - **Risk:** HIGH
@@ -2527,22 +2527,22 @@ The service that decides what enters the model context. Per
 **Tenancy (ADR-0011).** The Context Builder reads only through the execution context. A summary never carries a workspace or authority. There is a test for stale context after a workspace switch.
 
 **Acceptance criteria**
-- [ ] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
+- [x] Its tables join `SESSION_CONTENT` (T-045), so deleting a session erases them in the same transaction —
       `ai-sessions.service.spec.ts` fails until they do
-- [ ] **Permissions applied before assembly**, not after; a test proves no cross-session or
+- [x] **Permissions applied before assembly**, not after; a test proves no cross-session or
       cross-user message can be retrieved by semantic relevance
-- [ ] Token budget reserves output space; input never fills the window
-- [ ] Compaction triggers proactively at ~70–80%; **no message is ever deleted to fit**
-- [ ] Progressive degradation: recent → +summary → compress older → retrieve history → structured state
-- [ ] An **active plan or pending confirmation is never compacted away** — tested explicitly
-- [ ] Summaries incremental and hierarchical; versioned with model and source sequence range
-- [ ] Summaries preserve goal, entities, decisions, constraints, completed and pending actions
-- [ ] Retrieved content delimited and treated as data; injection test passes
-- [ ] A test proves a summary claiming a permission grants nothing
-- [ ] Structured session state (entity refs: kind, id, status, last-mentioned turn) as columns in a SESSION_CONTENT table under RLS (review 2026-10-06)
-- [ ] CONFIRMED and EXECUTING plans are in context with their live status; a follow-up that depends on one is a question until it completes (review 2026-10-06)
-- [ ] Tool results reach a prompt only through `forContext`, wrapped and escaped like knowledge sources; the injection test covers tool results (review 2026-10-06)
-- [ ] Before history, tool results or mission content go to the model provider: the customer article says so, and `counsel-brief.md` gains the processor question (review 2026-10-06)
+- [x] Token budget reserves output space; input never fills the window
+- [x] Compaction triggers proactively at ~70–80%; **no message is ever deleted to fit**
+- [x] Progressive degradation: recent → +summary → compress older → retrieve history → structured state
+- [x] An **active plan or pending confirmation is never compacted away** — tested explicitly
+- [x] Summaries incremental and hierarchical; versioned with model and source sequence range
+- [x] Summaries preserve goal, entities, decisions, constraints, completed and pending actions
+- [x] Retrieved content delimited and treated as data; injection test passes
+- [x] A test proves a summary claiming a permission grants nothing
+- [x] Structured session state (entity refs: kind, id, status, last-mentioned turn) as columns in a SESSION_CONTENT table under RLS (review 2026-10-06)
+- [x] CONFIRMED and EXECUTING plans are in context with their live status; a follow-up that depends on one is a question until it completes (review 2026-10-06) — live status tested; "a question" holds structurally (a turn has no write path; it only answers) and by the `knowledge-answer-v2` rule; a behavioural eval case belongs to T-215
+- [x] Tool results reach a prompt only through `forContext`, wrapped and escaped like knowledge sources; the injection test covers tool results (review 2026-10-06)
+- [x] Before history, tool results or mission content go to the model provider: the customer article says so, and `counsel-brief.md` gains the processor question (review 2026-10-06)
 
 **Validation**
 ```bash

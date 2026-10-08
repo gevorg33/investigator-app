@@ -286,6 +286,16 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
     INSERT INTO ai_tool_results (session_id, tool, summary, items, total)
     VALUES (${conversation}, 'searchInvestigators', '{"count":1}'::jsonb, '[{"n":1}]'::jsonb, 1)
     RETURNING id`);
+  // A summary of it, and an entity it mentioned (T-046).
+  const summary = await id(owner`
+    INSERT INTO ai_session_summaries
+      (session_id, version, level, source_sequence_start, source_sequence_end, model, prompt_version, content)
+    VALUES (${conversation}, 1, 0, 1, 1, 'test-model', 'session-summary-v1',
+      '{"goal":"Plan a mission","entities":[],"decisions":[],"constraints":[],"completed":[],"pending":[],"state":null}'::jsonb)
+    RETURNING id`);
+  const mentioned = await id(owner`
+    INSERT INTO ai_session_entities (session_id, kind, entity_id, origin, status, last_mentioned_sequence)
+    VALUES (${conversation}, 'plan', ${plan}, 'plan', 'PROPOSED', 1) RETURNING id`);
 
   // A browse saved by the supplier's investigator, their own (T-054).
   const savedSearch = await id(owner`
@@ -402,6 +412,8 @@ export async function seedGraph(owner: postgres.Sql): Promise<SeededGraph> {
       ai_plans: plan,
       ai_plan_steps: planStep,
       ai_tool_results: toolResult,
+      ai_session_summaries: summary,
+      ai_session_entities: mentioned,
       saved_mission_searches: savedSearch,
       policy_reviews: review,
       money_decisions: money,

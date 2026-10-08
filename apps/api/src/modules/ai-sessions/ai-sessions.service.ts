@@ -8,7 +8,15 @@ import { currentContext } from '../../common/context/execution-context';
 import { AppError } from '../../common/errors/app-error';
 import type { RequestContext } from '../../common/http/request-context';
 import { DB, type Db, type Tx } from '../../database/database.module';
-import { aiMessages, aiPlanSteps, aiPlans, aiSessions, aiToolResults } from '../../database/schema';
+import {
+  aiMessages,
+  aiPlanSteps,
+  aiPlans,
+  aiSessionEntities,
+  aiSessionSummaries,
+  aiSessions,
+  aiToolResults,
+} from '../../database/schema';
 import {
   clampLimit,
   decodeMessageCursor,
@@ -78,7 +86,8 @@ export type NewMessage =
 /**
  * Every table that holds a session's content, erased with it in one transaction (T-045).
  *
- * Summaries (T-046), memory (T-047) and embeddings will join this list. They cannot be forgotten:
+ * Memory (T-047) and embeddings will join this list, as summaries and session state did (T-046).
+ * None can be forgotten:
  * `ai-sessions.service.spec.ts` compares it with every foreign key the database has into
  * `ai_sessions`, and fails until a new one is here. In order: a plan's steps before the plan.
  */
@@ -87,6 +96,8 @@ export const SESSION_CONTENT: ReadonlyArray<{ table: PgTable; sessionId: PgColum
   { table: aiPlanSteps, sessionId: aiPlanSteps.sessionId },
   { table: aiPlans, sessionId: aiPlans.sessionId },
   { table: aiToolResults, sessionId: aiToolResults.sessionId },
+  { table: aiSessionSummaries, sessionId: aiSessionSummaries.sessionId },
+  { table: aiSessionEntities, sessionId: aiSessionEntities.sessionId },
 ];
 
 /**

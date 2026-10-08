@@ -28,7 +28,7 @@ time regardless of engineering pace.
 experience.
 
 **What to give them:** [`docs/compliance/counsel-brief.md`](docs/compliance/counsel-brief.md) —
-the platform facts and **35 numbered questions** (26–31 added for agencies, ADR-0011; 32–33 for the hiring experience, plan.md §30; 34 for policy refusal, T-050; 35 for publishing without review, T-051), written so they can start without a discovery
+the platform facts and **37 numbered questions** (26–31 added for agencies, ADR-0011; 32–33 for the hiring experience, plan.md §30; 34 for policy refusal, T-050; 35 for publishing without review, T-051; 36–37 for conversation sent to the AI provider, T-046), written so they can start without a discovery
 call. Plus the three drafts in `docs/compliance/`.
 
 **Flag when you brief them:**
@@ -40,6 +40,8 @@ call. Plus the three drafts in `docs/compliance/`.
 - ADR-0009 put surveillance back in scope, which makes several answers harder.
 - Questions 26–31 — agencies (ADR-0011): who the customer contracts with, agency terms, employee
   data, responsibility for members' conduct, agency licensing, principals and ban evasion.
+- Questions 36–37 — the assistant now sends earlier conversation to the AI provider with each
+  question (T-046): whether the provider is a processor here, and whether notice is enough.
 
 **Verify:** Retention periods decided, jurisdictions fixed, liability limits drafted,
 authoritative locale designated.
