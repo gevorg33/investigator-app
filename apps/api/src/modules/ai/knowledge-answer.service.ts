@@ -18,6 +18,7 @@ import {
 import { CHAT_MODEL, type ChatModel } from './chat-model';
 import { KNOWLEDGE_PROMPT_VERSION, knowledgePrompt, parseAnswer } from './knowledge-answer.prompt';
 import { savedLocale } from './user-locale';
+import { refuseCredentials } from './understanding/credentials';
 
 /** A source an answer used: enough for the reader to find it, and for support to find the text. */
 export interface Citation {
@@ -96,6 +97,8 @@ export class KnowledgeAnswerService {
     req: RequestContext,
     options: AnswerOptions = {},
   ): Promise<KnowledgeAnswer> {
+    // A secret in the question is refused before anything else sees it (T-220).
+    refuseCredentials({ question: input.question });
     const admitted = await this.admit(actor, input.locale, req);
     return this.respond(actor, input.question, admitted, req, options);
   }

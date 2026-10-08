@@ -304,6 +304,26 @@ describe('the assistant (T-056)', () => {
     });
   });
 
+  it('says a credential was removed and not read — in the reader’s words, never the model’s (T-220)', async () => {
+    await openWith({
+      latest: SESSION,
+      messages: [
+        aiMessage({ content: 'my key is •••••, why does it fail?' }),
+        aiMessage({
+          id: 's2',
+          sequence: 2,
+          role: 'ASSISTANT',
+          content: '',
+          metadata: { source: 'screen', status: 'credential', kinds: ['api_key'] },
+        }),
+      ],
+    });
+    const note = await screen.findByRole('note');
+    expect(note).toHaveTextContent(en.screen.credential);
+    // The masked message is shown as stored.
+    expect(screen.getByText('my key is •••••, why does it fail?')).toBeInTheDocument();
+  });
+
   describe('how a plan ended (T-226)', () => {
     const outcome = (
       id: string,

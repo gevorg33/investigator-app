@@ -562,9 +562,22 @@ plans were proposed:
   - Answered in another tab: it shows running.
   - Not sent at all: the error sits beside the buttons, and they work again.
 - **Expiry on the device's clock:** a plan whose time passes while it is shown stops offering Confirm.
+- **What just happened stays in view.** Plans sit after the conversation and its turn status. While
+  one waits, a new message or a turn's progress brings the end of the conversation into view, not
+  the plan again, which would hide the reply (found in T-220's browser check). A plan that appears
+  is still scrolled to.
 
 On a phone the plan is part of the assistant's full-screen sheet, which cannot be swiped away. It is
 never a sheet of its own that a stray gesture could dismiss.
+
+**Replies decided before any model (T-220).** The API answers two kinds of message itself, with no
+words of its own, and `MessageItem` says them in the reader's language:
+- **A credential removed** (`source: 'screen'`): a note says a password, key or token was removed
+  and not read, and to change it if it was real. The person's message shows as stored, with the
+  secret as `•••••`.
+- **A yes while a plan waits** (`source: 'routing'`): a note says the assistant cannot confirm from a
+  message and points at Confirm on the plan. While that plan still waits, "Show the plan" scrolls to
+  its card and focuses the card, never Confirm.
 
 **Plan outcomes (T-226).** A `PLAN_OUTCOME` message renders in the reader's words from its event
 (`plan-outcome.tsx`; `ai-plans.md`): the outcome, a reason worth a sentence, and each attempted step.

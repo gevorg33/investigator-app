@@ -68,10 +68,18 @@ specified hybrid search is T-133's, once an embedding provider exists (T-016).
 `AssistantTurnService` (ai module) checks, stores, answers and stores again.
 
 ```
-own session (404 otherwise) → admitted (live, workspace, model, allowance — T-017's checks)
+own session (404 otherwise) → normalized → credential screen → structural routing (T-220)
+  → admitted (live, workspace, model, allowance — T-017's checks)
   → question appended → steps → discovery (T-018): a search, a question back, or a refusal
   → otherwise the knowledge base (T-017, citations checked) → reply appended → done
 ```
+
+**Before anything is stored** (T-220, `ai-understanding.md`):
+- the words are normalized;
+- a credential in them is masked in what is stored, and the turn is answered by the screen with no
+  model and no allowance spent;
+- a message empty once normalized, or too long, is refused;
+- a bare yes while a plan waits is pointed at the plan, and confirms nothing.
 
 **Discovery first** (T-059, owner decision 2026-09-25). Every question goes to discovery's
 `respond` first. Its `results`, `no_results`, `clarification` and `refused` are the reply, stored

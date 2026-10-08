@@ -212,6 +212,20 @@ export const discoveryReply = (m: AiMessage): DiscoveryAnswer | null =>
   m.metadata['source'] === 'discovery' ? (m.metadata['answer'] as DiscoveryAnswer) : null;
 
 /**
+ * A reply decided before any model (T-220): the credential screen's — a password, key or token was
+ * removed from the person's message and not read — or a yes pointed at the plan waiting for it.
+ * Neither has words of its own: the reader's catalog says them.
+ */
+export type PreparedReply =
+  | { source: 'screen'; status: 'credential'; kinds: string[] }
+  | { source: 'routing'; status: 'confirm_pointer'; planId: string };
+
+export const preparedReply = (m: AiMessage): PreparedReply | null =>
+  m.metadata['source'] === 'screen' || m.metadata['source'] === 'routing'
+    ? (m.metadata as unknown as PreparedReply)
+    : null;
+
+/**
  * What a turn sends: a question, or — `clarifies` — an answer to the question discovery asked:
  * the specialty picked, or where the person is (used for that search only, never stored).
  */

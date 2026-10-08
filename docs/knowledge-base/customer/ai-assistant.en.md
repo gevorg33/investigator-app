@@ -4,7 +4,7 @@ title: What the AI assistant can and cannot do
 audience: customer
 visibility: authenticated
 locale: en
-version: 9
+version: 10
 status: current
 updated: 2026-10-08
 source_of_truth: docs
@@ -121,7 +121,8 @@ nothing happens until you confirm.
 
 You are shown each step — the action and every value it would use, exactly as it would use them —
 the workspace it would run in, and how long it waits for your answer: 24 hours. Confirm or
-Decline. Declining runs nothing. A plan left unanswered for 24 hours expires and never runs; ask
+Decline — with the buttons on the plan: typing "yes" in the conversation confirms nothing, and
+the assistant points you to them. Declining runs nothing. A plan left unanswered for 24 hours expires and never runs; ask
 again if you still want it.
 
 **If something changes, you are asked again.** Just before it runs, the platform checks that what
@@ -137,6 +138,15 @@ also get a notification.
 action — its kind, never its content — stays in the platform's audit trail.
 
 It cannot change your mission status, grant anyone access to your evidence, or move money.
+
+## What if I paste a password or key into a message?
+
+The assistant removes it before your message is saved, and does not read it. Passwords, API keys,
+access tokens and private keys are recognised and replaced with •••••, and the assistant replies that
+it removed something instead of answering. Nothing you pasted reaches the model, the conversation or
+the platform's records.
+
+Never share credentials here. If what you pasted was real, change it now.
 
 ## Can it see my evidence and reports?
 

@@ -67,7 +67,14 @@ export function PlanConfirmation({
   const hidden = all ? 0 : Math.max(0, plan.steps.length - SHOWN);
 
   return (
-    <Card role="group" aria-labelledby={titleId} className="gap-3">
+    <Card
+      role="group"
+      aria-labelledby={titleId}
+      // Reachable by a pointer to it (T-220), as a whole: focus lands on the plan, not on Confirm.
+      data-plan-id={plan.id}
+      tabIndex={-1}
+      className="gap-3"
+    >
       <CardHeader>
         <CardTitle id={titleId} className="text-base">
           {running ? t('title_running') : expired ? t('title_expired') : t('title')}

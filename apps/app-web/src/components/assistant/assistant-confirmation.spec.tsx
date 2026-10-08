@@ -379,6 +379,33 @@ describe('confirming what the assistant will do (T-058)', () => {
     });
   });
 
+  describe('a yes in words (T-220)', () => {
+    const pointer = (planId: string) =>
+      aiMessage({
+        id: 'r2',
+        sequence: 3,
+        role: 'ASSISTANT',
+        content: '',
+        metadata: { source: 'routing', status: 'confirm_pointer', planId },
+      });
+
+    it('is pointed at the plan — showing it focuses the plan, never Confirm', async () => {
+      const yes = aiMessage({ id: 'y1', sequence: 2, content: 'yes' });
+      await openOn([plan()], [QUESTION, yes, pointer(PLAN_ID)]);
+      const shown = await card();
+      expect(screen.getByText(en.routing.confirm_pointer)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: en.routing.show_plan }));
+      expect(document.activeElement).toBe(shown);
+      expect(calls(CONFIRM)).toEqual([]);
+    });
+
+    it('offers nothing to show once that plan no longer waits', async () => {
+      await openOn([], [QUESTION, pointer(PLAN_ID)]);
+      expect(await screen.findByText(en.routing.confirm_pointer)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: en.routing.show_plan })).toBeNull();
+    });
+  });
+
   describe('declining', () => {
     it('runs nothing, and the conversation says it was declined', async () => {
       await openOn([plan()]);
@@ -432,6 +459,31 @@ describe('confirming what the assistant will do (T-058)', () => {
       await userEvent.click(screen.getByRole('button', { name: en.composer.send }));
       await waitFor(() => expect(screen.queryByRole('group', { name: CARD })).toBeNull());
       expect(await screen.findByText(en.outcome.declined)).toBeInTheDocument();
+    });
+
+    it('keeps what was just said in view above a plan that waits, rather than the plan again', async () => {
+      await openOn([plan()]);
+      await card();
+      const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+      api.streamed(`POST /ai/sessions/${SESSION.id}/turns`, [
+        { type: 'message', message: aiMessage({ id: 'q2', sequence: 2, content: 'Is Ana free?' }) },
+        {
+          type: 'message',
+          message: aiMessage({ id: 'a2', sequence: 3, role: 'ASSISTANT', content: 'Yes, she is.' }),
+        },
+        { type: 'done' },
+      ]);
+      await userEvent.type(
+        screen.getByRole('textbox', { name: en.composer.label }),
+        'Is Ana free?',
+      );
+      await userEvent.click(screen.getByRole('button', { name: en.composer.send }));
+      await screen.findByText('Yes, she is.');
+      const target = scrolled.mock.contexts.at(-1) as HTMLElement;
+      // The conversation's end — the reply — not the plan below it.
+      expect(target).toContainElement(screen.getByText('Yes, she is.'));
+      expect(target).not.toContainElement(await card());
+      expect(scrolled.mock.calls.at(-1)).toEqual([{ block: 'end' }]);
     });
 
     it('forgets one conversation’s plans when another opens', async () => {

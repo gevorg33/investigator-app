@@ -21,6 +21,10 @@ import {
   type AnswerStep,
   type KnowledgeAnswer,
 } from './knowledge-answer.service';
+import { AiPlansService } from './plans/ai-plans.service';
+import { screenCredentials, type CredentialKind } from './understanding/credentials';
+import { normalizeText } from './understanding/normalize';
+import { isAffirmation, routeMessage } from './understanding/routing';
 
 /**
  * What a client is told while a turn happens, in order (T-056): the user's message as stored and
@@ -65,6 +69,17 @@ export interface ClarificationInput {
   radiusKm?: number | undefined;
 }
 
+/**
+ * A reply decided before any model (T-220): the credential screen's, or a yes pointed at the plan
+ * waiting for it. It has no words of its own — the client says it, in the reader's language.
+ */
+export type ScreenReplyMetadata = {
+  source: 'screen';
+  status: 'credential';
+  kinds: CredentialKind[];
+};
+export type RoutingReplyMetadata = { source: 'routing'; status: 'confirm_pointer'; planId: string };
+
 /** The statuses discovery answers itself; for the rest, the knowledge base does (T-059). */
 const DISCOVERY_REPLIES: ReadonlySet<DiscoveryAnswer['status']> = new Set([
   'results',
@@ -74,16 +89,24 @@ const DISCOVERY_REPLIES: ReadonlySet<DiscoveryAnswer['status']> = new Set([
 ]);
 
 /** A turn that was let through, ready to be answered. Only this service makes one. */
-export interface Turn {
+export type Turn = {
   readonly sessionId: string;
-  /** The person's words, as stored: what the knowledge base answers when this is not a search. */
-  readonly question: string;
-  /** What discovery is asked: the question, or the one a clarification answers, with the answer. */
-  readonly discovery: DiscoveryRequest;
-  readonly admitted: Admitted;
   /** Sent before any answering starts: the stored question, and the session it may have named. */
   readonly opening: readonly TurnEvent[];
-}
+} & (
+  | {
+      /** Answered already, without a model: stored as it is (T-220). */
+      readonly prepared: ScreenReplyMetadata | RoutingReplyMetadata;
+    }
+  | {
+      readonly prepared?: undefined;
+      /** The person's words, as stored: what the knowledge base answers when this is not a search. */
+      readonly question: string;
+      /** What discovery is asked: the question, or the one a clarification answers, with the answer. */
+      readonly discovery: DiscoveryRequest;
+      readonly admitted: Admitted;
+    }
+);
 
 /**
  * One exchange with the assistant, recorded in the caller's session (T-056, T-059).
@@ -100,8 +123,13 @@ export interface Turn {
  * they match is refused, with the policy to read. A discovery answer is stored whole, as
  * structured data the client renders — the model writes none of it (T-018).
  *
- * Refusals come first and store nothing: a stranger's session, a missing model, a spent
- * allowance. Once the question is stored it stays, whatever happens next — a failure or a Stop
+ * **Screened and routed before anything is stored** (T-220): the words are normalized; a
+ * credential in them is masked in what is stored, and the turn is answered by the screen — no model
+ * sees it, and no allowance is spent; a bare "yes" while a plan waits is pointed at that plan's
+ * Confirm control, and confirms nothing.
+ *
+ * Refusals come first and store nothing: a stranger's session, a message empty once normalized, a
+ * missing model, a spent allowance. Once the question is stored it stays, whatever happens next — a failure or a Stop
  * leaves it as the last message, and {@link retry} answers it. A reply is stored only once the
  * answer is complete and nobody has stopped it, so a conversation never holds half an answer.
  *
@@ -117,6 +145,7 @@ export class AssistantTurnService {
     private readonly sessions: AiSessionsService,
     private readonly knowledge: KnowledgeAnswerService,
     private readonly discovery: DiscoveryAnswerService,
+    private readonly plans: AiPlansService,
   ) {}
 
   /** A new question — or an answer to discovery's: checked, then stored, then ready to answer. */
@@ -128,25 +157,82 @@ export class AssistantTurnService {
   ): Promise<Turn> {
     // The session first: a stranger's id is a 404, and spends none of anyone's allowance.
     await this.sessions.open(actor, sessionId, req);
-    const { request, metadata } = await this.request(actor, sessionId, input, req);
+    const screen = screenCredentials(normalizeText(input.content));
+    const content = screen.masked;
+    const decided = await this.decide(actor, sessionId, content, input.clarifies === true, req);
+    if (screen.found.length > 0) {
+      // Masked before it is stored; answered by the screen, never by a model.
+      return this.opened(actor, sessionId, { content, metadata: { screened: screen.found } }, req, {
+        prepared: { source: 'screen', status: 'credential', kinds: screen.found },
+      });
+    }
+    if (decided !== null) {
+      return this.opened(actor, sessionId, { content, metadata: {} }, req, { prepared: decided });
+    }
+    const { request, metadata } = await this.request(actor, sessionId, { ...input, content }, req);
     const admitted = await this.knowledge.admit(actor, input.locale, req);
-    const message = await this.sessions.append(
-      actor,
-      sessionId,
-      { role: 'USER', content: input.content, metadata },
-      req,
-    );
+    return this.opened(actor, sessionId, { content, metadata }, req, {
+      question: content,
+      discovery: request,
+      admitted,
+    });
+  }
+
+  /** Stores the person's message, and opens the turn with it and the session it may have named. */
+  private async opened(
+    actor: Actor,
+    sessionId: string,
+    stored: { content: string; metadata: Record<string, unknown> },
+    req: RequestContext,
+    rest: Turn extends infer T
+      ? T extends unknown
+        ? Omit<T, 'sessionId' | 'opening'>
+        : never
+      : never,
+  ): Promise<Turn> {
+    const message = await this.sessions.append(actor, sessionId, { role: 'USER', ...stored }, req);
     const session = await this.sessions.open(actor, sessionId, req);
     return {
       sessionId,
-      question: input.content,
-      discovery: request,
-      admitted,
+      ...rest,
       opening: [
         { type: 'message', message },
         { type: 'session', session },
       ],
     };
+  }
+
+  /**
+   * Structural routing (T-220): a message too short or too long once normalized is refused; a bare
+   * yes while a plan waits is pointed at it. Null: it goes on to be answered.
+   */
+  private async decide(
+    actor: Actor,
+    sessionId: string,
+    content: string,
+    clarifies: boolean,
+    req: RequestContext,
+  ): Promise<RoutingReplyMetadata | null> {
+    // The plans are read only for a yes: every other message is answered whatever waits.
+    const waiting =
+      !clarifies && isAffirmation(content)
+        ? ((await this.plans.list(actor, sessionId, { open: true }, req)).find(
+            (p) => p.status === 'PROPOSED' && p.confirmation === 'PENDING',
+          )?.id ?? null)
+        : null;
+    const routed = routeMessage(content, { waiting, clarifies });
+    if (routed.route === 'empty' || routed.route === 'too_long') {
+      throw AppError.validation([
+        {
+          field: 'content',
+          code: routed.route === 'empty' ? 'TOO_SHORT' : 'TOO_LONG',
+          messageKey: 'error.common.validation_failed',
+        },
+      ]);
+    }
+    return routed.route === 'confirm_pointer'
+      ? { source: 'routing', status: 'confirm_pointer', planId: routed.planId }
+      : null;
   }
 
   /**
@@ -161,6 +247,17 @@ export class AssistantTurnService {
   ): Promise<Turn> {
     const last = await this.sessions.last(actor, sessionId, req);
     if (last?.role !== 'USER' || last.content === null) throw AppError.stateConflict();
+    // Screened when it was asked: answered by the screen again, never by a model.
+    const screened = last.metadata['screened'];
+    if (Array.isArray(screened)) {
+      return {
+        sessionId,
+        prepared: { source: 'screen', status: 'credential', kinds: screened as CredentialKind[] },
+        opening: [],
+      };
+    }
+    const decided = await this.decide(actor, sessionId, last.content, false, req);
+    if (decided !== null) return { sessionId, prepared: decided, opening: [] };
     // An unanswered answer to discovery's question is paired again with what it answers — with the
     // specialty it picked, but not a location, which was never stored: discovery asks again.
     const stored = last.metadata['taxonomyNodeIds'];
@@ -227,6 +324,16 @@ export class AssistantTurnService {
     signal: AbortSignal,
   ): Promise<void> {
     try {
+      if (turn.prepared !== undefined) {
+        const message = await this.sessions.append(
+          actor,
+          turn.sessionId,
+          { role: 'ASSISTANT', content: '', metadata: { ...turn.prepared } },
+          req,
+        );
+        emit({ type: 'message', message });
+        return;
+      }
       const options = { onStep: (step: AnswerStep) => emit({ type: 'step', step }), signal };
       const found = await this.discovery.respond(
         actor,

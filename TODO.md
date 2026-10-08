@@ -9656,7 +9656,7 @@ pnpm --filter api test ai-handoff
 ---
 
 ### T-220 — Normalize, structural routing, credential screen (P-9)
-- **Status:** TODO
+- **Status:** DONE — 2026-10-08. `modules/ai/understanding/` (`ai-understanding.md`): text normalized, credentials masked and screened, and structural routing, all wired into every turn before storing; the credential refusal also on `/ai/knowledge/answer` and `/ai/discovery/answer`; `resolveWhen` and `parseAmount` built for T-095's commands. app-web renders the screen's and the router's replies. KB customer v10 and investigator v4
 - **Priority:** P1 — the credential screen before any act turn
 - **Depends on:** T-056; confirm routing on T-058
 - **Risk:** MEDIUM
@@ -9674,9 +9674,9 @@ pnpm --filter api test ai-handoff
   waits points at its confirm control and never confirms.
 
 **Acceptance criteria**
-- [ ] A pasted key appears in no session message, plan step or audit row, and in no request body sent to the model
-- [ ] A spec holds that no stage here returns an action
-- [ ] Trilingual cases, including cross-zone and DST
+- [x] A pasted key appears in no session message, plan step or audit row, and in no request body sent to the model — `ai-normalize.turn.spec.ts` searches messages, steps, audit, outbox and titles, with a positive control; checked again in the browser
+- [x] A spec holds that no stage here returns an action — outputs scanned over a corpus, and no stage imports a tool, a plan, a model or the database
+- [x] Trilingual cases, including cross-zone and DST — New York, Moscow, Yerevan; New York's spring gap and autumn overlap, Berlin's overlap
 
 **Validation**
 ```bash

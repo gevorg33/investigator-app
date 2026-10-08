@@ -29,6 +29,7 @@ interface Seen {
   last: string | undefined;
   height: number;
   focus: number | null;
+  plans: number;
 }
 
 /**
@@ -55,10 +56,28 @@ export function Conversation({
   const sessionId = state.status === 'ready' ? (state.session?.id ?? null) : null;
   const plans = usePlans(api, sessionId, () => void conversation.readOutcomes());
   const { refresh: readPlans } = plans;
+  // The plans still waiting for an answer: a pointer to one (T-220) can show it.
+  const waiting = new Set(
+    plans.entries.filter((e) => e.plan.status === 'PROPOSED').map((e) => e.plan.id),
+  );
+  /** Brings a plan into view and gives it focus — the plan, never its Confirm button. */
+  const showPlan = (planId: string) => {
+    const card = scroller.current?.querySelector<HTMLElement>(`[data-plan-id="${planId}"]`);
+    card?.scrollIntoView({ block: 'center' });
+    card?.focus();
+  };
   // A Personal workspace has no name of its own (`WorkspaceView`), as the header says.
   const place = workspace === null ? null : (workspace.name ?? t('workspace.personal'));
   const scroller = useRef<HTMLDivElement>(null);
-  const seen = useRef<Seen>({ first: undefined, last: undefined, height: 0, focus: null });
+  const seen = useRef<Seen>({
+    first: undefined,
+    last: undefined,
+    height: 0,
+    focus: null,
+    plans: 0,
+  });
+  // Where the conversation itself ends — the latest message and any turn under way — above the plans.
+  const talkEnd = useRef<HTMLDivElement>(null);
   const [reaching, setReaching] = useState(false);
 
   // Where the reader should be as the conversation changes — instantly, so there is no motion to
@@ -76,8 +95,18 @@ export function Conversation({
     if (match !== null && state.focus !== prev.focus) match.scrollIntoView({ block: 'center' });
     else if (prev.first !== undefined && first !== prev.first && last === prev.last) {
       el.scrollTop += el.scrollHeight - prev.height;
+    } else if (plans.entries.length > 0 && plans.entries.length <= prev.plans) {
+      // A plan waits at the end: what just happened in the conversation is brought into view above
+      // it, rather than the plan again — the reply would be hidden behind it (T-220).
+      talkEnd.current?.scrollIntoView({ block: 'end' });
     } else el.scrollTop = el.scrollHeight;
-    seen.current = { first, last, height: el.scrollHeight, focus: state.focus };
+    seen.current = {
+      first,
+      last,
+      height: el.scrollHeight,
+      focus: state.focus,
+      plans: plans.entries.length,
+    };
   }, [state.messages, state.turn, state.focus, plans.entries.length]);
 
   // Something new in the conversation may have come with a plan to answer (T-058).
@@ -148,25 +177,30 @@ export function Conversation({
                 {state.earlierFailed ? t('earlier_failed') : t('earlier')}
               </Button>
             )}
-            <ol role="log" aria-label={t('label')} className="grid gap-6">
-              {state.messages.map((m, i) => (
-                <li
-                  key={m.id}
-                  data-sequence={m.sequence}
-                  // The message a search found, marked where it sits in the conversation.
-                  className={
-                    m.sequence === state.focus
-                      ? '-mx-2 rounded-lg bg-primary-subtle px-2 py-2'
-                      : undefined
-                  }
-                >
-                  <MessageItem
-                    message={m}
-                    pending={i === state.messages.length - 1 && state.turn === null}
-                  />
-                </li>
-              ))}
-            </ol>
+            <div ref={talkEnd} className="grid gap-6">
+              <ol role="log" aria-label={t('label')} className="grid gap-6">
+                {state.messages.map((m, i) => (
+                  <li
+                    key={m.id}
+                    data-sequence={m.sequence}
+                    // The message a search found, marked where it sits in the conversation.
+                    className={
+                      m.sequence === state.focus
+                        ? '-mx-2 rounded-lg bg-primary-subtle px-2 py-2'
+                        : undefined
+                    }
+                  >
+                    <MessageItem
+                      message={m}
+                      pending={i === state.messages.length - 1 && state.turn === null}
+                      waiting={waiting}
+                      onShowPlan={showPlan}
+                    />
+                  </li>
+                ))}
+              </ol>
+              <TurnStatus state={state} canRetry={canRetry} onRetry={() => void retry()} />
+            </div>
             {plans.entries.length > 0 && (
               <section aria-label={t('plan.region')} className="grid gap-4">
                 {plans.entries.map((entry) => (
@@ -193,7 +227,6 @@ export function Conversation({
                 </Button>
               </div>
             )}
-            <TurnStatus state={state} canRetry={canRetry} onRetry={() => void retry()} />
           </div>
         )}
       </div>

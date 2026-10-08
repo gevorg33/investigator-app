@@ -1049,6 +1049,15 @@ export const en = {
         infrastructure_failed: 'It could not be finished because of a problem on our side.',
       },
     },
+    screen: {
+      credential:
+        'I removed what looked like a password, key or token from your message, and did not read it. Never share credentials here. If it was real, change it now.',
+    },
+    routing: {
+      confirm_pointer:
+        "I can't confirm from a message. To go ahead, use Confirm on the plan — it shows exactly what will run.",
+      show_plan: 'Show the plan',
+    },
     plan: {
       region: 'Waiting for your answer',
       title: 'The assistant asks to do this',
@@ -1500,6 +1509,10 @@ export const en = {
         required: 'Confirm that your request is for a lawful purpose.',
       },
       timezone: { invalid: 'Choose a time zone from the list.' },
+      assistant: {
+        credential:
+          'That looks like a password, key or token. Remove it and ask again — never share credentials here.',
+      },
       assistant_tool: { invalid: 'The assistant sent something this action cannot use.' },
       ai_session: {
         plan_in_flight:
