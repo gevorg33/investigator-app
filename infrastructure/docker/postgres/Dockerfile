@@ -9,7 +9,7 @@
 # amd64 and arm64, and PostGIS installs cleanly from the PGDG apt repository that
 # the official postgres base already trusts.
 # Pinned by digest, and the same digest CI runs its service from (T-028).
-FROM pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
+FROM pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
 
 # `upgrade` first: the base is rebuilt upstream less often than Debian ships fixes, and the image
 # scan in CI blocks on any CRITICAL or HIGH with a fix available (T-028). This is that fix.
